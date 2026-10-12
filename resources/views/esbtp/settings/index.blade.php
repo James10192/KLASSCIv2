@@ -2181,7 +2181,7 @@
                 <div class="bc-grid bc-grid-2">
                     @php $tcToggles = [
                         ['key' => 'tronc_commun_enabled', 'label' => 'Activer le tronc commun', 'desc' => 'Permet aux filieres marquees "tronc commun" de proposer une specialisation en cours d\'annee', 'icon' => 'fa-toggle-on', 'color' => '', 'default' => '0'],
-                        ['key' => 'tronc_commun_mga_include_s1', 'label' => 'Inclure le S1 dans l\'annuel apres specialisation', 'desc' => 'Active : moyenne et rang annuels = S1 de la classe d\'origine + S2 de la specialite, selon les ponderations. Desactive : annuel et rang = S2 de specialite seulement. Le meme choix s\'applique aux Resultats, bulletins, certificats et reinscriptions.', 'icon' => 'fa-clipboard-check', 'color' => '', 'default' => '1'],
+                        ['key' => 'tronc_commun_mga_include_s1', 'label' => 'Inclure le S1 dans la moyenne annuelle après spécialisation', 'desc' => 'Activé : moyenne annuelle = S1 de la classe tronc commun + S2 de la classe actuelle, avec les coefficients paramétrés. Désactivé : S2 seul après spécialisation. Le rang utilise cette même moyenne mais se calcule dans la cohorte choisie ci-dessous.', 'icon' => 'fa-clipboard-check', 'color' => '', 'default' => '1'],
                         ['key' => 'tronc_commun_report_paiements', 'label' => 'Reporter les paiements', 'desc' => 'Reporter automatiquement les paiements du tronc commun sur la specialisation', 'icon' => 'fa-money-bill-transfer', 'color' => '', 'default' => '1'],
                         ['key' => 'tronc_commun_report_notes', 'label' => 'Reporter les notes', 'desc' => 'Conserver les notes du S1 (tronc commun) accessibles depuis la specialisation', 'icon' => 'fa-file-lines', 'color' => '', 'default' => '1'],
                         ['key' => 'tronc_commun_bulletin_show_origin', 'label' => 'Afficher la classe d\'origine', 'desc' => 'Mentionner la classe de tronc commun (S1) sur le bulletin de la specialisation (S2)', 'icon' => 'fa-id-card', 'color' => '', 'default' => '1'],
@@ -2204,6 +2204,23 @@
                         </div>
                     </div>
                     @endforeach
+                </div>
+                <div class="bc-grid bc-grid-2" style="margin-top:12px;">
+                    <div class="bc-input-row">
+                        <div class="bc-icon"><i class="fas fa-ranking-star"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Cohorte du rang annuel BTS</div>
+                            <x-au-select
+                                name="setting_tronc_commun_rang_annuel_classe"
+                                icon="fa-users"
+                                :searchable="false"
+                                :placeholder-is-first-option="false"
+                                :value="\App\Helpers\SettingsHelper::get(\App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::KEY, 'specialisation')"
+                                :options="['specialisation' => 'Classe actuelle (spécialisation) — recommandé', 'origine' => 'Classe d’origine (tronc commun)']"
+                            />
+                            <div class="bc-desc">La moyenne annuelle conserve sa formule S1 + S2, mais le rang compare les élèves d'une seule classe de référence. Un étudiant ne peut appartenir à deux classements annuels. Le classement semestriel reste celui de chaque semestre.</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

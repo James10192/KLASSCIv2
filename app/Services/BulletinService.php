@@ -743,6 +743,9 @@ class BulletinService
         $classMap = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
         $resolvedS1ClasseId = $classMap['semestre1_classe_id'] ?? $classeId;
         $classeIdS2 = (int) ($classMap['semestre2_classe_id'] ?? $classeId);
+        // Une éventuelle génération depuis le S1 TC n'utilise pas ses
+        // pondérations pour juger la moyenne annuelle de la spécialité.
+        $semesterWeights = $this->getSemesterWeights(ESBTPClasse::find($classeIdS2) ?? $classe);
         if ($resolvedS1ClasseId && (int) $resolvedS1ClasseId !== (int) $classeId) {
             $classeIdS1 = (int) $resolvedS1ClasseId;
             $classeTroncCommun = ESBTPClasse::with('filiere')->find($resolvedS1ClasseId);
@@ -3129,7 +3132,17 @@ class BulletinService
             return null;
         }
 
-        $averages = $this->collectAnnualAveragesForClasse($classeId, $anneeUniversitaireId);
+        // Le bulletin S1 porte encore la classe TC, mais le rang ANNUEL
+        // appartient par défaut à la classe S2 actuelle. Même règle
+        // quelle que soit la page qui demande ce rang.
+        $map = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
+        $classeDeRang = app(\App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::class)->classeDeRang($map);
+        $cohorte = $this->classCohortCounter->etudiantIdsPourPeriode($classeDeRang, $anneeUniversitaireId, 'annuel');
+        if (! in_array($etudiantId, $cohorte, true)) {
+            return null;
+        }
+
+        $averages = $this->collectAnnualAveragesForClasse($classeDeRang, $anneeUniversitaireId);
         if ($averages === []) {
             return null;
         }
@@ -3169,9 +3182,8 @@ class BulletinService
     private function collectAnnualAveragesForClasse(int $classeId, int $anneeUniversitaireId): array
     {
         $classe = ESBTPClasse::with(['filiere', 'niveau', 'niveauEtude'])->find($classeId);
-        $weights = $this->getSemesterWeights($classe);
         $averages = [];
-        $etudiantIds = $this->classCohortCounter->etudiantIdsPourPeriode($classeId, $anneeUniversitaireId, 'semestre2');
+        $etudiantIds = $this->classCohortCounter->etudiantIdsPourPeriode($classeId, $anneeUniversitaireId, 'annuel');
         $s1Stored = [];
         $s2Stored = [];
         foreach ($etudiantIds as $etudiantId) {
@@ -3202,6 +3214,10 @@ class BulletinService
             );
         }
 
+        $semesterWeightsByClasse = [];
+        $specialityClasses = ESBTPClasse::whereIn('id', array_keys($s2Stored))
+            ->with(['niveau', 'niveauEtude'])
+            ->get()->keyBy('id');
         foreach ($etudiantIds as $etudiantId) {
             $classMap = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
             $classeIdS1 = (int) ($classMap['semestre1_classe_id'] ?? $classeId);
@@ -3218,10 +3234,14 @@ class BulletinService
                 $anneeUniversitaireId,
                 'semestre2'
             );
+            // En mode rang sur classe d'origine, les poids viennent toujours
+            // de la spécialité S2 de chaque élève, jamais de la classe TC.
+            $studentWeights = $semesterWeightsByClasse[$classeIdS2]
+                ??= $this->getSemesterWeights($specialityClasses->get($classeIdS2) ?? $classe);
             $annual = $this->calculateConfiguredAnnualAverage(
                 $s1,
                 $s2,
-                $weights,
+                $studentWeights,
                 $classeIdS1,
                 $classeIdS2
             );
@@ -3269,7 +3289,7 @@ class BulletinService
 
         $averages = [];
         foreach ($bulletins as $bulletin) {
-            if ($bulletin->moyenne_generale === null || $bulletin->moyenne_generale <= 0) {
+            if ($bulletin->moyenne_generale === null) {
                 continue;
             }
 
@@ -3694,15 +3714,13 @@ class BulletinService
             // une autre forme. Un etudiant sans phase, lui, passe par le repli
             // de l'election (sa classe d'inscription) : il n'a rien perdu.
             //
-            // Sur « annuel », union des deux semestres. Licite ICI et nulle
-            // part ailleurs : cette methode construit une LISTE, aucune
-            // generation ne suit. Le compteur, lui, reste exclusif, sans quoi
-            // la generation annuelle lancee sur deux classes creerait deux
-            // bulletins pour le meme etudiant.
+            // Sur « annuel », un seul propriétaire : celui du rang annuel.
+            // Une union S1 et S2 ferait apparaître deux fois les élèves orientés
+            // en tronc commun et spécialité, avec des rangs incohérents.
             $normalisee = $this->normalizePeriode($periode);
-            $periodesCohorte = $normalisee === 'annuel'
-                ? ['semestre1', 'semestre2']
-                : [$normalisee];
+            // Le filtre Annuel doit utiliser UNE classe propriétaire du rang,
+            // pas l'union TC+spécialité qui présentait deux bulletins annuels.
+            $periodesCohorte = [$normalisee];
 
             $cohorteIds = collect($periodesCohorte)->flatMap(
                 fn (string $p) => $include_all_statuses
@@ -4188,65 +4206,75 @@ class BulletinService
 
     public function getStudentBulletins($etudiants, $classe_id, $annee_universitaire_id, $semestre, &$bulletins)
     {
-        $periodeMap = [
-            '1' => 'semestre1',
-            '2' => 'semestre2',
-        ];
-
-        // Si le semestre est spécifié, on récupère seulement ce semestre,
-        // sinon tous les semestres.
-        $periodes = $semestre && isset($periodeMap[$semestre])
-            ? [$periodeMap[$semestre]]
-            : array_values($periodeMap);
-
-        // La classe de chaque eleve : celle demandee, sinon son inscription
-        // active de l'annee (deja chargee avec l'eleve).
-        $classeDe = [];
-        foreach ($etudiants as $etudiant) {
-            $studentClasseId = $classe_id;
-            if (! $studentClasseId) {
-                $inscription = $etudiant->inscriptions
-                    ->where('annee_universitaire_id', $annee_universitaire_id)
-                    ->where('status', 'active')
-                    ->first();
-                $studentClasseId = $inscription ? $inscription->classe_id : null;
-            }
-            if ($studentClasseId && $annee_universitaire_id) {
-                $classeDe[$etudiant->id] = (int) $studentClasseId;
-            }
-        }
-
-        if ($classeDe === []) {
+        if (! $annee_universitaire_id || $etudiants->isEmpty()) {
             return;
         }
 
-        // UNE requete pour la page, au lieu d'une par eleve suivie d'une ligne
-        // de journal « aucun bulletin » par eleve. L'ordre est celui de l'index
-        // unique (etudiant, classe, annee, periode) que la lecture unitaire
-        // parcourait : a periodes multiples, le premier semestre l'emporte.
-        $trouves = ESBTPBulletin::whereIn('etudiant_id', array_keys($classeDe))
-            ->whereIn('classe_id', array_values(array_unique($classeDe)))
-            ->where('annee_universitaire_id', $annee_universitaire_id)
-            ->whereIn('periode', $periodes)
-            ->orderBy('periode')
-            ->orderBy('id')
-            ->get(['id', 'etudiant_id', 'classe_id', 'periode'])
-            ->filter(fn ($bulletin) => ($classeDe[$bulletin->etudiant_id] ?? null) === (int) $bulletin->classe_id)
-            ->groupBy('etudiant_id');
+        // Chaque semestre peut porter un bulletin dans UNE AUTRE classe.
+        // Le choix annuel privilégie le bulletin S2 de la classe actuelle,
+        // jamais un bulletin S1 tronc commun pris pour un annuel officiel.
+        $priorite = $semestre === '1' ? ['semestre1']
+            : ($semestre === '2' ? ['semestre2'] : ['semestre2', 'semestre1']);
 
-        foreach ($classeDe as $etudiantId => $studentClasseId) {
-            if ($bulletin = $trouves->get($etudiantId)?->first()) {
-                $bulletins[$etudiantId] = $bulletin->id;
+        $classesParEtudiant = [];
+        $idsParClasseDemandee = [];
+        foreach ($etudiants as $etudiant) {
+            $classeDemandee = $classe_id;
+            if (! $classeDemandee) {
+                $inscription = $etudiant->inscriptions
+                    ->where('annee_universitaire_id', $annee_universitaire_id)
+                    ->where('status', 'active')
+                    ->sortByDesc('date_inscription')
+                    ->first();
+                $classeDemandee = $inscription?->classe_id;
+            }
+            if ($classeDemandee) {
+                $idsParClasseDemandee[(int) $classeDemandee][] = (int) $etudiant->id;
             }
         }
 
-        \Log::debug('Bulletins de la page des resultats', [
-            'etudiants' => count($etudiants),
-            'avec_bulletin' => count($bulletins),
-            'periodes' => $periodes,
-        ]);
-    }
+        foreach ($idsParClasseDemandee as $classeDemandee => $ids) {
+            $this->classMapResolver->prechargerPourCohorte(
+                $ids, (int) $classeDemandee, (int) $annee_universitaire_id
+            );
+            foreach ($ids as $etudiantId) {
+                $map = $this->classMapResolver->resolve(
+                    $etudiantId, (int) $classeDemandee, (int) $annee_universitaire_id
+                );
+                $classesParEtudiant[$etudiantId] = [
+                    'semestre1' => (int) $map['semestre1_classe_id'],
+                    'semestre2' => (int) $map['semestre2_classe_id'],
+                ];
+            }
+        }
 
+        if ($classesParEtudiant === []) {
+            return;
+        }
+
+        $bulletinsParEtudiant = ESBTPBulletin::query()
+            ->whereIn('etudiant_id', array_keys($classesParEtudiant))
+            ->where('annee_universitaire_id', $annee_universitaire_id)
+            ->whereIn('periode', ['semestre1', 'semestre2', '1', '2'])
+            ->orderBy('id')
+            ->get(['id', 'etudiant_id', 'classe_id', 'periode'])
+            ->groupBy('etudiant_id');
+
+        foreach ($classesParEtudiant as $etudiantId => $classes) {
+            $disponibles = $bulletinsParEtudiant->get($etudiantId, collect());
+            foreach ($priorite as $periode) {
+                $aliases = $this->periodeAliases($periode);
+                $bulletin = $disponibles->first(fn ($b) =>
+                    (int) $b->classe_id === $classes[$periode]
+                    && in_array((string) $b->periode, $aliases, true)
+                );
+                if ($bulletin) {
+                    $bulletins[$etudiantId] = $bulletin->id;
+                    break;
+                }
+            }
+        }
+    }
 
     /**
      * Coefficient de la matière, avec fallback à 1 si aucun coefficient n'est

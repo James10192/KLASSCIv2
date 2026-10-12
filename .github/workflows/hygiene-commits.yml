@@ -422,7 +422,9 @@ jobs:
             tests/Unit/Services/BtsBulletinPolicyTest.php \
             tests/Feature/Bulletin/BtsBulletinConfigurationHttpTest.php \
             tests/Feature/Reinscription/AnalyseDecisionsReinscriptionTest.php \
-            tests/Feature/Bts/StudentAcademicTroncCommunTest.php
+            tests/Feature/Bts/StudentAcademicTroncCommunTest.php \
+            tests/Feature/Bulletin/RangAnnuelPariteTroncCommunTest.php \
+            tests/Feature/Settings/BtsRangAnnuelClasseEnregistrementTest.php
           do
             php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
           done

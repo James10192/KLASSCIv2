@@ -109,6 +109,14 @@ class ESBTPSettingsController extends Controller
             return $refus;
         }
 
+        $rangAnnuelDemande = $request->input('setting_'.\App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::KEY);
+        if ($rangAnnuelDemande !== null && ! in_array($rangAnnuelDemande, [
+            \App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::SPECIALISATION,
+            \App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::ORIGINE,
+        ], true)) {
+            return $this->refus($request, 'Classe de classement annuel BTS invalide.');
+        }
+
         try {
             DB::beginTransaction();
             $this->ensureAttendanceNoteSettings();
@@ -483,6 +491,22 @@ class ESBTPSettingsController extends Controller
                 'tronc_commun_planning_semestre_strict' => ['value' => '0', 'description' => 'Restreindre le planning par semestre'],
             ];
 
+            // Choix fermé et non une bascule : classe actuelle par défaut.
+            Setting::firstOrCreate(
+                ['key' => \App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::KEY],
+                [
+                    'value' => \App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::SPECIALISATION,
+                    'type' => 'string',
+                    'group' => 'tronc_commun',
+                    'category' => 'tronc_commun',
+                    'description' => 'Classe de référence du classement annuel BTS après spécialisation',
+                    'is_required' => false,
+                    'default_value' => \App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::SPECIALISATION,
+                    'validation_rules' => ['in:specialisation,origine'],
+                    'sort_order' => 161,
+                ]
+            );
+
             foreach ($troncCommunDefaults as $key => $attrs) {
                 Setting::firstOrCreate(
                     ['key' => $key],
@@ -578,6 +602,8 @@ class ESBTPSettingsController extends Controller
                 \App\Domain\Exploitation\TracesLentes\SeuilsDesTraces::REGLAGE_DUREE_MS,
                 \App\Domain\Exploitation\TracesLentes\SeuilsDesTraces::REGLAGE_REQUETES,
             ];
+
+            $reglagesTexte[] = \App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::KEY;
 
             // Les trois regles de separation des devoirs : un mode a trois
             // etats, donc un selecteur et non une case. Elles etaient dans les
@@ -914,7 +940,8 @@ class ESBTPSettingsController extends Controller
         $souligne = str_replace('.', '_', $cle);
         $formes = [$cle, $souligne];
 
-        if (in_array($cle, InscriptionWorkflowSettings::cles(), true)) {
+        if (in_array($cle, InscriptionWorkflowSettings::cles(), true)
+            || $cle === \App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::KEY) {
             $formes[] = 'setting_'.$cle;
             $formes[] = 'setting_'.$souligne;
         }

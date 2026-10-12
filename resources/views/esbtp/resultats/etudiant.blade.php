@@ -212,6 +212,21 @@
             </button>
         </div>
 
+        @if($currentPeriodeKey === 'annuel')
+            <div class="sr-animate sr-animate-delay-1" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;margin:0 0 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;color:#1e40af;">
+                <i class="fas fa-trophy" aria-hidden="true"></i>
+                <div style="font-size:.84rem;line-height:1.5;">
+                    <strong>Rang annuel :
+                        {{ ($rangAnnuel['rang'] ?? null) !== null ? $rangAnnuel['rang'].' / '.$rangAnnuel['total'] : 'Non attribué (moyenne annuelle à compléter ou classement indisponible)' }}
+                    </strong>
+                    @if($classeRangAnnuel)
+                        <span> · Classe de référence : {{ $classeRangAnnuel->name }}</span>
+                    @endif
+                    <div style="font-size:.75rem;color:#475569;">Le S1 reste dans sa classe d'origine, le S2 dans la spécialisation. Le rang annuel compare uniquement les élèves de la classe de référence configurée.</div>
+                </div>
+            </div>
+        @endif
+
         @include('esbtp.partials.inscription-workflow-alert', [
             'inscriptionWorkflowAlert' => $inscriptionWorkflowAlert ?? null,
             'redirectTo' => 'resultats_etudiant',

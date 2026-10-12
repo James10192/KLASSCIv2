@@ -1023,6 +1023,9 @@ class ESBTPBulletinController extends Controller
                 $periodeCourante,
                 $moyenneAvecAssiduite
             );
+            $semesterWeights = $this->bulletinService->getSemesterWeights(
+                \App\Models\ESBTPClasse::find($classeIdS2) ?? $bulletin->classe
+            );
             $moyenneAnnuelle = $this->bulletinService->calculateConfiguredAnnualAverage(
                 $moyenneSemestre1,
                 $moyenneSemestre2,
