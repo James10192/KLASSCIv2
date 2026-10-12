@@ -75,14 +75,29 @@ class PaymentFilterService
             $query->pourCategorie((int) $categoryId);
         }
 
-        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        if ($anneeEnCours) {
-            $query->whereHas(
-                'inscription',
-                fn ($q) => $q->where('annee_universitaire_id', $anneeEnCours->id)
-            );
-        } else {
-            $query->anneeEnCours();
+        // Les dates de paiement décrivent la CAISSE ; l'inscription à laquelle
+        // le paiement est attaché décrit l'origine de la DETTE. Ces deux années
+        // ne doivent jamais être assimilées à de nouveaux inscrits.
+        $portee = (string) $request->input('portee', 'tous');
+        if (in_array($portee, ['annee', 'arrieres'], true)) {
+            $anneeId = ESBTPAnneeUniversitaire::query()->where('is_current', true)->value('id');
+            if ($portee === 'annee') {
+                if ($anneeId) {
+                    $query->whereHas('inscription', fn ($q) => $q->where('annee_universitaire_id', $anneeId));
+                    $query->where(fn ($q) => $q->whereNull('type_paiement')->orWhere('type_paiement', '!=', 'reliquat'));
+                } else {
+                    $query->whereRaw('1 = 0');
+                }
+            } else {
+                $query->where(function ($q) use ($anneeId) {
+                    $q->where('type_paiement', 'reliquat');
+                    if ($anneeId) {
+                        $q->orWhereHas('inscription', fn ($insc) => $insc->where('annee_universitaire_id', '!=', $anneeId));
+                    } else {
+                        $q->orWhereHas('inscription');
+                    }
+                });
+            }
         }
 
         return $query;

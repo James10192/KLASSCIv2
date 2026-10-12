@@ -12,6 +12,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Caisse : dettes anciennes avant ou après réinscription.** La recherche de paiements inclut sur demande les anciennes inscriptions ; la fenêtre des arriérés distingue les dettes non reportées (paiement sur l'inscription d'origine) des reliquats officiellement reportés (règlement propre du report). Dans `paiements.index`, trois vues explicites séparent tous les encaissements, les frais de l'année et les règlements d'anciennes dettes. Les statistiques comptent des versements, jamais des inscrits.
+
+
 - **Caisse — règlement des reliquats :** un dialogue d'encaissement guidé est disponible depuis les situations financières et sur `paiements.create`. Le paiement reste séparé des frais courants, lié à sa dette d'origine, prévisualise le disponible après réservations et se crée en attente de validation. Modes autorisés et droit `paiements.create` ou variantes existantes, sans droit lié au report de réinscription ; contrôle serveur et AJAX sans rechargement.
 
 - **Réinscription avec impayés :** nouvelle permission d'école `reinscriptions.reliquats.report` configurable dans les rôles. Une dérogation exige une décision explicite et est contrôlée côté service ; remise/abandon reste distinct et réservé au SuperAdmin.

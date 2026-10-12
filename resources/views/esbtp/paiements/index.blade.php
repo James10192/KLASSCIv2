@@ -244,6 +244,10 @@
     .pi-alert--success > i { color: #10b981; font-size: 1rem; }
     .pi-alert--success .btn-close { margin-left: auto; opacity: .6; }
 
+    .pi-portee-nav{display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0}
+    .pi-portee-nav a{display:inline-flex;align-items:center;gap:.45rem;text-decoration:none;border:1px solid #cbd5e1;background:white;border-radius:11px;padding:.65rem .85rem;color:#475569;font-weight:700;font-size:.78rem}
+    .pi-portee-nav a.is-active{border-color:#0453cb;background:#eff6ff;color:#0453cb}
+    .pi-portee-nav a:hover{border-color:#0453cb;color:#0453cb}
     /* ═══════ Filter bar ═══════ */
     .pi-filters {
         background: #fff;
@@ -976,7 +980,7 @@
                         <div class="pi-hero-chips">
                             <span class="pi-chip">
                                 <i class="fas fa-calendar"></i>
-                                {{ $anneeNom }}
+                                {{ request('portee', 'tous') === 'annee' ? 'Scolarité ' . $anneeNom : (request('portee') === 'arrieres' ? 'Dettes anciennes' : 'Encaissements · toutes années') }}
                                 <button type="button" class="pi-chip-btn" onclick="showYearChangeInfo()" title="Comment changer d'année ?" aria-label="Information changement d'année">
                                     <i class="fas fa-info-circle"></i>
                                 </button>
@@ -1097,11 +1101,28 @@
             </div>
         @endif
 
+        @php
+            $piPortee = in_array(request('portee'), ['annee', 'arrieres'], true) ? request('portee') : 'tous';
+            $piPorteeUrl = fn ($portee) => route('esbtp.paiements.index').'?'.http_build_query(array_merge(request()->except('portee', 'page'), ['portee' => $portee]));
+        @endphp
+        <nav class="pi-portee-nav" aria-label="Choisir les versements à afficher">
+            <a href="{{ $piPorteeUrl('tous') }}" class="{{ $piPortee === 'tous' ? 'is-active' : '' }}">
+                <i class="fas fa-cash-register"></i> Tous les encaissements
+            </a>
+            <a href="{{ $piPorteeUrl('annee') }}" class="{{ $piPortee === 'annee' ? 'is-active' : '' }}">
+                <i class="fas fa-calendar-check"></i> Frais de l'année courante
+            </a>
+            <a href="{{ $piPorteeUrl('arrieres') }}" class="{{ $piPortee === 'arrieres' ? 'is-active' : '' }}">
+                <i class="fas fa-history"></i> Règlements d'anciennes dettes
+            </a>
+        </nav>
+
         {{-- Alerte note (statique, pas AJAX) --}}
         <div class="alert alert-info alert-sm mb-lg">
             <i class="fas fa-info-circle me-2"></i>
-            <strong>Note :</strong> Ces chiffres représentent les paiements <u>enregistrés dans le système</u> selon leur statut de validation.
-            Pour voir les montants attendus vs payés par catégorie de frais, consultez le
+            <strong>Lecture :</strong> {{ $piPortee === 'arrieres' ? 'Vous voyez uniquement les règlements de dettes anciennes, reportées ou non.' : ($piPortee === 'annee' ? 'Vous voyez les frais de l’inscription de l’année courante, hors reliquats.' : 'Tous les versements sont visibles, quelle que soit l’année de la dette.') }}
+            Les compteurs indiquent des <strong>paiements, pas des inscriptions ni des nouveaux étudiants</strong>. Les dates filtrent le jour réel d'encaissement.
+            Pour suivre les montants attendus et réglés, consultez le
             <a href="{{ route('esbtp.paiements.suivi-categories') }}" class="alert-link">Suivi par Catégorie</a>.
         </div>
 
@@ -1128,6 +1149,7 @@
                 </div>
             </div>
             <form action="{{ route('esbtp.paiements.index') }}" method="GET" id="paiements-filter-form">
+                <input type="hidden" name="portee" value="{{ $piPortee }}">
                 <div class="pi-filters-row">
                     <div class="pi-field">
                         <label for="search">Recherche</label>

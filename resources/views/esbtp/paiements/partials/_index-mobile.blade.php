@@ -40,6 +40,7 @@
         'devise' => $pimDevise,
         'filtres' => [
             'search' => (string) request('search', ''),
+            'portee' => (string) request('portee', 'tous'),
             'status' => (string) request('status', ''),
             'frais_category_id' => (string) request('frais_category_id', ''),
             'date_debut' => (string) request('date_debut', ''),
@@ -183,6 +184,18 @@
                 </div>
             </div>
 
+            <div class="m-field">
+                <label>Quels paiements ?</label>
+                <div class="m-opt pim-opt">
+                    <label><input type="radio" name="pim_portee" value="tous" x-model="brouillon.portee">
+                        <span class="rd" aria-hidden="true"></span><span>Tous les encaissements</span></label>
+                    <label><input type="radio" name="pim_portee" value="annee" x-model="brouillon.portee">
+                        <span class="rd" aria-hidden="true"></span><span>Frais de cette année</span></label>
+                    <label><input type="radio" name="pim_portee" value="arrieres" x-model="brouillon.portee">
+                        <span class="rd" aria-hidden="true"></span><span>Dettes anciennes</span></label>
+                </div>
+                <small>Un paiement d'une ancienne année ne crée aucune inscription.</small>
+            </div>
             <div class="m-field">
                 <label>Statut</label>
                 <div class="m-seg">
@@ -411,10 +424,10 @@
                     this.recharger();
                 },
                 reinitialiser() {
-                    this.brouillon = { search: this.filtres.search, status: '', frais_category_id: '', date_debut: '', date_fin: '' };
+                    this.brouillon = { search: this.filtres.search, portee: 'tous', status: '', frais_category_id: '', date_debut: '', date_fin: '' };
                 },
                 toutEffacer() {
-                    this.filtres = { search: '', status: '', frais_category_id: '', date_debut: '', date_fin: '' };
+                    this.filtres = { search: '', portee: 'tous', status: '', frais_category_id: '', date_debut: '', date_fin: '' };
                     this.recharger();
                 },
                 segment(status) {
