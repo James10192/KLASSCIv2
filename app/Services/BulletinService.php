@@ -675,11 +675,15 @@ class BulletinService
                 $rang = $bulletin->rang;
             }
         } else {
-            $rang = $this->rankAmongAverages($this->collectSemesterAveragesForClasse(
+            // L'aperçu/PDF affiche exactement le rang du tableau de résultats et
+            // du dossier étudiant. Les bulletins stockés peuvent avoir un rang
+            // historique périmé : ne pas le réutiliser comme rang courant.
+            $rang = app(RankingService::class)->calculerRangPourEtudiant(
+                (int) $etudiantId,
                 (int) $classe->id,
                 (int) $anneeUniversitaire->id,
-                (string) $periode
-            ), $moyenneAvecAssiduite);
+                $this->normalizePeriode((string) $periode)
+            )['rang'];
         }
 
         // Calculer les vraies statistiques de classe.
@@ -3132,22 +3136,21 @@ class BulletinService
             return null;
         }
 
-        // Le bulletin S1 porte encore la classe TC, mais le rang ANNUEL
-        // appartient par défaut à la classe S2 actuelle. Même règle
-        // quelle que soit la page qui demande ce rang.
+        // Une seule source de vérité : le PDF et les résultats de classe
+        // comparent les mêmes élèves et les mêmes moyennes LIVE, avec les
+        // mêmes règles d'assiduité, d'ex-aequo et de données incomplètes.
+        // L'ancien classement mixait des snapshots de bulletins historiques
+        // avec la moyenne live du seul élève imprimé : rang 2 sur le PDF
+        // alors que Résultats et Fiche étudiant annonçaient rang 1/43.
         $map = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
         $classeDeRang = app(\App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::class)->classeDeRang($map);
-        $cohorte = $this->classCohortCounter->etudiantIdsPourPeriode($classeDeRang, $anneeUniversitaireId, 'annuel');
-        if (! in_array($etudiantId, $cohorte, true)) {
-            return null;
-        }
 
-        $averages = $this->collectAnnualAveragesForClasse($classeDeRang, $anneeUniversitaireId);
-        if ($averages === []) {
-            return null;
-        }
-
-        return $this->rankAmongAverages($averages, $moyenneAnnuelle);
+        return app(RankingService::class)->calculerRangPourEtudiant(
+            $etudiantId,
+            $classeDeRang,
+            $anneeUniversitaireId,
+            'annuel'
+        )['rang'];
     }
 
     /**
