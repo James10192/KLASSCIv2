@@ -85,6 +85,32 @@ class PerimetreAnneeDettePaiementsTest extends TestCase
         $response->assertOk()->assertJsonPath('results.0.id', $this->ancienneInscription->id);
     }
 
+    public function test_inscription_terminee_reste_recherchable_en_caisse_pour_regler_sa_dette(): void
+    {
+        $this->withoutMiddleware();
+        $this->ancienneInscription->update(['status' => 'terminee']);
+
+        $response = $this->getJson(route('esbtp.api.caisse.inscriptions', [
+            'q' => $this->ancienneInscription->etudiant->matricule,
+            'anciennes' => 1,
+        ]));
+
+        $response->assertOk()->assertJsonPath('results.0.id', $this->ancienneInscription->id);
+    }
+
+    public function test_inscription_annulee_ne_peut_pas_etre_proposee_comme_dette_encaisser(): void
+    {
+        $this->withoutMiddleware();
+        $this->ancienneInscription->update(['status' => 'annulée']);
+
+        $response = $this->getJson(route('esbtp.api.caisse.inscriptions', [
+            'q' => $this->ancienneInscription->etudiant->matricule,
+            'anciennes' => 1,
+        ]));
+
+        $response->assertOk()->assertJsonPath('results', []);
+    }
+
     public function test_export_detaille_respecte_le_meme_perimetre_que_la_liste(): void
     {
         $ancien = ESBTPPaiement::factory()->pour($this->ancienneInscription)->create(['montant' => 10000]);

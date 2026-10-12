@@ -12,6 +12,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Encaissements des anciennes promotions :** les inscriptions terminées restent consultables à la caisse pour régler leurs frais encore dus, mais les inscriptions annulées ne sont jamais proposées. Aucun dossier de l'année courante n'est créé.
+
 - **Fiche étudiant — finances réorganisées :** l'inscription de référence (année courante, ou future sous réserve) et ses frais apparaissent avant la synthèse multi-années. Le compte global est repliable et accessible directement, les autres inscriptions restent visibles ; sans inscription courante, la fiche invite à consulter les dettes anciennes sans réinscription.
 
 - **Caisse : dettes anciennes avant ou après réinscription.** La recherche de paiements inclut sur demande les anciennes inscriptions ; la fenêtre des arriérés distingue les dettes non reportées (paiement sur l'inscription d'origine) des reliquats officiellement reportés (règlement propre du report). Dans `paiements.index`, trois vues explicites séparent tous les encaissements, les frais de l'année et les règlements d'anciennes dettes. Les statistiques comptent des versements, jamais des inscrits.

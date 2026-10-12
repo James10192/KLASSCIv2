@@ -498,7 +498,13 @@ class ESBTPPaiementController extends Controller
 
         $query = ESBTPInscription::query()
             ->with(['etudiant.user', 'filiere:id,name', 'niveauEtude:id,name', 'classe:id,name', 'anneeUniversitaire:id,name'])
-            ->whereIn('status', ['active', 'en_attente'])
+            // Une année achevée peut porter des frais impayés : l'état
+            // « terminée » ne doit pas effacer sa dette de la recherche.
+            // En revanche, une inscription annulée ne doit pas être encaissée.
+            ->when($anciennes,
+                fn ($q) => $q->whereNotIn('status', ESBTPInscription::STATUTS_ANNULES),
+                fn ($q) => $q->whereIn('status', ['active', 'en_attente'])
+            )
             ->when($annee && ! $anciennes, fn ($q) => $q->where('annee_universitaire_id', $annee->id))
             ->when($annee && $anciennes, fn ($q) => $q->where('annee_universitaire_id', '!=', $annee->id))
             ->when($filiereId, fn ($q) => $q->where('filiere_id', $filiereId))
