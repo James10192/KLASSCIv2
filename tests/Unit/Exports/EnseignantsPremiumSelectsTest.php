@@ -39,9 +39,9 @@ final class EnseignantsPremiumSelectsTest extends TestCase
     {
         $vue = $this->dialogue();
 
-        $this->assertSame(5, substr_count($vue, '<x-au-select'));
+        $this->assertSame(4, substr_count($vue, '<x-au-select'));
         $this->assertSame(0, preg_match('/<select\b/i', $vue));
-        foreach (['annee_universitaire_id', 'classe_id', 'semestre', 'status', 'specialization'] as $nom) {
+        foreach (['annee_universitaire_id', 'semestre', 'status', 'specialization'] as $nom) {
             $this->assertMatchesRegularExpression(
                 '/<x-au-select\s+name="'.preg_quote($nom, '/').'"/',
                 $vue
@@ -60,12 +60,31 @@ final class EnseignantsPremiumSelectsTest extends TestCase
         $vue = $this->dialogue();
 
         $this->assertStringContainsString("format !== 'excel' && params.get('vue') === 'affectations'", $vue);
-        $this->assertStringContainsString("!params.get('classe_id')", $vue);
+        $this->assertStringContainsString('hasPedagogicalFilters()', $vue);
+        $this->assertStringContainsString("!this.hasPedagogicalFilters()", $vue);
         $this->assertStringContainsString("!params.get('annee_universitaire_id')", $vue);
-        $this->assertStringContainsString("'te-exp-field--invalid': errors.classe_id", $vue);
-        $this->assertStringContainsString("cible?.querySelector('.au-select-trigger')?.focus()", $vue);
+        $this->assertStringContainsString("x-show=\"errors.perimetre\"", $vue);
+        $this->assertStringContainsString("|| document.querySelector('.te-exp-multi-trigger')", $vue);
         $this->assertStringContainsString('if (Object.keys(errors).length > 0)', $vue);
         $this->assertStringContainsString('new URLSearchParams(new FormData(form))', $vue);
+    }
+
+    public function test_choix_multiples_recherchables_et_transmission_des_listes(): void
+    {
+        $vue = $this->dialogue();
+        $multi = file_get_contents(dirname(__DIR__, 3)
+            .'/resources/views/components/enseignants-export-multi-picker.blade.php');
+
+        foreach (['filieres', 'niveaux', 'classes', 'matieres'] as $dimension) {
+            $this->assertStringContainsString('kind="'.$dimension.'"', $vue);
+            $this->assertStringContainsString('data-'.$dimension."='@json", $vue);
+        }
+        foreach (['filiere_ids', 'niveau_ids', 'classe_ids', 'matiere_ids'] as $champ) {
+            $this->assertStringContainsString("'".$champ."'", $multi);
+        }
+        $this->assertStringNotContainsString('<select', $multi);
+        $this->assertStringContainsString("url.searchParams.append(name, value)", $vue);
+        $this->assertStringContainsString("selections.classes = this.selections.classes.filter", $vue);
     }
 
     public function test_les_trois_actions_conservent_les_routes_existantes(): void

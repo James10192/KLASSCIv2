@@ -44,6 +44,19 @@ class EnseignantsExportRedirectRegressionTest extends TestCase
         $this->assertFalse($reponse->isRedirection());
     }
 
+    public function test_liste_de_filtres_invalide_renvoie_422_sans_bdd(): void
+    {
+        $this->autoriserSansBase();
+
+        $reponse = $this->get(route('esbtp.enseignants.export-pdf', [
+            'vue' => 'matieres', 'classe_ids' => '10',
+        ]));
+
+        $reponse->assertStatus(422);
+        $this->assertFalse($reponse->isRedirection());
+        $reponse->assertSee("Le document n'a pas pu être préparé", false);
+    }
+
     public function test_telechargement_pdf_invalide_ne_renvoie_pas_302(): void
     {
         $this->autoriserSansBase();

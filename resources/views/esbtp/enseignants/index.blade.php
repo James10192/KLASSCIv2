@@ -567,6 +567,9 @@
                             :annees="$anneesUniversitaires"
                             :annee-id="$anneeExportId"
                             :classes="$classesExport"
+                            :filieres="$filieresExport"
+                            :niveaux="$niveauxExport"
+                            :matieres="$matieresExport"
                             :specializations="$specializations" />
                     @endcan
                     <button type="button" class="te-hero-btn" data-bs-toggle="modal" data-bs-target="#bulkAvailabilityModal">

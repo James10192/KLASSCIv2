@@ -12,6 +12,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Export enseignants — périmètre pédagogique multisélection :** lors de la préparation d'un export PDF ou Excel, sélectionner plusieurs classes, filières, niveaux et matières. Les choix sont combinés sans rechargement, avec recherche et sélection par cases ; les filières mères incluent leurs spécialités. L'export restreint les bulletins aux données correspondant à tous les critères choisis et conserve les anciens liens par classe.
+
 - **Exports enseignants — regroupement matière et spécialisation :** dans « Exporter les enseignants », deux nouveaux documents PDF/Excel permettent de consulter les fiches classées par spécialité (avec les noms à classer), ou les professeurs des bulletins regroupés par matière sur l'ensemble des classes, avec S1/S2 et classes concernées. Les anciennes éditions par classe restent disponibles, sans fusion des noms saisis.
 
 - **Tronc commun BTS — résultats et rang annuel unifiés :** S1 reste attaché à la classe de tronc commun et S2 à la classe de spécialisation ; la moyenne annuelle pondérée combine les deux selon le réglage existant. Le rang annuel compare par défaut l'étudiant avec ses camarades de la classe actuelle et peut être configuré pour le groupe d'origine dans Paramètres > Tronc commun. La liste des résultats sans filtre ne mélange plus les classes, les pages par classe et la fiche étudiant affichent la cohorte et le rang annuel de référence, et les liens ouvrent le bon bulletin par semestre (S2 prioritaire en annuel). Aucun classement automatique pour une moyenne annuelle incomplète ; les ex æquo restent possibles.

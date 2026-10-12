@@ -5,6 +5,9 @@
     'annees' => collect(),
     'anneeId' => null,
     'classes' => collect(),
+    'filieres' => collect(),
+    'niveaux' => collect(),
+    'matieres' => collect(),
     'specializations' => collect(),
 ])
 
@@ -14,7 +17,11 @@
      x-data="enseignantsExportDialog()"
      data-preview-url="{{ $previewUrl }}"
      data-pdf-url="{{ $pdfUrl }}"
-     data-excel-url="{{ $excelUrl }}">
+     data-excel-url="{{ $excelUrl }}"
+     data-classes='@json($classes)'
+     data-filieres='@json($filieres)'
+     data-niveaux='@json($niveaux)'
+     data-matieres='@json($matieres)'>
     <button type="button" class="te-hero-btn" data-export-trigger @click="ouvrir()"
             aria-haspopup="dialog" :aria-expanded="open.toString()">
         <i class="fas fa-download"></i> Exporter les enseignants
@@ -100,20 +107,9 @@
                                 <p class="te-exp-error" role="alert" x-show="errors.annee_universitaire_id" x-text="errors.annee_universitaire_id"></p>
                             </div>
 
-                            <div class="te-exp-field" :class="{ 'te-exp-field--invalid': errors.classe_id }">
-                                <span class="te-exp-label">Classe
-                                    <em x-show="vue === 'affectations'" x-cloak>obligatoire pour le détail PDF</em>
-                                    <span x-show="vue !== 'affectations'">facultative</span>
-                                </span>
-                                <x-au-select
-                                    name="classe_id"
-                                    label="Classe des bulletins"
-                                    icon="fa-chalkboard"
-                                    placeholder="Toutes les classes"
-                                    :value="old('classe_id', '')"
-                                    :searchable="$classes->count() > 8"
-                                    :options="$classes->mapWithKeys(fn ($classe) => [(string) $classe->id => $classe->name])->all()" />
-                                <p class="te-exp-error" role="alert" x-show="errors.classe_id" x-text="errors.classe_id"></p>
+                            <div class="te-exp-field">
+                                <span class="te-exp-label">Périmètre pédagogique <span>facultatif</span></span>
+                                <p class="te-exp-scope-help">Sélectionnez plusieurs classes, filières, niveaux ou matières ci-dessous. Les critères se croisent.</p>
                             </div>
 
                             <div class="te-exp-field">
@@ -127,9 +123,22 @@
                                     :options="['1' => 'Semestre 1', '2' => 'Semestre 2']" />
                             </div>
                         </div>
+                        <div class="te-exp-multi-grid">
+                            <x-enseignants-export-multi-picker kind="filieres" label="Filières" icon="fa-sitemap" />
+                            <x-enseignants-export-multi-picker kind="niveaux" label="Niveaux d'études" icon="fa-graduation-cap" />
+                            <x-enseignants-export-multi-picker kind="classes" label="Classes" icon="fa-chalkboard" />
+                            <x-enseignants-export-multi-picker kind="matieres" label="Matières des bulletins" icon="fa-book" />
+                        </div>
+                        <p class="te-exp-scope-help">Dans un même critère, les choix s'additionnent. Entre critères, seules les affectations correspondant à toutes les sélections sont exportées. Sans sélection : toutes les classes et matières de l'année.</p>
+                        <p class="te-exp-error" role="alert" x-show="errors.perimetre" x-text="errors.perimetre" x-cloak></p>
+                        <p class="te-exp-tip" x-show="(vue === 'annuaire' || vue === 'specialisations') && hasPedagogicalFilters()" x-cloak>
+                            <i class="fas fa-info-circle"></i>
+                            Pour ces documents, seules les fiches associées par nom aux bulletins du périmètre choisi apparaissent ; les saisies non rapprochées restent distinctes.
+                        </p>
+
                         <p class="te-exp-tip" x-show="vue === 'affectations'" x-cloak>
                             <i class="fas fa-info-circle"></i>
-                            Pour le détail ligne à ligne, choisissez une classe. Pour toutes les classes regroupées par matière, sélectionnez « Matières regroupées ».
+                            Pour le détail ligne à ligne, choisissez au moins une classe, filière, niveau ou matière. Pour un tableau condensé, sélectionnez « Matières regroupées ».
                         </p>
 
                         <p class="te-exp-tip" x-show="vue === 'matieres'" x-cloak>
@@ -221,6 +230,22 @@
 .te-exp-section-spaced { margin-top:1.5rem; }
 .te-exp-step { display:grid; place-items:center; border-radius:50%; color:#0453cb; background:#eff6ff; width:24px; height:24px; font-size:.75rem; }
 .te-exp-choices { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.65rem; }
+.te-exp-multi-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.8rem; margin-top:.85rem; align-items:start; }
+.te-exp-scope-help { color:#64748b; font-size:.73rem; line-height:1.4; margin:.25rem 0 .65rem; }
+.te-exp-multi-trigger { min-height:44px; display:flex; align-items:center; gap:.6rem; width:100%; background:#fff; border:1px solid #cbd5e1; border-radius:10px; padding:.65rem .8rem; color:#1e293b; font-weight:650; text-align:left; cursor:pointer; }
+.te-exp-multi-trigger > i:first-child { color:#0453cb; }
+.te-exp-multi-trigger:focus-visible { outline:3px solid #93c5fd; outline-offset:2px; }
+.te-exp-multi-caret { margin-left:auto; color:#64748b; }
+.te-exp-multi-panel { padding:.65rem; border:1px solid #cbd5e1; background:#f8fafc; border-radius:10px; margin-top:.4rem; }
+.te-exp-multi-options { max-height:190px; overflow:auto; margin:.35rem 0; }
+.te-exp-multi-option { display:flex; align-items:center; gap:.5rem; padding:.45rem; cursor:pointer; border-radius:7px; font-size:.78rem; color:#1e293b; }
+.te-exp-multi-option:hover { background:#eff6ff; }
+.te-exp-multi-option input { accent-color:#0453cb; flex-shrink:0; }
+.te-exp-multi-summary { display:flex; flex-wrap:wrap; gap:.25rem; margin-top:.3rem; max-height:85px; overflow-y:auto; }
+.te-exp-multi-tag { display:inline-flex; align-items:center; gap:.35rem; color:#033a8e; background:#eff6ff; border-radius:7px; padding:.25rem .35rem; font-size:.7rem; max-width:100%; overflow-wrap:anywhere; }
+.te-exp-multi-tag button { border:0; background:transparent; color:#0453cb; padding:.1rem; cursor:pointer; }
+.te-exp-multi-clear { display:inline-flex; background:none; border:0; color:#0453cb; font-size:.72rem; font-weight:700; cursor:pointer; padding:.4rem 0; }
+.te-exp-multi-empty { margin:.5rem; color:#64748b; font-size:.75rem; }
 .te-exp-choice { cursor:pointer; display:flex; align-items:center; gap:.75rem; padding:.8rem .85rem; min-width:0; border-radius:12px; border:1px solid #e2e8f0; background:#fff; transition:border-color .15s, background .15s, box-shadow .15s; margin:0; }
 .te-exp-choice:hover { border-color:#9bbaf0; background:#f8fbff; }
 .te-exp-choice--selected { border-color:#0453cb; background:#eff6ff; box-shadow:0 0 0 1px #0453cb; }
@@ -269,7 +294,7 @@ body.te-exp-body-locked { overflow:hidden; }
     .te-exp-body { padding:1rem; }
     .te-exp-footer { padding:.8rem 1rem 1rem; }
     .te-exp-choices { grid-template-columns:1fr; }
-    .te-exp-grid { grid-template-columns:1fr; }
+    .te-exp-grid, .te-exp-multi-grid { grid-template-columns:1fr; }
     .te-exp-actions { justify-content:stretch; }
     .te-exp-actions .te-exp-button { flex:1 1 46%; }
 }
@@ -283,9 +308,64 @@ if (typeof window.enseignantsExportDialog !== 'function') {
             open: false,
             vue: 'synthese',
             afficherAvance: {{ request()->hasAny(['search', 'status', 'specialization']) ? 'true' : 'false' }},
+            selections: { classes: [], filieres: [], niveaux: [], matieres: [] },
+            options: { classes: [], filieres: [], niveaux: [], matieres: [] },
             errors: {},
             init() {
                 this.launcher = this.$el;
+                for (const kind of ['classes', 'filieres', 'niveaux', 'matieres']) {
+                    let rows = [];
+                    try { rows = JSON.parse(this.launcher.dataset[kind] || '[]'); } catch (_) { rows = []; }
+                    this.options[kind] = rows.map(item => ({
+                        id: String(item.id),
+                        label: String(item.name),
+                        filiere_id: item.filiere_id == null ? null : String(item.filiere_id),
+                        niveau_id: item.niveau_etude_id == null ? null : String(item.niveau_etude_id),
+                        parent_id: item.parent_id == null ? null : String(item.parent_id)
+                    }));
+                }
+            },
+            hasPedagogicalFilters() {
+                return Object.values(this.selections).some(values => values.length > 0);
+            },
+            optionLabel(kind, id) {
+                return this.options[kind].find(o => o.id === String(id))?.label || String(id);
+            },
+            filiereIncluse(id) {
+                if (!this.selections.filieres.length) return true;
+                const filieres = this.options.filieres;
+                const vus = new Set();
+                let actuelle = id;
+                while (actuelle && !vus.has(actuelle)) {
+                    if (this.selections.filieres.includes(String(actuelle))) return true;
+                    vus.add(actuelle);
+                    actuelle = filieres.find(f => f.id === String(actuelle))?.parent_id ?? null;
+                }
+                return false;
+            },
+            classeCompatible(option) {
+                return this.filiereIncluse(option.filiere_id)
+                    && (!this.selections.niveaux.length || this.selections.niveaux.includes(option.niveau_id));
+            },
+            optionsFor(kind, search) {
+                const term = String(search || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+                return this.options[kind].filter(option =>
+                    (kind !== 'classes' || this.classeCompatible(option)) &&
+                    (!term || option.label.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(term))
+                );
+            },
+            toggleSelection(kind, id, checked) {
+                const value = String(id);
+                this.selections[kind] = checked
+                    ? [...new Set([...this.selections[kind], value])]
+                    : this.selections[kind].filter(x => x !== value);
+                if (kind === 'filieres' || kind === 'niveaux') {
+                    this.selections.classes = this.selections.classes.filter(classeId => {
+                        const option = this.options.classes.find(classe => classe.id === classeId);
+                        return option && this.classeCompatible(option);
+                    });
+                }
+                this.errors = {};
             },
             ouvrir() {
                 this.errors = {};
@@ -317,15 +397,16 @@ if (typeof window.enseignantsExportDialog !== 'function') {
                 if (!params.get('annee_universitaire_id')) {
                     errors.annee_universitaire_id = "Choisissez une année universitaire.";
                 }
-                if (format !== 'excel' && params.get('vue') === 'affectations' && !params.get('classe_id')) {
-                    errors.classe_id = "Sélectionnez une classe avant d'ouvrir le PDF détaillé.";
+                if (format !== 'excel' && params.get('vue') === 'affectations' && !this.hasPedagogicalFilters()) {
+                    errors.perimetre = "Sélectionnez une classe, une filière, un niveau ou une matière pour le PDF détaillé.";
                 }
                 this.errors = errors;
                 if (Object.keys(errors).length > 0) {
                     this.$nextTick(() => {
-                        const cible = document.querySelector('.te-exp-field--invalid');
+                        const cible = document.querySelector('.te-exp-field--invalid')
+                            || document.querySelector('.te-exp-multi-trigger');
                         cible?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        cible?.querySelector('.au-select-trigger')?.focus();
+                        (cible?.querySelector('.au-select-trigger') || cible)?.focus();
                     });
                     return;
                 }
@@ -334,7 +415,7 @@ if (typeof window.enseignantsExportDialog !== 'function') {
                 const base = this.launcher.dataset[key];
                 if (!base) return;
                 const url = new URL(base, window.location.origin);
-                params.forEach((value, name) => { if (value !== '') url.searchParams.set(name, value); });
+                params.forEach((value, name) => { if (value !== '') url.searchParams.append(name, value); });
                 // L'action est declenchee directement par le clic, pour eviter le bloqueur de popups.
                 if (format === 'preview') {
                     window.open(url.toString(), '_blank', 'noopener,noreferrer');
