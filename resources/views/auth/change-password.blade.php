@@ -1,160 +1,32 @@
-@extends('layouts.app')
-
+@extends('auth.layouts.portal')
+@php
+    $isExpired = session('password_change_reason', 'first_login') === 'expired';
+@endphp
+@section('title', 'KLASSCI — Sécuriser mon compte')
+@section('heading', $isExpired ? 'Renouveler votre mot de passe' : 'Bienvenue sur KLASSCI')
+@section('subtitle', $isExpired ? 'Votre accès doit être renouvelé pour continuer.' : 'Personnalisez votre mot de passe pour commencer.')
 @section('content')
-<div class="main-content">
-    @php
-        $reason = session('password_change_reason', 'first_login');
-        $isExpired = $reason === 'expired';
-    @endphp
-
-    <div class="dashboard-header">
-        <div class="header-left">
-            <h1>{{ $isExpired ? 'Mot de passe expiré' : 'Première connexion' }}</h1>
-            <p class="header-subtitle">{{ $isExpired ? 'Votre mot de passe doit être renouvelé pour continuer' : 'Créez votre mot de passe personnalisé pour continuer' }}</p>
-        </div>
-    </div>
-
-    <div class="card-moderne" style="max-width: 600px; margin: 0 auto; padding: var(--space-xl);">
-        @if (session('warning'))
-            <div class="alert alert-{{ $isExpired ? 'danger' : 'warning' }} mb-lg" style="background-color: {{ $isExpired ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)' }}; color: {{ $isExpired ? 'var(--danger)' : 'var(--warning)' }}; padding: var(--space-md); border-radius: var(--radius-medium); margin-bottom: var(--space-lg);">
-                <i class="fas fa-{{ $isExpired ? 'clock' : 'exclamation-triangle' }}" style="margin-right: var(--space-sm);"></i>
-                {{ session('warning') }}
-            </div>
-        @endif
-
-        <div style="text-align: center; margin-bottom: var(--space-xl);">
-            <div style="width: 80px; height: 80px; background-color: {{ $isExpired ? '#0453cb' : 'var(--warning)' }}; border-radius: var(--radius-circle); margin: 0 auto var(--space-lg); display: flex; align-items: center; justify-content: center;">
-                <i class="fas fa-{{ $isExpired ? 'clock' : 'key' }}" style="font-size: 24px; color: white;"></i>
-            </div>
-            <h2 style="color: var(--text-primary); margin-bottom: var(--space-sm);">
-                {{ $isExpired ? 'Renouvellement de mot de passe' : 'Bienvenue sur KLASSCI' }}
-            </h2>
-            <p style="color: var(--text-secondary); margin: 0;">
-                @if($isExpired)
-                    Votre mot de passe n'a pas été changé depuis plus de 6 mois. Pour la sécurité de votre compte et des données de l'établissement, veuillez en créer un nouveau.
-                @else
-                    C'est votre première connexion. Pour sécuriser votre compte, veuillez créer un mot de passe personnalisé.
-                @endif
-            </p>
-        </div>
-
-        <form method="POST" action="{{ route('password.change.update') }}">
-            @csrf
-
-            <div style="margin-bottom: var(--space-lg);">
-                <label for="current_password" style="display: block; font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-sm);">
-                    Mot de passe actuel
-                </label>
-                <div style="position: relative;">
-                    <input id="current_password"
-                           type="password"
-                           name="current_password"
-                           required
-                           style="width: 100%; padding: var(--space-md) 3rem var(--space-md) var(--space-md); border: 1px solid #e5e7eb; border-radius: var(--radius-small); font-size: var(--text-normal); background-color: var(--surface);">
-                    <i class="fas fa-eye" id="toggleCurrentPassword" onclick="togglePasswordVisibility('current_password')" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8;"></i>
-                </div>
-                @error('current_password')
-                    <span style="color: var(--danger); font-size: var(--text-small); margin-top: var(--space-xs); display: block;">
-                        {{ $message }}
-                    </span>
-                @enderror
-            </div>
-
-            <div style="margin-bottom: var(--space-lg);">
-                <label for="password" style="display: block; font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-sm);">
-                    Nouveau mot de passe
-                </label>
-                <div style="position: relative;">
-                    <input id="password"
-                           type="password"
-                           name="password"
-                           required
-                           style="width: 100%; padding: var(--space-md) 3rem var(--space-md) var(--space-md); border: 1px solid #e5e7eb; border-radius: var(--radius-small); font-size: var(--text-normal); background-color: var(--surface);">
-                    <i class="fas fa-eye" id="togglePassword" onclick="togglePasswordVisibility('password')" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8;"></i>
-                </div>
-                @error('password')
-                    <span style="color: var(--danger); font-size: var(--text-small); margin-top: var(--space-xs); display: block;">
-                        {{ $message }}
-                    </span>
-                @enderror
-                <div style="margin-top: var(--space-sm); padding: var(--space-sm); background-color: #f3f4f6; border-radius: var(--radius-small);">
-                    <p style="font-size: var(--text-small); color: var(--text-secondary); margin: 0; margin-bottom: var(--space-xs);">
-                        <strong>Exigences du mot de passe :</strong>
-                    </p>
-                    <ul style="font-size: var(--text-small); color: var(--text-secondary); margin: 0; padding-left: var(--space-md);">
-                        <li>Au moins 8 caractères</li>
-                        <li>Au moins une lettre</li>
-                        <li>Au moins un chiffre</li>
-                    </ul>
-                </div>
-            </div>
-
-            <div style="margin-bottom: var(--space-xl);">
-                <label for="password_confirmation" style="display: block; font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-sm);">
-                    Confirmer le nouveau mot de passe
-                </label>
-                <div style="position: relative;">
-                    <input id="password_confirmation"
-                           type="password"
-                           name="password_confirmation"
-                           required
-                           style="width: 100%; padding: var(--space-md) 3rem var(--space-md) var(--space-md); border: 1px solid #e5e7eb; border-radius: var(--radius-small); font-size: var(--text-normal); background-color: var(--surface);">
-                    <i class="fas fa-eye" id="togglePasswordConfirmation" onclick="togglePasswordVisibility('password_confirmation')" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8;"></i>
-                </div>
-            </div>
-
-            <button type="submit" 
-                    class="btn-acasi primary" 
-                    style="width: 100%; padding: var(--space-md); font-size: var(--text-normal); font-weight: 600;">
-                <i class="fas fa-check" style="margin-right: var(--space-sm);"></i>
-                Changer le mot de passe
-            </button>
-        </form>
-
-        <div style="margin-top: var(--space-lg); padding-top: var(--space-lg); border-top: 1px solid #e5e7eb; text-align: center;">
-            <p style="font-size: var(--text-small); color: var(--text-muted); margin: 0;">
-                <i class="fas fa-shield-alt" style="margin-right: var(--space-xs);"></i>
-                {{ $isExpired ? 'Le renouvellement régulier du mot de passe protège les données de l\'établissement' : 'Cette étape est obligatoire pour sécuriser votre compte' }}
-            </p>
-        </div>
-    </div>
+<div class="portal-security">
+    <i class="fas fa-shield-alt" aria-hidden="true"></i>
+    {{ $isExpired ? 'Le renouvellement est nécessaire pour protéger les données de votre établissement.' : 'Cette étape est obligatoire lors de votre première connexion.' }}
 </div>
-
-<script>
-// Fonction pour toggle la visibilité des mots de passe
-function togglePasswordVisibility(fieldId) {
-    const field = document.getElementById(fieldId);
-    const toggleIcon = document.getElementById('toggle' + fieldId.charAt(0).toUpperCase() + fieldId.slice(1).replace('_', ''));
-
-    if (field.type === 'password') {
-        field.type = 'text';
-        toggleIcon.classList.remove('fa-eye');
-        toggleIcon.classList.add('fa-eye-slash');
-    } else {
-        field.type = 'password';
-        toggleIcon.classList.remove('fa-eye-slash');
-        toggleIcon.classList.add('fa-eye');
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const passwordInput = document.getElementById('password');
-    const confirmInput = document.getElementById('password_confirmation');
-
-    function validatePassword() {
-        const password = passwordInput.value;
-        const confirm = confirmInput.value;
-
-        // Validation en temps réel si nécessaire
-        if (confirm && password !== confirm) {
-            confirmInput.setCustomValidity('Les mots de passe ne correspondent pas');
-        } else {
-            confirmInput.setCustomValidity('');
-        }
-    }
-
-    passwordInput.addEventListener('input', validatePassword);
-    confirmInput.addEventListener('input', validatePassword);
-});
-</script>
+<form method="POST" action="{{ route('password.change.update') }}" class="portal-form">
+    @csrf
+    @foreach(['current_password' => 'Mot de passe actuel', 'password' => 'Nouveau mot de passe', 'password_confirmation' => 'Confirmer le nouveau mot de passe'] as $field => $label)
+        <div class="field">
+            <label for="{{ $field }}">{{ $label }}</label>
+            <div class="input-wrap"><i class="fas fa-lock icon" aria-hidden="true"></i>
+                <input id="{{ $field }}" name="{{ $field }}" type="password" required
+                    @if($field !== 'current_password') minlength="8" @endif
+                    autocomplete="{{ $field === 'current_password' ? 'current-password' : 'new-password' }}"
+                    class="@error($field) is-invalid @enderror" @if($field === 'current_password') autofocus @endif>
+                <button class="portal-toggle" type="button" data-password-toggle="{{ $field }}" aria-label="Afficher le mot de passe" aria-pressed="false"><i class="fas fa-eye" aria-hidden="true"></i></button>
+            </div>
+            @error($field)<div class="invalid-feedback" role="alert">{{ $message }}</div>@enderror
+        </div>
+    @endforeach
+    <p class="portal-help">8 caractères minimum, avec des lettres et des chiffres. Votre nouveau mot de passe doit être différent de l'ancien.</p>
+    <button type="submit" class="btn-login"><i class="fas fa-check-circle" aria-hidden="true"></i> Sécuriser mon compte</button>
+</form>
+<p class="portal-footnote"><i class="fas fa-info-circle" aria-hidden="true"></i> Vous retrouverez ensuite votre tableau de bord KLASSCI.</p>
 @endsection

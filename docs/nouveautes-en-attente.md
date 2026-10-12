@@ -13,6 +13,8 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-12 · #1563 · Connexion et sécurité du compte : les formulaires de réinitialisation et de changement de mot de passe adoptent l'apparence de /login, et les pages d'erreur pour visiteurs n'affichent plus le tableau de bord.
+- 2026-10-12 · #1563 · Espace étudiant > Mes notes : relevé consultatif PDF avec moyennes BTS ou semestrielles LMD, sans valeur officielle, accessible sur ordinateur et mobile.
 - 2026-10-11 · Caisse : régler un reliquat depuis la fiche financière ou « Encaisser un paiement » ; modal premium avec montant disponible, paiements en attente, choix du mode autorisé et confirmation AJAX, sans mélanger la nouvelle scolarité.
 - 2026-10-11 · Réinscription : permission d'établissement pour autoriser un report de dette, avec contrôle serveur et choix explicite, sans droit d'abandon implicite.
 - 2026-10-11 · #1556 · Enseignants : export PDF/Excel préparé dans une seule fenêtre premium avec aperçu, téléchargement et validation visuelle des paramètres obligatoires, sans filtres dispersés sur la liste.

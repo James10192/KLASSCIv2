@@ -1725,6 +1725,12 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('mes-notes.index')
                 ->middleware(['permission:notes.view_own|notes.view']);
 
+            // Relevé strictement consultatif : même périmètre que « Mes notes »,
+            // l'identité étudiante est résolue exclusivement depuis la session.
+            Route::get('/mes-notes/releve-consultatif', [ESBTPNoteController::class, 'studentGradeStatement'])
+                ->name('mes-notes.releve-consultatif')
+                ->middleware(['permission:notes.view_own|notes.view', 'throttle:30,1']);
+
             // Réclamations de notes : l'élève conteste, avec la photo de sa copie.
             Route::get('/mes-reclamations', [\App\Http\Controllers\Notes\MesReclamationsController::class, 'index'])
                 ->name('mes-reclamations.index')

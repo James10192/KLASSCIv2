@@ -53,7 +53,7 @@ class ESBTPNoteController extends Controller
     )
     {
         $this->middleware(['auth']);
-        $this->middleware('permission:module.notes_evaluations.access')->except(['studentGrades']); // espace etudiant : la route porte deja notes.view_own|notes.view
+        $this->middleware('permission:module.notes_evaluations.access')->except(['studentGrades', 'studentGradeStatement']); // espace etudiant : la route porte deja notes.view_own|notes.view
         $this->notificationService = $notificationService;
         $this->noteStudentCohortService = $noteStudentCohortService;
         $this->notesWindowGuard = $notesWindowGuard;
@@ -1259,6 +1259,50 @@ class ESBTPNoteController extends Controller
             : null;
 
         return view('esbtp.etudiants.notes', compact('notes', 'etudiant', 'inscription', 'anneeCourante', 'ecran'));
+    }
+
+
+    /**
+     * Relevé de lecture uniquement : ne publie ni bulletin, ni décision de jury.
+     * La même projection de notes que « Mes notes » garantit la parité BTS / LMD.
+     */
+    public function studentGradeStatement(Request $request, \App\Services\ExportRenderer $renderer): \Illuminate\Http\Response
+    {
+        // Un accès par matricule/ID serait une fuite de notes : le compte connecté
+        // détermine exclusivement l'étudiant autorisé.
+        $etudiant = ESBTPEtudiant::query()->where('user_id', Auth::id())->firstOrFail();
+        $annee = ESBTPAnneeUniversitaire::query()->where('is_current', true)->firstOrFail();
+        $inscription = $etudiant->inscriptions()
+            ->where('annee_universitaire_id', $annee->id)
+            ->where('status', 'active')
+            ->with('classe')
+            ->firstOrFail();
+        $classe = $inscription->classe;
+        abort_unless($classe, 404, 'Aucune classe associée à votre inscription.');
+
+        $notes = ESBTPNote::query()
+            ->where('etudiant_id', $etudiant->id)
+            ->whereHas('evaluation', fn ($q) => $q->where('annee_universitaire_id', $annee->id))
+            ->with(['evaluation', 'matiere'])
+            ->orderByDesc('created_at')
+            ->get();
+
+        $ecran = $this->ecranMesNotes($etudiant, $classe, $annee, $notes);
+        $hasResult = collect($ecran['semestres'] ?? [])->contains(
+            static fn (array $sem) => ($sem['moyenne'] ?? null) !== null || ($sem['notes_count'] ?? 0) > 0
+        );
+        abort_unless($hasResult, 422, 'Aucune note disponible pour produire ce relevé.');
+
+        $report = new \App\Domain\Exports\ReleveConsultatifEtudiantReport([
+            'etudiant' => $etudiant,
+            'classe' => $classe,
+            'annee' => $annee,
+            'ecran' => $ecran,
+        ]);
+
+        return $request->boolean('download')
+            ? $renderer->pdfDownload($report)
+            : $renderer->pdfPreview($report);
     }
 
     /**
