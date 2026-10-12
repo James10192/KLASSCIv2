@@ -30,7 +30,7 @@
     :title="$context['title'] ?? 'Tableau détaillé des paiements'"
     :subtitle="$context['subtitle_creator'] ?? null"
     :filters="$filtersForDocument"
-    :orientation="$showCreator ? 'landscape' : 'portrait'">
+    orientation="landscape">
 
     <style>
         .pay-table {
@@ -141,15 +141,16 @@
     <table class="pay-table">
         <thead>
             <tr>
-                <th style="width:8%;">Date</th>
-                <th style="width:10%;">N° reçu</th>
-                <th style="width:{{ $showCreator ? '25' : '31' }}%;">Étudiant</th>
-                <th style="width:{{ $showCreator ? '13' : '16' }}%;">Classe</th>
-                <th style="width:10%;">Mode</th>
-                <th style="width:12%; text-align:right;">Montant</th>
-                <th style="width:10%; text-align:center;">Statut</th>
+                <th style="width:{{ $showCreator ? '8' : '9' }}%;">Date</th>
+                <th style="width:{{ $showCreator ? '9' : '10' }}%;">N° reçu</th>
+                <th style="width:{{ $showCreator ? '19' : '22' }}%;">Étudiant</th>
+                <th style="width:{{ $showCreator ? '12' : '13' }}%;">Classe</th>
+                <th style="width:{{ $showCreator ? '11' : '12' }}%;">Année d'inscription</th>
+                <th style="width:{{ $showCreator ? '9' : '10' }}%;">Mode</th>
+                <th style="width:{{ $showCreator ? '12' : '13' }}%; text-align:right;">Montant</th>
+                <th style="width:{{ $showCreator ? '10' : '11' }}%; text-align:center;">Statut</th>
                 @if($showCreator)
-                    <th style="width:12%;">Encaissé par</th>
+                    <th style="width:10%;">Encaissé par</th>
                 @endif
             </tr>
         </thead>
@@ -172,6 +173,7 @@
                         @endif
                     </td>
                     <td>{{ $classe?->name ?? '-' }}</td>
+                    <td>{{ $p->inscription?->anneeUniversitaire?->name ?? '-' }}</td>
                     <td>{{ $p->mode_paiement ?? '-' }}</td>
                     <td class="pay-amount">{{ $formatMontant($p->montant) }} FCFA</td>
                     <td style="text-align:center;"><span class="{{ $statusClass }}">{{ $statusLabel }}</span></td>
@@ -181,7 +183,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="{{ $showCreator ? 8 : 7 }}" style="text-align:center; padding:20px; color:#94a3b8;">
+                    <td colspan="{{ $showCreator ? 9 : 8 }}" style="text-align:center; padding:20px; color:#94a3b8;">
                         Aucun paiement à afficher.
                     </td>
                 </tr>

@@ -41,7 +41,8 @@ class PaiementExportService
      */
     private const EAGER_LOAD = [
         'etudiant:id,matricule,nom,prenoms',
-        'inscription:id,etudiant_id,classe_id,filiere_id,niveau_id',
+        'inscription:id,etudiant_id,classe_id,filiere_id,niveau_id,annee_universitaire_id',
+        'inscription.anneeUniversitaire:id,name',
         'inscription.classe:id,name,filiere_id,niveau_etude_id',
         'inscription.filiere:id,name',
         'inscription.niveau:id,name',
@@ -163,7 +164,7 @@ class PaiementExportService
         $totalMontant = \App\Models\ESBTPPaiement::netCashFrom($paiements);
         $showCreator = $this->shouldShowCreatorColumn($user);
         $context = $this->buildContext($filters, $user, $showCreator);
-        $orientation = $showCreator ? 'landscape' : 'portrait';
+        $orientation = 'landscape'; // La colonne « année d'inscription » doit rester lisible.
 
         Log::info('PDF détaillé paiements rendu', [
             'user_id' => $user?->id,
