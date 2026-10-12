@@ -75,10 +75,18 @@ class PaymentFilterService
             $query->pourCategorie((int) $categoryId);
         }
 
-        // Les dates de paiement décrivent la CAISSE ; l'inscription à laquelle
-        // le paiement est attaché décrit l'origine de la DETTE. Ces deux années
-        // ne doivent jamais être assimilées à de nouveaux inscrits.
-        $portee = (string) $request->input('portee', 'tous');
+        // Une seule règle métier pour liste, exports simplifiés et export détaillé.
+        self::appliquerPortee($query, (string) $request->input('portee', 'tous'));
+
+        return $query;
+    }
+
+    /**
+     * Périmètre selon l'ANNÉE DE LA DETTE, jamais selon la date de paiement.
+     * Valable pour l'index et les deux familles d'exports afin qu'ils convergent.
+     */
+    public static function appliquerPortee(\Illuminate\Database\Eloquent\Builder $query, string $portee): void
+    {
         if (in_array($portee, ['annee', 'arrieres'], true)) {
             $anneeId = ESBTPAnneeUniversitaire::query()->where('is_current', true)->value('id');
             if ($portee === 'annee') {
@@ -100,7 +108,6 @@ class PaymentFilterService
             }
         }
 
-        return $query;
     }
 
     /**

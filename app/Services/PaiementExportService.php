@@ -91,6 +91,9 @@ class PaiementExportService
             $query->where('created_by', $user->id);
         }
 
+        // Même périmètre que /paiements : inscription d'origine ≠ jour d'encaissement.
+        PaymentFilterService::appliquerPortee($query, (string) ($filters['portee'] ?? 'tous'));
+
         // Étudiant spécifique
         if (! empty($filters['etudiant_id'])) {
             $query->where('etudiant_id', $filters['etudiant_id']);
@@ -334,7 +337,18 @@ class PaiementExportService
      */
     public function buildFiltersSummary(array $filters, ?User $user = null): array
     {
-        $summary = [];
+        $summary = [[
+            'label' => 'Années des inscriptions',
+            'value' => match ((string) ($filters['portee'] ?? 'tous')) {
+                'annee' => 'Frais de l’année courante, sans reliquats',
+                'arrieres' => 'Anciennes dettes, reportées ou non',
+                default => 'Toutes les années d’inscription',
+            },
+        ]];
+
+        if (empty($filters['date_debut']) && empty($filters['date_fin'])) {
+            $summary[] = ['label' => 'Dates de versement', 'value' => 'Toutes les dates'];
+        }
 
         if (! empty($filters['date_debut']) || ! empty($filters['date_fin'])) {
             $debut = ! empty($filters['date_debut'])
@@ -343,7 +357,7 @@ class PaiementExportService
             $fin = ! empty($filters['date_fin'])
                 ? Carbon::parse($filters['date_fin'])->format('d/m/Y')
                 : '—';
-            $summary[] = ['label' => 'Période', 'value' => $debut . ' → ' . $fin];
+            $summary[] = ['label' => 'Dates de versement', 'value' => $debut . ' → ' . $fin];
         }
 
         if (! empty($filters['etudiant_id'])) {

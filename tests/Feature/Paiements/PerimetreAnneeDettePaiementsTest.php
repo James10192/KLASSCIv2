@@ -85,6 +85,22 @@ class PerimetreAnneeDettePaiementsTest extends TestCase
         $response->assertOk()->assertJsonPath('results.0.id', $this->ancienneInscription->id);
     }
 
+    public function test_export_detaille_respecte_le_meme_perimetre_que_la_liste(): void
+    {
+        $ancien = ESBTPPaiement::factory()->pour($this->ancienneInscription)->create(['montant' => 10000]);
+        $courant = ESBTPPaiement::factory()->pour($this->inscriptionCourante)->create(['montant' => 20000]);
+        $reporte = ESBTPPaiement::factory()->pour($this->inscriptionCourante)->reliquat()->create(['montant' => 30000]);
+        $ids = [$ancien->id, $courant->id, $reporte->id];
+        $export = app(\App\Services\PaiementExportService::class);
+
+        $this->assertSame(3, $export->buildQuery(['portee' => 'tous'])->whereIn('esbtp_paiements.id', $ids)->count());
+        $this->assertSame(1, $export->buildQuery(['portee' => 'annee'])->whereIn('esbtp_paiements.id', $ids)->count());
+        $this->assertSame(2, $export->buildQuery(['portee' => 'arrieres'])->whereIn('esbtp_paiements.id', $ids)->count());
+        $resumes = $export->buildFiltersSummary(['portee' => 'tous', 'date_debut' => now()->toDateString()]);
+        $this->assertSame('Années des inscriptions', $resumes[0]['label']);
+        $this->assertSame('Dates de versement', $resumes[1]['label']);
+    }
+
     public function test_l_ancienne_dette_non_reportee_est_proposee_sans_inscription_nouvelle(): void
     {
         $categorie = ESBTPFraisCategory::factory()->create();
