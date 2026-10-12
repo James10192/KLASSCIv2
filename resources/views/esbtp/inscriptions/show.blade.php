@@ -125,7 +125,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 #subscriptionModal .form-control,
 #subscriptionModal .form-select,
 #transferModal .form-control,
-#transferModal .form-select,
+#transferModal .form-select {
     height: 44px !important;
     display: flex !important;
     align-items: center !important;
@@ -135,7 +135,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 #paymentModal div[style*="position: relative"],
 #validationModal div[style*="position: relative"],
 #subscriptionModal div[style*="position: relative"],
-#transferModal div[style*="position: relative"],
+#transferModal div[style*="position: relative"] {
     position: relative !important;
 }
 
@@ -143,7 +143,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 #paymentModal i[style*="position: absolute"],
 #validationModal i[style*="position: absolute"],
 #subscriptionModal i[style*="position: absolute"],
-#transferModal i[style*="position: absolute"],
+#transferModal i[style*="position: absolute"] {
     position: absolute !important;
     top: 50% !important;
     transform: translateY(-50%) !important;
@@ -155,7 +155,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 #paymentModal .form-select,
 #validationModal .form-select,
 #subscriptionModal .form-select,
-#transferModal .form-select,
+#transferModal .form-select {
     border-radius: 8px !important;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
 }
@@ -164,7 +164,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 #paymentModal .form-select:focus,
 #validationModal .form-select:focus,
 #subscriptionModal .form-select:focus,
-#transferModal .form-select:focus,
+#transferModal .form-select:focus {
     box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15) !important;
     border-color: #0d6efd !important;
     outline: none !important;
@@ -175,7 +175,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 #paymentModal .form-select,
 #validationModal .form-select,
 #subscriptionModal .form-select,
-#transferModal .form-select,
+#transferModal .form-select {
     /* Style Filament wrapper-like */
     background-color: white !important;
     border: 1px solid rgb(209 213 219) !important; /* gray-300 */
@@ -189,7 +189,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 #paymentModal .form-select:focus,
 #validationModal .form-select:focus,
 #subscriptionModal .form-select:focus,
-#transferModal .form-select:focus,
+#transferModal .form-select:focus {
     border-color: rgb(59 130 246) !important; /* primary-500 */
     box-shadow: 0 0 0 3px rgb(59 130 246 / 0.15), 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
     outline: none !important;
@@ -199,7 +199,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 #paymentModal .form-control,
 #validationModal .form-control,
 #subscriptionModal .form-control,
-#transferModal .form-control,
+#transferModal .form-control {
     border: 1px solid rgb(209 213 219) !important;
     border-radius: 8px !important;
     box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
@@ -209,7 +209,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 #paymentModal .form-control:focus,
 #validationModal .form-control:focus,
 #subscriptionModal .form-control:focus,
-#transferModal .form-control:focus,
+#transferModal .form-control:focus {
     border-color: rgb(59 130 246) !important;
     box-shadow: 0 0 0 3px rgb(59 130 246 / 0.15), 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
     outline: none !important;
