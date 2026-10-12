@@ -12,6 +12,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Bulletins BTS — rang identique au dossier et aux résultats :** les rangs semestriels et annuels affichés dans l'aperçu/PDF sont calculés avec les mêmes moyennes courantes, effectifs, règles d'assiduité et ex æquo que dans Résultats et Fiche étudiant. Les bulletins historiques des autres étudiants ne faussent plus le classement de l'élève imprimé, sans modification des notes ni des données officielles stockées.
+
 - **Export enseignants — périmètre pédagogique multisélection :** lors de la préparation d'un export PDF ou Excel, sélectionner plusieurs classes, filières, niveaux et matières. Les choix sont combinés sans rechargement, avec recherche et sélection par cases ; les filières mères incluent leurs spécialités. L'export restreint les bulletins aux données correspondant à tous les critères choisis et conserve les anciens liens par classe.
 
 - **Exports enseignants — regroupement matière et spécialisation :** dans « Exporter les enseignants », deux nouveaux documents PDF/Excel permettent de consulter les fiches classées par spécialité (avec les noms à classer), ou les professeurs des bulletins regroupés par matière sur l'ensemble des classes, avec S1/S2 et classes concernées. Les anciennes éditions par classe restent disponibles, sans fusion des noms saisis.

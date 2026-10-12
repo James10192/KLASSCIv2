@@ -250,8 +250,8 @@
             <div class="bsh-kpi">
                 <div class="bsh-kpi-label">Rang</div>
                 <div class="bsh-kpi-value">
-                    @if($bulletin->rang)
-                        {{ $bulletin->rang }}<small>{{ $bulletin->rang == 1 ? 'er' : 'e' }}@if(!empty($bulletin->total_etudiants)) / {{ $bulletin->total_etudiants }}@endif</small>
+                    @if(($rangCourant['rang'] ?? null) !== null)
+                        {{ $rangCourant['rang'] }}<small>{{ $rangCourant['rang'] == 1 ? 'er' : 'e' }}@if(($rangCourant['total'] ?? 0) > 0) / {{ $rangCourant['total'] }}@endif</small>
                     @else
                         <span class="bsh-kpi-chip bsh-chip--neutral">Non classé</span>
                     @endif

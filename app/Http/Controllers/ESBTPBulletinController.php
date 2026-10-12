@@ -425,7 +425,26 @@ class ESBTPBulletinController extends Controller
         $absencesJustifiees = $absences['justifiees'] ?? $bulletin->absences_justifiees ?? 0;
         $absencesNonJustifiees = $absences['non_justifiees'] ?? $bulletin->absences_non_justifiees ?? 0;
 
-        return view('esbtp.bulletins.show', compact('bulletin', 'absencesJustifiees', 'absencesNonJustifiees'));
+        // Comme le PDF, la fiche d'un bulletin ne présente pas un rang
+        // historique stocké comme s'il s'agissait du classement courant.
+        $periodeRang = $this->bulletinService->normalizePeriode((string) $bulletin->periode);
+        $classeRangId = (int) $bulletin->classe_id;
+        if ($periodeRang === 'annuel') {
+            $map = app(\App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver::class)->resolve(
+                (int) $bulletin->etudiant_id, $classeRangId, (int) $bulletin->annee_universitaire_id
+            );
+            $classeRangId = app(\App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::class)->classeDeRang($map);
+        }
+        $rangCourant = app(\App\Services\RankingService::class)->calculerRangPourEtudiant(
+            (int) $bulletin->etudiant_id,
+            $classeRangId,
+            (int) $bulletin->annee_universitaire_id,
+            $periodeRang
+        );
+
+        return view('esbtp.bulletins.show', compact(
+            'bulletin', 'absencesJustifiees', 'absencesNonJustifiees', 'rangCourant'
+        ));
     }
 
     /**

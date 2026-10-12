@@ -10,6 +10,8 @@ use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPInscriptionPhase;
+use App\Models\ESBTPMatiere;
+use App\Models\ESBTPResultat;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\User;
 use App\Services\BulletinService;
@@ -151,6 +153,36 @@ class RangAnnuelPariteTroncCommunTest extends TestCase
         $this->assertSame([], $cohorte->etudiantIdsToutesInscriptions($spec->id, $annee->id, 'annuel'));
     }
 
+    public function test_le_pdf_et_les_resultats_gardent_le_meme_rang_si_un_bulletin_historique_est_perime(): void
+    {
+        SettingsHelper::setOrCreate('tronc_commun_mga_include_s1', '1');
+        [$annee, $spec, $a, $b] = $this->scenario();
+
+        // Cas remonté à ESBTP Yamoussoukro : fiche et liste 1/43,
+        // tandis que le PDF indiquait 2 malgré la même moyenne annuelle.
+        // Le vieux calcul du PDF prenait les moyennes persistées des camarades
+        // (snapshot possiblement périmé) plutôt que leurs résultats courants.
+        $tcId = app(\App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver::class)
+            ->resolve($b->id, $spec->id, $annee->id)['semestre1_classe_id'];
+        ESBTPBulletin::query()
+            ->where('etudiant_id', $b->id)
+            ->where('classe_id', $tcId)
+            ->where('annee_universitaire_id', $annee->id)
+            ->where('periode', 'semestre1')
+            ->update(['moyenne_generale' => 20]);
+
+        $rangListe = app(\App\Services\RankingService::class)
+            ->calculerRangPourEtudiant($a->id, $spec->id, $annee->id, 'annuel');
+        $rangPdf = app(BulletinService::class)
+            ->calculerRangAnnuel($a->id, $spec->id, $annee->id, 14.0);
+
+        $this->assertSame(1, $rangListe['rang']);
+        $this->assertSame(2, $rangListe['total']);
+        $this->assertSame($rangListe['rang'], $rangPdf);
+        $this->assertSame(2, app(BulletinService::class)
+            ->calculerRangAnnuel($b->id, $spec->id, $annee->id, 13.0));
+    }
+
     public function test_moyenne_annuelle_absente_ne_donne_pas_de_rang(): void
     {
         [$annee, $spec, $a] = $this->scenario();
@@ -236,6 +268,24 @@ class RangAnnuelPariteTroncCommunTest extends TestCase
             'periode' => $periode,
             'moyenne_generale' => $moyenne,
             'note_assiduite' => 0,
+        ]);
+
+        // Le tableau Résultats classe les données des matières courantes, et
+        // non les seules moyennes persistées des bulletins. Une fixture qui
+        // ne créait que des bulletins validait artificiellement deux moteurs.
+        // esbtp_matieres n'a plus les colonnes filiere_id/niveau_etude_id :
+        // les rattachements se font par pivots, et le resultat porte sa classe.
+        $matiere = ESBTPMatiere::factory()->create([
+            'type_formation' => 'generale',
+        ]);
+        ESBTPResultat::create([
+            'etudiant_id' => $etudiant->id,
+            'classe_id' => $classe->id,
+            'annee_universitaire_id' => $annee->id,
+            'matiere_id' => $matiere->id,
+            'periode' => $periode,
+            'moyenne' => $moyenne,
+            'coefficient' => 1,
         ]);
     }
 }

@@ -3502,7 +3502,7 @@
         /* Cas avec bulletins : moyenne pondérée des bulletins (si > 0) */
         $acadMgFromBul = $acadBuls->filter(fn($b) => $b->moyenne_generale > 0)->avg('moyenne_generale');
         $acadMg      = $acadMgFromBul ? round($acadMgFromBul, 2) : null;
-        $acadRang    = $acadLastBul->rang;
+        $acadRang    = null; // Le rang courant ne doit jamais venir du snapshot du bulletin.
         $acadMention = $acadLastBul->mention;
         /* Si bulletins ont moyenne_generale=0/null, fallback aux résultats bruts avec pondération S1/S2 */
         if ($acadMg === null) {
@@ -3576,65 +3576,9 @@
             $acadMg = null; $acadMention = null;
         }
 
-        /* Classement : calculer le rang parmi les co-inscrits de la même classe/année */
+        // Le classement ne se reconstruit jamais à partir des seules inscriptions
+        // courantes ou des bulletins persistés : RankingService décide plus bas.
         $acadRang = null;
-        if ($acadMg !== null && $acadRef) {
-            // Récupérer tous les étudiants inscrits dans la même classe la même année
-            $_classeId = $acadRef->classe_id;
-            $_anneeId  = $acadRef->annee_universitaire_id;
-
-            if ($_classeId && $_anneeId) {
-                // Co-inscrits (même classe, même année, actifs, sauf cet étudiant)
-                $_coInscrits = \App\Models\ESBTPInscription::where('classe_id', $_classeId)
-                    ->where('annee_universitaire_id', $_anneeId)
-                    ->pluck('etudiant_id')
-                    ->unique();
-
-                if ($_coInscrits->count() > 1) {
-                    // Calculer la moyenne pondérée de chaque co-inscrit avec la même formule
-                    $_moyennes = [];
-                    $_resultatsClasse = \App\Models\ESBTPResultat::whereIn('etudiant_id', $_coInscrits)
-                        ->where('annee_universitaire_id', $_anneeId)
-                        ->whereNotNull('moyenne')
-                        ->get()
-                        ->groupBy('etudiant_id');
-
-                    foreach ($_coInscrits as $_eid) {
-                        $_rows = $_resultatsClasse->get($_eid, collect());
-                        if ($_rows->isEmpty()) continue;
-
-                        $_s1 = $_acadCalcSem($_rows->where('periode', 'semestre1'));
-                        $_s2 = $_acadCalcSem($_rows->where('periode', 'semestre2'));
-
-                        if ($_s1 !== null && $_s2 !== null) {
-                            $_tot = $_acadPoidS1 + $_acadPoidS2;
-                            $_moy = ($_s1 * $_acadPoidS1 + $_s2 * $_acadPoidS2) / $_tot;
-                        } elseif ($_s1 !== null) {
-                            $_moy = $_s1;
-                        } elseif ($_s2 !== null) {
-                            $_moy = $_s2;
-                        } else {
-                            $_moy = $_acadCalcSem($_rows);
-                        }
-
-                        if ($_moy !== null) {
-                            $_moyennes[$_eid] = $_moy;
-                        }
-                    }
-
-                    // Trier par moyenne décroissante et trouver la position de cet étudiant
-                    arsort($_moyennes);
-                    $_rang = 1;
-                    foreach ($_moyennes as $_eid => $_moy) {
-                        if ($_eid == $etudiant->id) {
-                            $acadRang = $_rang . '/' . count($_moyennes);
-                            break;
-                        }
-                        $_rang++;
-                    }
-                }
-            }
-        }
     }
 
     $acadAnnee  = optional($acadRef?->anneeUniversitaire)->name ?? '—';
@@ -3663,23 +3607,34 @@
         }
     }
 
-    /* RANG CANONIQUE : on délègue à RankingService pour cohérence avec /esbtp/resultats.
-       Cohort : status='active' + workflow_step='etudiant_cree', source snapshot live,
-       flag bulletin_show_attendance_note respecté, ex-aequo gérés.
-       Si l'étudiant n'est pas dans la cohort canonique → on garde l'ad-hoc / bulletin snapshot. */
+    /* Rangs issus d'une seule source : mêmes cohortes, moyennes et ex-aequo
+       que Résultats et le PDF. Aucune reprise des rangs historiques stockés
+       lorsque la moyenne annuelle est incomplète ou l'inscription inéligible. */
+    $acadRang = null;
+    $acadRangsSemestres = [];
     if ($acadRef && $acadRef->classe_id && $acadRef->annee_universitaire_id) {
         try {
-            $_rk = app(\App\Services\RankingService::class)->calculerRangPourEtudiant(
-                (int) $etudiant->id,
-                (int) $acadRef->classe_id,
-                (int) $acadRef->annee_universitaire_id,
-                'annuel'
+            $_ranking = app(\App\Services\RankingService::class);
+            $_ownerAnnualId = $acadClassMap
+                ? app(\App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::class)->classeDeRang($acadClassMap)
+                : (int) $acadRef->classe_id;
+            $_rk = $_ranking->calculerRangPourEtudiant(
+                (int) $etudiant->id, $_ownerAnnualId,
+                (int) $acadRef->annee_universitaire_id, 'annuel'
             );
             if ($_rk['rang'] !== null && $_rk['total'] > 0) {
                 $acadRang = $_rk['rang'] . '/' . $_rk['total'];
             }
+            foreach (['semestre1', 'semestre2'] as $_periodeRang) {
+                $_classeRangSemestre = (int) ($acadClassMap[$_periodeRang.'_classe_id'] ?? $acadRef->classe_id);
+                $_rkSem = $_ranking->calculerRangPourEtudiant(
+                    (int) $etudiant->id, $_classeRangSemestre,
+                    (int) $acadRef->annee_universitaire_id, $_periodeRang
+                );
+                $acadRangsSemestres[$_periodeRang] = $_rkSem['rang'];
+            }
         } catch (\Throwable $e) {
-            // Silencieux : on garde le rang calculé en amont (bulletin snapshot ou ad-hoc)
+            report($e);
         }
     }
 
@@ -4269,9 +4224,9 @@
                             {{ $semPeriode === 'semestre1' ? '(Tronc commun)' : '(Spécialisation)' }}
                         </span>
                     @endif
-                    @if($bul->rang)
+                    @if($acadRangsSemestres[$semPeriode] ?? null)
                         <span style="font-size:.72rem; color:var(--k-muted);">
-                            <i class="fas fa-trophy" style="color:#f59e0b; font-size:.65rem;"></i> {{ $bul->rang }}
+                            <i class="fas fa-trophy" style="color:#f59e0b; font-size:.65rem;"></i> {{ $acadRangsSemestres[$semPeriode] }}
                         </span>
                     @endif
                 </div>
