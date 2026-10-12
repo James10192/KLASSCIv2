@@ -4048,12 +4048,12 @@
                    - Si S2 dispo (et calculé) → on l'ouvre (label "Bulletin Annuel" car contient l'annuel).
                    - Sinon S1 → on l'ouvre.
                    - Sinon rien à afficher. */
-                $_acadHeroBulS1 = $acadBuls->firstWhere('periode', 'semestre1');
-                $_acadHeroBulS2 = $acadBuls->firstWhere('periode', 'semestre2');
+                $_acadHeroBulS1 = $acadBuls->first(fn($b) => in_array((string) $b->periode, ['semestre1', '1'], true));
+                $_acadHeroBulS2 = $acadBuls->first(fn($b) => in_array((string) $b->periode, ['semestre2', '2'], true));
                 $_acadHeroLabel = null;
                 $_acadHeroPreviewUrl = null;
                 $_acadHeroDownloadUrl = null;
-                if ($_acadHeroBulS2 && $_acadHeroBulS2->moyenne_generale > 0) {
+                if ($_acadHeroBulS2 && $_acadHeroBulS2->moyenne_generale !== null) {
                     $_acadHeroLabel = $_acadHeroBulS1 ? 'Bulletin Annuel' : 'Bulletin S2';
                     $_acadHeroPreviewUrl = route('esbtp.bulletins.preview-pdf', $_acadHeroBulS2);
                     $_acadHeroDownloadUrl = route('esbtp.bulletins.download', $_acadHeroBulS2);
@@ -4384,10 +4384,10 @@
                             $_pondS1 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester1_weight', 1));
                             $_pondS2 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester2_weight', 1));
                             if ($_pondS1 + $_pondS2 <= 0) { $_pondS1 = 1; $_pondS2 = 1; }
-                            $_bulS1 = $acadBuls->firstWhere('periode', 'semestre1');
-                            $_bulS2 = $acadBuls->firstWhere('periode', 'semestre2');
-                            $_mgS1 = $_bulS1 && $_bulS1->moyenne_generale > 0 ? (float) $_bulS1->moyenne_generale : null;
-                            $_mgS2 = $_bulS2 && $_bulS2->moyenne_generale > 0 ? (float) $_bulS2->moyenne_generale : null;
+                            $_bulS1 = $acadBuls->first(fn($b) => in_array((string) $b->periode, ['semestre1', '1'], true));
+                            $_bulS2 = $acadBuls->first(fn($b) => in_array((string) $b->periode, ['semestre2', '2'], true));
+                            $_mgS1 = $_bulS1 && $_bulS1->moyenne_generale !== null ? (float) $_bulS1->moyenne_generale : null;
+                            $_mgS2 = $_bulS2 && $_bulS2->moyenne_generale !== null ? (float) $_bulS2->moyenne_generale : null;
                         @endphp
                         <div style="padding:12px 14px;">
                             <div style="font-size:.72rem; text-transform:uppercase; letter-spacing:.5px; color:#64748b; font-weight:700; margin-bottom:.55rem;">
