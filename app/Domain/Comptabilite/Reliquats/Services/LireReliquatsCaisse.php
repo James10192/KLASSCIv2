@@ -43,8 +43,30 @@ final class LireReliquatsCaisse
         })->values();
 
         $situation = app(SituationFinanciereEtudiant::class)->pour((int) $inscription->etudiant_id, (int) $inscription->id);
+
+        // Une dette non reportée reste payable sur l'inscription qui l'a créée.
+        // Ne JAMAIS créer une inscription de la nouvelle année à la caisse.
+        $anneeActuelle = \App\Models\ESBTPAnneeUniversitaire::query()->where('is_current', true)->value('id');
+        $inscriptionsParId = ESBTPInscription::query()->where('etudiant_id', $inscription->etudiant_id)
+            ->get(['id', 'annee_universitaire_id'])->keyBy('id');
+        $dettesDirectes = $situation['annees']->filter(function (array $ligne) use ($inscriptionsParId, $anneeActuelle) {
+            $origine = $inscriptionsParId->get($ligne['inscription_id']);
+            return $origine && ($anneeActuelle === null || (int) $origine->annee_universitaire_id !== (int) $anneeActuelle)
+                && (float) $ligne['non_reporte'] >= 1;
+        })->map(fn (array $ligne) => [
+            'inscription_id' => $ligne['inscription_id'],
+            'annee' => $ligne['annee'],
+            'classe' => $ligne['classe'],
+            'montant' => (float) $ligne['non_reporte'],
+            'url' => route('esbtp.paiements.create', [
+                'inscription_id' => $ligne['inscription_id'],
+                'etudiant_id' => $inscription->etudiant_id,
+            ]),
+        ])->values();
+
         return [
             'reliquats' => $lignes,
+            'dettes_non_reportees' => $dettesDirectes,
             'soldes' => ['courant' => $situation['courant'], 'arrieres' => $situation['arrieres'], 'total' => $situation['total']],
             'inscription_id' => (int) $inscription->id,
         ];

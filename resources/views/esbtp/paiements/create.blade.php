@@ -6,6 +6,10 @@
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <link rel="stylesheet" href="{{ asset('css/paiements-create-date.css') }}?v={{ @filemtime(public_path('css/paiements-create-date.css')) ?: '1' }}">
 <style>
+    .pc-recherche-type{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.65rem}
+    .pc-recherche-type button{border:1px solid #bfdbfe;color:#0453cb;background:#fff;padding:.5rem .75rem;border-radius:10px;cursor:pointer;font-size:.78rem;font-weight:700}
+    .pc-recherche-type button.is-active{background:#0453cb;color:#fff}
+    .pc-recherche-hint{font-size:.78rem;color:#475569;margin:0 0 .85rem}
     .pc-reliquat-entry {display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:1rem;margin:0 0 1rem;}
     .pc-reliquat-entry strong {color:#0f172a;font-size:.88rem}
     .pc-reliquat-entry p {margin:.25rem 0 0;color:#64748b;font-size:.76rem}
@@ -762,6 +766,17 @@
                         </div>
                     @else
                         <div x-data="caisseInscriptionPicker()" x-init="charger()">
+                            <div class="pc-recherche-type">
+                                <button type="button" :class="{ 'is-active': !rechercheAnciens }" @click="rechercheAnciens=false; charger()">
+                                    Inscriptions de cette année
+                                </button>
+                                <button type="button" :class="{ 'is-active': rechercheAnciens }" @click="rechercheAnciens=true; charger()">
+                                    <i class="fas fa-history"></i> Régler une ancienne année
+                                </button>
+                            </div>
+                            <p class="pc-recherche-hint" x-show="rechercheAnciens" x-cloak>
+                                Un ancien étudiant peut payer sa dette sans être réinscrit. Le règlement sera lié à son ancienne inscription.
+                            </p>
                             <div class="pc-toolbar">
                                 <label class="pc-search">
                                     <i class="fas fa-search"></i>
@@ -792,7 +807,7 @@
                                         <span class="pc-avatar" x-text="initiales(row.nom)"></span>
                                         <span class="pc-insc-txt">
                                             <span class="pc-insc-nom" x-text="row.nom"></span>
-                                            <span class="pc-insc-sub"><span x-text="row.classe"></span> · <span class="pc-mono" x-text="row.matricule"></span></span>
+                                            <span class="pc-insc-sub"><span x-text="row.classe"></span> · <span class="pc-mono" x-text="row.matricule"></span> · <span x-text="row.annee"></span></span>
                                         </span>
                                         <span class="pc-insc-track" x-text="[row.filiere, row.niveau].filter(Boolean).join(' · ')"></span>
                                         <i class="fas fa-check-circle pc-insc-check" aria-hidden="true"></i>
@@ -1011,6 +1026,7 @@ window.caisseInscriptionPicker = function () {
         q: '',
         filiereId: '',
         niveauId: '',
+        rechercheAnciens: false,
         rows: [],
         selectedId: null,
         etudiantId: '',
@@ -1028,6 +1044,7 @@ window.caisseInscriptionPicker = function () {
             if (this.q.trim()) params.set('q', this.q.trim());
             if (this.filiereId) params.set('filiere_id', this.filiereId);
             if (this.niveauId) params.set('niveau_id', this.niveauId);
+            if (this.rechercheAnciens) params.set('anciennes', '1');
             try {
                 const response = await fetch(url + '?' + params.toString(), {
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
@@ -1041,6 +1058,9 @@ window.caisseInscriptionPicker = function () {
         },
         choisir(row) {
             this.selectedId = row.id;
+            // Cette inscription précise doit être conservée par le chargeur,
+            // sans rebasculer automatiquement sur la nouvelle année.
+            window.caisseRequestedInscriptionId = row.id;
             this.etudiantId = String(row.etudiant_id);
             const input = document.getElementById('etudiant_id');
             if (input) {
@@ -1166,7 +1186,8 @@ $(function() {
                         });
                     });
 
-                    var preferredInscriptionId = @json($inscription->id ?? null);
+                    var preferredInscriptionId = window.caisseRequestedInscriptionId || @json($inscription->id ?? null);
+                    window.caisseRequestedInscriptionId = null;
                     var preferredExists = preferredInscriptionId && inscriptions.some(function(inscription) {
                         return String(inscription.id) === String(preferredInscriptionId);
                     });

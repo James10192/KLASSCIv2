@@ -487,13 +487,15 @@ class ESBTPPaiementController extends Controller
         $q = trim((string) $request->get('q', ''));
         $filiereId = $request->integer('filiere_id') ?: null;
         $niveauId = $request->integer('niveau_id') ?: null;
+        $anciennes = $request->boolean('anciennes');
 
         $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         $query = ESBTPInscription::query()
-            ->with(['etudiant.user', 'filiere:id,name', 'niveauEtude:id,name', 'classe:id,name'])
+            ->with(['etudiant.user', 'filiere:id,name', 'niveauEtude:id,name', 'classe:id,name', 'anneeUniversitaire:id,name'])
             ->whereIn('status', ['active', 'en_attente'])
-            ->when($annee, fn ($q) => $q->where('annee_universitaire_id', $annee->id))
+            ->when($annee && ! $anciennes, fn ($q) => $q->where('annee_universitaire_id', $annee->id))
+            ->when($annee && $anciennes, fn ($q) => $q->where('annee_universitaire_id', '!=', $annee->id))
             ->when($filiereId, fn ($q) => $q->where('filiere_id', $filiereId))
             ->when($niveauId, fn ($q) => $q->where('niveau_id', $niveauId));
 
@@ -525,6 +527,7 @@ class ESBTPPaiementController extends Controller
                     'filiere' => $inscription->filiere->name ?? '—',
                     'niveau' => $inscription->niveauEtude->name ?? '—',
                     'classe' => $inscription->classe->name ?? '—',
+                    'annee' => $inscription->anneeUniversitaire?->name ?? '—',
                 ];
             })
             ->values();
