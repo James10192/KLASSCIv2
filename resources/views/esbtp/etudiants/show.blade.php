@@ -5808,8 +5808,12 @@
         $autreAttente = \App\Models\ESBTPPaiement::pendingEncaissementsFrom($autrePaiements);
         $autreAttendu = 0;
         try { $autreAttendu = $autreInsc->fraisSubscriptions->sum(fn ($s) => $s->chargedAmount()); } catch(\Exception $e) {}
-        $autreSolde   = $autreAttendu - $autrePaye;
-        $autreTaux    = $autreAttendu > 0 ? min(100, round($autrePaye / $autreAttendu * 100)) : 0;
+        $autreSituation = $situationFinanciere['annees']->firstWhere('inscription_id', $autreInsc->id);
+        $autreReporte = (float) ($autreSituation['reporte'] ?? 0);
+        // Le montant reporté appartient toujours à cette année d'origine,
+        // mais il se règle depuis le reliquat, pas depuis les frais directs.
+        $autreSolde = (float) ($autreSituation['non_reporte'] ?? max(0, $autreAttendu - $autrePaye));
+        $autreTaux = $autreAttendu > 0 ? min(100, round($autrePaye / $autreAttendu * 100)) : 0;
         $autreAccordionId = 'fin-arch-' . $autreInsc->id;
     @endphp
     <div class="fin-arch-card">
@@ -5832,6 +5836,13 @@
             </div>
         </button>
 
+        @if($autreReporte > 0)
+        <p style="margin:.5rem 0;color:#475569;font-size:.75rem;">
+            <i class="fas fa-info-circle" aria-hidden="true"></i>
+            {{ number_format($autreReporte, 0, ',', ' ') }} FCFA transférés en reliquat :
+            le solde restant de ce report se suit dans la situation globale.
+        </p>
+        @endif
         <div class="collapse" id="{{ $autreAccordionId }}">
             <div class="fin-arch-body">
                 {{-- Mini hero stats --}}
@@ -5961,7 +5972,7 @@
                             style="display:inline-flex; align-items:center; gap:6px; padding:7px 16px; font-size:.8rem; border-radius:8px; background:linear-gradient(135deg, var(--k-blue, #0453cb), var(--k-blue-2, #5e91de)); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 2px 8px rgba(4,83,203,.25);{{ $autreSolde <= 0 ? ' opacity:.5; cursor:not-allowed;' : '' }}"
                             @if($autreSolde > 0) data-bs-toggle="modal" data-bs-target="#etudiantPaymentModal" onclick="prepareEtudiantPaymentModal({{ $autreInsc->id }}, true)" @endif>
                         <i class="fas fa-{{ $autreSolde <= 0 ? 'check-circle' : 'plus-circle' }}"></i>
-                        {{ $autreSolde <= 0 ? 'Soldé' : 'Enregistrer un paiement' }}
+                        {{ $autreSolde > 0 ? 'Enregistrer un paiement' : ($autreReporte > 0 ? 'Reporté en reliquat' : 'Soldé') }}
                     </button>
                     @endcan
                 </div>

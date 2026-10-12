@@ -3,6 +3,8 @@
 ## Paiement avant réinscription : pas de nouveau dossier
 Le **paiement d'une ancienne dette non reportée** reste rattaché à l'ancienne inscription. Il passe par le même formulaire `paiements.create` avec l'identifiant de cette inscription (catégories et règles de répartition habituelles), même lorsque l'étudiant n'est pas réinscrit. La recherche « Régler une ancienne année » donne accès aux anciennes inscriptions, y compris sur mobile. Elle inclut les inscriptions d'une année achevée (`terminee`), même sans inscription courante, mais jamais les inscriptions annulées. Elle ne crée aucun dossier 2026-2027.
 
+Sur la fiche étudiant, les anciennes années distinguent maintenant explicitement le montant **non reporté** (encaissement direct) du montant **transféré en reliquat** (circuit dédié). Une année avec dette transférée n'est pas déclarée « soldée » par erreur.
+
 La partie déjà reportée est déduite du plafond de chaque frais d'origine. Un paiement ou une ventilation manuelle qui empiète sur ce montant est refusé côté serveur ; les frais non reportés restent payables directement.
 
 Le **reliquat reporté** ne peut exister qu'après réinscription avec décision explicite de report. Son versement suit l'action transactionnelle `CreerVersementReliquat`, `type_paiement=reliquat`, et ne réduit le solde qu'une fois validé. Les deux cas sont présentés dans le même dialogue « Régler un arriéré », avec deux actions différentes bien identifiées.
