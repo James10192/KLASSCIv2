@@ -87,30 +87,5 @@
     </div>
 </div>
 
-{{-- Styles portés par paiements.index : ils restent disponibles après un rafraîchissement AJAX. --}}
-
-
-<script>
-    // Garde d'idempotence : ce partial est rendu une fois par ligne, et peut
-    // revenir par une reponse AJAX.
-    if (typeof window.modeReglementForm !== 'function') {
-        window.modeReglementForm = function (modeActuel) {
-            return {
-                confirme: false,
-                mode: modeActuel,
-                motif: '',
-                libelle(cle) {
-                    const el = this.$root.querySelector(`option[value="${cle}"]`);
-                    return el ? el.textContent.trim() : cle;
-                },
-                valide() {
-                    return this.mode !== ''
-                        && this.mode !== modeActuel
-                        && this.motif.trim().length >= 10;
-                },
-            };
-        };
-    }
-</script>
 @endif
 @endcan
