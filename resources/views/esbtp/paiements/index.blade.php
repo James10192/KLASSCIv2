@@ -980,7 +980,7 @@
                         <div class="pi-hero-chips">
                             <span class="pi-chip">
                                 <i class="fas fa-calendar"></i>
-                                {{ request('portee', 'tous') === 'annee' ? 'Scolarité ' . $anneeNom : (request('portee') === 'arrieres' ? 'Dettes anciennes' : 'Encaissements · toutes années') }}
+                                <span id="pi-portee-label">{{ request('portee', 'tous') === 'annee' ? 'Scolarité ' . $anneeNom : (request('portee') === 'arrieres' ? 'Dettes anciennes' : 'Encaissements · toutes années') }}</span>
                                 <button type="button" class="pi-chip-btn" onclick="showYearChangeInfo()" title="Comment changer d'année ?" aria-label="Information changement d'année">
                                     <i class="fas fa-info-circle"></i>
                                 </button>
@@ -1120,7 +1120,7 @@
         {{-- Alerte note (statique, pas AJAX) --}}
         <div class="alert alert-info alert-sm mb-lg">
             <i class="fas fa-info-circle me-2"></i>
-            <strong>Lecture :</strong> {{ $piPortee === 'arrieres' ? 'Vous voyez uniquement les règlements de dettes anciennes, reportées ou non.' : ($piPortee === 'annee' ? 'Vous voyez les frais de l’inscription de l’année courante, hors reliquats.' : 'Tous les versements sont visibles, quelle que soit l’année de la dette.') }}
+            <strong>Lecture :</strong> <span id="pi-portee-note">{{ $piPortee === 'arrieres' ? 'Vous voyez uniquement les règlements de dettes anciennes, reportées ou non.' : ($piPortee === 'annee' ? 'Vous voyez les frais de l’inscription de l’année courante, hors reliquats.' : 'Tous les versements sont visibles, quelle que soit l’année de la dette.') }}</span>
             Les compteurs indiquent des <strong>paiements, pas des inscriptions ni des nouveaux étudiants</strong>. Les dates filtrent le jour réel d'encaissement.
             Pour suivre les montants attendus et réglés, consultez le
             <a href="{{ route('esbtp.paiements.suivi-categories') }}" class="alert-link">Suivi par Catégorie</a>.
@@ -1791,6 +1791,40 @@ function showYearChangeInfo() {
         }
     }
 
+    // Le changement de périmètre emprunte le même rafraîchissement AJAX que
+    // les filtres, sans recharger la page ni perdre la période saisie.
+    function synchroniserPortee() {
+        const portee = new URLSearchParams(window.location.search).get('portee') || 'tous';
+        const annee = @json($anneeNom);
+        const libelles = {
+            tous: ['Encaissements · toutes années', "Tous les versements sont visibles, quelle que soit l'année de la dette."],
+            annee: ['Scolarité ' + annee, "Vous voyez les frais de l'inscription de l'année courante, hors reliquats."],
+            arrieres: ['Dettes anciennes', 'Vous voyez uniquement les règlements de dettes anciennes, reportées ou non.'],
+        };
+        const actuel = Object.prototype.hasOwnProperty.call(libelles, portee) ? portee : 'tous';
+        const input = document.querySelector('#paiements-filter-form input[name="portee"]');
+        if (input) input.value = actuel;
+        const libelle = document.getElementById('pi-portee-label');
+        const note = document.getElementById('pi-portee-note');
+        if (libelle) libelle.textContent = libelles[actuel][0];
+        if (note) note.textContent = libelles[actuel][1];
+        document.querySelectorAll('.pi-portee-nav a').forEach(function (lien) {
+            const actif = (new URL(lien.href, window.location.href).searchParams.get('portee') || 'tous') === actuel;
+            lien.classList.toggle('is-active', actif);
+            if (actif) lien.setAttribute('aria-current', 'page');
+            else lien.removeAttribute('aria-current');
+        });
+    }
+
+    $(document).on('click', '.pi-portee-nav a', function (e) {
+        e.preventDefault();
+        const url = new URL(this.href, window.location.href);
+        history.pushState({}, '', url.pathname + url.search);
+        currentUrl = url.pathname + url.search;
+        synchroniserPortee();
+        fetchPaiementsData();
+    });
+
     /**
      * Intercepte la soumission du formulaire de filtres
      * pour faire une requête AJAX au lieu de recharger la page
@@ -1807,6 +1841,7 @@ function showYearChangeInfo() {
         // Mettre à jour l'URL dans le navigateur
         history.pushState({}, '', newUrl);
         currentUrl = newUrl;
+        synchroniserPortee();
 
         // Fetch les données
         fetchPaiementsData();
@@ -1846,6 +1881,7 @@ function showYearChangeInfo() {
      */
     window.addEventListener('popstate', function() {
         debugLog('⬅️ Navigation navigateur détectée');
+        synchroniserPortee();
         fetchPaiementsData();
     });
 

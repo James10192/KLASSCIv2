@@ -13,9 +13,9 @@
             <strong class="pi-receipt-number">{{ $paiement->numero_recu }}</strong>
         </div>
         @if($paiement->type_paiement === 'reliquat')
-            <small class="d-block" style="color:#8b5cf6;font-weight:750">Ancienne dette · reportée</small>
+            <small class="d-block" style="color:#0453cb;font-weight:750">Ancienne dette · reportée</small>
         @elseif($paiement->inscription?->anneeUniversitaire && ! $paiement->inscription->anneeUniversitaire->is_current)
-            <small class="d-block" style="color:#9a3412;font-weight:750">Ancienne dette · {{ $paiement->inscription->anneeUniversitaire->name }}</small>
+            <small class="d-block" style="color:#0453cb;font-weight:750">Ancienne dette · {{ $paiement->inscription->anneeUniversitaire->name }}</small>
         @endif
         @if($paiement->isAvoir())
             <div class="small" style="color:#0453cb;font-weight:700;">{{ $paiement->avoir_kind === 'refund' ? 'Remboursement' : 'Avoir crédit' }}</div>
