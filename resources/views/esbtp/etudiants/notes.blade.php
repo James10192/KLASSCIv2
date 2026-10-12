@@ -437,6 +437,9 @@
 
     $estLmd = ($ecran['systeme'] ?? null) === \App\Services\FraisScopeResolver::SYSTEME_LMD;
     $semestresEcran = $ecran['semestres'] ?? [];
+    $releveDisponible = $inscription && collect($semestresEcran)->contains(
+        fn ($sem) => ($sem['moyenne'] ?? null) !== null || ($sem['notes_count'] ?? 0) > 0
+    );
 
     // Segment ouvert par defaut : le dernier semestre qui a des notes, sinon le premier.
     $segDefaut = $semestresEcran[0]['code'] ?? null;
@@ -472,6 +475,14 @@
                     </p>
                 </div>
                 <div class="text-end d-flex flex-wrap gap-2 justify-content-end align-items-center">
+                    @if($releveDisponible)
+                        <a href="{{ route('esbtp.mes-notes.releve-consultatif') }}" target="_blank" rel="noopener" class="badge text-decoration-none"
+                           style="background:#fff;color:#0453cb;padding:.65rem 1rem;border-radius:9px;font-size:.85rem;font-weight:700"
+                           title="Ouvrir le relevé de notes consultatif au format PDF">
+                            <i class="fas fa-file-pdf me-2" aria-hidden="true"></i> Relevé consultatif PDF
+                        </a>
+                    @endif
+
                     @if($peutContester)
                         <a href="{{ route('esbtp.mes-reclamations.index') }}" class="badge text-decoration-none" style="background: #fff; color: var(--primary); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-medium); font-size: var(--text-sm);">
                             <i class="fas fa-flag me-2"></i>Mes réclamations
@@ -485,7 +496,7 @@
             </div>
         </div>
 
-        @if($notes->isEmpty())
+        @if($notes->isEmpty() && !$releveDisponible)
             <div class="no-notes">
                 <div class="no-notes-icon">
                     <i class="fas fa-graduation-cap"></i>
@@ -518,18 +529,13 @@
             <div class="moyenne-section">
                 <div class="moyenne-title">Moyenne Générale</div>
                 @php
-                    $totalPoints = 0;
-                    $totalCoeff = 0;
-                    foreach($notes as $note) {
-                        if(!$note->is_absent) {
-                            $totalPoints += ($note->note * $note->evaluation->coefficient);
-                            $totalCoeff += $note->evaluation->coefficient;
-                        }
-                    }
-                    $moyenne = $totalCoeff > 0 ? $totalPoints / $totalCoeff : 0;
+                    // Même projection que le relevé et le bulletin BTS : ne pas
+                    // recalculer la moyenne sur les évaluations brutes.
+                    $bilanAnnuel = collect($semestresEcran)->firstWhere('code', 'annuel');
+                    $moyenne = $bilanAnnuel['moyenne'] ?? null;
                 @endphp
-                <div class="moyenne-value">{{ number_format($moyenne, 2) }}/20</div>
-                <div class="moyenne-subtitle">{{ $notes->count() }} note(s) • {{ $totalCoeff }} coefficients</div>
+                <div class="moyenne-value">{{ $fmt($moyenne) }}@if($moyenne !== null) /20 @endif</div>
+                <div class="moyenne-subtitle">{{ $notes->count() }} note(s) · {{ $moyenne === null ? 'Moyenne non disponible' : 'Synthèse annuelle BTS' }}</div>
             </div>
             @endif
 
@@ -903,6 +909,13 @@
 {{-- ================= Mobile (shell m-*) : appbar + segments semestres + notes ================= --}}
 <div class="m-only-mobile m-screen mnm" x-data="{ seg: @js($segDefaut) }">
     <x-m.appbar title="Mes notes" :sub="$sousTitre !== '' ? $sousTitre : null">
+        @if($releveDisponible)
+            <a href="{{ route('esbtp.mes-notes.releve-consultatif') }}" class="m-ib" target="_blank" rel="noopener"
+               aria-label="Ouvrir mon relevé consultatif de notes en PDF" title="Relevé consultatif PDF">
+                <x-m.icon name="dl" />
+            </a>
+        @endif
+
         @if($peutContester)
             <a href="{{ route('esbtp.mes-reclamations.index') }}" class="m-ib" aria-label="Contester une note">
                 <x-m.icon name="alert" />

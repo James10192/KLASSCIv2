@@ -1,6 +1,6 @@
-@extends('layouts.app')
+@extends('layouts.guest-error')
 
-@section('title', \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI') . ' — Page non trouvée')
+@section('title', 'KLASSCI — Page non trouvée')
 
 @section('page_title', 'Page non trouvée')
 

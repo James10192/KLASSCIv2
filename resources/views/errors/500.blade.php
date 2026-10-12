@@ -1,6 +1,6 @@
-@extends('layouts.app')
+@extends('layouts.guest-error')
 
-@section('title', \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI') . ' — Erreur serveur')
+@section('title', 'KLASSCI — Erreur serveur')
 
 @section('page_title', 'Erreur serveur')
 
@@ -103,7 +103,7 @@
 
         <div class="pe-body">
             <p class="pe-message">
-                Une erreur inattendue est survenue. Nos équipes ont été automatiquement notifiées et travaillent à résoudre le problème.
+                Une erreur inattendue est survenue. Si le problème persiste, contactez l'assistance en indiquant le code de suivi ci-dessous.
             </p>
 
             <div class="pe-note">
@@ -122,14 +122,11 @@
                     <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
                     Réessayer
                 </a>
-                @auth
-                    {{-- Ouvre la fenetre de signalement si KLASSCI Care est actif ; sinon, le courriel. --}}
-                    <a href="mailto:{{ config('app.support_email') }}?subject={{ rawurlencode('Erreur '.request()->attributes->get('request_id')) }}"
-                       class="pe-btn pe-btn-outline" data-support-ouvrir data-support-code="{{ request()->attributes->get('request_id') }}">
-                        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-                        Signaler ce problème
-                    </a>
-                @endauth
+                <a href="mailto:{{ config('app.support_email') }}?subject={{ rawurlencode('Erreur '.request()->attributes->get('request_id')) }}"
+                   class="pe-btn pe-btn-outline">
+                    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                    Signaler ce problème
+                </a>
                 <a href="{{ url('/') }}" class="pe-btn pe-btn-outline">
                     <svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1"/></svg>
                     Accueil

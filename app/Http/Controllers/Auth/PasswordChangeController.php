@@ -65,6 +65,6 @@ class PasswordChangeController extends Controller
         \Log::info('Mot de passe changé avec succès', ['user_id' => $user->id, 'email' => $user->email]);
 
         return redirect()->route('dashboard')->with('success',
-            'Votre mot de passe a été changé avec succès. Bienvenue dans le système ESBTP!');
+            'Votre mot de passe a été changé avec succès. Bienvenue sur KLASSCI !');
     }
 }

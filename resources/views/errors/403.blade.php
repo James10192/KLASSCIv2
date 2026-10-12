@@ -1,6 +1,6 @@
-@extends('layouts.app')
+@extends(auth()->check() ? 'layouts.app' : 'layouts.guest-error')
 
-@section('title', \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI') . ' — Accès restreint')
+@section('title', 'KLASSCI — Accès restreint')
 
 @section('page_title', 'Accès restreint')
 
@@ -114,6 +114,10 @@
         </div>
 
         <div class="ar-body">
+            @guest
+                <p class="ar-message">Cette page nécessite une connexion ou une autorisation spécifique.</p>
+                <div class="ar-actions"><a class="ar-btn ar-btn-primary" href="{{ route('login') }}">Se connecter à KLASSCI</a></div>
+            @else
             <p class="ar-message">
                 L'accès à cette section est réservé aux utilisateurs disposant des droits nécessaires.
                 Pour obtenir l'autorisation, veuillez suivre la procédure ci-dessous.
@@ -162,6 +166,7 @@
                     Demander l'accès
                 </a>
             </div>
+            @endguest
         </div>
 
         <div class="ar-footer">

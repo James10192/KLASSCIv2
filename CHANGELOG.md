@@ -12,6 +12,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Portail de sécurité KLASSCI :** les écrans de mot de passe oublié, de réinitialisation et de première connexion adoptent l'identité visuelle premium de la page de connexion. Les messages ne mentionnent plus le système ESBTP. Les erreurs 403, 404, 419, 429, 500 et 503 ont un affichage adapté aux visiteurs, indépendant du tableau de bord interne.
+- **Mes notes BTS et LMD — relevé consultatif :** les étudiants peuvent ouvrir leur relevé personnel en PDF depuis Mes notes (bureau et mobile), avec identité et moyenne en fin de document. Le document indique explicitement qu'il n'a pas de valeur officielle ; il reprend les résultats des moteurs académiques existants et respecte la séparation BTS/LMD. La moyenne visible sur Mes notes BTS est désormais alignée avec le résultat académique, sans recalcul ad hoc.
+
 - **Caisse — règlement des reliquats :** un dialogue d'encaissement guidé est disponible depuis les situations financières et sur `paiements.create`. Le paiement reste séparé des frais courants, lié à sa dette d'origine, prévisualise le disponible après réservations et se crée en attente de validation. Modes autorisés et droit `paiements.create` ou variantes existantes, sans droit lié au report de réinscription ; contrôle serveur et AJAX sans rechargement.
 
 - **Réinscription avec impayés :** nouvelle permission d'école `reinscriptions.reliquats.report` configurable dans les rôles. Une dérogation exige une décision explicite et est contrôlée côté service ; remise/abandon reste distinct et réservé au SuperAdmin.
