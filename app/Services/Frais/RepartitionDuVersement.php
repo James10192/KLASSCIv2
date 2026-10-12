@@ -6,6 +6,7 @@ use App\Exceptions\AllocationIncoherenteException;
 use App\Exceptions\RepartitionRefuseeException;
 use App\Models\ESBTPFraisCategory;
 use App\Models\ESBTPFraisSubscription;
+use App\Models\ESBTPReliquatDetail;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPPaiementAllocation;
 
@@ -91,6 +92,16 @@ class RepartitionDuVersement
             ->sortBy(fn ($s) => [$s->fraisCategory->sort_order ?? 9999, $s->fraisCategory->id ?? 0])
             ->values();
 
+        // L'origine ne peut pas réclamer la part transférée à un reliquat.
+        // Même règle que SituationFinanciereEtudiant : un seul report par
+        // souscription, le plus récent si des doublons historiques existent.
+        $montantsReportes = ESBTPReliquatDetail::query()
+            ->where('inscription_source_id', $inscriptionId)
+            ->orderByDesc('id')
+            ->get(['id', 'frais_subscription_id', 'montant_reliquat'])
+            ->unique('frais_subscription_id')
+            ->pluck('montant_reliquat', 'frais_subscription_id');
+
         $reste = [];
 
         foreach ($souscriptions as $sub) {
@@ -102,8 +113,9 @@ class RepartitionDuVersement
 
             $du = (float) $sub->chargedAmount();
             $dejaPaye = (float) ($paye[$sub->frais_category_id] ?? 0);
+            $dejaReporte = (float) ($montantsReportes[$sub->id] ?? 0);
 
-            $reste[(int) $sub->frais_category_id] = max(0.0, round($du - $dejaPaye, 2));
+            $reste[(int) $sub->frais_category_id] = max(0.0, round($du - $dejaPaye - $dejaReporte, 2));
         }
 
         return $reste;
