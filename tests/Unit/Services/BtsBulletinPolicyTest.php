@@ -177,6 +177,26 @@ class BtsBulletinPolicyTest extends TestCase
         self::assertSame('Redouble la classe', BtsBulletinPolicy::displayCouncilDecision('Redouble la classe', 'Admis(e)', true));
     }
 
+    public function test_annuel_au_seuil_ignore_une_ancienne_admission_enregistree(): void
+    {
+        $settings = [
+            'bulletin_bts1_council_mode' => 'threshold',
+            'bulletin_bts1_council_average_source' => 'annual',
+            'bulletin_bts1_council_threshold' => '10',
+            'bulletin_bts1_council_below_text' => 'Redouble la classe',
+            'bulletin_bts1_council_at_or_above_text' => 'Admis(e) en 2e Année BTS',
+        ];
+
+        $source = BtsBulletinPolicy::councilAverageSource(1, $settings);
+        $moyenne = BtsBulletinPolicy::decisionAverage($source, 12.0, 9.0);
+        $verdict = BtsBulletinPolicy::councilDecision(true, 1, 'semestre2', $moyenne, $settings);
+        self::assertSame('Redouble la classe', BtsBulletinPolicy::displayCouncilDecision($verdict, 'Admis(e) en 2e Année BTS', true));
+
+        $sansAnnuelle = BtsBulletinPolicy::decisionAverage($source, 12.0, null);
+        $nonDecide = BtsBulletinPolicy::councilDecision(true, 1, 'semestre2', $sansAnnuelle, $settings);
+        self::assertNull(BtsBulletinPolicy::displayCouncilDecision($nonDecide, 'Admis(e) en 2e Année BTS', true));
+    }
+
     public function test_la_decision_se_prend_par_defaut_sur_la_moyenne_annuelle(): void
     {
         self::assertSame('annual', BtsBulletinPolicy::defaultFor('bulletin_bts1_council_average_source'));

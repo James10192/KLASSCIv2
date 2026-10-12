@@ -244,6 +244,43 @@ class AnalyseDecisionsReinscriptionTest extends TestCase
         $this->assertTrue($analyse['peut_passer']);
     }
 
+    public function test_une_annuelle_sous_le_seuil_refuse_le_passage_meme_si_le_s2_est_bon_et_la_regle_academique_plus_basse(): void
+    {
+        [, $inscription] = $this->eleveAvecBulletins(7.41, 10.24, noteBrute: 17.0);
+        SettingsHelper::setOrCreate('bulletin_bts1_council_mode', 'threshold');
+        SettingsHelper::setOrCreate('bulletin_bts1_council_average_source', 'annual');
+        SettingsHelper::setOrCreate('bulletin_bts1_council_threshold', '10');
+        ESBTPRegleAcademique::where('niveau', $inscription->classe->niveau->name)
+            ->where('filiere', $inscription->classe->filiere->name)
+            ->update(['moyenne_passage' => 9]);
+
+        $analyse = app(ReeinscriptionService::class)->analyserSituationEtudiantParInscription($inscription);
+        $this->assertSame('bulletin_annuel', $analyse['moyenne_source']);
+        $this->assertEqualsWithDelta(9.30, $analyse['moyenne_generale'], 0.01);
+        $this->assertFalse($analyse['peut_passer']);
+        $this->assertSame('redoublement', $analyse['decision']);
+    }
+
+    public function test_une_annuelle_indisponible_ne_declenche_aucun_passage_avec_bon_s2_en_mode_annuel(): void
+    {
+        [$etudiant, $inscription] = $this->eleveAvecBulletins(12.0, 13.0, noteBrute: 18.0);
+        ESBTPBulletin::where('etudiant_id', $etudiant->id)->where('periode', 'semestre1')->delete();
+        SettingsHelper::setOrCreate('bulletin_bts1_council_mode', 'threshold');
+        SettingsHelper::setOrCreate('bulletin_bts1_council_average_source', 'annual');
+        SettingsHelper::setOrCreate('bulletin_bts1_council_threshold', '10');
+
+        $analyse = app(ReeinscriptionService::class)->analyserSituationEtudiantParInscription($inscription);
+
+        $this->assertSame('bulletin_incomplet', $analyse['moyenne_source']);
+        $this->assertNull($analyse['moyenne_generale']);
+        $this->assertFalse($analyse['peut_passer']);
+        $this->assertSame('a_verifier', $analyse['decision']);
+
+        $liste = app(ReeinscriptionService::class)->getEtudiantsParDecision('2025-2026');
+        $this->assertNotContains($etudiant->id, collect($liste['passages'])->pluck('etudiant.id')->all());
+        $this->assertContains($etudiant->id, collect($liste['errors'])->pluck('etudiant.id')->all());
+    }
+
     public function test_une_annuelle_absente_ne_peut_etre_remplacee_par_les_notes_brutes_en_mode_deux(): void
     {
         [, $inscription] = $this->eleveAvecBulletins(12.0, 13.0, noteBrute: 18.0);
