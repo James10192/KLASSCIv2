@@ -2218,6 +2218,30 @@
 </style>
 @endsection
 
+@push('styles')
+<style>
+.fin-shortcuts{display:flex;gap:.55rem;flex-wrap:wrap;margin:-.1rem 0 1.1rem}
+.fin-shortcuts a{color:#0453cb;background:#eff6ff;border:1px solid #c8dafb;border-radius:10px;text-decoration:none;padding:.55rem .85rem;font-size:.79rem;font-weight:700}
+.fin-shortcuts a:hover,.fin-shortcuts a:focus-visible{background:#dbeafe;outline-offset:2px}
+.fin-reference-empty{display:flex;align-items:center;gap:.85rem;background:#f8fafc;border:1px solid #d5e1f4;border-left:4px solid #0453cb;border-radius:13px;padding:1.2rem;margin-bottom:1.1rem;color:#334155;font-size:.86rem}
+.fin-reference-empty i{color:#0453cb;font-size:1.25rem}
+.fin-global-disclosure{scroll-margin-top:90px;border:1px solid #d7e1f1;border-radius:14px;background:#fff;margin:1.35rem 0;overflow:hidden}
+.fin-global-disclosure>summary{list-style:none;display:flex;gap:.75rem;align-items:center;cursor:pointer;padding:1rem 1.2rem;background:#f8fafc}
+.fin-global-disclosure>summary::-webkit-details-marker{display:none}
+.fin-global-disclosure>summary>span:first-child{display:flex;flex-direction:column;gap:.23rem;flex:1;min-width:0}
+.fin-global-disclosure>summary strong{font-size:.89rem;color:#0f172a}
+.fin-global-disclosure>summary small{font-size:.74rem;color:#64748b;font-weight:400}
+.fin-global-disclosure>summary i.fa-layer-group{display:none}
+.fin-global-total{display:flex;flex-direction:column;text-align:right;gap:.25rem}
+.fin-global-total strong{color:#0453cb!important;font-variant-numeric:tabular-nums}
+.fin-global-chevron{color:#0453cb;transition:transform .2s}
+.fin-global-disclosure[open] .fin-global-chevron{transform:rotate(180deg)}
+.fin-global-detail{padding:1rem}
+.fin-global-detail .sfe-card{box-shadow:none;border:0;margin:0;padding:.5rem}
+@media(max-width:700px){.fin-global-disclosure>summary{flex-wrap:wrap}.fin-global-total{text-align:left;order:3;width:100%}.fin-global-detail{padding:.5rem}}
+</style>
+@endpush
+
 @section('content')
 <div class="fiche-page">
 
@@ -5265,7 +5289,6 @@
      $finInscRef, pose ici, et disparait avec lui. --}}
 @if($voirFinances)
 <div class="tab-panel" id="tab-finances">
-    <x-situation-financiere-etudiant :situation="$situationFinanciere" />
     @php
         /* ── Inscription de l'année courante (priorité absolue) ── */
         $finAnneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
@@ -5320,6 +5343,8 @@
         $finTaux   = $finTotalAttenduGlobal > 0 ? min(100, round($finTotalPayeGlobal / $finTotalAttenduGlobal * 100)) : 0;
     @endphp
 
+    {{-- La situation de l'inscription de référence précède les agrégats multi-années. --}}
+    @if($finInscRef)
     {{-- ── HERO FINANCIER ─────────────────────────────────────── --}}
     <div class="fin-hero">
         @if($finInscActive)
@@ -5462,6 +5487,17 @@
             @endif
         </div>
     </div>
+    @else
+    <div class="fin-reference-empty" role="status">
+        <i class="fas fa-calendar-times" aria-hidden="true"></i>
+        <span><strong>Pas d'inscription pour l'année courante.</strong> Consultez les inscriptions antérieures ci-dessous pour vérifier et régler les dettes, sans réinscription.</span>
+    </div>
+    @endif
+    <nav class="fin-shortcuts" aria-label="Naviguer dans la situation financière">
+        @if($finInscActive)<a href="#fin-frais-inscription">Frais de l'inscription</a>@endif
+        <a href="#fin-global-multi">Situation globale toutes années</a>
+        @if($finAutresInscs->isNotEmpty())<a href="#fin-autres-annees">Autres inscriptions ({{ $finAutresInscs->count() }})</a>@endif
+    </nav>
 
     {{-- ── BANDEAU PAIEMENTS EN ATTENTE ── --}}
     @php
@@ -5517,7 +5553,7 @@
     @endphp
 
     @if($finHasSubscriptions)
-    <div class="s-card" style="margin-bottom:16px;">
+    <div id="fin-frais-inscription" class="s-card" style="margin-bottom:16px; scroll-margin-top:90px;">
         <div class="s-card-header">
             <div class="s-card-title">
                 <div class="s-card-title-icon"><i class="fas fa-table"></i></div>
@@ -5746,9 +5782,19 @@
         @endif
     </div>
 
+    {{-- La vue globale reste disponible sans reléguer les frais de l'année active au bas de l'écran. --}}
+    <details id="fin-global-multi" class="fin-global-disclosure" @if(!$finInscRef) open @endif>
+        <summary>
+            <span><i class="fas fa-layer-group" aria-hidden="true"></i><strong>Situation financière sur toutes les inscriptions</strong><small>Une dette conserve son année d'origine · détail et reports</small></span>
+            <span class="fin-global-total"><small>À régulariser au total</small><strong>{{ number_format((float) ($situationFinanciere['total'] ?? 0), 0, ',', ' ') }} FCFA</strong></span>
+            <i class="fas fa-chevron-down fin-global-chevron" aria-hidden="true"></i>
+        </summary>
+        <div class="fin-global-detail"><x-situation-financiere-etudiant :situation="$situationFinanciere" /></div>
+    </details>
+
     {{-- ── AUTRES INSCRIPTIONS (années précédentes) ────────────── --}}
     @if($finAutresInscs->count())
-    <div class="fin-autres-header">
+    <div id="fin-autres-annees" class="fin-autres-header" style="scroll-margin-top:90px;">
         <i class="fas fa-archive"></i>
         Autres années ({{ $finAutresInscs->count() }})
     </div>

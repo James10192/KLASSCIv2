@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-12 · #1561 · Fiche étudiant > Finances : année de référence et frais de l'inscription affichés en premier, situation multi-années consultable ensuite sans perdre les anciennes inscriptions.
 - 2026-10-12 · Caisse et suivi des paiements : les dettes anciennes peuvent être payées même sans nouvelle inscription. Séparez « Tous les encaissements », « Frais de cette année » et « Dettes anciennes » pour éviter de confondre paiements et nouveaux inscrits.
 
 - 2026-10-11 · Caisse : régler un reliquat depuis la fiche financière ou « Encaisser un paiement » ; modal premium avec montant disponible, paiements en attente, choix du mode autorisé et confirmation AJAX, sans mélanger la nouvelle scolarité.
