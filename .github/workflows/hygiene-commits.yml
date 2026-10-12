@@ -413,6 +413,20 @@ jobs:
       - name: "Portées de caisse - année de paiement, année de dette et inscrits"
         run: php vendor/bin/phpunit tests/Feature/Paiements/PerimetreAnneeDettePaiementsTest.php --no-coverage
 
+      # La moyenne S2 ne peut plus admettre un BTS1 si la règle choisie
+      # exige aussi la moyenne annuelle. Même règle au bulletin et à la réinscription.
+      - name: Conseil BTS - deux moyennes, configuration et réinscription
+        run: |
+          echec=0
+          for chemin in \
+            tests/Unit/Services/BtsBulletinPolicyTest.php \
+            tests/Feature/Bulletin/BtsBulletinConfigurationHttpTest.php \
+            tests/Feature/Reinscription/AnalyseDecisionsReinscriptionTest.php
+          do
+            php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
+          done
+          exit $echec
+
       - name: Validation inline depuis la fiche inscription
         run: php vendor/bin/phpunit tests/Feature/Paiements/InscriptionShowPaiementsInlineTest.php --no-coverage
 

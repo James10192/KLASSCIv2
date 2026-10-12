@@ -154,6 +154,11 @@ class BtsBulletinPolicyTest extends TestCase
     {
         self::assertSame(12.0, BtsBulletinPolicy::decisionAverage('semestre2', 12.0, 9.5));
         self::assertSame(9.5, BtsBulletinPolicy::decisionAverage('annual', 12.0, 9.5));
+        self::assertSame(9.5, BtsBulletinPolicy::decisionAverage('both', 12.0, 9.5));
+        self::assertSame(8.5, BtsBulletinPolicy::decisionAverage('both', 8.5, 14.0));
+        self::assertSame(12.0, BtsBulletinPolicy::decisionAverage('both', 12.0, 13.0));
+        self::assertNull(BtsBulletinPolicy::decisionAverage('both', 12.0, null));
+        self::assertNull(BtsBulletinPolicy::decisionAverage('both', null, 14.0));
     }
 
     /**
@@ -162,6 +167,16 @@ class BtsBulletinPolicyTest extends TestCase
      * second semestre lisait « Redouble la classe » au bas d'un bulletin qui
      * imprimait 11,20 juste au-dessus.
      */
+    public function test_le_mode_deux_moyennes_est_valide_et_n_utilise_pas_une_decision_stockee_si_incomplet(): void
+    {
+        self::assertContains('nullable', BtsBulletinPolicy::validationRules()['bulletin_bts1_council_average_source']);
+        self::assertContains('in:semestre2,annual,both', BtsBulletinPolicy::validationRules()['bulletin_bts1_council_average_source']);
+        self::assertSame('both', BtsBulletinPolicy::councilAverageSource(1, ['bulletin_bts1_council_average_source' => 'both']));
+        self::assertSame('annual', BtsBulletinPolicy::councilAverageSource(1, ['bulletin_bts1_council_average_source' => 'inconnu']));
+        self::assertNull(BtsBulletinPolicy::displayCouncilDecision(null, 'Admis(e)', true));
+        self::assertSame('Redouble la classe', BtsBulletinPolicy::displayCouncilDecision('Redouble la classe', 'Admis(e)', true));
+    }
+
     public function test_la_decision_se_prend_par_defaut_sur_la_moyenne_annuelle(): void
     {
         self::assertSame('annual', BtsBulletinPolicy::defaultFor('bulletin_bts1_council_average_source'));

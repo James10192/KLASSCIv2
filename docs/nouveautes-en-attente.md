@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-12 · #1564 · Paramètres > Bulletins > Conseil BTS 1 : nouveau critère « Les deux moyennes » (S2 et annuelle au seuil), décision auto et réinscription cohérentes, résultat incomplet à vérifier.
 - 2026-10-12 · #1561 · État financier toutes années : les inscriptions terminées restent dans le suivi et les reliquats reportés sont ventilés sans double compter les créances.
 - 2026-10-12 · #1561 · Recette caisse : test un paiement d'aujourd'hui sur une ancienne inscription (sans inclure le paiement d'hier sur l'année courante) ; raccourci frais seulement quand la section existe.
 - 2026-10-12 · #1561 · Tests d'encaissement sur dossier achevé alignés sur la valeur ENUM officielle `terminée` ; la validation accepte aussi l'orthographe legacy `terminee` sans ouvrir les inscriptions annulées.

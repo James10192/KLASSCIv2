@@ -206,6 +206,25 @@ class BtsBulletinConfigurationHttpTest extends TestCase
         self::assertSame('Direction des Études', SettingsHelper::get('lmd_bulletin_direction'));
     }
 
+    public function test_configuration_bts_accepte_les_deux_moyennes_pour_le_seuil(): void
+    {
+        $response = $this->postJson(route('esbtp.bulletins.save-configuration'), [
+            'bulletin_bts1_council_average_source' => 'both',
+        ]);
+
+        $response->assertOk()->assertJsonPath('success', true);
+        self::assertSame('both', SettingsHelper::get('bulletin_bts1_council_average_source'));
+    }
+
+    public function test_configuration_bts_refuse_une_source_de_decision_inconnue(): void
+    {
+        $response = $this->postJson(route('esbtp.bulletins.save-configuration'), [
+            'bulletin_bts1_council_average_source' => 'une_seule_au_hasard',
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['bulletin_bts1_council_average_source']);
+    }
+
     public function test_yakro_header_scale_is_rejected_outside_safe_bounds(): void
     {
         SettingsHelper::setOrCreate('bulletin_bts1_semester1_weight', '1', 'bulletin');

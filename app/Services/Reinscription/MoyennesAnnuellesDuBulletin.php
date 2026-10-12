@@ -135,9 +135,19 @@ class MoyennesAnnuellesDuBulletin
         }
 
         if (($annuelle['moyenne_decision'] ?? null) !== null) {
-            $source = $annuelle['source_conseil'] === 'annual' ? 'bulletin_annuel' : 'bulletin_semestre2';
+            $source = match ($annuelle['source_conseil']) {
+                BtsBulletinPolicy::SOURCE_BOTH => 'bulletin_deux_moyennes',
+                'annual' => 'bulletin_annuel',
+                default => 'bulletin_semestre2',
+            };
 
             return ['moyenne' => $annuelle['moyenne_decision'], 'source' => $source, 'semestres' => $annuelle];
+        }
+
+        // Les deux moyennes sont obligatoires : jamais de repli sur les notes
+        // brutes pouvant rendre un passage alors que l'une manque.
+        if (($annuelle['source_conseil'] ?? $this->sourceDuConseil($classe)) === BtsBulletinPolicy::SOURCE_BOTH) {
+            return ['moyenne' => null, 'source' => 'bulletin_incomplet', 'semestres' => $annuelle];
         }
 
         $source = $sansNote ? 'aucune_note' : 'notes_brutes';
@@ -177,6 +187,7 @@ class MoyennesAnnuellesDuBulletin
         $anneeId = (int) $premiere->annee_universitaire_id;
         $poids = $this->bulletins->getSemesterWeights($classe);
         $sourceConseil = $this->sourceDuConseil($classe);
+        $seuilConseil = $this->seuilDoubleMoyenne($classe, $sourceConseil);
 
         // La classe qui porte chaque semestre, eleve par eleve.
         $classesDuSemestre = [];
@@ -210,11 +221,36 @@ class MoyennesAnnuellesDuBulletin
                 'semestre2' => $s2,
                 'poids' => ['semester1' => (float) $poids['semester1'], 'semester2' => (float) $poids['semester2']],
                 'source_conseil' => $sourceConseil,
+                'seuil_conseil' => $seuilConseil,
                 'moyenne_decision' => BtsBulletinPolicy::decisionAverage($sourceConseil, $s2, $annuelle),
             ];
         }
 
         return $resultat;
+    }
+
+    /**
+     * Un conseil BTS1 en mode double seuil n'autorise pas un passage via
+     * la règle académique si son propre seuil configuré est plus exigeant.
+     * En mode manuel, seul le seuil académique de réinscription reste actif.
+     */
+    private function seuilDoubleMoyenne(ESBTPClasse $classe, string $source): ?float
+    {
+        if ($source !== BtsBulletinPolicy::SOURCE_BOTH) {
+            return null;
+        }
+
+        $annee = $classe->relationLoaded('niveau') ? $classe->niveau?->year : $classe->niveau()->value('year');
+        if (! in_array((int) $annee, [1, 2], true)) {
+            return null;
+        }
+
+        $prefix = "bulletin_bts{$annee}_council_";
+        if (SettingsHelper::get($prefix.'mode', BtsBulletinPolicy::defaultFor($prefix.'mode')) !== 'threshold') {
+            return null;
+        }
+
+        return (float) SettingsHelper::get($prefix.'threshold', BtsBulletinPolicy::defaultFor($prefix.'threshold') ?? 10);
     }
 
     /** Le reglage que `BulletinService::automaticCouncilDecision()` lit, pour ce niveau. */

@@ -10,6 +10,8 @@ namespace App\Services;
  */
 final class BtsBulletinPolicy
 {
+    public const SOURCE_BOTH = 'both';
+
     private const SETTING_DEFINITIONS = [
         'bulletin_bts1_semester1_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 1 Semestre 1', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
         'bulletin_bts1_semester2_weight' => ['value' => '2', 'type' => 'float', 'description' => 'Coefficient BTS 1 Semestre 2', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
@@ -39,7 +41,7 @@ final class BtsBulletinPolicy
         // lue. Aucun bulletin déjà imprimé ne change. Le nouveau défaut ne vaut
         // donc que pour une instance future en `threshold` sans réglage posé.
         // Ne pas le rebasculer sans redemander au fondateur.
-        'bulletin_bts1_council_average_source' => ['value' => 'annual', 'type' => 'string', 'description' => 'Moyenne de décision BTS 1', 'validation_rules' => ['nullable', 'in:semestre2,annual']],
+        'bulletin_bts1_council_average_source' => ['value' => 'annual', 'type' => 'string', 'description' => 'Moyenne de décision BTS 1', 'validation_rules' => ['nullable', 'in:semestre2,annual,both']],
         'bulletin_bts1_council_threshold' => ['value' => '10', 'type' => 'float', 'description' => 'Seuil de décision BTS 1', 'validation_rules' => ['required_if:bulletin_bts1_council_mode,threshold', 'nullable', 'numeric', 'between:0,20']],
         'bulletin_bts1_council_below_text' => ['value' => 'Redouble la classe', 'type' => 'string', 'description' => 'Décision BTS 1 sous le seuil', 'validation_rules' => ['required_if:bulletin_bts1_council_mode,threshold', 'nullable', 'string', 'max:191']],
         'bulletin_bts1_council_at_or_above_text' => ['value' => 'Admis(e) en 2e Année BTS', 'type' => 'string', 'description' => 'Décision BTS 1 au seuil ou au-dessus', 'validation_rules' => ['required_if:bulletin_bts1_council_mode,threshold', 'nullable', 'string', 'max:191']],
@@ -53,7 +55,7 @@ final class BtsBulletinPolicy
         // a BTS 2, la decision se prendra sur ce qui est ecrit ici, pas sur un
         // repli cache. Elle n'est pas encore a l'ecran, faute de mode qui la
         // consulte ; l'y mettre afficherait un choix sans effet.
-        'bulletin_bts2_council_average_source' => ['value' => 'annual', 'type' => 'string', 'description' => 'Moyenne de décision BTS 2', 'validation_rules' => ['nullable', 'in:semestre2,annual']],
+        'bulletin_bts2_council_average_source' => ['value' => 'annual', 'type' => 'string', 'description' => 'Moyenne de décision BTS 2', 'validation_rules' => ['nullable', 'in:semestre2,annual,both']],
         'bulletin_bts2_council_fixed_text' => ['value' => "Redouble en cas d'échec à l'examen du BTS", 'type' => 'string', 'description' => 'Décision fixe BTS 2', 'validation_rules' => ['required_if:bulletin_bts2_council_mode,fixed', 'nullable', 'string', 'max:191']],
     ];
 
@@ -197,6 +199,7 @@ final class BtsBulletinPolicy
     public static function displayCouncilDecision(
         ?string $configuredDecision,
         mixed $storedDecision,
+        bool $automaticRequired = false,
     ): ?string {
         // La politique prime quand elle repond. Quand elle ne repond pas —
         // mode manuel, ou moyenne de decision indisponible — c'est la decision
@@ -204,6 +207,12 @@ final class BtsBulletinPolicy
         // l'ecran, puis de la base, ce qu'un humain avait ecrit : en mode
         // manuel, qui est le DEFAUT, regenerer un bulletin de semestre 2
         // suffisait a perdre la decision du conseil.
+        // Mode seuil : une ancienne décision enregistrée ne doit pas masquer
+        // l'absence d'une moyenne requise (ex. annuelle encore indisponible).
+        if ($automaticRequired) {
+            return $configuredDecision;
+        }
+
         return $configuredDecision ?? self::textOrNull($storedDecision);
     }
 
@@ -228,12 +237,19 @@ final class BtsBulletinPolicy
         // Un niveau hors BTS 1 / BTS 2 n'a pas de cle declaree, et une ligne
         // vidée en base rend ''. Dans les deux cas on nomme le comportement
         // plutot que de le laisser tomber du cote du semestre 2 par accident.
-        return is_string($valeur) && $valeur !== '' ? $valeur : 'annual';
+        return is_string($valeur) && in_array($valeur, ['annual', 'semestre2', self::SOURCE_BOTH], true)
+            ? $valeur : 'annual';
     }
 
     public static function decisionAverage(string $source, ?float $semester2Average, ?float $annualAverage): ?float
     {
-        return $source === 'annual' ? $annualAverage : $semester2Average;
+        return match ($source) {
+            'semestre2' => $semester2Average,
+            self::SOURCE_BOTH => $semester2Average !== null && $annualAverage !== null
+                ? min($semester2Average, $annualAverage)
+                : null,
+            default => $annualAverage,
+        };
     }
 
     private static function nonNegativeWeight(mixed $value, float $fallback): float

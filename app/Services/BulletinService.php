@@ -787,9 +787,12 @@ class BulletinService
             $moyenneAnnuelle,
             $levelYear
         );
+        $seuilAutomatiqueBts = BtsBulletinPolicy::usesCouncilPolicy($classe->isBTS(), $levelYear, $this->normalizePeriode($periode))
+            && $this->councilDecisionMode($levelYear) === 'threshold';
         $decisionConseil = BtsBulletinPolicy::displayCouncilDecision(
             $automaticCouncilDecision,
-            $bulletin?->decision_conseil
+            $bulletin?->decision_conseil,
+            $seuilAutomatiqueBts
         );
 
         // Quand la moyenne de decision manque, la case reste vide et rien ne le
@@ -805,7 +808,7 @@ class BulletinService
         // decision saisie a la main chaque fois que la politique ne repondait
         // pas — c'est-a-dire en mode manuel, et desormais aussi quand la
         // moyenne annuelle manque parce qu'un semestre n'a pas de notes.
-        if ($persistOfficial && $bulletin && $councilDecision['text'] !== '') {
+        if ($persistOfficial && $bulletin && ($councilDecision['text'] !== '' || $seuilAutomatiqueBts)) {
             $bulletin->decision_conseil = $councilDecision['text'];
             $bulletin->save();
         }

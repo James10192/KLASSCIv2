@@ -67,6 +67,9 @@ class ReeinscriptionService
         $notes = $this->getNotesEtudiant($etudiantId, $anneeAcademique, $classe);
         $moyenne = $this->moyennePourDecision($inscriptionQuittee, $classe, $notes);
         $moyenneGenerale = $moyenne['moyenne'];
+        $seuilConseil = $moyenne['semestres']['seuil_conseil'] ?? null;
+        $refusConseil = $moyenneGenerale !== null && $seuilConseil !== null
+            && (float) $moyenneGenerale < (float) $seuilConseil;
         $matieresEchouees = $this->getMatieresEchouees($notes, $regle->moyenne_passage);
 
         return [
@@ -77,10 +80,10 @@ class ReeinscriptionService
             'moyennes_semestres' => $moyenne['semestres'],
             'notes' => $notes,
             'matieres_echouees' => $matieresEchouees,
-            'decision' => $this->determinerDecision($moyenneGenerale, $matieresEchouees, $regle),
-            'peut_passer' => $regle->peutPasser($moyenneGenerale),
-            'peut_rattraper' => $regle->peutRattraper($moyenneGenerale),
-            'doit_redoubler' => $regle->doitRedoubler($moyenneGenerale)
+            'decision' => $moyenneGenerale === null ? 'a_verifier' : ($refusConseil ? 'redoublement' : $this->determinerDecision($moyenneGenerale, $matieresEchouees, $regle)),
+            'peut_passer' => $moyenneGenerale !== null && ! $refusConseil && $regle->peutPasser($moyenneGenerale),
+            'peut_rattraper' => $moyenneGenerale !== null && ! $refusConseil && $regle->peutRattraper($moyenneGenerale),
+            'doit_redoubler' => $moyenneGenerale !== null && ($refusConseil || $regle->doitRedoubler($moyenneGenerale))
         ];
     }
     
@@ -119,6 +122,9 @@ class ReeinscriptionService
         $notes = $this->getNotesEtudiant($etudiant->id, $anneeDesResultats, $classe);
         $moyenne = $this->moyennePourDecision($inscription, $classe, $notes);
         $moyenneGenerale = $moyenne['moyenne'];
+        $seuilConseil = $moyenne['semestres']['seuil_conseil'] ?? null;
+        $refusConseil = $moyenneGenerale !== null && $seuilConseil !== null
+            && (float) $moyenneGenerale < (float) $seuilConseil;
         $matieresEchouees = $this->getMatieresEchouees($notes, $regle->moyenne_passage);
 
         // Vérification de sécurité: s'assurer que l'étudiant n'est pas null
@@ -146,10 +152,10 @@ class ReeinscriptionService
             'moyennes_semestres' => $moyenne['semestres'],
             'notes' => $notes,
             'matieres_echouees' => $matieresEchouees,
-            'decision' => $this->determinerDecision($moyenneGenerale, $matieresEchouees, $regle),
-            'peut_passer' => $regle->peutPasser($moyenneGenerale),
-            'peut_rattraper' => $regle->peutRattraper($moyenneGenerale),
-            'doit_redoubler' => $regle->doitRedoubler($moyenneGenerale)
+            'decision' => $moyenneGenerale === null ? 'a_verifier' : ($refusConseil ? 'redoublement' : $this->determinerDecision($moyenneGenerale, $matieresEchouees, $regle)),
+            'peut_passer' => $moyenneGenerale !== null && ! $refusConseil && $regle->peutPasser($moyenneGenerale),
+            'peut_rattraper' => $moyenneGenerale !== null && ! $refusConseil && $regle->peutRattraper($moyenneGenerale),
+            'doit_redoubler' => $moyenneGenerale !== null && ($refusConseil || $regle->doitRedoubler($moyenneGenerale))
         ];
     }
 
@@ -215,6 +221,7 @@ class ReeinscriptionService
             ->whereNotIn('id', collect($resultat['passages'])->pluck('etudiant.id')
                                 ->merge(collect($resultat['rattrapages'])->pluck('etudiant.id'))
                                 ->merge(collect($resultat['redoublements'])->pluck('etudiant.id'))
+                                ->merge(collect($resultat['errors'])->pluck('etudiant.id'))
                                 ->filter())
             ->get();
 
@@ -288,6 +295,12 @@ class ReeinscriptionService
                     break;
                 case 'redoublement':
                     $resultat['redoublements'][] = $analyse;
+                    break;
+                case 'a_verifier':
+                    $resultat['errors'][] = [
+                        'etudiant' => $analyse['etudiant'],
+                        'error' => 'Moyenne annuelle et/ou semestre 2 indisponible : décision du conseil à vérifier.',
+                    ];
                     break;
             }
         } catch (\Exception $e) {

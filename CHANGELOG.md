@@ -12,6 +12,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **BTS 1 — décision du conseil selon deux moyennes :** dans Paramètres > Bulletins, le seuil d'admission peut désormais s'appliquer au seul S2, à la moyenne annuelle ou aux **deux** (S2 ET annuelle). Dans ce dernier cas, chacune doit atteindre le seuil : une bonne moyenne S2 ne suffit plus lorsque l'annuelle est insuffisante. Si une des moyennes manque, aucune admission automatique n'est générée et la réinscription est signalée à vérifier. Les valeurs déjà configurées par les établissements restent inchangées jusqu'à sélection explicite du nouveau mode.
+
 - **Encaissements des anciennes promotions :** les inscriptions terminées restent consultables à la caisse pour régler leurs frais encore dus, mais les inscriptions annulées ne sont jamais proposées. Aucun dossier de l'année courante n'est créé.
 
 - **Fiche étudiant — finances réorganisées :** l'inscription de référence (année courante, ou future sous réserve) et ses frais apparaissent avant la synthèse multi-années. Le compte global est repliable et accessible directement, les autres inscriptions restent visibles ; sans inscription courante, la fiche invite à consulter les dettes anciennes sans réinscription.
