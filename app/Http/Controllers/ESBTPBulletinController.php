@@ -128,10 +128,15 @@ class ESBTPBulletinController extends Controller
         $bulletins = $query->orderBy('created_at', 'desc')->orderBy('id', 'desc')
             ->paginate($lignesTouchees === [] ? 20 : max(1, count($lignesTouchees)))->appends($request->query());
 
+        // Même projection que les résultats/PDF, mutualisée par cohorte : ni
+        // bulletin.rang périmé ni calcul N+1 sur les lignes AJAX.
+        $rangsCourants = app(\App\Services\RankingService::class)
+            ->rangsPourBulletins($bulletins->items());
+
         if (ListeInfinie::demandee($request)) {
             return ListeInfinie::reponse(
                 $bulletins,
-                fn ($bulletin) => view('esbtp.bulletins.partials._ligne', compact('bulletin'))->render(),
+                fn ($bulletin) => view('esbtp.bulletins.partials._ligne', compact('bulletin', 'rangsCourants'))->render(),
                 $lignesTouchees === [] ? [] : ['stats' => $this->statistiquesDeLaListe($annee_id)],
             );
         }
@@ -142,7 +147,7 @@ class ESBTPBulletinController extends Controller
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'html' => view('esbtp.bulletins.partials._table', compact(
-                    'bulletins', 'classe_id', 'periode_id', 'annee_id', 'published', 'search'
+                    'bulletins', 'classe_id', 'periode_id', 'annee_id', 'published', 'search', 'rangsCourants'
                 ))->render(),
                 'stats' => $stats,
                 'count' => $bulletins->count(),
@@ -160,7 +165,8 @@ class ESBTPBulletinController extends Controller
             'periode_id',
             'published',
             'search',
-            'stats'
+            'stats',
+            'rangsCourants'
         ));
     }
 

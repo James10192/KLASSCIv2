@@ -45,12 +45,62 @@ class EtudiantAcademicJourneyPresenter
         $classeIds = $inscriptions->pluck('classe_id')->filter()->unique()->values();
         $anneeIds = $inscriptions->pluck('annee_universitaire_id')->filter()->unique()->values();
 
-        return $this->presentFromCollections(
+        $presentation = $this->presentFromCollections(
             $inscriptions,
             $this->btsBulletins($etudiant, $classeIds, $anneeIds),
             $this->lmdBulletins($etudiant, $classeIds, $anneeIds),
             $this->resultats($etudiant, $classeIds, $anneeIds)
         );
+
+        // Aucun service de classement BTS ne doit être résolu pour un
+        // parcours purement LMD : ses moyennes et rangs restent inchangés.
+        if (! ($presentation['summary']['has_bts'] ?? false)) {
+            return $presentation;
+        }
+
+        // L'historique était une quatrième source de rang : le dernier
+        // bulletin S2 enregistré prêtait son ancien rang à une moyenne annuelle.
+        // Conserver les rangs LMD de leur propre système ; pour BTS, l'annuel
+        // suit exactement Résultats, le PDF et la classe propriétaire configurée.
+        $inscriptionsParId = $inscriptions->keyBy('id');
+        $classements = app(RankingService::class);
+        $maps = app(\App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver::class);
+        $politique = app(\App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::class);
+        $presentation['items'] = $presentation['items']->map(function (array $item) use (
+            $inscriptionsParId, $classements, $maps, $politique, $etudiant
+        ) {
+            if (($item['system'] ?? null) !== 'BTS') {
+                return $item;
+            }
+            if (($item['metrics']['moyenne'] ?? null) === null) {
+                // Sans moyenne affichée sur le parcours, un rang isolé serait
+                // trompeur, même si une autre projection a reçu des notes.
+                $item['metrics']['rang_label'] = null;
+                return $item;
+            }
+            $inscription = $inscriptionsParId->get($item['id']);
+            if (! $inscription?->classe_id || ! $inscription?->annee_universitaire_id) {
+                $item['metrics']['rang_label'] = null;
+                return $item;
+            }
+            $map = $maps->resolve(
+                (int) $etudiant->id,
+                (int) $inscription->classe_id,
+                (int) $inscription->annee_universitaire_id
+            );
+            $classeRangId = $politique->classeDeRang($map);
+            $rang = $classements->calculerRangPourEtudiant(
+                (int) $etudiant->id, $classeRangId,
+                (int) $inscription->annee_universitaire_id, 'annuel'
+            );
+            $item['metrics']['rang_label'] = ($rang['rang'] ?? null) !== null
+                ? $rang['rang'].'/'.$rang['total']
+                : null;
+
+            return $item;
+        });
+
+        return $presentation;
     }
 
     /**

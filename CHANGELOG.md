@@ -11,6 +11,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+
+- **Classements BTS jusque dans les listes :** la liste des bulletins (y compris ses tranches AJAX), le portail étudiant, « Mes notes » et le parcours académique affichent les rangs calculés par les mêmes cohortes S1/S2/annuel que les Résultats et les PDF. Les anciens rangs figés ne sont plus pris pour le classement courant ; aucun résultat n'est modifié.
 - **Export enseignants — composition sur mesure et portrait A4 :** choix des colonnes utiles, regroupement par matière, classe, niveau ou filière et nouveau document « Liste épurée ». Les rubriques remplacent les colonnes redondantes ; un PDF simple s'imprime en portrait, les vues plus larges basculent en paysage, et les mêmes données sont disponibles dans Excel. Correction du filtre par identifiant de matière sur les bulletins.
 
 - **Bulletins BTS — rang identique au dossier et aux résultats :** les rangs semestriels et annuels affichés dans l'aperçu/PDF sont calculés avec les mêmes moyennes courantes, effectifs, règles d'assiduité et ex æquo que dans Résultats et Fiche étudiant. Les bulletins historiques des autres étudiants ne faussent plus le classement de l'élève imprimé, sans modification des notes ni des données officielles stockées.

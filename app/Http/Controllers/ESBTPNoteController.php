@@ -1266,8 +1266,8 @@ class ESBTPNoteController extends Controller
      *
      * LMD : UE puis ECUE avec credits, moyennes et validation, par le presenter
      * (qui lit la projection du bulletin, jamais un recalcul). BTS : matieres
-     * et evaluations, par le snapshot BTS courant, plus le rang du bulletin
-     * publie quand il existe.
+     * et evaluations, par le snapshot BTS courant, plus le rang vivant de
+     * la cohorte canonique si un bulletin est publié.
      *
      * @return array{systeme: string, semestres: list<array<string, mixed>>}
      */
@@ -1293,13 +1293,16 @@ class ESBTPNoteController extends Controller
 
         $notesParEvaluation = $notes->keyBy('evaluation_id');
 
-        // Seul un bulletin publie donne un rang a l'etudiant.
+        // Le rang n'apparaît que pour un bulletin publié. Sa valeur vient
+        // toujours de RankingService, jamais du rang figé à sa génération.
         $bulletins = ESBTPBulletin::query()
             ->where('etudiant_id', $etudiant->id)
             ->where('annee_universitaire_id', $annee->id)
             ->where('is_published', true)
-            ->get(['periode', 'rang', 'effectif_classe'])
+            ->get(['id', 'etudiant_id', 'classe_id', 'annee_universitaire_id', 'periode'])
             ->keyBy('periode');
+        $rangsCourants = app(\App\Services\RankingService::class)
+            ->rangsPourBulletins($bulletins);
 
         $periodes = ['semestre1' => 'Semestre 1', 'semestre2' => 'Semestre 2', 'annuel' => 'Année'];
         $semestres = [];
@@ -1335,8 +1338,8 @@ class ESBTPNoteController extends Controller
                 'code' => $periode,
                 'label' => $label,
                 'moyenne' => isset($snap['effective_total']) ? (float) $snap['effective_total'] : null,
-                'rang' => $bulletin?->rang !== null ? (int) $bulletin->rang : null,
-                'effectif' => $bulletin?->effectif_classe !== null ? (int) $bulletin->effectif_classe : null,
+                'rang' => $bulletin ? ($rangsCourants[$bulletin->id]['rang'] ?? null) : null,
+                'effectif' => $bulletin ? ($rangsCourants[$bulletin->id]['total'] ?? null) : null,
                 'notes_count' => (int) ($snap['notes_count'] ?? 0),
                 'coefficients_manquants' => (bool) ($snap['coefficients_missing'] ?? false),
                 'statut' => (string) ($snap['state'] ?? 'no_data'),

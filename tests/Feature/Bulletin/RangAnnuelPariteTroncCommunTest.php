@@ -183,6 +183,44 @@ class RangAnnuelPariteTroncCommunTest extends TestCase
             ->calculerRangAnnuel($b->id, $spec->id, $annee->id, 13.0));
     }
 
+    public function test_listes_et_portail_ne_montrent_pas_des_rangs_historiques_perimes(): void
+    {
+        SettingsHelper::setOrCreate('tronc_commun_mga_include_s1', '1');
+        [$annee, $spec, $a, $b] = $this->scenario();
+
+        $bulletins = ESBTPBulletin::query()
+            ->whereIn('etudiant_id', [$a->id, $b->id])
+            ->where('annee_universitaire_id', $annee->id)
+            ->get();
+        // Ces rangs figés sont volontairement erronés : le code d'affichage
+        // ne doit jamais les considérer comme une source officielle courante.
+        ESBTPBulletin::query()
+            ->whereIn('id', $bulletins->pluck('id'))
+            ->update(['rang' => 42, 'effectif_classe' => 99]);
+
+        $parBulletin = app(\App\Services\RankingService::class)->rangsPourBulletins($bulletins);
+        $s1A = $bulletins->first(fn ($bulletin) => (int) $bulletin->etudiant_id === (int) $a->id && $bulletin->periode === 'semestre1');
+        $s2A = $bulletins->first(fn ($bulletin) => (int) $bulletin->etudiant_id === (int) $a->id && $bulletin->periode === 'semestre2');
+        $s1B = $bulletins->first(fn ($bulletin) => (int) $bulletin->etudiant_id === (int) $b->id && $bulletin->periode === 'semestre1');
+
+        $this->assertSame(['rang' => 1, 'total' => 2], $parBulletin[$s1A->id]);
+        $this->assertSame(['rang' => 2, 'total' => 2], $parBulletin[$s2A->id]);
+        $this->assertSame(['rang' => 2, 'total' => 2], $parBulletin[$s1B->id]);
+
+        // La ligne HTML de la liste, utilisée aussi dans le défilement AJAX,
+        // ne doit plus afficher les rangs 42/99 persistés dans la base.
+        $ligne = view('esbtp.bulletins.partials._ligne', [
+            'bulletin' => $s1A,
+            'rangsCourants' => $parBulletin,
+        ])->render();
+        $this->assertStringContainsString('1<sup>er</sup>', $ligne);
+        $this->assertStringNotContainsString('42<sup>', $ligne);
+
+        $historique = app(\App\Services\EtudiantAcademicJourneyPresenter::class)->present($a);
+        $item = $historique['items']->firstWhere('system', 'BTS');
+        $this->assertSame('1/2', $item['metrics']['rang_label']);
+    }
+
     public function test_moyenne_annuelle_absente_ne_donne_pas_de_rang(): void
     {
         [$annee, $spec, $a] = $this->scenario();

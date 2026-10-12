@@ -168,4 +168,83 @@ class RankingService
             'snapshots' => $snapshots,
         ];
     }
+
+    /**
+     * Projette les rangs courants de bulletins affichés dans une liste.
+     * Une lecture des notes par cohorte (classe / année / période), jamais
+     * une requête de classement par ligne. Ne réécrit aucun bulletin.
+     *
+     * @param iterable<\App\Models\ESBTPBulletin> $bulletins
+     * @return array<int, array{rang:?int, total:int}>
+     */
+    public function rangsPourBulletins(iterable $bulletins): array
+    {
+        $classMapResolver = app(\App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver::class);
+        $annualPolicy = app(\App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::class);
+        $groupes = [];
+
+        // Le resolveur de classe doit lui aussi travailler par lot :
+        // une pagination de 20 bulletins ne doit pas relire 20 fois
+        // inscription, phases et filiere avant même le calcul des rangs.
+        $bulletins = collect($bulletins);
+        foreach ($bulletins->groupBy(fn ($b) => (int) $b->classe_id.':'.(int) $b->annee_universitaire_id) as $lot) {
+            $premier = $lot->first();
+            if (! $premier?->classe_id || ! $premier?->annee_universitaire_id) {
+                continue;
+            }
+            $classMapResolver->prechargerPourCohorte(
+                $lot->pluck('etudiant_id')->filter()->unique()->map(fn ($id) => (int) $id)->values()->all(),
+                (int) $premier->classe_id,
+                (int) $premier->annee_universitaire_id
+            );
+        }
+
+        foreach ($bulletins as $bulletin) {
+            $classeId = (int) $bulletin->classe_id;
+            $anneeId = (int) $bulletin->annee_universitaire_id;
+            $etudiantId = (int) $bulletin->etudiant_id;
+            if (! $classeId || ! $anneeId || ! $etudiantId) {
+                continue;
+            }
+
+            $periode = $this->bulletinService->normalizePeriode((string) $bulletin->periode);
+            $map = $classMapResolver->resolve($etudiantId, $classeId, $anneeId);
+            $classeRangId = match ($periode) {
+                'semestre1' => (int) ($map['semestre1_classe_id'] ?? $classeId),
+                'semestre2' => (int) ($map['semestre2_classe_id'] ?? $classeId),
+                'annuel' => $annualPolicy->classeDeRang($map),
+                default => $classeId,
+            };
+
+            $cle = $classeRangId.':'.$anneeId.':'.$periode;
+            if (! isset($groupes[$cle])) {
+                $groupes[$cle] = [
+                    'classe_id' => $classeRangId,
+                    'annee_id' => $anneeId,
+                    'periode' => $periode,
+                    'etudiants' => [],
+                ];
+            }
+            $groupes[$cle]['etudiants'][(int) $bulletin->id] = $etudiantId;
+        }
+
+        $rangs = [];
+        foreach ($groupes as $groupe) {
+            $classement = $this->calculerRangsClasse(
+                $groupe['classe_id'],
+                $groupe['annee_id'],
+                $groupe['periode']
+            );
+            $parEtudiant = $classement['rows']->keyBy('etudiant_id');
+            foreach ($groupe['etudiants'] as $bulletinId => $etudiantId) {
+                $rangs[$bulletinId] = [
+                    'rang' => $parEtudiant->get($etudiantId)['rang'] ?? null,
+                    'total' => $classement['total'],
+                ];
+            }
+        }
+
+        return $rangs;
+    }
+
 }

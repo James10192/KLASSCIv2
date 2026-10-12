@@ -151,8 +151,9 @@ class ESBTPStudentBulletinController extends Controller
 
         // Calculer les statistiques globales
         $moyenneGenerale = $bulletin->moyenne_generale;
-        $rangGeneral = $bulletin->rang;
-        $effectifClasse = $bulletin->effectif_classe;
+        $rangActuel = app(\App\Services\RankingService::class)->rangsPourBulletins([$bulletin])[$bulletin->id] ?? null;
+        $rangGeneral = $rangActuel['rang'] ?? null;
+        $effectifClasse = $rangActuel['total'] ?? null;
         $creditsTotaux = $detailsBulletin->sum('credits_valides');
         $decisionConseil = $bulletin->decision_conseil;
 
@@ -231,6 +232,11 @@ class ESBTPStudentBulletinController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
+        // Classement canonique pour chaque période, une seule lecture par cohorte.
+        // Les bulletins historiques restent intacts ; seul l'affichage utilise le rang courant.
+        $rangsCourants = app(\App\Services\RankingService::class)
+            ->rangsPourBulletins($bulletins);
+
         // Pour chaque bulletin, calculer les données via le BulletinService si nécessaire
         foreach ($bulletins as $bulletin) {
             try {
@@ -243,8 +249,8 @@ class ESBTPStudentBulletinController extends Controller
                 );
 
                 $bulletin->moyenne_generale = $donnees['moyenneAvecAssiduite'];
-                $bulletin->rang = $donnees['rang'];
-                $bulletin->effectif_classe = $donnees['effectif'];
+                $bulletin->rang = $rangsCourants[$bulletin->id]['rang'] ?? null;
+                $bulletin->effectif_classe = $rangsCourants[$bulletin->id]['total'] ?? null;
                 $bulletin->mention = $donnees['appreciation'];
 
             } catch (\Exception $e) {
