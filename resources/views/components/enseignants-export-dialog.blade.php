@@ -8,6 +8,8 @@
     'filieres' => collect(),
     'niveaux' => collect(),
     'matieres' => collect(),
+    'parcours' => collect(),
+    'ues' => collect(),
     'specializations' => collect(),
 ])
 
@@ -22,6 +24,8 @@
      data-filieres='@json($filieres)'
      data-niveaux='@json($niveaux)'
      data-matieres='@json($matieres)'
+     data-parcours='@json($parcours)'
+     data-ues='@json($ues)'
      data-structure="{{ json_encode(\App\Services\Enseignants\CompositionExportEnseignants::definitions(), JSON_HEX_APOS | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_QUOT) }}">
     <button type="button" class="te-hero-btn" data-export-trigger @click="ouvrir()"
             aria-haspopup="dialog" :aria-expanded="open.toString()">
@@ -99,6 +103,26 @@
                         <div class="te-exp-section-title te-exp-section-spaced">
                             <span class="te-exp-step">2</span> Définir le périmètre
                         </div>
+                        <div class="te-exp-programs" role="group" aria-label="Systèmes académiques à exporter">
+                            <span class="te-exp-label">Système académique <em>obligatoire</em></span>
+                            <div class="te-exp-group-choices">
+                                <label class="te-exp-group-option" :class="{ 'te-exp-group-option--selected': systemes.includes('BTS') }">
+                                    <input type="checkbox" :checked="systemes.includes('BTS')"
+                                           @change="changerSysteme('BTS', $event.target.checked)">
+                                    BTS
+                                </label>
+                                <label class="te-exp-group-option" :class="{ 'te-exp-group-option--selected': systemes.includes('LMD') }">
+                                    <input type="checkbox" :checked="systemes.includes('LMD')"
+                                           @change="changerSysteme('LMD', $event.target.checked)">
+                                    LMD — Licence / Master
+                                </label>
+                            </div>
+                            <template x-for="systeme in systemes" :key="systeme">
+                                <input type="hidden" name="systemes[]" :value="systeme">
+                            </template>
+                            <p class="te-exp-scope-help">BTS : matières des bulletins. LMD : ECUE de maquettes et enseignants de planification. Les matières homonymes restent indépendantes, même avec les deux systèmes.</p>
+                            <p class="te-exp-error" x-show="errors.systemes" x-text="errors.systemes" role="alert" x-cloak></p>
+                        </div>
                         <div class="te-exp-grid">
                             <div class="te-exp-field" :class="{ 'te-exp-field--invalid': errors.annee_universitaire_id }">
                                 <span class="te-exp-label">Année universitaire <em>obligatoire</em></span>
@@ -123,18 +147,27 @@
                                 <span class="te-exp-label">Semestre <span>facultatif</span></span>
                                 <x-au-select
                                     name="semestre"
-                                    label="Semestre des bulletins"
+                                    label="Semestre du programme"
                                     icon="fa-calendar-week"
-                                    placeholder="S1 + S2"
+                                    placeholder="Tous les semestres"
+                                    :searchable="true"
                                     :value="old('semestre', '')"
-                                    :options="['1' => 'Semestre 1', '2' => 'Semestre 2']" />
+                                    :options="collect(range(1, 10))->mapWithKeys(fn ($n) => [(string) $n => 'S'.$n.($n > 2 ? ' — LMD' : ' — BTS ou LMD')])->all()" />
+                                <p class="te-exp-scope-help" x-show="systemes.length === 1 && systemes[0] === 'BTS'" x-cloak>En BTS, seuls S1 et S2 sont applicables.</p>
+                                <p class="te-exp-error" role="alert" x-show="errors.semestre" x-text="errors.semestre" x-cloak></p>
                             </div>
                         </div>
                         <div class="te-exp-multi-grid">
                             <x-enseignants-export-multi-picker kind="filieres" label="Filières" icon="fa-sitemap" />
                             <x-enseignants-export-multi-picker kind="niveaux" label="Niveaux d'études" icon="fa-graduation-cap" />
                             <x-enseignants-export-multi-picker kind="classes" label="Classes" icon="fa-chalkboard" />
-                            <x-enseignants-export-multi-picker kind="matieres" label="Matières des bulletins" icon="fa-book" />
+                            <x-enseignants-export-multi-picker kind="matieres" label="Matières BTS / ECUE LMD" icon="fa-book" />
+                            <div x-show="systemes.includes('LMD')" x-cloak>
+                                <x-enseignants-export-multi-picker kind="parcours" label="Parcours LMD" icon="fa-route" />
+                            </div>
+                            <div x-show="systemes.includes('LMD')" x-cloak>
+                                <x-enseignants-export-multi-picker kind="ues" label="Unités d'enseignement (UE)" icon="fa-layer-group" />
+                            </div>
                         </div>
                         <p class="te-exp-scope-help">Dans un même critère, les choix s'additionnent. Entre critères, seules les affectations correspondant à toutes les sélections sont exportées. Sans sélection : toutes les classes et matières de l'année.</p>
                         <p class="te-exp-error" role="alert" x-show="errors.perimetre" x-text="errors.perimetre" x-cloak></p>
@@ -288,6 +321,7 @@
 .te-exp-step { display:grid; place-items:center; border-radius:50%; color:#0453cb; background:#eff6ff; width:24px; height:24px; font-size:.75rem; }
 .te-exp-choices { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.65rem; }
 .te-exp-multi-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.8rem; margin-top:.85rem; align-items:start; }
+ .te-exp-programs { padding:.85rem 1rem; border:1px solid #bfdbfe; background:#eff6ff; border-radius:12px; margin-bottom:.85rem; }
 .te-exp-compose { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:1rem; padding:.9rem; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc; }
 .te-exp-column-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.45rem; margin-top:.65rem; }
 .te-exp-column-option { display:flex; gap:.5rem; align-items:center; border:1px solid #cbd5e1; border-radius:8px; padding:.5rem; cursor:pointer; font-size:.76rem; background:#fff; color:#334155; }
@@ -374,8 +408,9 @@ if (typeof window.enseignantsExportDialog !== 'function') {
             open: false,
             vue: 'synthese',
             afficherAvance: {{ request()->hasAny(['search', 'status', 'specialization']) ? 'true' : 'false' }},
-            selections: { classes: [], filieres: [], niveaux: [], matieres: [] },
-            options: { classes: [], filieres: [], niveaux: [], matieres: [] },
+            selections: { classes: [], filieres: [], niveaux: [], matieres: [], parcours: [], ues: [] },
+            systemes: ['BTS'],
+            options: { classes: [], filieres: [], niveaux: [], matieres: [], parcours: [], ues: [] },
             schema: {},
             selectedColumns: [],
             regroupement: 'aucun',
@@ -386,7 +421,7 @@ if (typeof window.enseignantsExportDialog !== 'function') {
                 try { this.schema = JSON.parse(this.launcher.dataset.structure || '{}'); } catch (_) { this.schema = {}; }
                 this.reinitialiserComposition();
                 this.$watch('vue', () => { this.reinitialiserComposition(); this.errors = {}; });
-                for (const kind of ['classes', 'filieres', 'niveaux', 'matieres']) {
+                for (const kind of ['classes', 'filieres', 'niveaux', 'matieres', 'parcours', 'ues']) {
                     let rows = [];
                     try { rows = JSON.parse(this.launcher.dataset[kind] || '[]'); } catch (_) { rows = []; }
                     this.options[kind] = rows.map(item => ({
@@ -394,13 +429,22 @@ if (typeof window.enseignantsExportDialog !== 'function') {
                         label: String(item.name),
                         filiere_id: item.filiere_id == null ? null : String(item.filiere_id),
                         niveau_id: item.niveau_etude_id == null ? null : String(item.niveau_etude_id),
-                        parent_id: item.parent_id == null ? null : String(item.parent_id)
+                        parcours_id: item.parcours_id == null ? null : String(item.parcours_id),
+                        parent_id: item.parent_id == null ? null : String(item.parent_id),
+                        systeme: item.systeme || item.systeme_academique || 'BTS',
+                        systemes: item.systemes || [item.systeme || item.systeme_academique || 'BTS']
                     }));
                 }
             },
             reinitialiserComposition() {
                 const def = this.schema[this.vue];
                 this.selectedColumns = def ? [...def.defaut] : ['nom'];
+                if (this.systemes.includes('LMD') && this.vue === 'matieres') {
+                    this.selectedColumns = ['nom', 'classes', 'semestres', 'total'];
+                }
+                if (this.systemes.includes('LMD') && this.vue === 'synthese') {
+                    this.selectedColumns = ['classe', 'systeme', 'semestres', 'total', 'enseignants_saisis'];
+                }
                 this.regroupement = def?.regroupement || 'aucun';
             },
             choisirRegroupement(key) {
@@ -415,6 +459,45 @@ if (typeof window.enseignantsExportDialog !== 'function') {
                     ? [...new Set([...this.selectedColumns, key])]
                     : this.selectedColumns.filter(colonne => colonne !== key);
                 this.errors = {};
+            },
+            changerSysteme(systeme, checked) {
+                const updated = checked
+                    ? [...new Set([...this.systemes, systeme])]
+                    : this.systemes.filter(value => value !== systeme);
+                if (!updated.length) {
+                    this.errors = { systemes: 'Sélectionnez au moins BTS ou LMD.' };
+                    this.$nextTick(() => this.systemes = [...this.systemes]);
+                    return;
+                }
+                const anciensSystemes = [...this.systemes];
+                this.systemes = updated;
+                if (anciensSystemes.includes('LMD') !== updated.includes('LMD')) {
+                    const defaut = this.schema[this.vue]?.defaut || [];
+                    const versionLmd = this.vue === 'matieres'
+                        ? ['nom', 'classes', 'semestres', 'total']
+                        : this.vue === 'synthese'
+                            ? ['classe', 'systeme', 'semestres', 'total', 'enseignants_saisis'] : [];
+                    if (this.vue === 'matieres' || this.vue === 'synthese') {
+                        if ([defaut, versionLmd].some(items => items.join('|') === this.selectedColumns.join('|'))) {
+                            this.selectedColumns = updated.includes('LMD') ? [...versionLmd] : [...defaut];
+                        }
+                    }
+                }
+                for (const kind of ['classes', 'filieres', 'niveaux', 'matieres', 'parcours', 'ues']) {
+                    this.selections[kind] = this.selections[kind].filter(id => {
+                        const option = this.options[kind].find(item => item.id === id);
+                        return option && this.optionCompatibleSysteme(option);
+                    });
+                }
+                this.selections.classes = this.selections.classes.filter(id => {
+                    const cl = this.options.classes.find(item => item.id === id);
+                    return cl && this.classeCompatible(cl);
+                });
+                this.errors = {};
+            },
+            optionCompatibleSysteme(option) {
+                return (option.systemes || [option.systeme || 'BTS'])
+                    .some(systeme => this.systemes.includes(systeme));
             },
             hasPedagogicalFilters() {
                 return Object.values(this.selections).some(values => values.length > 0);
@@ -435,12 +518,15 @@ if (typeof window.enseignantsExportDialog !== 'function') {
                 return false;
             },
             classeCompatible(option) {
-                return this.filiereIncluse(option.filiere_id)
-                    && (!this.selections.niveaux.length || this.selections.niveaux.includes(option.niveau_id));
+                return this.optionCompatibleSysteme(option)
+                    && this.filiereIncluse(option.filiere_id)
+                    && (!this.selections.niveaux.length || this.selections.niveaux.includes(option.niveau_id))
+                    && (!this.selections.parcours.length || this.selections.parcours.includes(option.parcours_id));
             },
             optionsFor(kind, search) {
                 const term = String(search || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
                 return this.options[kind].filter(option =>
+                    this.optionCompatibleSysteme(option) &&
                     (kind !== 'classes' || this.classeCompatible(option)) &&
                     (!term || option.label.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(term))
                 );
@@ -450,7 +536,7 @@ if (typeof window.enseignantsExportDialog !== 'function') {
                 this.selections[kind] = checked
                     ? [...new Set([...this.selections[kind], value])]
                     : this.selections[kind].filter(x => x !== value);
-                if (kind === 'filieres' || kind === 'niveaux') {
+                if (kind === 'filieres' || kind === 'niveaux' || kind === 'parcours') {
                     this.selections.classes = this.selections.classes.filter(classeId => {
                         const option = this.options.classes.find(classe => classe.id === classeId);
                         return option && this.classeCompatible(option);
@@ -485,6 +571,13 @@ if (typeof window.enseignantsExportDialog !== 'function') {
                 if (!form) return;
                 const params = new URLSearchParams(new FormData(form));
                 const errors = {};
+                if (!this.systemes.length) {
+                    errors.systemes = 'Sélectionnez BTS, LMD ou les deux.';
+                }
+                const semestre = Number(params.get('semestre') || 0);
+                if (this.systemes.length === 1 && this.systemes[0] === 'BTS' && semestre > 2) {
+                    errors.semestre = 'Les semestres S3 à S10 sont réservés au LMD.';
+                }
                 if (!this.selectedColumns.length) {
                     errors.colonnes = "Choisissez au moins une colonne avant l'export.";
                 }

@@ -52,6 +52,6 @@
         </button>
     </div>
     <template x-for="id in selections.{{ $kind }}" :key="id">
-        <input type="hidden" name="{{ $kind === 'filieres' ? 'filiere_ids' : ($kind === 'niveaux' ? 'niveau_ids' : ($kind === 'classes' ? 'classe_ids' : 'matiere_ids')) }}[]" :value="id">
+        <input type="hidden" name="{{ match($kind) { 'filieres' => 'filiere_ids', 'niveaux' => 'niveau_ids', 'classes' => 'classe_ids', 'parcours' => 'parcours_ids', 'ues' => 'ue_ids', default => 'matiere_refs' } }}[]" :value="id">
     </template>
 </div>

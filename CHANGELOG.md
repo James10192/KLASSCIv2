@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Exports enseignants — séparation BTS/LMD :** filtre BTS, LMD ou les deux, avec matières et classes contextualisées, semestres LMD S1 à S10, UE et parcours. Les enseignants des bulletins BTS et ceux des planifications LMD sont lus depuis leurs sources canoniques ; aucune matière homonyme, UE ou parcours n'est fusionné par simple libellé. Les exports PDF/Excel conservent le système et les anciens liens restent BTS par défaut.
 
 - **Paiements — correction du mode de règlement stabilisée :** sur le suivi des paiements, les fenêtres ne disparaissent plus au rafraîchissement automatique ou lors du défilement AJAX en laissant un écran bloqué par le fond Bootstrap. La correction est également disponible sur la fiche du versement pour les utilisateurs ayant la permission dédiée, uniquement avant rapprochement. Formulaire, validation du motif et animations existants conservés.
 - **Export enseignants — composition sur mesure et portrait A4 :** choix des colonnes utiles, regroupement par matière, classe, niveau ou filière et nouveau document « Liste épurée ». Les rubriques remplacent les colonnes redondantes ; un PDF simple s'imprime en portrait, les vues plus larges basculent en paysage, et les mêmes données sont disponibles dans Excel. Correction du filtre par identifiant de matière sur les bulletins.

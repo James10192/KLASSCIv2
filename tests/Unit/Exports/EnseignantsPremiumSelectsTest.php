@@ -76,11 +76,11 @@ final class EnseignantsPremiumSelectsTest extends TestCase
         $multi = file_get_contents(dirname(__DIR__, 3)
             .'/resources/views/components/enseignants-export-multi-picker.blade.php');
 
-        foreach (['filieres', 'niveaux', 'classes', 'matieres'] as $dimension) {
+        foreach (['filieres', 'niveaux', 'classes', 'matieres', 'parcours', 'ues'] as $dimension) {
             $this->assertStringContainsString('kind="'.$dimension.'"', $vue);
             $this->assertStringContainsString('data-'.$dimension."='@json", $vue);
         }
-        foreach (['filiere_ids', 'niveau_ids', 'classe_ids', 'matiere_ids'] as $champ) {
+        foreach (['filiere_ids', 'niveau_ids', 'classe_ids', 'matiere_refs', 'parcours_ids', 'ue_ids'] as $champ) {
             $this->assertStringContainsString("'".$champ."'", $multi);
         }
         $this->assertStringNotContainsString('<select', $multi);
@@ -99,6 +99,14 @@ final class EnseignantsPremiumSelectsTest extends TestCase
         $this->assertStringContainsString('name="orientation" value="auto"', $vue);
         $this->assertStringContainsString('this.$watch(\'vue\'', $vue);
         $this->assertStringContainsString('selectedColumns.length', $vue);
+        $this->assertStringContainsString('name="systemes[]"', $vue);
+        $this->assertStringContainsString("systemes: ['BTS']", $vue);
+        $this->assertStringContainsString('optionCompatibleSysteme(option)', $vue);
+        $this->assertStringContainsString('Matières BTS / ECUE LMD', $vue);
+        $this->assertStringContainsString("systemes: ['BTS']", $vue);
+        $this->assertStringContainsString('item.systeme_academique', $vue);
+        $this->assertStringContainsString('parcours_id: item.parcours_id', $vue);
+        $this->assertStringContainsString('changerSysteme', $vue);
         $this->assertStringContainsString('document.getElementById(\'te-exp-form\')', $vue);
         $this->assertStringContainsString("url.searchParams.append(name, value)", $vue);
         $this->assertStringContainsString('@if($composition !== null)', $pdf);
