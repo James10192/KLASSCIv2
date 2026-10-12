@@ -47,7 +47,9 @@ final class EnseignantsPremiumSelectsTest extends TestCase
                 $vue
             );
         }
-        $this->assertSame(4, substr_count($vue, 'type="radio" name="vue"'));
+        $this->assertSame(6, substr_count($vue, 'type="radio" name="vue"'));
+        $this->assertStringContainsString('value="matieres"', $vue);
+        $this->assertStringContainsString('value="specialisations"', $vue);
         $this->assertStringContainsString('x-teleport="body"', $vue);
         $this->assertStringContainsString('role="dialog"', $vue);
         $this->assertStringContainsString("name=\"search\"", $vue);

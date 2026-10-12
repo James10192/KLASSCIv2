@@ -96,6 +96,8 @@
                 <tr><td><strong>Annuaire officiel</strong></td><td>Consulter les fiches, matricules, spécialités, régimes et contacts exploitables des enseignants enregistrés.</td></tr>
                 <tr><td><strong>Noms à rapprocher</strong></td><td>Identifier les noms libres utilisés dans les bulletins, leurs classes et les écritures potentiellement équivalentes, sans créer de compte ni fusionner de personnes.</td></tr>
                 <tr><td><strong>Affectations par classe</strong></td><td>Après sélection d'une classe et éventuellement d'un semestre, imprimer la liste des matières et du professeur tel qu'indiqué sur le bulletin.</td></tr>
+                <tr><td><strong>Matières regroupées</strong></td><td>Voir pour chaque matière les professeurs saisis sur les bulletins de toutes les classes, avec les classes et semestres concernés.</td></tr>
+                <tr><td><strong>Répertoire par spécialisation</strong></td><td>Regrouper les fiches KLASSCI par discipline déclarée et isoler les noms sans spécialisation.</td></tr>
             </tbody>
         </table>
         <div class="ens-hint">Ce document est une synthèse. Il n'omet aucune classe dans les comptages, mais ne reproduit pas les {{ $affectationsTotal }} lignes de détail. Pour le détail, choisissez le document « Affectations par classe » dans les filtres d'export.</div>
@@ -186,6 +188,112 @@
         @empty
             <p class="ens-hint">Aucune saisie isolée : tous les noms trouvés ont une correspondance exacte avec une fiche enregistrée, sous réserve des filtres appliqués.</p>
         @endforelse
+
+
+    @elseif($vue === 'specialisations')
+        <h2 class="ens-section">Répertoire par spécialisation — fiches enseignants KLASSCI</h2>
+        <div class="ens-hint">Les disciplines ci-dessous viennent des fiches des enseignants enregistrés. Une spécialisation n'est pas nécessairement la matière enseignée sur un bulletin. Seules les différences de casse et d'espacement sont regroupées ; aucune discipline voisine n'est fusionnée.</div>
+        <table class="pdf-detail-table ens-table">
+            <thead><tr><th>Spécialisation</th><th style="width:16%;text-align:center">Enseignants</th></tr></thead>
+            <tbody>
+                @forelse($specialisationsGroupes as $groupe)
+                    <tr><td class="ens-strong">{{ $groupe['nom'] }}</td><td style="text-align:center">{{ $groupe['total'] }}</td></tr>
+                @empty
+                    <tr><td colspan="2">Aucune spécialisation renseignée.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+        @foreach($specialisationsGroupes as $groupe)
+            <h3 class="ens-subsection">{{ $groupe['nom'] }} — {{ $groupe['total'] }} enseignant(s)</h3>
+            <table class="pdf-detail-table ens-table">
+                <thead><tr>
+                    <th style="width:6%">N°</th>
+                    <th style="width:27%">Nom et prénoms</th>
+                    <th style="width:16%">Matricule</th>
+                    <th style="width:13%">Régime</th>
+                    <th style="width:10%">Statut</th>
+                    <th>Contact valable</th>
+                </tr></thead>
+                <tbody>
+                    @foreach($groupe['enseignants'] as $row)
+                        <tr>
+                            <td>{{ $loop->iteration }}</td>
+                            <td class="ens-strong">{{ $row['nom'] }}</td>
+                            <td>{{ $row['matricule'] }}</td>
+                            <td>{{ $row['regime'] }}</td>
+                            <td>{{ $row['statut'] }}</td>
+                            <td>{{ $row['telephone_affiche'] }}
+                                @if($row['email_affiche'] !== '—')
+                                    <div class="ens-muted">{{ $row['email_affiche'] }}</div>
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endforeach
+        <h3 class="ens-subsection">À classer — {{ count($sansSpecialisation) }} libellé(s) sans spécialisation renseignée</h3>
+        <div class="ens-hint">Cette annexe comprend les fiches sans spécialité et les noms saisis uniquement dans les bulletins. Ces libellés peuvent désigner des variantes d'une même personne : ne pas les fusionner ou attribuer une matière automatiquement.</div>
+        <table class="pdf-detail-table ens-table">
+            <thead><tr>
+                <th style="width:7%">N°</th>
+                <th style="width:40%">Nom ou libellé</th>
+                <th style="width:16%">Matricule</th>
+                <th>Origine</th>
+            </tr></thead>
+            <tbody>
+                @forelse($sansSpecialisation as $row)
+                    <tr>
+                        <td>{{ $loop->iteration }}</td>
+                        <td class="ens-strong">{{ $row['nom'] }}</td>
+                        <td>{{ $row['matricule'] }}</td>
+                        <td>{{ $row['origine'] }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="4">Aucune entrée à classer.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+
+    @elseif($vue === 'matieres')
+        <h2 class="ens-section">Matières et professeurs — regroupement transversal</h2>
+        <div class="ens-hint">Les matières et les noms viennent des configurations des bulletins BTS pour l'année sélectionnée. Regroupement sur toutes les classes si aucune classe n'est choisie. Chaque professeur est affiché une fois par matière avec le détail des classes et semestres ; les variantes de nom restent distinctes, aucune identité n'est supposée.</div>
+        <h3 class="ens-subsection">Sommaire des matières — {{ $nombreMatieres }} matière(s)</h3>
+        <table class="pdf-detail-table ens-table">
+            <thead><tr><th style="width:58%">Matière du bulletin</th><th style="width:21%;text-align:center">Professeurs saisis</th><th style="width:21%;text-align:center">Affectations</th></tr></thead>
+            <tbody>
+                @forelse($matieresGroupes as $groupe)
+                    <tr><td class="ens-strong">{{ $groupe['matiere'] }}</td><td style="text-align:center">{{ $groupe['nombreEnseignants'] }}</td><td style="text-align:center">{{ $groupe['total'] }}</td></tr>
+                @empty
+                    <tr><td colspan="3">Aucune matière avec professeur saisi pour ce périmètre.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+        @foreach($matieresGroupes as $groupe)
+            <h3 class="ens-subsection">{{ $groupe['matiere'] }} — {{ $groupe['nombreEnseignants'] }} professeur(s), {{ $groupe['total'] }} affectation(s)</h3>
+            <table class="pdf-detail-table ens-table">
+                <thead><tr>
+                    <th style="width:5%">N°</th>
+                    <th style="width:27%">Professeur tel que saisi</th>
+                    <th style="width:46%">Classe(s) et semestre(s)</th>
+                    <th style="width:7%;text-align:center">S1</th>
+                    <th style="width:7%;text-align:center">S2</th>
+                    <th style="width:8%;text-align:center">Total</th>
+                </tr></thead>
+                <tbody>
+                    @foreach($groupe['enseignants'] as $prof)
+                        <tr>
+                            <td>{{ $loop->iteration }}</td>
+                            <td class="ens-strong">{{ $prof['nom'] }}</td>
+                            <td>{{ $prof['classes'] }}</td>
+                            <td style="text-align:center">{{ $prof['S1'] }}</td>
+                            <td style="text-align:center">{{ $prof['S2'] }}</td>
+                            <td style="text-align:center" class="ens-strong">{{ $prof['total'] }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endforeach
 
     @elseif($vue === 'affectations')
         <h2 class="ens-section">Affectations des bulletins — détail par classe</h2>

@@ -62,6 +62,18 @@
                                 <span><strong>Noms à rapprocher</strong><small>Saisies manuelles sur les bulletins</small></span>
                                 <i class="fas fa-check-circle te-exp-checked"></i>
                             </label>
+                            <label class="te-exp-choice" :class="{ 'te-exp-choice--selected': vue === 'specialisations' }">
+                                <input type="radio" name="vue" value="specialisations" x-model="vue" @change="errors = {}">
+                                <i class="fas fa-layer-group"></i>
+                                <span><strong>Répertoire par spécialisation</strong><small>Enseignants regroupés par discipline + noms à classer</small></span>
+                                <i class="fas fa-check-circle te-exp-checked"></i>
+                            </label>
+                            <label class="te-exp-choice" :class="{ 'te-exp-choice--selected': vue === 'matieres' }">
+                                <input type="radio" name="vue" value="matieres" x-model="vue" @change="errors = {}">
+                                <i class="fas fa-list-alt"></i>
+                                <span><strong>Matières regroupées</strong><small>Par matière, tous les professeurs, classes et semestres</small></span>
+                                <i class="fas fa-check-circle te-exp-checked"></i>
+                            </label>
                             <label class="te-exp-choice" :class="{ 'te-exp-choice--selected': vue === 'affectations' }">
                                 <input type="radio" name="vue" value="affectations" x-model="vue" @change="errors = {}">
                                 <i class="fas fa-book-open"></i>
@@ -117,7 +129,16 @@
                         </div>
                         <p class="te-exp-tip" x-show="vue === 'affectations'" x-cloak>
                             <i class="fas fa-info-circle"></i>
-                            Pour le PDF détaillé, sélectionnez une classe. Sans classe, la synthèse globale est disponible.
+                            Pour le détail ligne à ligne, choisissez une classe. Pour toutes les classes regroupées par matière, sélectionnez « Matières regroupées ».
+                        </p>
+
+                        <p class="te-exp-tip" x-show="vue === 'matieres'" x-cloak>
+                            <i class="fas fa-info-circle"></i>
+                            Sans filtre de classe, les professeurs sont regroupés par matière sur toutes les classes de l'année. Les classes et semestres restent visibles pour chaque professeur.
+                        </p>
+                        <p class="te-exp-tip" x-show="vue === 'specialisations'" x-cloak>
+                            <i class="fas fa-info-circle"></i>
+                            Les spécialisations viennent des fiches KLASSCI. Les noms des bulletins non classables figurent en annexe sans rapprochement automatique.
                         </p>
 
                         <button type="button" class="te-exp-more" @click="afficherAvance = !afficherAvance"
@@ -160,7 +181,7 @@
                     </div>
 
                     <footer class="te-exp-footer">
-                        <p class="te-exp-footer-hint">Excel contient les données de l'annuaire avec les filtres sélectionnés.</p>
+                        <p class="te-exp-footer-hint">PDF et Excel suivent le type de document sélectionné, avec les mêmes filtres.</p>
                         <div class="te-exp-actions">
                             <button type="button" class="te-exp-button te-exp-button--ghost" @click="fermer()">Annuler</button>
                             <button type="button" class="te-exp-button te-exp-button--outline" @click="lancer('preview')">

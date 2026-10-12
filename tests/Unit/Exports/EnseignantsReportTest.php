@@ -4,6 +4,7 @@ namespace Tests\Unit\Exports;
 
 use App\Domain\Exports\Reports\EnseignantsReport;
 use App\Exports\EnseignantsExport;
+use App\Exports\EnseignantsGroupesExport;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use Tests\TestCase;
 
@@ -26,7 +27,9 @@ class EnseignantsReportTest extends TestCase
         $this->assertSame('landscape', $report->orientation());
         $this->assertSame(1, $report->viewData()['total']);
         $this->assertSame(['Statut' => 'Actif'], $report->filters());
-        $this->assertInstanceOf(EnseignantsExport::class, $report->excelExport());
+        $this->assertInstanceOf(EnseignantsGroupesExport::class, $report->excelExport());
+        $annuaire = new EnseignantsReport([$this->row()], [], [], 0, 'annuaire');
+        $this->assertInstanceOf(EnseignantsExport::class, $annuaire->excelExport());
     }
 
     public function test_changement_de_nom_invalide_le_cache_pdf(): void
@@ -51,6 +54,34 @@ class EnseignantsReportTest extends TestCase
         $this->assertSame(1, $synthese->viewData()['nombreClasses']);
         $this->assertSame('rapprochement', $rapprochement->viewData()['vue']);
         $this->assertNotSame($synthese->cacheKey(), $rapprochement->cacheKey());
+    }
+
+    public function test_excel_regroupe_les_matières_et_protege_les_champs_libres(): void
+    {
+        $affectations = [
+            ['matiere' => 'Maths', 'nom' => '=DANGER', 'classe' => '1 BTS', 'semestre' => 'S1'],
+            ['matiere' => 'Maths', 'nom' => '=DANGER', 'classe' => '1 BTS', 'semestre' => 'S2'],
+        ];
+        $report = new EnseignantsReport([], [], $affectations, 2, 'matieres');
+        $export = $report->excelExport();
+        $this->assertInstanceOf(EnseignantsGroupesExport::class, $export);
+        $this->assertSame(1, $export->nombreLignes());
+        $row = $export->collection()->first();
+        $this->assertSame('Maths', $row[0]);
+        $this->assertSame("'=DANGER", $row[1]);
+        $this->assertSame('1 BTS (S1 / S2)', $row[2]);
+        $this->assertSame(2, $row[6]);
+    }
+
+    public function test_excel_specialisations_garde_les_libelles_non_classes(): void
+    {
+        $fiche = array_merge($this->row(), ['origine' => 'Enregistré']);
+        $manuel = array_merge($this->row('M. DIARRA'), [
+            'origine' => 'Bulletin (saisie manuelle)', 'specialisation' => '—',
+        ]);
+        $export = (new EnseignantsReport([$fiche, $manuel], [], [], 0, 'specialisations'))->excelExport();
+        $this->assertSame(2, $export->nombreLignes());
+        $this->assertSame('À classer', $export->collection()->last()[0]);
     }
 
     public function test_export_excel_formate_le_telephone_comme_texte_et_protege_les_formules(): void
