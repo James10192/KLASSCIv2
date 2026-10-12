@@ -2352,6 +2352,7 @@ class ESBTPPaiementController extends Controller
                 'frais_category_id' => $request->input('frais_category_id'),
                 'date_debut' => $request->input('date_debut'),
                 'date_fin' => $request->input('date_fin'),
+                'portee' => $request->input('portee', 'tous'),
             ];
 
             // Créer l'export
@@ -2397,6 +2398,7 @@ class ESBTPPaiementController extends Controller
                 'date_debut' => $request->input('date_debut'),
                 'date_fin' => $request->input('date_fin'),
                 'periode_label' => $this->buildPeriodeLabel($request),
+                'portee' => $request->input('portee', 'tous'),
             ];
 
             $export = new \App\Exports\PaiementsSaariExport($paiements, $filters);
@@ -2453,6 +2455,7 @@ class ESBTPPaiementController extends Controller
                 'frais_category_id' => $request->input('frais_category_id'),
                 'date_debut' => $request->input('date_debut'),
                 'date_fin' => $request->input('date_fin'),
+                'portee' => $request->input('portee', 'tous'),
             ];
 
             // Créer l'export
@@ -2570,6 +2573,8 @@ class ESBTPPaiementController extends Controller
             'status' => $request->input('status'),
             'date_debut' => $request->input('date_debut'),
             'date_fin' => $request->input('date_fin'),
+            'frais_category_id' => $request->input('frais_category_id'),
+            'portee' => $request->input('portee', 'tous'),
         ];
 
         $settings = $this->getReceiptSettings();

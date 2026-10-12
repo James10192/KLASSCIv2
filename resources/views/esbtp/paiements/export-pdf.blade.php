@@ -219,7 +219,15 @@
     $montantEnAttente = $stats['montant_en_attente'] ?? 0;
     $recoveryRate = $stats['recovery_rate'] ?? null;
 
-    $filterItems = [];
+    $porteeExport = (string) ($filters['portee'] ?? 'tous');
+    $filterItems = [[
+        'label' => 'Périmètre',
+        'value' => match ($porteeExport) {
+            'annee' => 'Frais de l’année universitaire courante (hors reliquats)',
+            'arrieres' => 'Règlements des dettes anciennes, reportées ou non',
+            default => 'Versements de toutes les années universitaires',
+        },
+    ]];
     if (!empty($filters['search'])) $filterItems[] = ['label' => 'Recherche', 'value' => $filters['search']];
     if (!empty($filters['status'])) {
         $statusMap = ['en_attente' => 'En attente', 'validé' => 'Validé', 'valide' => 'Validé', 'rejeté' => 'Rejeté', 'rejete' => 'Rejeté'];
@@ -229,9 +237,9 @@
         $filterItems[] = ['label' => 'Statut', 'value' => $statusMap[$filters['status']] ?? $statusFallback];
     }
     if (!empty($filters['frais_category'])) $filterItems[] = ['label' => 'Frais', 'value' => $filters['frais_category']];
-    if (!empty($filters['date_debut'])) $filterItems[] = ['label' => 'Date début', 'value' => $formatDate($filters['date_debut'])];
-    if (!empty($filters['date_fin'])) $filterItems[] = ['label' => 'Date fin', 'value' => $formatDate($filters['date_fin'])];
-    if (empty($filterItems)) $filterItems[] = ['label' => 'Filtres', 'value' => 'Aucun filtre appliqué'];
+    if (!empty($filters['date_debut'])) $filterItems[] = ['label' => 'Date encaissement du', 'value' => $formatDate($filters['date_debut'])];
+    if (!empty($filters['date_fin'])) $filterItems[] = ['label' => 'Date encaissement au', 'value' => $formatDate($filters['date_fin'])];
+    if (empty($filters['date_debut']) && empty($filters['date_fin'])) $filterItems[] = ['label' => 'Date du versement', 'value' => 'Toutes les dates'];
 @endphp
 
 <div class="container">
