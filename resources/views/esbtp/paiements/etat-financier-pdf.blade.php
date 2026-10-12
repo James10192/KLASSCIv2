@@ -1,6 +1,6 @@
 <x-pdf-document
     title="État financier par frais"
-    subtitle="Ce que chaque étudiant a soldé, frais par frais"
+    subtitle="Solde cumulé des inscriptions à la date d'édition — hors filtre de dates de caisse"
     :filters="$filtersRecap"
     orientation="landscape">
 
@@ -60,7 +60,7 @@
     </table>
 
     <div class="ef-note">
-        Situation cumulée à la date d'édition. Les versements en attente de validation sont comptés,
+        État des frais cumulés des inscriptions sélectionnées à la date d'édition : les dates de versement et le statut filtrés sur le journal des paiements ne s'appliquent pas ici. Les versements en attente de validation sont comptés,
         comme sur la situation financière de l'étudiant. Un versement réparti sur plusieurs frais est
         imputé à chacun d'eux selon sa ventilation. Tout avoir validé est déduit du frais qu'il
         annule, qu'il ait été remboursé en caisse ou conservé en crédit sur le compte de l'étudiant —

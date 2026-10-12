@@ -52,11 +52,16 @@ class EtatFinancierController extends Controller
             'frais_category_id' => ['nullable', 'integer', 'exists:esbtp_frais_categories,id'],
             'search' => ['nullable', 'string', 'max:120'],
             'solde' => ['nullable', 'in:soldes,partiels,impayes'],
+            'annee_situation' => ['nullable', 'in:courante,toutes'],
         ]);
 
         $categorieId = isset($valide['frais_category_id']) ? (int) $valide['frais_category_id'] : null;
         $recherche = trim((string) ($valide['search'] ?? ''));
-        $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $toutesAnnees = ($valide['annee_situation'] ?? 'courante') === 'toutes';
+        $annee = $toutesAnnees ? null : ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (! $toutesAnnees && ! $annee) {
+            return redirect()->back()->with('error', "Aucune année universitaire courante : choisissez l'état financier toutes années.");
+        }
 
         $lignes = $this->filtrerParSolde(
             $service->construire(
@@ -79,10 +84,10 @@ class EtatFinancierController extends Controller
             $lignes,
             [
                 'totaux' => $this->totaux($lignes),
-                'filtersRecap' => $this->recapFiltres($categorieId, $recherche, $valide['solde'] ?? null, $annee, $voitTout ? null : $utilisateur),
+                'filtersRecap' => $this->recapFiltres($categorieId, $recherche, $valide['solde'] ?? null, $annee, $voitTout ? null : $utilisateur, $toutesAnnees),
             ],
             'lignes',
-            'etat-financier_'.now()->format('Y-m-d_His').'.pdf',
+            'etat-financier_'.($toutesAnnees ? 'toutes-annees' : 'annee-courante').'_'.now()->format('Y-m-d_His').'.pdf',
             inline: $request->boolean('inline'),
             orientation: 'landscape'
         );
@@ -141,7 +146,7 @@ class EtatFinancierController extends Controller
     /**
      * @return array<string, string>
      */
-    private function recapFiltres(?int $categorieId, string $recherche, ?string $solde, ?ESBTPAnneeUniversitaire $annee, $restreintA): array
+    private function recapFiltres(?int $categorieId, string $recherche, ?string $solde, ?ESBTPAnneeUniversitaire $annee, $restreintA, bool $toutesAnnees = false): array
     {
         return array_filter([
             'Frais' => $categorieId ? ESBTPFraisCategory::whereKey($categorieId)->value('name') : null,
@@ -152,7 +157,8 @@ class EtatFinancierController extends Controller
                 'impayes' => 'Aucun paiement',
                 default => null,
             },
-            'Année' => $annee->name ?? null,
+            'Type' => 'Situation cumulée des frais (et non des encaissements sur une période)',
+            'Années d’inscription' => $toutesAnnees ? 'Toutes les années d’inscription' : ($annee->name ?? 'Année courante'),
             // Dire le perimetre sur le document lui-meme : un etat partiel qui
             // ne s'annonce pas se lit comme un etat complet.
             'Périmètre' => $restreintA

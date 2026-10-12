@@ -1032,13 +1032,24 @@
                             @if(auth()->user()?->can('paiements.view') || auth()->user()?->can('paiements.view_own'))
                             <li>
                                 <a class="dropdown-item" href="#" onclick="exportPaiements('etat-financier-preview'); return false;">
-                                    <i class="fas fa-file-invoice-dollar text-primary me-2"></i>Aperçu état financier
-                                    <small class="text-muted d-block ms-4" style="font-size:.7rem;">Qui a soldé quel frais</small>
+                                    <i class="fas fa-file-invoice-dollar text-primary me-2"></i>Aperçu état financier · année courante
+                                    <small class="text-muted d-block ms-4" style="font-size:.7rem;">Soldes cumulés, indépendants des dates de caisse</small>
                                 </a>
                             </li>
                             <li>
                                 <a class="dropdown-item" href="#" onclick="exportPaiements('etat-financier'); return false;">
-                                    <i class="fas fa-file-pdf text-danger me-2"></i>Télécharger l'état financier
+                                    <i class="fas fa-file-pdf text-danger me-2"></i>État financier · année courante
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#" onclick="exportPaiements('etat-financier-toutes-preview'); return false;">
+                                    <i class="fas fa-layer-group text-primary me-2"></i> Aperçu état financier · toutes années
+                                    <small class="text-muted d-block ms-4" style="font-size:.7rem;">Soldes de toutes les inscriptions, sans filtre de date</small>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#" onclick="exportPaiements('etat-financier-toutes'); return false;">
+                                    <i class="fas fa-file-pdf text-primary me-2"></i> Télécharger état financier · toutes années
                                 </a>
                             </li>
                             @endif
@@ -2138,9 +2149,29 @@ function showYearChangeInfo() {
                 params.set('inline', '1');
                 openInNewTab = true;
                 break;
+            case 'etat-financier-toutes':
+                exportUrl = '{{ route('esbtp.paiements.export.etat-financier') }}';
+                params.set('annee_situation', 'toutes');
+                break;
+            case 'etat-financier-toutes-preview':
+                exportUrl = '{{ route('esbtp.paiements.export.etat-financier') }}';
+                params.set('annee_situation', 'toutes');
+                params.set('inline', '1');
+                openInNewTab = true;
+                break;
             default:
                 debugError('❌ Format d\'export inconnu:', format);
                 return;
+        }
+
+        // Un état financier est un STOCK de frais, pas le flux de caisse.
+        // Ne jamais lui transmettre silencieusement le filtre de dates du journal.
+        if (format.startsWith('etat-financier')) {
+            params.delete('date_debut');
+            params.delete('date_fin');
+            params.delete('status');
+            params.delete('portee');
+            if (!params.has('annee_situation')) params.set('annee_situation', 'courante');
         }
 
         // Ajouter les paramètres de filtres

@@ -57,6 +57,7 @@
             'etat-financier-preview' => ['url' => route('esbtp.paiements.export.etat-financier'), 'onglet' => true, 'inline' => true],
             'etat-financier' => ['url' => route('esbtp.paiements.export.etat-financier'), 'onglet' => false],
             'etat-financier-toutes' => ['url' => route('esbtp.paiements.export.etat-financier'), 'onglet' => false, 'annee_situation' => 'toutes'],
+            'etat-financier-toutes-preview' => ['url' => route('esbtp.paiements.export.etat-financier'), 'onglet' => true, 'inline' => true, 'annee_situation' => 'toutes'],
             'excel' => ['url' => route('esbtp.paiements.export.excel'), 'onglet' => false],
             'saari' => ['url' => route('esbtp.paiements.export.saari'), 'onglet' => false],
             'csv' => ['url' => route('esbtp.paiements.export.csv'), 'onglet' => false],
@@ -247,12 +248,22 @@
                 @if($pimEtatFinancier)
                     <button type="button" x-on:click="exporter('etat-financier-preview')">
                         <x-m.icon name="scale" />
-                        <span class="pim-menu-tt">Aperçu état financier<small>Qui a soldé quel frais</small></span>
+                        <span class="pim-menu-tt">État financier · année courante<small>Soldes cumulés, sans filtre de dates</small></span>
                         <span class="ch"><x-m.icon name="chr" /></span>
                     </button>
                     <button type="button" x-on:click="exporter('etat-financier')">
                         <x-m.icon name="dl" />
-                        <span class="pim-menu-tt">Télécharger l'état financier</span>
+                        <span class="pim-menu-tt">Télécharger · année courante</span>
+                        <span class="ch"><x-m.icon name="chr" /></span>
+                    </button>
+                    <button type="button" x-on:click="exporter('etat-financier-toutes-preview')">
+                        <x-m.icon name="scale" />
+                        <span class="pim-menu-tt">Aperçu état financier · toutes années<small>Soldes de toutes les inscriptions</small></span>
+                        <span class="ch"><x-m.icon name="chr" /></span>
+                    </button>
+                    <button type="button" x-on:click="exporter('etat-financier-toutes')">
+                        <x-m.icon name="dl" />
+                        <span class="pim-menu-tt">Télécharger · toutes années</span>
                         <span class="ch"><x-m.icon name="chr" /></span>
                     </button>
                 @endif
@@ -526,6 +537,10 @@
                     if (!ex || !ex.url) { return; }
                     var p = this.parametres();
                     if (ex.inline) { p.set('inline', '1'); }
+                    if (format.startsWith('etat-financier')) {
+                        p.delete('date_debut'); p.delete('date_fin'); p.delete('status'); p.delete('portee');
+                        p.set('annee_situation', ex.annee_situation || 'courante');
+                    }
                     var url = ex.url + (p.toString() ? '?' + p.toString() : '');
                     this.fermerTout();
                     if (ex.onglet) {

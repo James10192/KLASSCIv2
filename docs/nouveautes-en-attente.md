@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-12 · #1561 · État financier PDF : choisir une situation cumulée de l'année courante ou de toutes les inscriptions, sans appliquer silencieusement les dates du journal de caisse (bureau et mobile).
 - 2026-10-12 · #1561 · Paiements > Suivi : raccourcis Aujourd'hui, 30 jours, toutes dates sur toutes années, sans confondre date de caisse et année de la dette (bureau et mobile).
 - 2026-10-12 · #1561 · Fiche étudiant > Finances : année de référence et frais de l'inscription affichés en premier, situation multi-années consultable ensuite sans perdre les anciennes inscriptions.
 - 2026-10-12 · Caisse et suivi des paiements : les dettes anciennes peuvent être payées même sans nouvelle inscription. Séparez « Tous les encaissements », « Frais de cette année » et « Dettes anciennes » pour éviter de confondre paiements et nouveaux inscrits.
