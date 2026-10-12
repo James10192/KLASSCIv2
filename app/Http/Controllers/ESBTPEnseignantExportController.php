@@ -11,6 +11,7 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNiveauEtude;
 use App\Services\Enseignants\PerimetreExportEnseignants;
+use App\Services\Enseignants\CompositionExportEnseignants;
 use App\Services\Enseignants\AnnuaireEnseignantsBulletins;
 use App\Services\ExportRenderer;
 use Illuminate\Http\Request;
@@ -78,10 +79,21 @@ final class ESBTPEnseignantExportController extends Controller
             'matiere_ids' => ['sometimes', 'array', 'max:100'],
             'matiere_ids.*' => ['integer', 'distinct', 'exists:esbtp_matieres,id'],
             'semestre' => ['nullable', 'integer', 'in:1,2'],
-            'vue' => ['nullable', 'in:synthese,annuaire,rapprochement,affectations,matieres,specialisations'],
+            'vue' => ['nullable', 'in:synthese,annuaire,rapprochement,affectations,matieres,specialisations,liste'],
+            'colonnes' => ['sometimes', 'array', 'max:10'],
+            'colonnes.*' => ['string', 'max:40'],
+            'regroupement' => ['nullable', 'string', 'max:40'],
+            'orientation' => ['nullable', 'in:auto,portrait,landscape'],
         ]);
 
         $vue = $filters['vue'] ?? 'synthese';
+        $options = CompositionExportEnseignants::options(
+            $vue, $filters['colonnes'] ?? null, $filters['regroupement'] ?? null
+        );
+        $orientation = $filters['orientation'] ?? 'auto';
+        // Le choix explicite du portrait doit modifier la mise en page meme
+        // lorsque les colonnes par defaut n'ont pas ete retouchees.
+        if ($orientation === 'portrait') $options['personnalise'] = true;
         $filtrePedagogique = ! empty($filters['classe_id'])
             || ! empty($filters['classe_ids']) || ! empty($filters['filiere_ids'])
             || ! empty($filters['niveau_ids']) || ! empty($filters['matiere_ids']);
@@ -215,6 +227,7 @@ final class ESBTPEnseignantExportController extends Controller
                 'affectations' => 'Affectations détaillées par classe',
                 'matieres' => 'Matières et professeurs regroupés',
                 'specialisations' => 'Répertoire par spécialisation',
+                'liste' => 'Liste épurée des professeurs',
             ][$vue],
             'Année universitaire des bulletins' => $annee->display_name,
         ];
@@ -238,7 +251,13 @@ final class ESBTPEnseignantExportController extends Controller
         if (! empty($filters['search'])) $labels['Recherche'] = $filters['search'];
         if (! empty($filters['status'])) $labels['Statut'] = $filters['status'] === 'active' ? 'Actif' : 'Inactif';
         if (! empty($filters['specialization'])) $labels['Spécialisation'] = $filters['specialization'];
+        if ($options['personnalise']) {
+            $labels['Regroupement'] = CompositionExportEnseignants::definitions()[$vue]['regroupements'][$options['regroupement']];
+        }
 
-        return new EnseignantsReport($resultat['rows'], $labels, $resultat['affectations'], $totalAffectations, $vue);
+        return new EnseignantsReport(
+            $resultat['rows'], $labels, $resultat['affectations'], $totalAffectations,
+            $vue, $options, $orientation
+        );
     }
 }

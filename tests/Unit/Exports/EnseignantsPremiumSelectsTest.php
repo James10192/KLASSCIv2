@@ -47,7 +47,8 @@ final class EnseignantsPremiumSelectsTest extends TestCase
                 $vue
             );
         }
-        $this->assertSame(6, substr_count($vue, 'type="radio" name="vue"'));
+        $this->assertSame(7, substr_count($vue, 'type="radio" name="vue"'));
+        $this->assertStringContainsString('value="liste"', $vue);
         $this->assertStringContainsString('value="matieres"', $vue);
         $this->assertStringContainsString('value="specialisations"', $vue);
         $this->assertStringContainsString('x-teleport="body"', $vue);
@@ -85,6 +86,24 @@ final class EnseignantsPremiumSelectsTest extends TestCase
         $this->assertStringNotContainsString('<select', $multi);
         $this->assertStringContainsString("url.searchParams.append(name, value)", $vue);
         $this->assertStringContainsString("selections.classes = this.selections.classes.filter", $vue);
+    }
+
+    public function test_composition_colonnes_avec_rubriques_et_orientation_est_sans_reload(): void
+    {
+        $vue = $this->dialogue();
+        $pdf = file_get_contents(dirname(__DIR__, 3).'/resources/views/esbtp/enseignants/export-pdf.blade.php');
+
+        $this->assertStringContainsString('data-structure=', $vue);
+        $this->assertStringContainsString('name="colonnes[]"', $vue);
+        $this->assertStringContainsString('name="regroupement"', $vue);
+        $this->assertStringContainsString('name="orientation" value="auto"', $vue);
+        $this->assertStringContainsString('this.$watch(\'vue\'', $vue);
+        $this->assertStringContainsString('selectedColumns.length', $vue);
+        $this->assertStringContainsString('document.getElementById(\'te-exp-form\')', $vue);
+        $this->assertStringContainsString("url.searchParams.append(name, value)", $vue);
+        $this->assertStringContainsString('@if($composition !== null)', $pdf);
+        $this->assertStringContainsString('{{ $ligne[$colonne] }}', $pdf);
+        $this->assertStringContainsString(':orientation="$reportOrientation', $pdf);
     }
 
     public function test_les_trois_actions_conservent_les_routes_existantes(): void

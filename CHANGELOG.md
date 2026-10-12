@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Export enseignants — composition sur mesure et portrait A4 :** choix des colonnes utiles, regroupement par matière, classe, niveau ou filière et nouveau document « Liste épurée ». Les rubriques remplacent les colonnes redondantes ; un PDF simple s'imprime en portrait, les vues plus larges basculent en paysage, et les mêmes données sont disponibles dans Excel. Correction du filtre par identifiant de matière sur les bulletins.
 
 - **Bulletins BTS — rang identique au dossier et aux résultats :** les rangs semestriels et annuels affichés dans l'aperçu/PDF sont calculés avec les mêmes moyennes courantes, effectifs, règles d'assiduité et ex æquo que dans Résultats et Fiche étudiant. Les bulletins historiques des autres étudiants ne faussent plus le classement de l'élève imprimé, sans modification des notes ni des données officielles stockées.
 
