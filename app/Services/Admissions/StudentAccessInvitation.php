@@ -102,4 +102,27 @@ final class StudentAccessInvitation
         return array_values($valides);
     }
 
+    public function envoyerCode(User $user, string $code): bool
+    {
+        $sent = 0;
+        foreach ($this->destinataires($user) as $email) {
+            try {
+                Mail::send('esbtp.emails.student-login-code', [
+                    'nom' => $user->name ?: 'étudiant(e)',
+                    'code' => $code,
+                    'minutes' => 5,
+                ], function ($message) use ($email): void {
+                    $message->to($email)->subject('KLASSCI — votre code de connexion');
+                });
+                $sent++;
+            } catch (\Throwable $e) {
+                Log::warning('Code de connexion : envoi impossible', [
+                    'user_id' => $user->id, 'exception' => $e::class,
+                ]);
+            }
+        }
+
+        return $sent > 0;
+    }
+
 }
