@@ -172,3 +172,9 @@ et `MailPulseWorkflowDisclosure` exige une déclaration
 Si l'identifiant manque ou si la publication a été annulée, le message
 est bloqué. Les notes brutes et bulletins déjà publiés conservent leurs
 règles de confidentialité initiales.
+
+**Statuts MailPulse :** un résultat `skipped` pour défaut de consentement,
+contenu non publié ou livraison volontairement supprimée n'est pas une remise
+fournisseur. L'outbox le clôture sans `sent_at`, sans retry, avec la raison
+explicite dans `error_message`. Ainsi les métriques ne comptent plus de
+livraisons imaginaires.
