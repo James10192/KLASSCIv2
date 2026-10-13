@@ -26,7 +26,9 @@ final class MailPulseResult
 
     public static function skipped(string $status, string $message): self
     {
-        return new self(true, $status, null, null, null, null, $message);
+        // Skipped is NOT submitted or accepted by the provider, even if it is
+        // a normal outcome (opt-out, unpublished content or duplicate).
+        return new self(true, $status, null, null, null, null, $message, null, 'skipped');
     }
 
     public function toArray(): array
