@@ -37,8 +37,10 @@ class PasswordChangeController extends Controller
         // À la première connexion imposée, l'ancien mot de passe n'est pas
         // requis. Pour une expiration ou un changement volontaire, on exige
         // toujours la connaissance de l'ancien secret.
-        $requiresCurrent = ! (bool) $user->must_change_password
-            || UserService::isPasswordExpired($user);
+        // Seule une expiration exige la saisie de l'ancien mot de passe.
+        // La première configuration et les changements depuis une session
+        // déjà authentifiée demandent uniquement le nouveau mot de passe.
+        $requiresCurrent = UserService::isPasswordExpired($user);
 
         $rules = [
             'password' => ['required', 'confirmed', new MotDePasseNonGenerique,
