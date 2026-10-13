@@ -18,7 +18,7 @@ final class StudentAccessInvitation
 {
     public function inviter(User $user, string $motif = 'activation'): bool
     {
-        if (! $user->email || ! filter_var($user->email, FILTER_VALIDATE_EMAIL)) {
+        if (! $this->assurerEmailPrincipal($user)) {
             return false;
         }
 
@@ -124,5 +124,29 @@ final class StudentAccessInvitation
 
         return $sent > 0;
     }
+
+    /**
+     * Le broker Laravel indexe les jetons par users.email. Les comptes
+     * historiques sans e-mail peuvent récupérer l'adresse d'un parent lié.
+     */
+    public function assurerEmailPrincipal(User $user): bool
+    {
+        if ($user->email && filter_var($user->email, FILTER_VALIDATE_EMAIL)) {
+            return true;
+        }
+
+        foreach ($this->destinataires($user) as $candidate) {
+            $email = app(\App\Services\Emails\AdresseDeCompte::class)->pour($candidate);
+            if ($email) {
+                $user->email = $email;
+                $user->save();
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
 
 }
