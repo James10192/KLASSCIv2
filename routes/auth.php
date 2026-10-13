@@ -17,6 +17,7 @@
 
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\EmailCodeLoginController;
 use App\Http\Controllers\Securite\DoubleAuthentificationController;
 use App\Http\Controllers\Auth\PasswordChangeController;
 use App\Http\Controllers\Auth\ResetPasswordController;
@@ -28,6 +29,14 @@ use Illuminate\Support\Facades\Route;
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login')->middleware('guest');
 Route::post('/login', [LoginController::class, 'login'])->middleware(['guest', 'throttle:login']);
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
+// Connexion par e-mail + code court, alternative au mot de passe.
+// Le second facteur TOTP configuré reste obligatoire après Auth::login.
+Route::post('/login/email-code', [EmailCodeLoginController::class, 'envoyer'])
+    ->middleware(['guest', 'throttle:3,1'])->name('login.email-code.send');
+Route::post('/login/email-code/verify', [EmailCodeLoginController::class, 'verifier'])
+    ->middleware(['guest', 'throttle:6,1'])->name('login.email-code.verify');
+
 
 // SSO depuis le portail groupe adminKlassci (token HMAC-SHA256 signé par master).
 // Pas de middleware 'guest': un user déjà loggé doit pouvoir basculer vers le target user du token.
