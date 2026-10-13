@@ -67,4 +67,28 @@ final class StudentAccessInvitation
             'user_id' => $user->id, 'motif' => $motif,
         ]);
     }
+    /** @return list<string> */
+    public function destinataires(User $user): array
+    {
+        $emails = [$user->email];
+        foreach (ESBTPEtudiant::with('parents')->where('user_id', $user->id)->get() as $etudiant) {
+            $emails[] = $etudiant->email_personnel;
+            $emails[] = $etudiant->email;
+            foreach ($etudiant->parents as $parent) {
+                $emails[] = $parent->email;
+            }
+        }
+
+        $analyseur = app(AnalyseurEmail::class);
+        $valides = [];
+        foreach ($emails as $email) {
+            $email = mb_strtolower(trim((string) $email));
+            if ($email && $analyseur->analyser($email)->joignable()) {
+                $valides[$email] = $email;
+            }
+        }
+
+        return array_values($valides);
+    }
+
 }
