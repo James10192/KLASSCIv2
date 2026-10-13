@@ -124,6 +124,10 @@ jobs:
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Services/MailPulse/MailPulseWhatsAppThrottleTest.php --stop-on-failure
 
+      - name: Test emails familiaux sans doublons
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Services/Notifications/WorkflowEmailAuthorityTest.php tests/Unit/Services/Notifications/FamilyWorkflowMailerTest.php tests/Unit/Services/MailPulse/MailPulseWorkflowPolicyTest.php --stop-on-failure
+
       - name: Check unresolved class names (changed files)
         # Compare la branche a sa cible : sans pull request, il n'y a pas de
         # cible a comparer.
