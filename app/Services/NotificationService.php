@@ -2976,9 +2976,17 @@ class NotificationService
                 'is_read' => false,
             ]);
 
-            // Email envoyé au parent si canal activé
-            if ($preferences->hasChannel('email') && $tuteur->email) {
-                Mail::to($tuteur->email)->send(new \App\Mail\Parents\ReinscriptionConfirmationMail($data));
+            // Une réinscription concerne le compte partagé : envoyer le même
+            // récapitulatif à l'étudiant et aux parents rattachés, sans doublon.
+            foreach (app(\App\Services\Admissions\StudentAccessInvitation::class)->destinataires($etudiant->user) as $email) {
+                try {
+                    Mail::to($email)->send(new \App\Mail\Parents\ReinscriptionConfirmationMail($data));
+                } catch (\Throwable $deliveryError) {
+                    Log::warning('Réinscription : un courriel famille a échoué', [
+                        'inscription_id' => $inscription->id,
+                        'exception' => $deliveryError::class,
+                    ]);
+                }
             }
 
             $this->notifyMailPulse(MailPulseWorkflowIntent::reEnrollmentCreated(
