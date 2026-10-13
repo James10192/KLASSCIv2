@@ -638,8 +638,14 @@ class ESBTPInscriptionController extends Controller
                     auth()->user(),
                 );
 
-                // Les parents ne reçoivent plus de secrets étudiant en clair.
-                // L'invitation est destinée au courriel du compte étudiant.
+                // Confirmation transactionnelle au compte partagé : chaque
+                // adresse de l'étudiant et des parents reçoit le même
+                // récapitulatif, sans mot de passe en clair.
+                if ($inscription->etudiant?->user) {
+                    $notificationService->notifyParentsInscriptionCreated(
+                        $inscription, []
+                    );
+                }
             } catch (\Exception $e) {
                 Log::error(
                     "Erreur envoi notification inscription: " .
