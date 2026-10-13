@@ -187,6 +187,23 @@ class ESBTPInscriptionService
                 $this->attachParentsToEtudiant($etudiant, $parentsData, $userId);
             }
 
+            // Un parent utilise le compte de son enfant. Si l'étudiant
+            // n'a pas de courriel, prendre une adresse de parent lié comme
+            // adresse principale du compte (nécessaire au broker Laravel).
+            if ($etudiant->user_id) {
+                $compte = $etudiant->user;
+                if ($compte && ! $compte->email) {
+                    foreach ($etudiant->parents as $parent) {
+                        $adresse = app(\App\Services\Emails\AdresseDeCompte::class)->pour($parent->email);
+                        if ($adresse) {
+                            $compte->email = $adresse;
+                            $compte->save();
+                            break;
+                        }
+                    }
+                }
+            }
+
             // 8. Enregistrement du paiement initial (si fourni)
             if ($paiementData && !empty($paiementData)) {
                 $paiementData['inscription_id'] = $inscription->id;
