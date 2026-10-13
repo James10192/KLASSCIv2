@@ -1013,6 +1013,16 @@ class ESBTPEtudiantController extends Controller
             // L'étudiant définit le sien par lien sécurisé.
             $password = \Illuminate\Support\Str::random(64);
 
+            // Le tuteur peut recevoir et utiliser le même compte.
+            if (! $email) {
+                foreach ($etudiant->parents as $parent) {
+                    $email = app(\App\Services\Emails\AdresseDeCompte::class)->pour($parent->email);
+                    if ($email) {
+                        break;
+                    }
+                }
+            }
+
             // Créer le compte utilisateur
             $user = User::create([
                 'name' => $etudiant->nom . ' ' . $etudiant->prenoms,
