@@ -130,7 +130,7 @@ jobs:
 
       - name: Test confidentialité des alertes MailPulse
         if: github.event_name == 'pull_request'
-        run: php artisan test tests/Unit/Services/MailPulse/MailPulseWorkflowDisclosureTest.php --stop-on-failure
+        run: php artisan test tests/Unit/Services/MailPulse/MailPulseWorkflowDisclosureTest.php tests/Unit/Services/MailPulse/MailPulseParentNotificationLogTest.php --stop-on-failure
 
       - name: Check unresolved class names (changed files)
         # Compare la branche a sa cible : sans pull request, il n'y a pas de
