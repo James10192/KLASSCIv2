@@ -117,6 +117,14 @@ return [
         // MailPulse refuse en 429 au-delà de 60 par organisation, tous flux
         // confondus. 30 laisse la place aux notifications et aux convocations.
         'mail_per_minute' => (int) env('MAILPULSE_MAIL_PER_MINUTE', 30),
+        // WhatsApp via MailPulse / Evolution / Baileys : activation contrôlée
+        // après validation du cache partagé et du worker. Ce n'est pas un
+        // quota officiel WhatsApp : il faut aussi limiter à la passerelle.
+        'whatsapp_pacing_enabled' => env('MAILPULSE_WHATSAPP_PACING_ENABLED', false),
+        'whatsapp_per_minute' => (int) env('MAILPULSE_WHATSAPP_PER_MINUTE', 6),
+        'whatsapp_per_hour' => (int) env('MAILPULSE_WHATSAPP_PER_HOUR', 120),
+        'whatsapp_per_recipient_hour' => (int) env('MAILPULSE_WHATSAPP_PER_RECIPIENT_HOUR', 6),
+        'whatsapp_min_spacing_seconds' => (int) env('MAILPULSE_WHATSAPP_MIN_SPACING_SECONDS', 8),
         'default_language' => env('MAILPULSE_DEFAULT_LANGUAGE', 'fr'),
         'real_workflows_enabled' => env('MAILPULSE_REAL_WORKFLOWS_ENABLED', false),
         'test_api_secret' => env('TEST_API_SECRET'),
