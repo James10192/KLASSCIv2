@@ -62,6 +62,8 @@ final class MailPulseWorkflowIntentOutboxTest extends TestCase
     {
         config()->set('services.mailpulse.enabled', true);
         config()->set('services.mailpulse.real_workflows_enabled', true);
+        // A genuine async driver with Queue::fake intercepts the accelerator.
+        config()->set('queue.default', 'database');
         Queue::fake();
 
         app(MailPulseWorkflowQueue::class)->push(MailPulseWorkflowIntent::paymentReceived(122));
@@ -71,6 +73,19 @@ final class MailPulseWorkflowIntentOutboxTest extends TestCase
         $this->assertSame('queued', $row->status);
         Queue::assertPushed(DispatchMailPulseDurableWorkflowJob::class,
             fn (DispatchMailPulseDurableWorkflowJob $job): bool => $job->intentId === $row->id);
+    }
+
+    public function test_sync_queue_only_persists_and_never_blocks_http_on_provider(): void
+    {
+        config()->set('services.mailpulse.enabled', true);
+        config()->set('services.mailpulse.real_workflows_enabled', true);
+        config()->set('queue.default', 'sync');
+        Queue::fake();
+
+        app(MailPulseWorkflowQueue::class)->push(MailPulseWorkflowIntent::paymentReceived(124));
+
+        $this->assertSame('queued', DB::table('mailpulse_workflow_intents')->first()?->status);
+        Queue::assertNotPushed(DispatchMailPulseDurableWorkflowJob::class);
     }
 
     public function test_a_failed_queue_connection_does_not_erase_the_persisted_intent(): void
