@@ -3,7 +3,7 @@
 namespace App\Services\Notifications;
 
 use App\Models\ESBTPEtudiant;
-use App\Services\Admissions\StudentAccessInvitation;
+use App\Services\Emails\AnalyseurEmail;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -16,7 +16,7 @@ use Throwable;
  */
 final class FamilyWorkflowMailer
 {
-    public function __construct(private StudentAccessInvitation $access) {}
+    public function __construct(private AnalyseurEmail $analyser) {}
 
     /**
      * @param  callable(): Mailable  $message  Fresh mailable for each address.
@@ -31,16 +31,26 @@ final class FamilyWorkflowMailer
             return 0;
         }
 
-        $recipients = $this->access->destinataires($student->user);
-        $guardian = $student->tuteur;
-        if ($guardian && $guardian->email) {
-            $recipient = mb_strtolower(trim((string) $guardian->email));
-            if (filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
-                $recipients[] = $recipient;
-            }
+        // Do NOT call StudentAccessInvitation::destinataires here: that method
+        // deliberately aggregates every student sharing the user account.
+        // A payment/grade/absence is scoped to ONE student's enrollment.
+        $recipients = [
+            $student->user->email,
+            $student->email_personnel,
+            $student->email,
+        ];
+        foreach ($student->parents as $parent) {
+            $recipients[] = $parent->email;
         }
 
-        $recipients = array_values(array_unique($recipients));
+        $valid = [];
+        foreach ($recipients as $email) {
+            $email = mb_strtolower(trim((string) $email));
+            if ($email !== '' && $this->analyser->analyser($email)->joignable()) {
+                $valid[$email] = $email;
+            }
+        }
+        $recipients = array_values($valid);
         $sent = 0;
 
         foreach ($recipients as $email) {
