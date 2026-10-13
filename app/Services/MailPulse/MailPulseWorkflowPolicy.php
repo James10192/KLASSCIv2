@@ -72,6 +72,11 @@ class MailPulseWorkflowPolicy
                 return ['allowed' => false, 'publication_eligible' => true, 'result' => null];
             }
 
+            if (! app(MailPulseAbsenceValidity::class)->stillAbsent($event, $studentId, $payload)) {
+                return ['allowed' => false, 'publication_eligible' => true,
+                    'stale_event' => true, 'result' => null];
+            }
+
             $gate = $this->publicationPolicy->submitIfStillPublishable(
                 $this->workflowDisclosure($event, $studentId, $payload),
                 $dispatch,

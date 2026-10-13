@@ -120,6 +120,10 @@ jobs:
 
       # La limitation de débit WhatsApp ne doit jamais appeler MailPulse
       # quand le quota ou le cache partagé bloque le départ.
+      - name: Test absences corrigées et reprise MailPulse
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Services/MailPulse/MailPulseAbsenceValidityTest.php --stop-on-failure
+
       - name: Test garde débit MailPulse WhatsApp
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Services/MailPulse/MailPulseWhatsAppThrottleTest.php --stop-on-failure

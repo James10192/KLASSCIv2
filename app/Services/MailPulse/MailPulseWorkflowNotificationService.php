@@ -60,6 +60,9 @@ class MailPulseWorkflowNotificationService
 
     public function notifyAbsenceReported(ESBTPAttendance $attendance): void
     {
+        if ($attendance->statut !== 'absent') {
+            return;
+        }
         $attendance->loadMissing(['etudiant.parents', 'matiere']);
         $etudiant = $attendance->etudiant;
         if (! $etudiant) {
@@ -83,6 +86,8 @@ class MailPulseWorkflowNotificationService
                 ),
                 'metadata' => [
                     'attendance_occurrence' => $this->attendanceOccurrence($attendance),
+                    'attendance_session_id' => $attendance->seance_cours_id,
+                    'attendance_date' => $attendance->date?->format('Y-m-d'),
                     'student_id' => $etudiant->id,
                     'matiere_id' => $attendance->matiere_id,
                 ],
@@ -462,7 +467,7 @@ class MailPulseWorkflowNotificationService
         );
         $result = ! $gate['allowed'] || ! $gate['publication_eligible']
             ? MailPulseResult::skipped(
-                $gate['publication_eligible'] ? 'messaging_consent_stopped' : 'academic_content_unpublished',
+                ($gate['stale_event'] ?? false) ? 'workflow_event_stale' : ($gate['publication_eligible'] ? 'messaging_consent_stopped' : 'academic_content_unpublished'),
                 'The notification is no longer authorized at dispatch time.',
             )
             : $gate['result'];
