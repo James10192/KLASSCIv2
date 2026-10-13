@@ -132,6 +132,10 @@ jobs:
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Services/MailPulse/MailPulseWorkflowDisclosureTest.php tests/Unit/Services/MailPulse/MailPulseParentNotificationLogTest.php --stop-on-failure
 
+      - name: Test changements d'état des paiements notifiés
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Services/MailPulse/MailPulseStalePaymentTest.php --stop-on-failure
+
       - name: Check unresolved class names (changed files)
         # Compare la branche a sa cible : sans pull request, il n'y a pas de
         # cible a comparer.
