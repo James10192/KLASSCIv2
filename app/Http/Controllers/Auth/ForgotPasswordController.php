@@ -61,15 +61,17 @@ class ForgotPasswordController extends Controller
         // Accepter aussi l'e-mail d'un parent, car le parent et l'étudiant
         // utilisent exactement le même compte. On n'affiche jamais si une
         // adresse est connue : protection anti-énumération.
-        $comptes = \App\Models\User::query()->where('email', $email)->get();
-        if ($comptes->isEmpty()) {
-            $ids = \App\Models\ESBTPEtudiant::query()
+        // Un parent peut être l'adresse principale d'un enfant ET le
+        // contact familial d'autres enfants. Parcourir tous les comptes
+        // associés, pas seulement celui qui possède users.email.
+        $ids = \App\Models\User::query()->where('email', $email)->pluck('id')
+            ->merge(\App\Models\ESBTPEtudiant::query()
                 ->where('email_personnel', $email)
                 ->orWhere('email', $email)
                 ->orWhereHas('parents', fn ($q) => $q->where('email', $email))
-                ->distinct()->limit(10)->pluck('user_id')->filter();
-            $comptes = \App\Models\User::whereIn('id', $ids)->get();
-        }
+                ->pluck('user_id'))
+            ->filter()->unique()->take(10);
+        $comptes = \App\Models\User::whereIn('id', $ids)->get();
 
         foreach ($comptes->take(10) as $compte) {
             if (! $compte->is_active
