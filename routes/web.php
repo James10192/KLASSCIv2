@@ -2168,6 +2168,19 @@ Route::post('esbtp/emploi-temps/{id}/set-current', [App\Http\Controllers\ESBTPEm
     ->name('esbtp.emploi-temps.set-current')
     ->middleware(['auth', 'permission:timetables.edit']);
 
+// Gestion contextuelle des notes dans les fiches (lecture séparée des
+// modifications, chaque endpoint conserve le contrôle d'accès serveur).
+Route::middleware(['auth', 'permission:notes.view', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk'])
+    ->prefix('esbtp/fiche-notes')->name('esbtp.fiche-notes.')->group(function () {
+        Route::get('/etudiants/{etudiant}', [\App\Http\Controllers\ESBTP\FicheNotesController::class, 'etudiant'])
+            ->whereNumber('etudiant')->name('etudiant')->middleware('permission:students.view');
+        Route::get('/inscriptions/{inscription}', [\App\Http\Controllers\ESBTP\FicheNotesController::class, 'inscription'])
+            ->whereNumber('inscription')->name('inscription')->middleware('permission:inscriptions.view|students.view');
+        Route::delete('/inscriptions/{inscription}/notes/{note}', [\App\Http\Controllers\ESBTP\FicheNotesController::class, 'supprimerNote'])
+            ->whereNumber('inscription')->whereNumber('note')->name('supprimer')
+            ->middleware(['permission:notes.delete', 'throttle:30,1']);
+    });
+
 // Routes pour les Ã©valuations
 // La seconde clause ferme le groupe à qui ne porte AUCUN droit sur les
 // évaluations : `admin.access` seul (caissier, comptable) suffisait à créer,
@@ -2176,7 +2189,7 @@ Route::post('esbtp/emploi-temps/{id}/set-current', [App\Http\Controllers\ESBTPEm
 Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'permission:evaluations.view|evaluations.create|evaluations.edit|view_evaluations|create_evaluations|edit_evaluations'])->group(function () {
     Route::get('/', [ESBTPEvaluationController::class, 'index'])->name('index');
     Route::get('/create', [ESBTPEvaluationController::class, 'create'])->name('create');
-    Route::post('/', [ESBTPEvaluationController::class, 'store'])->name('store');
+    Route::post('/', [ESBTPEvaluationController::class, 'store'])->name('store')->middleware('permission:evaluations.create');
 
     // AJAX: Charger matiÃ¨res disponibles pour une classe (via combinaisons globales)
     // IMPORTANT: Cette route doit Ãªtre AVANT les routes /{evaluation} pour Ã©viter les conflits
@@ -2192,7 +2205,7 @@ Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['aut
     Route::get('/{evaluation}/refresh-row', [ESBTPEvaluationController::class, 'refreshRow'])->name('refresh-row');
     // Quick edit (titre + barÃ¨me + coefficient) â€” utilisÃ© depuis le modal notes (PR #4)
     Route::patch('/{evaluation}/quick-update', [ESBTPEvaluationController::class, 'quickUpdate'])
-        ->middleware('throttle:30,1')
+        ->middleware(['permission:evaluations.edit', 'throttle:30,1'])
         ->name('quick-update');
     Route::patch('/{evaluation}/cancel', [ESBTPEvaluationController::class, 'cancel'])->name('cancel');
     Route::patch('/{evaluation}/restore', [ESBTPEvaluationController::class, 'restore'])->name('restore');
@@ -2201,7 +2214,7 @@ Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['aut
     Route::get('/{evaluation}/edit', [ESBTPEvaluationController::class, 'edit'])->whereNumber('evaluation')->name('edit');
     Route::put('/{evaluation}', [ESBTPEvaluationController::class, 'update'])->whereNumber('evaluation')->name('update');
     Route::delete('/{evaluation}', [ESBTPEvaluationController::class, 'destroy'])->whereNumber('evaluation')->name('destroy');
-    Route::patch('/{evaluation}/toggle-published', [ESBTPEvaluationController::class, 'togglePublished'])->name('toggle-published');
+    Route::patch('/{evaluation}/toggle-published', [ESBTPEvaluationController::class, 'togglePublished'])->name('toggle-published')->middleware('permission:evaluations.edit');
     Route::patch('/{evaluation}/toggle-notes-published', [ESBTPEvaluationController::class, 'toggleNotesPublished'])->name('toggle-notes-published');
     Route::patch('/{evaluation}/update-status', [ESBTPEvaluationController::class, 'updateStatus'])->name('update-status');
     Route::get('/{evaluation}/pdf', [ESBTPEvaluationController::class, 'generatePdf'])->name('pdf');
