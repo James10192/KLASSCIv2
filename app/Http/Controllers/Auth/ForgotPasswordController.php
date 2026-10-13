@@ -64,7 +64,7 @@ class ForgotPasswordController extends Controller
             $response = $this->broker()->sendResetLink(
                 $this->credentials($request)
             );
-        } catch (TransportExceptionInterface $e) {
+        } catch (\Throwable $e) {
             // Le courriel n'est pas parti (messagerie refusée ou plafond atteint) :
             // le dire à l'écran plutôt qu'une page d'erreur, et le garder au journal.
             Log::warning('Réinitialisation du mot de passe : courriel non envoyé', ['erreur' => $e->getMessage()]);
