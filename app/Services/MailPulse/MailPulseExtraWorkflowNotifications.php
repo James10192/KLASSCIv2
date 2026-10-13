@@ -23,6 +23,12 @@ class MailPulseExtraWorkflowNotifications
 
     public function notifyPaymentRejected(ESBTPPaiement $paiement): void
     {
+        // The rejection may have been reversed before the background job runs.
+        // Never announce a stale rejection for an approved or pending payment.
+        if ($paiement->status !== 'rejeté') {
+            return;
+        }
+
         $paiement->loadMissing(['etudiant.parents', 'inscription']);
         $etudiant = $paiement->etudiant ?? $paiement->inscription?->etudiant;
         if (! $etudiant) {
