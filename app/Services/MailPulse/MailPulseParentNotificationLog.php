@@ -136,7 +136,7 @@ class MailPulseParentNotificationLog
                 ['metadata' => $metadata],
                 $this->terminalAttributes(
                     'failed',
-                    $gate['publication_eligible'] ? 'mailpulse_retry_suppressed_by_consent' : 'mailpulse_retry_suppressed_by_publication',
+                    ($gate['stale_event'] ?? false) ? 'mailpulse_retry_suppressed_stale_event' : ($gate['publication_eligible'] ? 'mailpulse_retry_suppressed_by_consent' : 'mailpulse_retry_suppressed_by_publication'),
                 )
             ));
 
