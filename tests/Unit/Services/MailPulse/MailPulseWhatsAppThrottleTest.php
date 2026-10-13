@@ -4,6 +4,7 @@ namespace Tests\Unit\Services\MailPulse;
 
 use App\Services\MailPulse\MailPulseClient;
 use Illuminate\Http\Client\Request;
+use RuntimeException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -98,7 +99,7 @@ class MailPulseWhatsAppThrottleTest extends TestCase
 
     public function test_cache_failure_fails_closed_instead_of_sending_whatsapp(): void
     {
-        Cache::shouldReceive('lock')->once()->andThrow(new \\RuntimeException('cache down'));
+        Cache::shouldReceive('lock')->once()->andThrow(new RuntimeException('cache down'));
 
         $result = app(MailPulseClient::class)->sendWhatsAppMessage($this->message(), 'request-cache-down');
 
