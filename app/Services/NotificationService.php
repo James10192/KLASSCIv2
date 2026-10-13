@@ -2982,7 +2982,7 @@ class NotificationService
                 ? $etudiant->parents()->pluck('email')->all()
                 : [];
             $destinataires = array_unique(array_map('mb_strtolower',
-                array_merge($destinationEtudiant, $destinationParents)));
+                array_filter(array_merge($destinationEtudiant, $destinationParents))));
 
             $analyseur = app(\App\Services\Emails\AnalyseurEmail::class);
             foreach ($destinataires as $email) {
