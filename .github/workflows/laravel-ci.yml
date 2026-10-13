@@ -118,6 +118,12 @@ jobs:
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Feature/Auth/SharedStudentAccountRoutesTest.php --stop-on-failure
 
+      # La limitation de débit WhatsApp ne doit jamais appeler MailPulse
+      # quand le quota ou le cache partagé bloque le départ.
+      - name: Test garde débit MailPulse WhatsApp
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Services/MailPulse/MailPulseWhatsAppThrottleTest.php --stop-on-failure
+
       - name: Check unresolved class names (changed files)
         # Compare la branche a sa cible : sans pull request, il n'y a pas de
         # cible a comparer.
