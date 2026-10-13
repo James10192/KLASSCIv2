@@ -23,6 +23,9 @@ class MailPulseExtraWorkflowNotifications
 
     public function notifyPaymentRejected(ESBTPPaiement $paiement): void
     {
+        if ($paiement->status !== 'rejeté') {
+            return;
+        }
         $paiement->loadMissing(['etudiant.parents', 'inscription']);
         $etudiant = $paiement->etudiant ?? $paiement->inscription?->etudiant;
         if (! $etudiant) {
@@ -142,6 +145,9 @@ class MailPulseExtraWorkflowNotifications
 
     public function notifyLowAttendance(ESBTPAttendance $attendance, float $attendanceRate, int $threshold): void
     {
+        if ($attendance->statut !== 'absent' || $attendanceRate >= $threshold) {
+            return;
+        }
         $attendance->loadMissing(['etudiant.parents']);
         $etudiant = $attendance->etudiant;
         if (! $etudiant) {
@@ -162,6 +168,8 @@ class MailPulseExtraWorkflowNotifications
             'metadata' => [
                 'alert' => 'low_attendance',
                 'period' => now()->format('Y-m'),
+                'attendance_session_id' => $attendance->seance_cours_id,
+                'attendance_date' => $attendance->date?->format('Y-m-d'),
             ],
         ]);
     }
