@@ -83,24 +83,7 @@ class MailPulseWorkflowPolicy
 
     private function workflowDisclosure(string $event, int $studentId, array $payload): ?array
     {
-        if (! in_array($event, ['grade_published', 'bulletin_published'], true)) {
-            return null;
-        }
-
-        $metadata = $payload['metadata'] ?? null;
-        if (! is_array($metadata)) {
-            return [];
-        }
-
-        $resourceId = $event === 'grade_published'
-            ? ($metadata['note_id'] ?? null)
-            : ($metadata['bulletin_id'] ?? null);
-
-        return [
-            'type' => $event === 'grade_published' ? 'grades' : 'report_card',
-            'student_id' => $studentId,
-            'resource_ids' => [$resourceId],
-        ];
+        return app(MailPulseWorkflowDisclosure::class)->forEvent($event, $studentId, $payload);
     }
 
     private function isStoppedForMessaging(ESBTPParent $parent, string $channel): bool

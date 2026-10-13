@@ -160,6 +160,36 @@ class MailPulseParentNotificationLogTest extends TestCase
     }
 
     /** @test */
+    public function it_never_marks_a_suppressed_notification_as_sent_or_retryable(): void
+    {
+        $parent = new ESBTPParent();
+        $parent->id = 15;
+        $student = new ESBTPEtudiant();
+        $student->id = 42;
+        $service = app(MailPulseParentNotificationLog::class);
+
+        [$log, $already] = $service->start(
+            'req-unpublished', 'low_grades', 'whatsapp', $this->payload(),
+            $parent, $student, ['metadata' => ['bulletin_id' => 77]]
+        );
+
+        $this->assertFalse($already);
+        $skipped = MailPulseResult::skipped(
+            'academic_content_unpublished', 'The report card is not published.'
+        );
+        $this->assertFalse($skipped->isDispatchAccepted());
+
+        $service->finish($log, $skipped, 'req-unpublished');
+        $fresh = $log->fresh();
+
+        $this->assertSame('failed', $fresh->status);
+        $this->assertSame('academic_content_unpublished', $fresh->error_message);
+        $this->assertNull($fresh->sent_at);
+        $this->assertNull($fresh->next_attempt_at);
+        $this->assertNull($fresh->retry_payload);
+    }
+
+    /** @test */
     public function it_encrypts_the_durable_retry_payload(): void
     {
         $parent = new ESBTPParent();

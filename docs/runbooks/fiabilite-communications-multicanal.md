@@ -160,3 +160,21 @@ la suppression des doublons avec la garantie de livraison.
   https://github.com/WhiskeySockets/Baileys/blob/master/SECURITY.md
 - Politique WhatsApp Business :
   https://business.whatsapp.com/policy/
+
+## Confidentialité des alertes de résultats — correctif ciblé
+
+Avant tout e-mail familial `low_grades`, KLASSCI exige un bulletin
+réellement publié, signé et autorisé via
+`ParentChatbotPublicationPolicy::reportCardIsPublished()`.
+L'émetteur MailPulse réalise le même contrôle avant de préparer le message,
+et `MailPulseWorkflowDisclosure` exige une déclaration
+`report_card` au moment de la publication et lors des reprises de l'outbox.
+Si l'identifiant manque ou si la publication a été annulée, le message
+est bloqué. Les notes brutes et bulletins déjà publiés conservent leurs
+règles de confidentialité initiales.
+
+**Statuts MailPulse :** un résultat `skipped` pour défaut de consentement,
+contenu non publié ou livraison volontairement supprimée n'est pas une remise
+fournisseur. L'outbox le clôture sans `sent_at`, sans retry, avec la raison
+explicite dans `error_message`. Ainsi les métriques ne comptent plus de
+livraisons imaginaires.

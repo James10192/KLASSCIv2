@@ -7,6 +7,7 @@ use App\Models\ESBTPBulletin;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
+use App\Services\ParentChatbot\ParentChatbotPublicationPolicy;
 
 /**
  * Workflow events that used to stay confined to email and in-app notifications.
@@ -107,6 +108,12 @@ class MailPulseExtraWorkflowNotifications
 
     public function notifyLowGrades(ESBTPBulletin $bulletin): void
     {
+        // Do not even prepare the outbound content before publication.
+        // The workflow policy checks the same publication again at dispatch.
+        if (! app(ParentChatbotPublicationPolicy::class)->reportCardIsPublished($bulletin)) {
+            return;
+        }
+
         $bulletin->loadMissing(['etudiant.parents', 'classe']);
         $etudiant = $bulletin->etudiant;
         if (! $etudiant) {

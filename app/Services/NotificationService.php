@@ -2826,6 +2826,13 @@ class NotificationService
     public function notifyParentsLowGrades($bulletin)
     {
         try {
+            // A moyenne or a failed subject is confidential until the
+            // report card has actually been signed and published.
+            if (! $bulletin instanceof \App\Models\ESBTPBulletin
+                || ! app(ParentChatbotPublicationPolicy::class)->reportCardIsPublished($bulletin)) {
+                return;
+            }
+
             $etudiant = $bulletin->etudiant;
             if (!$etudiant) return;
 
