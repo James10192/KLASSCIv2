@@ -53,3 +53,11 @@ pas une preuve de livraison email/WhatsApp/SMS. La table
   alertes et runbook de reprise avant une campagne à grande échelle.
 - Le mode est **désactivé par défaut**, aucun envoi réel ni migration n'est
   exécuté par la fusion GitHub seule.
+
+### Hébergement cPanel sans worker permanent
+
+Lorsque `QUEUE_CONNECTION=sync`, le web **n'exécute pas** l'appel réseau
+MailPulse : l'intention est seulement écrite dans MySQL et la commande cron
+la traite au prochain passage. Avec une vraie queue asynchrone, le job accélère
+la prise en charge, mais n'est pas nécessaire à la récupération. Un cron qui
+n'est pas lancé est donc bloquant pour la diffusion : surveiller son pouls.
