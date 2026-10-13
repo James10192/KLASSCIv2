@@ -305,6 +305,12 @@ class MailPulseParentNotificationLog
 
     private function isRetryable(MailPulseResult $result): bool
     {
+        // Permission/publication suppression is terminal, not a transport
+        // outage. Never retry it and never mark the message as sent.
+        if ($result->dispatchState === 'skipped') {
+            return false;
+        }
+
         if (in_array($result->dispatchState, ['pending', 'pending_reconciliation'], true)) {
             return true;
         }
