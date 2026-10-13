@@ -5,6 +5,7 @@ namespace App\Services\MailPulse;
 use App\Models\ESBTPParent;
 use App\Models\ParentChatbotLink;
 use App\Models\Setting;
+use App\Services\Notifications\WorkflowEmailAuthority;
 use App\Services\ParentChatbot\ParentChatbotPublicationPolicy;
 use Closure;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +26,14 @@ class MailPulseWorkflowPolicy
     public function parentAllows(ESBTPParent $parent, string $event, string $channel): bool
     {
         if (! $this->realWorkflowsEnabled()) {
+            return false;
+        }
+
+        // No duplicate email: the family mailer is authoritative for these
+        // transactions, including the student and all linked parents.
+        // WhatsApp/SMS are unaffected and keep their own consent gate.
+        if ($channel === 'email'
+            && ! app(WorkflowEmailAuthority::class)->shouldSendViaMailPulse($event)) {
             return false;
         }
 
