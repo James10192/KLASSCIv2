@@ -114,6 +114,10 @@ jobs:
       # noms irresolus anterieurs, chacun demandant de decider si le modele doit
       # naitre ou la relation mourir. Les traiter est un chantier ; les laisser
       # bloquer chaque PR en serait un autre.
+      - name: Test auth étudiant-parent (routes et compatibilité)
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Feature/Auth/SharedStudentAccountRoutesTest.php --stop-on-failure
+
       - name: Check unresolved class names (changed files)
         # Compare la branche a sa cible : sans pull request, il n'y a pas de
         # cible a comparer.

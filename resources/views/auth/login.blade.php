@@ -591,6 +591,18 @@
             .geo-ring,
             .panel-left::after { animation: none; }
         }
+
+        /* Connexion sans mot de passe : compatible mobile et design KLASSCI */
+        .klassci-otp-option{margin-top:20px}
+        .klassci-otp-details{border:1px solid #dce5f3;border-radius:13px;background:#f9fbff;overflow:hidden}
+        .klassci-otp-details summary{list-style:none;display:flex;align-items:center;gap:10px;cursor:pointer;padding:15px;color:#0453cb;font-weight:700;font-size:13px}
+        .klassci-otp-details summary::-webkit-details-marker{display:none}
+        .klassci-otp-details summary .fa-chevron-down{margin-left:auto;font-size:11px}
+        .klassci-otp-details[open] summary .fa-chevron-down{transform:rotate(180deg)}
+        .klassci-otp-body{padding:3px 17px 19px}
+        .klassci-otp-body p{font-size:13px;color:#637087;line-height:1.65;margin:7px 0 17px}
+        .klassci-otp-body .btn-login{width:100%;margin-top:12px}
+        .klassci-otp-verify{padding-top:18px;margin-top:20px;border-top:1px solid #dce5f3}
     </style>
 </head>
 <body>
@@ -734,6 +746,39 @@
                 Se connecter
             </button>
         </form>
+
+
+        <div class="klassci-otp-option">
+            <details class="klassci-otp-details" {{ request('mode') === 'code' || session()->has('klassci_email_login_ids') ? 'open' : '' }}>
+                <summary><i class="fas fa-envelope-open-text" aria-hidden="true"></i> Connexion par e-mail et code OTP <i class="fas fa-chevron-down" aria-hidden="true"></i></summary>
+                <div class="klassci-otp-body">
+                    <p>Sans mot de passe : recevez un code confidentiel sur l'e-mail de l'étudiant et de ses parents liés.</p>
+                    <form method="POST" action="{{ route('login.email-code.send') }}">
+                        @csrf
+                        <div class="field"><label for="otp-email">Adresse e-mail de l'étudiant ou du parent</label>
+                            <div class="input-wrap"><input id="otp-email" name="email" type="email" required
+                                autocomplete="email" placeholder="exemple@domaine.com" value="{{ old('email') }}">
+                                <i class="fas fa-envelope icon" aria-hidden="true"></i></div>
+                        </div>
+                        <button class="btn-login" type="submit"><i class="fas fa-paper-plane" aria-hidden="true"></i> Recevoir mon code</button>
+                    </form>
+                    @if(session()->has('klassci_email_login_ids'))
+                    <form method="POST" action="{{ route('login.email-code.verify') }}" class="klassci-otp-verify">
+                        @csrf
+                        <div class="field"><label for="otp-code">Code reçu par e-mail</label>
+                            <div class="input-wrap"><input id="otp-code" name="code" type="text" inputmode="numeric"
+                                autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6"
+                                placeholder="000000" required>
+                                <i class="fas fa-shield-alt icon" aria-hidden="true"></i>
+                            </div>
+                            @error('code')<div class="invalid-feedback" style="display:block">{{ $message }}</div>@enderror
+                        </div>
+                        <button class="btn-login" type="submit"><i class="fas fa-check" aria-hidden="true"></i> Valider le code et me connecter</button>
+                    </form>
+                    @endif
+                </div>
+            </details>
+        </div>
 
         <div class="login-footer">
             &copy; {{ date('Y') }} KLASSCI &mdash; African Digital Consulting

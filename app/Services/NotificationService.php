@@ -2509,8 +2509,7 @@ class NotificationService
                 'niveauEtude' => $inscription->classe->niveauEtude->name ?? 'N/A',
                 'anneeUniversitaire' => $inscription->anneeUniversitaire->name ?? 'N/A',
                 'dateInscription' => $inscription->created_at ? $inscription->created_at->format('d/m/Y') : date('d/m/Y'),
-                'username' => $credentials['username'],
-                'password' => $credentials['password'],
+                'username' => $etudiant->user->username,
                 'platformUrl' => route('dashboard'),
                 'montantTotal' => $totalAttendu,
                 'montantPaye' => $totalPaye,
@@ -2936,20 +2935,15 @@ class NotificationService
             }
 
             $tuteur = $etudiant->tuteur;
-            if (!$tuteur) {
-                Log::info('Pas de tuteur pour l\'étudiant (réinscription)', ['etudiant_id' => $etudiant->id]);
-                return;
-            }
-
-            $preferences = $tuteur->getOrCreateNotificationPreferences();
-            if (!$preferences->isNotificationEnabled('inscriptions')) {
-                return;
-            }
+            $preferences = $tuteur?->getOrCreateNotificationPreferences();
+            $autoriseParents = $preferences
+                && $preferences->isNotificationEnabled('inscriptions')
+                && $preferences->hasChannel('email');
 
             $schoolSettings = $this->getSchoolSettings();
 
             $data = [
-                'parentName' => $tuteur->nom . ' ' . $tuteur->prenoms,
+                'parentName' => $tuteur ? ($tuteur->nom . ' ' . $tuteur->prenoms) : 'Famille',
                 'studentName' => $etudiant->nom . ' ' . $etudiant->prenoms,
                 'matricule' => $etudiant->matricule ?? 'N/A',
                 'classe' => $inscription->classe->name ?? 'N/A',
@@ -2976,9 +2970,32 @@ class NotificationService
                 'is_read' => false,
             ]);
 
-            // Email envoyé au parent si canal activé
-            if ($preferences->hasChannel('email') && $tuteur->email) {
-                Mail::to($tuteur->email)->send(new \App\Mail\Parents\ReinscriptionConfirmationMail($data));
+            // L'étudiant reçoit toujours son récapitulatif. Les parents
+            // rattachés le reçoivent eux aussi si leur préférence l'autorise.
+            $destinationEtudiant = array_filter([
+                $etudiant->user->email,
+                $etudiant->email_personnel,
+                $etudiant->email,
+            ]);
+            $destinationParents = $autoriseParents
+                ? $etudiant->parents()->pluck('email')->all()
+                : [];
+            $destinataires = array_unique(array_map('mb_strtolower',
+                array_filter(array_merge($destinationEtudiant, $destinationParents))));
+
+            $analyseur = app(\App\Services\Emails\AnalyseurEmail::class);
+            foreach ($destinataires as $email) {
+                if (! $analyseur->analyser($email)->joignable()) {
+                    continue;
+                }
+                try {
+                    Mail::to($email)->send(new \App\Mail\Parents\ReinscriptionConfirmationMail($data));
+                } catch (\Throwable $deliveryError) {
+                    Log::warning('Réinscription : courriel famille non distribué', [
+                        'inscription_id' => $inscription->id,
+                        'exception' => $deliveryError::class,
+                    ]);
+                }
             }
 
             $this->notifyMailPulse(MailPulseWorkflowIntent::reEnrollmentCreated(
@@ -2987,9 +3004,9 @@ class NotificationService
                 (float) $reliquatMontant
             ));
 
-            $preferences->incrementNotificationCount();
+            $preferences?->incrementNotificationCount();
 
-            Log::info('Notification réinscription envoyée aux parents', ['parent_id' => $tuteur->id, 'email' => $tuteur->email]);
+            Log::info('Notification réinscription envoyée aux parents', ['etudiant_id' => $etudiant->id]);
 
         } catch (\Exception $e) {
             Log::error('Erreur notification réinscription parent: ' . $e->getMessage());

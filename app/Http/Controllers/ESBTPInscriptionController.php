@@ -638,21 +638,8 @@ class ESBTPInscriptionController extends Controller
                     auth()->user(),
                 );
 
-                // Envoyer notification aux parents avec identifiants
-                if (
-                    $inscription->etudiant &&
-                    $inscription->etudiant->user &&
-                    session("generated_password")
-                ) {
-                    $credentials = [
-                        "username" => $inscription->etudiant->user->username,
-                        "password" => session("generated_password"),
-                    ];
-                    $notificationService->notifyParentsInscriptionCreated(
-                        $inscription,
-                        $credentials,
-                    );
-                }
+                // Les parents ne reçoivent plus de secrets étudiant en clair.
+                // L'invitation est destinée au courriel du compte étudiant.
             } catch (\Exception $e) {
                 Log::error(
                     "Erreur envoi notification inscription: " .
@@ -669,7 +656,6 @@ class ESBTPInscriptionController extends Controller
                 $user = $inscription->etudiant->user;
                 session()->flash("account_info", [
                     "username" => $user->username,
-                    "password" => session("generated_password"),
                     "role" => "Étudiant",
                 ]);
             }
