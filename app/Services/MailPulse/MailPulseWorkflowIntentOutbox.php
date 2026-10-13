@@ -6,7 +6,6 @@ use App\Jobs\MailPulse\DispatchMailPulseDurableWorkflowJob;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use JsonException;
 use Throwable;
 
 /**
@@ -58,6 +57,13 @@ final class MailPulseWorkflowIntentOutbox
      */
     public function enqueueAfterCommit(int $id): void
     {
+        // cPanel frequently uses QUEUE_CONNECTION=sync. A synchronous job
+        // would still call MailPulse in the payment HTTP request. When no
+        // genuine worker is configured, the minute cron is the primary path.
+        if (config('queue.default') === 'sync') {
+            return;
+        }
+
         try {
             DB::afterCommit(static function () use ($id): void {
                 try {
