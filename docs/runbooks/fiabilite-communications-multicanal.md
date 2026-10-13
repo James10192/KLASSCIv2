@@ -199,3 +199,12 @@ qui peut avoir été corrigée depuis l'enregistrement, et la file MailPulse n'a
 pas encore d'intention persistée avant le worker. Ne pas déclarer que cette
 phase traite ces deux risques ; planifier une outbox pour les intentions et
 une validation du statut final avec les séances LMS/manuelles.
+
+## Contrôle du dernier appel avant alerte familiale
+
+Les intents d'absence contiennent la séance et la date, et passent par
+`MailPulseAbsenceValidity` juste avant l'HTTP MailPulse. La lecture
+`ESBTPAttendance::finalOnly()` utilise le même référentiel que l'écran
+Présences ; une absence corrigée en présent, une suppression ou une séance
+absente annulent l'envoi et sa reprise, avec motif dédié. Les événements
+d'autres domaines ne sont pas bloqués par ce contrôle.
