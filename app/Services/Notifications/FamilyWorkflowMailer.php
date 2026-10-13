@@ -3,7 +3,7 @@
 namespace App\Services\Notifications;
 
 use App\Models\ESBTPEtudiant;
-use App\Services\Admissions\StudentAccessInvitation;
+use App\Services\Emails\AnalyseurEmail;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -16,7 +16,7 @@ use Throwable;
  */
 final class FamilyWorkflowMailer
 {
-    public function __construct(private StudentAccessInvitation $access) {}
+    public function __construct(private AnalyseurEmail $emailAnalyzer) {}
 
     /**
      * @param  callable(): Mailable  $message  Fresh mailable for each address.
@@ -31,16 +31,28 @@ final class FamilyWorkflowMailer
             return 0;
         }
 
-        $recipients = $this->access->destinataires($student->user);
-        $guardian = $student->tuteur;
-        if ($guardian && $guardian->email) {
-            $recipient = mb_strtolower(trim((string) $guardian->email));
-            if (filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
-                $recipients[] = $recipient;
-            }
+        // Deliberately scope to this student. StudentAccessInvitation::destinataires()
+        // is for LOGIN security messages and traverses every student sharing the
+        // account; reusing it for grades/fees would disclose another student's
+        // confidential records to parents who are not linked to this student.
+        $student->loadMissing('parents');
+        $candidates = [
+            $student->user->email,
+            $student->email_personnel,
+            $student->email,
+        ];
+        foreach ($student->parents as $parent) {
+            $candidates[] = $parent->email;
         }
 
-        $recipients = array_values(array_unique($recipients));
+        $recipients = [];
+        foreach ($candidates as $candidate) {
+            $email = mb_strtolower(trim((string) $candidate));
+            if ($email !== '' && $this->emailAnalyzer->analyser($email)->joignable()) {
+                $recipients[$email] = $email;
+            }
+        }
+        $recipients = array_values($recipients);
         $sent = 0;
 
         foreach ($recipients as $email) {
