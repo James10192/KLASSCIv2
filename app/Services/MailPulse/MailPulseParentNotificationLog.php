@@ -234,7 +234,15 @@ class MailPulseParentNotificationLog
 
     private function scheduleRetry(ParentNotificationLog $log, array $metadata, MailPulseResult $result): void
     {
-        if ($log->attempt_count >= self::MAX_ATTEMPTS || $log->retry_expires_at?->isPast()) {
+        // Le limiteur LOCAL a retenu l'envoi AVANT tout appel au fournisseur.
+        // Ce n'est pas une tentative réseau : ne pas brûler le quota de 5
+        // reprises d'outbox juste parce que 1000 parents sont dans la file.
+        $locallyDeferred = in_array($result->status, [
+            'whatsapp_pacing', 'whatsapp_pacing_unavailable',
+        ], true);
+
+        if ((! $locallyDeferred && $log->attempt_count >= self::MAX_ATTEMPTS)
+            || $log->retry_expires_at?->isPast()) {
             $this->complete($log, array_merge(
                 $metadata,
                 $this->terminalAttributes('failed', 'mailpulse_retry_exhausted', $result->id)
@@ -243,11 +251,17 @@ class MailPulseParentNotificationLog
         }
 
         $metadata['metadata']['mailpulse_dispatch_state'] = 'pending_reconciliation';
+        $retryDelay = max(
+            $locallyDeferred ? 1 : $this->backoffSeconds($log->attempt_count),
+            $result->retryAfter ?? 0
+        );
         $this->complete($log, array_merge($metadata, [
             'status' => 'pending',
             'external_id' => $result->id,
             'error_message' => null,
-            'next_attempt_at' => now()->addSeconds($this->backoffSeconds($log->attempt_count)),
+            'attempt_count' => $locallyDeferred
+                ? max(0, (int) $log->attempt_count - 1) : $log->attempt_count,
+            'next_attempt_at' => now()->addSeconds($retryDelay),
             'dispatch_lease_token' => null,
             'dispatch_lease_expires_at' => null,
         ]));
