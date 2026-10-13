@@ -228,6 +228,39 @@ class MailPulseParentNotificationLogTest extends TestCase
     }
 
     /** @test */
+    public function it_does_not_retry_a_monthly_quota_429_or_a_missing_mailpulse_configuration(): void
+    {
+        $service = app(MailPulseParentNotificationLog::class);
+        foreach ([
+            ['quota_exceeded', 429],
+            ['missing_api_key', null],
+            ['disabled', null],
+        ] as [$status, $httpStatus]) {
+            $log = $this->outboxLog('req-terminal-' . $status);
+            $service->finish(
+                $log,
+                new MailPulseResult(false, $status, $httpStatus, $log->request_id),
+                $log->request_id
+            );
+
+            $fresh = $log->fresh();
+            $this->assertSame('failed', $fresh->status, $status);
+            $this->assertSame($status, $fresh->error_message, $status);
+            $this->assertNull($fresh->retry_payload, $status);
+            $this->assertNull($fresh->next_attempt_at, $status);
+        }
+
+        // In contrast, a minute-level rate limit still enters the outbox retry path.
+        $transient = $this->outboxLog('req-transient-429-rate-limited');
+        $service->finish(
+            $transient,
+            new MailPulseResult(false, 'rate_limited', 429, $transient->request_id),
+            $transient->request_id
+        );
+        $this->assertSame('pending', $transient->fresh()->status);
+    }
+
+    /** @test */
     public function it_keeps_an_encrypted_payload_for_transient_failures(): void
     {
         $service = app(MailPulseParentNotificationLog::class);
