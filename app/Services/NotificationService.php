@@ -2466,15 +2466,7 @@ class NotificationService
             }
 
             $tuteur = $etudiant->tuteur;
-            if (!$tuteur) {
-                Log::info('Pas de tuteur pour l\'étudiant', ['etudiant_id' => $etudiant->id]);
-                return;
-            }
-
-            $preferences = $tuteur->getOrCreateNotificationPreferences();
-            if (!$preferences->isNotificationEnabled('inscriptions')) {
-                return;
-            }
+            $preferences = $tuteur?->getOrCreateNotificationPreferences();
 
             $schoolSettings = $this->getSchoolSettings();
 
@@ -2501,7 +2493,7 @@ class NotificationService
             $soldeRestant = $totalAttendu - $totalPaye;
 
             $data = [
-                'parentName' => $tuteur->nom . ' ' . $tuteur->prenoms,
+                'parentName' => $tuteur ? ($tuteur->nom . ' ' . $tuteur->prenoms) : 'à vous',
                 'studentName' => $etudiant->nom . ' ' . $etudiant->prenoms,
                 'matricule' => $etudiant->matricule ?? 'N/A',
                 'classe' => $inscription->classe->name ?? 'N/A',
@@ -2530,16 +2522,28 @@ class NotificationService
                 'is_read' => false,
             ]);
 
-            // Email envoyé au parent si canal activé
-            if ($preferences->hasChannel('email') && $tuteur->email) {
-                Mail::to($tuteur->email)->send(new \App\Mail\Parents\InscriptionConfirmationMail($data));
+            // Une inscription concerne un seul compte partagé. La
+            // confirmation est destinée à l'étudiant ET à ses parents liés.
+            // Chaque e-mail est expédié séparément, sans mot de passe.
+            $destinataires = app(\App\Services\Admissions\StudentAccessInvitation::class)
+                ->destinataires($etudiant->user);
+
+            foreach ($destinataires as $email) {
+                try {
+                    Mail::to($email)->send(new \App\Mail\Parents\InscriptionConfirmationMail($data));
+                } catch (\Throwable $deliveryError) {
+                    Log::warning('Inscription : courriel familial non transmis', [
+                        'inscription_id' => $inscription->id,
+                        'exception' => $deliveryError::class,
+                    ]);
+                }
             }
 
             $this->notifyMailPulse(MailPulseWorkflowIntent::enrollmentCreated((int) $inscription->id));
 
-            $preferences->incrementNotificationCount();
+            $preferences?->incrementNotificationCount();
 
-            Log::info('Notification inscription envoyée aux parents', ['parent_id' => $tuteur->id, 'email' => $tuteur->email]);
+            Log::info('Confirmation inscription préparée pour la famille', ['inscription_id' => $inscription->id, 'destinataires' => count($destinataires)]);
 
         } catch (\Exception $e) {
             Log::error('Erreur notification inscription parent: ' . $e->getMessage());
