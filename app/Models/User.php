@@ -24,6 +24,15 @@ class User extends Authenticatable implements Auditable
     /** Courriel de réinitialisation KLASSCI : même gabarit que les invitations. */
     public function sendPasswordResetNotification($token): void
     {
+        // Les comptes du personnel conservent leur réinitialisation native.
+        // Seul le compte effectivement partagé étudiant-parents utilise
+        // le gabarit et la diffusion familiale.
+        if (! \App\Models\ESBTPEtudiant::where('user_id', $this->id)->exists()) {
+            $this->notify(new \Illuminate\Auth\Notifications\ResetPassword($token));
+
+            return;
+        }
+
         app(\App\Services\Admissions\StudentAccessInvitation::class)
             ->envoyerAvecJeton($this, $token, 'reinitialisation');
     }
