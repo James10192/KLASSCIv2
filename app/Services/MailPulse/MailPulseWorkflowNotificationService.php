@@ -126,6 +126,12 @@ class MailPulseWorkflowNotificationService
 
     public function notifyFeeReminder(ESBTPPaiement $paiement, int $daysPending, int $reminderCount): void
     {
+        // A queued reminder must not be delivered once the cashier has
+        // validated or rejected the payment while the worker was delayed.
+        if ($paiement->status !== 'en_attente') {
+            return;
+        }
+
         $paiement->loadMissing(['inscription.classe', 'etudiant.parents', 'fraisCategory']);
         $etudiant = $paiement->etudiant;
         if (! $etudiant) {
