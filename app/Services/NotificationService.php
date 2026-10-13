@@ -2940,10 +2940,6 @@ class NotificationService
 
             $tuteur = $etudiant->tuteur;
             $preferences = $tuteur?->getOrCreateNotificationPreferences();
-            $autoriseParents = $preferences
-                && $preferences->isNotificationEnabled('inscriptions')
-                && $preferences->hasChannel('email');
-
             $schoolSettings = $this->getSchoolSettings();
 
             $data = [
@@ -2974,16 +2970,16 @@ class NotificationService
                 'is_read' => false,
             ]);
 
-            // L'étudiant reçoit toujours son récapitulatif. Les parents
-            // rattachés le reçoivent eux aussi si leur préférence l'autorise.
+            // Le compte est partagé : mêmes informations à l'étudiant et
+            // aux parents liés, sans mot de passe communiqué.
             $destinationEtudiant = array_filter([
                 $etudiant->user->email,
                 $etudiant->email_personnel,
                 $etudiant->email,
             ]);
-            $destinationParents = $autoriseParents
-                ? $etudiant->parents()->pluck('email')->all()
-                : [];
+            // Le récapitulatif transactionnel est commun aux deux titulaires
+            // d'accès : étudiant et parents liés au même compte.
+            $destinationParents = $etudiant->parents()->pluck('email')->all();
             $destinataires = array_unique(array_map('mb_strtolower',
                 array_filter(array_merge($destinationEtudiant, $destinationParents))));
 
