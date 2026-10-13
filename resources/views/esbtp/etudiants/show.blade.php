@@ -6092,17 +6092,83 @@
         </div>
         @can('students.edit')
         <div style="padding:12px 16px 4px; border-top:1px solid rgba(0,0,0,.06);">
-            {{-- Une mutation en POST : l'ancien lien GET réinitialisait sans jeton ni limite. --}}
-            <form method="POST" action="{{ route('esbtp.etudiants.reset-password', $etudiant->id) }}" class="d-inline"
-                  onsubmit="return confirm('Réinitialiser le mot de passe de cet étudiant ? Le nouveau mot de passe sera : ' + {{ Js::from(mot_de_passe_par_defaut()) }})">
-                @csrf
-                <button type="submit" style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; background:linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color:#fff; border:none; border-radius:8px; font-size:.8rem; font-weight:600; text-decoration:none; cursor:pointer; box-shadow:0 2px 6px rgba(4,83,203,.25);">
-                    <i class="fas fa-key" style="font-size:.7rem;"></i> Réinitialiser le mot de passe
-                </button>
-            </form>
+            <button type="button" id="studentAccessResetOpen" class="student-access-reset-trigger"
+                aria-haspopup="dialog" aria-controls="studentAccessResetModal">
+                <i class="fas fa-paper-plane" aria-hidden="true"></i> Envoyer un lien de réinitialisation
+            </button>
         </div>
         @endcan
     </div>
+    @endif
+
+
+    @if($etudiant->user_id)
+    @can('students.edit')
+    <style>
+        .student-access-reset-trigger{border:1px solid #dbe5f6;background:#eef4ff;color:#0453cb;border-radius:12px;padding:10px 16px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:9px;cursor:pointer;transition:all .2s}
+        .student-access-reset-trigger:hover{background:#dfeaff;transform:translateY(-1px)}
+        .student-access-dialog[hidden]{display:none!important}
+        .student-access-dialog{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:20px}
+        .student-access-dialog-bg{position:absolute;inset:0;background:rgba(9,22,48,.67);backdrop-filter:blur(6px)}
+        .student-access-dialog-card{position:relative;width:min(100%,480px);background:#fff;border:1px solid #e3e9f2;border-radius:22px;box-shadow:0 28px 100px rgba(5,28,77,.27);padding:32px;max-height:90vh;overflow-y:auto}
+        .student-access-dialog-icon{width:56px;height:56px;display:grid;place-items:center;background:#e9f1ff;color:#0453cb;border-radius:17px;font-size:24px;margin-bottom:18px}
+        .student-access-dialog-card h2{font-size:22px;font-weight:800;color:#142039;margin:0 0 12px}
+        .student-access-dialog-card p{line-height:1.6;color:#526077;font-size:14px}
+        .student-access-dialog-note{background:#f5f8ff;border:1px solid #e3ecff;padding:14px;border-radius:12px;font-size:13px;color:#42536c;margin:18px 0}
+        .student-access-dialog-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+        .student-access-dialog-actions button{border:0;border-radius:10px;padding:12px 17px;font-weight:700;cursor:pointer}
+        .student-access-cancel{background:#eef1f7;color:#344258}
+        .student-access-confirm{background:#0453cb;color:white}
+        @media(max-width:540px){.student-access-dialog-card{padding:22px}.student-access-dialog-actions button{flex:1}}
+    </style>
+    <div id="studentAccessResetModal" class="student-access-dialog" role="dialog" aria-modal="true"
+        aria-labelledby="studentAccessResetTitle" hidden>
+        <div class="student-access-dialog-bg" data-student-reset-close></div>
+        <div class="student-access-dialog-card" tabindex="-1">
+            <div class="student-access-dialog-icon"><i class="fas fa-shield-alt" aria-hidden="true"></i></div>
+            <h2 id="studentAccessResetTitle">Sécuriser l'accès au compte</h2>
+            <p>Envoyer un lien de réinitialisation du compte de
+                <strong>{{ $etudiant->nom_complet }}</strong> ?</p>
+            <div class="student-access-dialog-note">
+                <i class="fas fa-envelope" aria-hidden="true"></i>
+                L'étudiant et ses parents liés recevront le même lien personnel,
+                valable une seule fois. Aucun mot de passe ne sera communiqué.
+            </div>
+            <form method="POST" action="{{ route('esbtp.etudiants.reset-password', $etudiant->id) }}">
+                @csrf
+                <div class="student-access-dialog-actions">
+                    <button type="button" class="student-access-cancel" data-student-reset-close>Annuler</button>
+                    <button type="submit" class="student-access-confirm">
+                        <i class="fas fa-paper-plane" aria-hidden="true"></i> Envoyer le lien
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = document.getElementById('studentAccessResetModal');
+        const trigger = document.getElementById('studentAccessResetOpen');
+        if (!modal || !trigger) return;
+        const card = modal.querySelector('.student-access-dialog-card');
+        function close() { modal.hidden = true; document.body.style.overflow = ''; trigger.focus(); }
+        trigger.addEventListener('click', function () {
+            modal.hidden = false; document.body.style.overflow = 'hidden'; card.focus();
+        });
+        modal.querySelectorAll('[data-student-reset-close]').forEach(el => el.addEventListener('click', close));
+        document.addEventListener('keydown', function (event) {
+            if (modal.hidden) return;
+            if (event.key === 'Escape') close();
+            if (event.key === 'Tab') {
+                const focusables = [...modal.querySelectorAll('button:not([disabled])')];
+                const first = focusables[0], last = focusables[focusables.length - 1];
+                if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+                else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+            }
+        });
+    });
+    </script>
+    @endcan
     @endif
 
     {{-- Accessibilité --}}
