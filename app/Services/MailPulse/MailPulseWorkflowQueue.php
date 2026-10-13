@@ -54,6 +54,17 @@ class MailPulseWorkflowQueue
                 'error' => $e->getMessage(),
             ]);
 
+            // In durable mode, an exception before the DB insert must NEVER
+            // silently trigger an untracked external call. Escalate instead;
+            // the business transaction itself remains unaffected.
+            if (app(MailPulseWorkflowIntentOutbox::class)->enabled()) {
+                Log::critical('MailPulse durable workflow could not start', [
+                    'event' => $intent->event,
+                    'exception' => $e::class,
+                ]);
+                return;
+            }
+
             $this->runInline($intent);
         }
     }
