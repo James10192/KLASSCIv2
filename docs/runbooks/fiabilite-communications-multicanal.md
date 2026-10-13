@@ -178,3 +178,22 @@ contenu non publié ou livraison volontairement supprimée n'est pas une remise
 fournisseur. L'outbox le clôture sans `sent_at`, sans retry, avec la raison
 explicite dans `error_message`. Ainsi les métriques ne comptent plus de
 livraisons imaginaires.
+
+## Vérification renforcée — données sensibles et événements périmés
+
+L'envoi d'un récapitulatif de paiement, d'absence ou de résultat ne réutilise
+pas la liste de récupération du compte partagé, car celle-ci peut inclure
+plusieurs élèves. `FamilyWorkflowMailer` ne retient que le compte, les emails
+personnels de **la fiche** et ses parents liés ; les doublons sont éliminés.
+
+`MailPulseWorkflowFreshness` recoupe à l'émission et lors des reprises les
+statuts actuels des paiements avec l'inscription et l'étudiant concernés.
+Pour l'absence, la dernière déclaration d'une séance + étudiant + date doit
+encore être « absent » ; sans séance datée, l'envoi est supprimé plutôt que
+de diffuser une information potentiellement erronée. Le refus est terminal :
+pas d'expédition fournisseur ni de nouvelle reprise.
+
+Limites connues : il reste à introduire une **outbox d'intentions** persistant
+avant l'enqueue du worker, ainsi qu'une politique explicite pour les absences
+hors séances structurées et les recalculs de taux d'assiduité. Ne pas activer
+la campagne avant recette terrain.
