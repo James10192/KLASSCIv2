@@ -2936,20 +2936,15 @@ class NotificationService
             }
 
             $tuteur = $etudiant->tuteur;
-            if (!$tuteur) {
-                Log::info('Pas de tuteur pour l\'étudiant (réinscription)', ['etudiant_id' => $etudiant->id]);
-                return;
-            }
-
-            $preferences = $tuteur->getOrCreateNotificationPreferences();
-            if (!$preferences->isNotificationEnabled('inscriptions')) {
-                return;
-            }
+            $preferences = $tuteur?->getOrCreateNotificationPreferences();
+            $autoriseParents = $preferences
+                && $preferences->isNotificationEnabled('inscriptions')
+                && $preferences->hasChannel('email');
 
             $schoolSettings = $this->getSchoolSettings();
 
             $data = [
-                'parentName' => $tuteur->nom . ' ' . $tuteur->prenoms,
+                'parentName' => $tuteur ? ($tuteur->nom . ' ' . $tuteur->prenoms) : 'Famille',
                 'studentName' => $etudiant->nom . ' ' . $etudiant->prenoms,
                 'matricule' => $etudiant->matricule ?? 'N/A',
                 'classe' => $inscription->classe->name ?? 'N/A',
@@ -2976,13 +2971,28 @@ class NotificationService
                 'is_read' => false,
             ]);
 
-            // Une réinscription concerne le compte partagé : envoyer le même
-            // récapitulatif à l'étudiant et aux parents rattachés, sans doublon.
-            foreach (app(\App\Services\Admissions\StudentAccessInvitation::class)->destinataires($etudiant->user) as $email) {
+            // L'étudiant reçoit toujours son récapitulatif. Les parents
+            // rattachés le reçoivent eux aussi si leur préférence l'autorise.
+            $destinationEtudiant = array_filter([
+                $etudiant->user->email,
+                $etudiant->email_personnel,
+                $etudiant->email,
+            ]);
+            $destinationParents = $autoriseParents
+                ? $etudiant->parents()->pluck('email')->all()
+                : [];
+            $destinataires = array_unique(array_map('mb_strtolower',
+                array_merge($destinationEtudiant, $destinationParents)));
+
+            $analyseur = app(\App\Services\Emails\AnalyseurEmail::class);
+            foreach ($destinataires as $email) {
+                if (! $analyseur->analyser($email)->joignable()) {
+                    continue;
+                }
                 try {
                     Mail::to($email)->send(new \App\Mail\Parents\ReinscriptionConfirmationMail($data));
                 } catch (\Throwable $deliveryError) {
-                    Log::warning('Réinscription : un courriel famille a échoué', [
+                    Log::warning('Réinscription : courriel famille non distribué', [
                         'inscription_id' => $inscription->id,
                         'exception' => $deliveryError::class,
                     ]);
@@ -2995,9 +3005,9 @@ class NotificationService
                 (float) $reliquatMontant
             ));
 
-            $preferences->incrementNotificationCount();
+            $preferences?->incrementNotificationCount();
 
-            Log::info('Notification réinscription envoyée aux parents', ['parent_id' => $tuteur->id, 'email' => $tuteur->email]);
+            Log::info('Notification réinscription envoyée aux parents', ['etudiant_id' => $etudiant->id]);
 
         } catch (\Exception $e) {
             Log::error('Erreur notification réinscription parent: ' . $e->getMessage());
