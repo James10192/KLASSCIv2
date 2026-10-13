@@ -34,7 +34,7 @@
 @php
     $requiresFirst = (bool) auth()->user()->must_change_password;
     $isExpired = ! $requiresFirst && \App\Services\UserService::isPasswordExpired(auth()->user());
-    $requiresCurrent = ! $requiresFirst;
+    $requiresCurrent = $isExpired;
 @endphp
 <div class="kp-page">
     <header class="kp-hero">
@@ -84,7 +84,7 @@
             <h3>Votre sécurité d'abord</h3>
             <p>Un mot de passe personnel protège vos notes, vos informations et vos paiements.</p>
             <ul><li>8 caractères minimum</li><li>Au moins une lettre et un chiffre</li><li>Évitez les mots de passe communs</li><li>Ne communiquez jamais votre mot de passe</li></ul>
-            <p><i class="fas fa-info-circle"></i>{{ $requiresFirst ? 'Aucun mot de passe précédent n’est nécessaire pour cette première configuration.' : 'Le mot de passe actuel est requis pour confirmer votre identité.' }}</p>
+            <p><i class="fas fa-info-circle"></i>{{ $isExpired ? 'Votre mot de passe actuel est requis lors d’un renouvellement pour expiration.' : 'Vous pouvez définir un nouveau mot de passe sans ressaisir le précédent.' }}</p>
         </aside>
     </div>
 </div>
