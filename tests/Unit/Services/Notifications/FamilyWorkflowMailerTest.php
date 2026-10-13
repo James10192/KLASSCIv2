@@ -103,4 +103,37 @@ class FamilyWorkflowMailerTest extends TestCase
             Mail::assertSent(Mailable::class, fn (Mailable $message): bool => $message->hasTo($address));
         }
     }
+    public function test_a_parent_of_another_student_sharing_the_login_does_not_receive_this_students_private_mail(): void
+    {
+        Mail::fake();
+        $student = $this->student();
+
+        // Same user_id for the login, but a *different student-family link*.
+        // Prior implementation reused StudentAccessInvitation::destinataires
+        // and would leak payment/academic data to this unrelated parent.
+        DB::table('esbtp_etudiants')->insert([
+            'id' => 32,
+            'user_id' => 72,
+            'email_personnel' => 'autre-eleve@example.com',
+            'email' => 'autre-eleve@example.com',
+        ]);
+        DB::table('esbtp_parents')->insert([
+            'id' => 52, 'email' => 'parent-non-lie@example.com',
+        ]);
+        DB::table('esbtp_etudiant_parent')->insert([
+            'etudiant_id' => 32, 'parent_id' => 52, 'is_tuteur' => true,
+        ]);
+
+        $accepted = app(FamilyWorkflowMailer::class)->send(
+            $student, 'low_grades', fn (): Mailable => new Mailable()
+        );
+
+        $this->assertSame(3, $accepted);
+        Mail::assertSentCount(3);
+        Mail::assertNotSent(Mailable::class, fn (Mailable $message): bool =>
+            $message->hasTo('parent-non-lie@example.com')
+            || $message->hasTo('autre-eleve@example.com')
+        );
+    }
+
 }

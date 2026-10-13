@@ -311,6 +311,15 @@ class MailPulseParentNotificationLog
             return false;
         }
 
+        // A monthly quota exhaustion is a durable 429, not transient
+        // per-minute rate limiting. Do not burn five worker retries on it.
+        // Configuration failures likewise require an operator, not a retry.
+        if (in_array($result->status, [
+            'quota_exceeded', 'disabled', 'missing_api_key',
+        ], true)) {
+            return false;
+        }
+
         if (in_array($result->dispatchState, ['pending', 'pending_reconciliation'], true)) {
             return true;
         }

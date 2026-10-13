@@ -178,3 +178,24 @@ contenu non publié ou livraison volontairement supprimée n'est pas une remise
 fournisseur. L'outbox le clôture sans `sent_at`, sans retry, avec la raison
 explicite dans `error_message`. Ainsi les métriques ne comptent plus de
 livraisons imaginaires.
+
+## Audit de non-régression : destinataires et événements périmés
+
+Pour les messages transactionnels familiaux, **ne jamais utiliser** la liste
+`StudentAccessInvitation::destinataires()` (réservée aux liens et codes de
+connexion) : elle traverse potentiellement plusieurs dossiers étudiants d'un
+compte commun. `FamilyWorkflowMailer` résout strictement l'adresse du compte,
+les adresses de l'étudiant concerné et ses parents liés, puis déduplique.
+Les autres parents n'obtiennent aucune copie d'avis de paiement ou de notes.
+
+Les workflows `fee_reminder` et `payment_rejected` rechargent la fiche au
+worker et abandonnent l'événement si le statut n'est plus, respectivement,
+`en_attente` et `rejeté`. Un quota mensuel MailPulse (429
+`quota_exceeded`) est un échec nécessitant intervention et non une reprise
+à fréquence plus courte ; 429 `rate_limited` conserve le backoff.
+
+**Toujours ouvert :** l'intention d'absence conserve un snapshot d'une séance
+qui peut avoir été corrigée depuis l'enregistrement, et la file MailPulse n'a
+pas encore d'intention persistée avant le worker. Ne pas déclarer que cette
+phase traite ces deux risques ; planifier une outbox pour les intentions et
+une validation du statut final avec les séances LMS/manuelles.
