@@ -63,17 +63,18 @@ class ForgotPasswordController extends Controller
         // adresse est connue : protection anti-énumération.
         $comptes = \App\Models\User::query()->where('email', $email)->get();
         if ($comptes->isEmpty()) {
-            $parents = \App\Models\ESBTPParent::query()
-                ->where('email', $email)
-                ->with('etudiants.user')
-                ->limit(10)
-                ->get();
-            $comptes = $parents->flatMap(fn ($parent) => $parent->etudiants
-                ->pluck('user'))->filter()->unique('id');
+            $ids = \App\Models\ESBTPEtudiant::query()
+                ->where('email_personnel', $email)
+                ->orWhere('email', $email)
+                ->orWhereHas('parents', fn ($q) => $q->where('email', $email))
+                ->distinct()->limit(10)->pluck('user_id')->filter();
+            $comptes = \App\Models\User::whereIn('id', $ids)->get();
         }
 
         foreach ($comptes->take(10) as $compte) {
-            if (! $compte->is_active || ! $compte->email) {
+            if (! $compte->is_active
+                || ! app(\App\Services\Admissions\StudentAccessInvitation::class)
+                    ->assurerEmailPrincipal($compte)) {
                 continue;
             }
             try {
