@@ -81,6 +81,34 @@ class FamilyWorkflowMailerTest extends TestCase
         return $student;
     }
 
+    public function test_a_sibling_sharing_the_user_account_never_leaks_into_this_student_email(): void
+    {
+        Mail::fake();
+        $student = $this->student();
+
+        DB::table('esbtp_etudiants')->insert([
+            'id' => 32,
+            'user_id' => 72,
+            'email_personnel' => 'autre-eleve@example.com',
+        ]);
+        DB::table('esbtp_parents')->insert([
+            'id' => 52, 'email' => 'autre-famille@example.com',
+        ]);
+        DB::table('esbtp_etudiant_parent')->insert([
+            'etudiant_id' => 32, 'parent_id' => 52, 'is_tuteur' => true,
+        ]);
+
+        $accepted = app(FamilyWorkflowMailer::class)->send(
+            $student, 'payment_received', fn (): Mailable => new Mailable()
+        );
+        $this->assertSame(3, $accepted);
+        Mail::assertSentCount(3);
+        Mail::assertNotSent(Mailable::class, fn (Mailable $mail): bool =>
+            $mail->hasTo('autre-famille@example.com')
+            || $mail->hasTo('autre-eleve@example.com')
+        );
+    }
+
     public function test_one_mailable_per_distinct_student_and_parent_email(): void
     {
         Mail::fake();
