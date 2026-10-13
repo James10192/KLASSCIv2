@@ -53,15 +53,26 @@ final class StudentAccessInvitation
             ? 'Bienvenue sur KLASSCI — activez votre espace'
             : 'KLASSCI — choisissez un nouveau mot de passe';
 
-        Mail::send('esbtp.emails.student-access', [
+        $sent = 0;
+        foreach ($this->destinataires($user) as $email) {
+          try {
+            Mail::send('esbtp.emails.student-access', [
             'nom' => $user->name ?: 'étudiant(e)',
             'identifiant' => $user->username,
             'url' => $url,
             'motif' => $motif,
             'expiration' => (int) config('auth.passwords.users.expire', 60),
-        ], function ($message) use ($user, $titre): void {
-            $message->to($user->email)->subject($titre);
-        });
+        ], function ($message) use ($email, $titre): void {
+                $message->to($email)->subject($titre);
+            });
+            $sent++;
+          } catch (\Throwable $e) {
+            Log::warning('Erreur livraison accès famille', ['user_id' => $user->id, 'exception' => $e::class]);
+          }
+        }
+        if ($sent === 0) {
+            throw new \RuntimeException('Le transport mail a refusé tous les destinataires du compte.');
+        }
 
         Log::info('Lien sécurisé étudiant transmis au transport mail', [
             'user_id' => $user->id, 'motif' => $motif,
