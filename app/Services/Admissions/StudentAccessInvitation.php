@@ -3,6 +3,8 @@
 namespace App\Services\Admissions;
 
 use App\Models\User;
+use App\Models\ESBTPEtudiant;
+use App\Services\Emails\AnalyseurEmail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
