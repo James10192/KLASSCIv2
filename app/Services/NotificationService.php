@@ -2522,28 +2522,16 @@ class NotificationService
                 'is_read' => false,
             ]);
 
-            // Une inscription concerne un seul compte partagé. La
-            // confirmation est destinée à l'étudiant ET à ses parents liés.
-            // Chaque e-mail est expédié séparément, sans mot de passe.
-            $destinataires = app(\App\Services\Admissions\StudentAccessInvitation::class)
-                ->destinataires($etudiant->user);
-
-            foreach ($destinataires as $email) {
-                try {
-                    Mail::to($email)->send(new \App\Mail\Parents\InscriptionConfirmationMail($data));
-                } catch (\Throwable $deliveryError) {
-                    Log::warning('Inscription : courriel familial non transmis', [
-                        'inscription_id' => $inscription->id,
-                        'exception' => $deliveryError::class,
-                    ]);
-                }
-            }
+            // Un seul courriel par adresse, étudiant ET parents, sans secret partagé.
+            $envoyes = app(\App\Services\Notifications\FamilyWorkflowMailer::class)
+                ->send($etudiant, 'enrollment_created',
+                    fn () => new \App\Mail\Parents\InscriptionConfirmationMail($data));
 
             $this->notifyMailPulse(MailPulseWorkflowIntent::enrollmentCreated((int) $inscription->id));
 
             $preferences?->incrementNotificationCount();
 
-            Log::info('Confirmation inscription préparée pour la famille', ['inscription_id' => $inscription->id, 'destinataires' => count($destinataires)]);
+            Log::info('Confirmation inscription préparée pour la famille', ['inscription_id' => $inscription->id, 'destinataires_acceptes' => $envoyes]);
 
         } catch (\Exception $e) {
             Log::error('Erreur notification inscription parent: ' . $e->getMessage());
@@ -2628,9 +2616,12 @@ class NotificationService
                 'is_read' => false,
             ]);
 
-            // Email
-            if ($preferences->hasChannel('email') && $tuteur->email) {
-                Mail::to($tuteur->email)->send(new \App\Mail\Parents\PaiementValideMail($data));
+            // Un seul email transactionnel par adresse du compte familial.
+            if ($preferences->hasChannel('email')) {
+                app(\App\Services\Notifications\FamilyWorkflowMailer::class)->send(
+                    $etudiant, 'payment_received',
+                    fn () => new \App\Mail\Parents\PaiementValideMail($data)
+                );
             }
 
             $this->notifyMailPulse(MailPulseWorkflowIntent::paymentReceived((int) $paiement->id));
@@ -2687,9 +2678,11 @@ class NotificationService
                 'is_read' => false,
             ]);
 
-            // Email
-            if ($preferences->hasChannel('email') && $tuteur->email) {
-                Mail::to($tuteur->email)->send(new \App\Mail\Parents\PaiementRejeteMail($data));
+            if ($preferences->hasChannel('email')) {
+                app(\App\Services\Notifications\FamilyWorkflowMailer::class)->send(
+                    $etudiant, 'payment_rejected',
+                    fn () => new \App\Mail\Parents\PaiementRejeteMail($data)
+                );
             }
 
             $this->notifyMailPulse(MailPulseWorkflowIntent::paymentRejected((int) $paiement->id));
@@ -2767,9 +2760,11 @@ class NotificationService
                 'is_read' => false,
             ]);
 
-            // Email
-            if ($preferences->hasChannel('email') && $tuteur->email) {
-                Mail::to($tuteur->email)->send(new \App\Mail\Parents\AbsenceNotificationMail($data));
+            if ($preferences->hasChannel('email')) {
+                app(\App\Services\Notifications\FamilyWorkflowMailer::class)->send(
+                    $etudiant, 'absence_reported',
+                    fn () => new \App\Mail\Parents\AbsenceNotificationMail($data)
+                );
             }
 
             // Pas de second courriel : l'avis d'absence porte déjà le seuil franchi.
@@ -2890,9 +2885,11 @@ class NotificationService
                     'is_read' => false,
                 ]);
 
-                // Email
-                if ($preferences->hasChannel('email') && $tuteur->email) {
-                    Mail::to($tuteur->email)->send(new \App\Mail\Parents\LowGradesMail($data));
+                if ($preferences->hasChannel('email')) {
+                    app(\App\Services\Notifications\FamilyWorkflowMailer::class)->send(
+                        $etudiant, 'low_grades',
+                        fn () => new \App\Mail\Parents\LowGradesMail($data)
+                    );
                 }
 
                 $this->notifyMailPulse(MailPulseWorkflowIntent::lowGrades((int) $bulletin->id));
@@ -2970,33 +2967,11 @@ class NotificationService
                 'is_read' => false,
             ]);
 
-            // Le compte est partagé : mêmes informations à l'étudiant et
-            // aux parents liés, sans mot de passe communiqué.
-            $destinationEtudiant = array_filter([
-                $etudiant->user->email,
-                $etudiant->email_personnel,
-                $etudiant->email,
-            ]);
-            // Le récapitulatif transactionnel est commun aux deux titulaires
-            // d'accès : étudiant et parents liés au même compte.
-            $destinationParents = $etudiant->parents()->pluck('email')->all();
-            $destinataires = array_unique(array_map('mb_strtolower',
-                array_filter(array_merge($destinationEtudiant, $destinationParents))));
-
-            $analyseur = app(\App\Services\Emails\AnalyseurEmail::class);
-            foreach ($destinataires as $email) {
-                if (! $analyseur->analyser($email)->joignable()) {
-                    continue;
-                }
-                try {
-                    Mail::to($email)->send(new \App\Mail\Parents\ReinscriptionConfirmationMail($data));
-                } catch (\Throwable $deliveryError) {
-                    Log::warning('Réinscription : courriel famille non distribué', [
-                        'inscription_id' => $inscription->id,
-                        'exception' => $deliveryError::class,
-                    ]);
-                }
-            }
+            // Un seul récapitulatif par adresse étudiante/parentale vérifiée.
+            app(\App\Services\Notifications\FamilyWorkflowMailer::class)->send(
+                $etudiant, 'reenrollment_created',
+                fn () => new \App\Mail\Parents\ReinscriptionConfirmationMail($data)
+            );
 
             $this->notifyMailPulse(MailPulseWorkflowIntent::reEnrollmentCreated(
                 (int) $inscription->id,

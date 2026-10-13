@@ -51,7 +51,7 @@ class MailPulseWorkflowPolicyTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_stop_blocks_phone_channels_but_not_an_allowed_email_channel(): void
+    public function test_stop_blocks_phone_channels_and_family_mailer_owns_payment_email(): void
     {
         DB::table('esbtp_parents')->insert(['id' => 15, 'created_at' => now(), 'updated_at' => now()]);
         DB::table('parent_notification_preferences')->insert([
@@ -68,6 +68,8 @@ class MailPulseWorkflowPolicyTest extends TestCase
 
         $this->assertFalse($policy->parentAllows($parent, 'payment_received', 'sms'));
         $this->assertFalse($policy->parentAllows($parent, 'payment_received', 'whatsapp'));
-        $this->assertTrue($policy->parentAllows($parent, 'payment_received', 'email'));
+        $this->assertFalse($policy->parentAllows($parent, 'payment_received', 'email'));
+        // A workflow with no Laravel family mail still uses the MailPulse email rail.
+        $this->assertTrue($policy->parentAllows($parent, 'fee_reminder', 'email'));
     }
 }
