@@ -1259,6 +1259,11 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
         </div>
 
         @include('esbtp.partials.bts-journey', ['btsJourney' => $btsJourney ?? null, 'inscription' => $inscription])
+        @can('notes.view')
+            @include('esbtp.partials.fiche-notes-module', [
+                'url' => route('esbtp.fiche-notes.inscription', $inscription->id),
+            ])
+        @endcan
 
         <div class="p-lg">
             @if(session('success'))

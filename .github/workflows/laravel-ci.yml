@@ -124,6 +124,10 @@ jobs:
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Services/MailPulse/MailPulseAbsenceValidityTest.php --stop-on-failure
 
+      - name: Test périmètre des notes dans les fiches
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Services/Notes/EvaluationsDeLaFicheTest.php --stop-on-failure
+
       - name: Test garde débit MailPulse WhatsApp
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Services/MailPulse/MailPulseWhatsAppThrottleTest.php --stop-on-failure
