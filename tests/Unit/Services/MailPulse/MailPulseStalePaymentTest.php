@@ -20,7 +20,7 @@ class MailPulseStalePaymentTest extends TestCase
             Mockery::mock(MailPulseClient::class),
             Mockery::mock(MailPulseParentNotificationLog::class),
             Mockery::mock(MailPulseWorkflowPolicy::class),
-            Mockery::mock(ParentChatbotPublicationPolicy::class)
+            new ParentChatbotPublicationPolicy()
         );
 
         foreach (['validé', 'rejeté', 'annulé'] as $status) {
