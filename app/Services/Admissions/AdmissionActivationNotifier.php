@@ -125,70 +125,81 @@ final class AdmissionActivationNotifier
 
     public function sendEmail(ESBTPCandidatureWorkflow $workflow, string $url): bool
     {
-        $workflow->loadMissing('candidature');
+        $workflow->loadMissing('candidature', 'etudiant.parents');
 
+        // Conserver la politique de preuve du contact de la candidature.
         if (! $this->settings->notifyEmail() || ! $this->emailUsable($workflow)) {
             return false;
         }
 
-        $email = trim((string) $workflow->candidature->email);
-        $ecole = $this->ecole();
-        $sujet = "Activation de votre espace étudiant — {$ecole}";
-        $texte = "Votre dossier d'inscription à {$ecole} a franchi l'étape de préinscription.\n\n"
-            ."Activez votre espace étudiant et choisissez votre mot de passe : {$url}\n\n"
+        $c = $workflow->candidature;
+        $primaryEmail = mb_strtolower(trim((string) $c->email));
+        $emails = [$primaryEmail];
+
+        // Dès que le rattachement familial a été enregistré par la scolarité,
+        // un parent accède au même compte que son enfant. Un même lien à usage
+        // unique est donc remis INDIVIDUELLEMENT à chaque destinataire.
+        $analyseur = app(\App\Services\Emails\AnalyseurEmail::class);
+        foreach ($workflow->etudiant?->parents ?? [] as $parent) {
+            $parentEmail = mb_strtolower(trim((string) $parent->email));
+            if ($parentEmail && $analyseur->analyser($parentEmail)->joignable()) {
+                $emails[] = $parentEmail;
+            }
+        }
+
+        $emails = array_slice(array_values(array_unique($emails)), 0, 10);
+        $sujet = 'Activation de votre espace étudiant — '.$this->ecole();
+        $texte = "Votre dossier d'inscription a été enregistré.\n\n"
+            ."Activez votre espace étudiant KLASSCI et choisissez votre mot de passe : {$url}\n\n"
             ."Ce lien expire dans 48 heures et ne fonctionne qu'une fois.";
+        $html = $this->html($workflow, $url);
+        $sent = 0;
 
-        // Même chemin que les convocations de rendez-vous : MailPulse. L'envoi
-        // direct par le mailer de l'application échouait sans bruit là où il
-        // n'est pas configuré, alors que les convocations, elles, arrivaient.
-        $requestId = 'admission-activation-email-'.$workflow->id.'-'.substr(hash('sha256', $url), 0, 16);
-
-        try {
-            $this->mailPulse->createOrUpdateContact([
-                'email' => $email,
-                'first_name' => $workflow->candidature->prenoms ?: $workflow->candidature->nom,
-                'last_name' => $workflow->candidature->nom,
-                'language' => 'fr',
-                'preferred_channel' => 'email',
-                'subscribed' => true,
-                'metadata' => ['source' => 'klassci-admission', 'channel_opt_in' => ['email' => true]],
-            ]);
-
-            $result = $this->mailPulse->sendEmailMessage([
-                'channel' => 'email',
-                'recipient' => ['type' => 'email', 'value' => $email],
-                'content' => ['type' => 'text', 'text' => $texte],
-                'metadata' => [
-                    'source' => 'klassci',
-                    'workflow_event' => 'admission_activation',
-                    'subject' => $sujet,
-                    'workflow_id' => $workflow->id,
-                ] + array_filter(['email_html' => $this->html($workflow, $url)]),
-            ], $requestId);
-
-            $this->dispatches->record($workflow, 'email', $requestId, $result);
-
-            // Une simulation ne constitue pas un message envoyé au destinataire.
-            if ($result->status === 'dry_run' || ! $result->isDispatchAccepted()) {
-                Log::warning('Activation KLASSCI : échec envoi e-mail', [
-                    'workflow_id' => $workflow->id,
-                    'status' => $result->status,
-                    'request_id' => $result->requestId,
+        foreach ($emails as $email) {
+            $requestId = 'admission-activation-email-'.$workflow->id.'-'
+                .substr(hash('sha256', $email === $primaryEmail ? $url : $url.'|'.$email), 0, 16);
+            try {
+                $this->mailPulse->createOrUpdateContact([
+                    'email' => $email,
+                    'first_name' => $c->prenoms ?: $c->nom,
+                    'last_name' => $c->nom,
+                    'language' => 'fr',
+                    'preferred_channel' => 'email',
+                    'subscribed' => true,
+                    'metadata' => ['source' => 'klassci-admission', 'channel_opt_in' => ['email' => true]],
                 ]);
 
-                return false;
+                $result = $this->mailPulse->sendEmailMessage([
+                    'channel' => 'email',
+                    'recipient' => ['type' => 'email', 'value' => $email],
+                    'content' => ['type' => 'text', 'text' => $texte],
+                    'metadata' => [
+                        'source' => 'klassci',
+                        'workflow_event' => 'admission_activation',
+                        'subject' => $sujet,
+                        'workflow_id' => $workflow->id,
+                    ] + array_filter(['email_html' => $html]),
+                ], $requestId);
+
+                $this->dispatches->record($workflow, 'email', $requestId, $result);
+                if ($result->status !== 'dry_run' && $result->isDispatchAccepted()) {
+                    $sent++;
+                } else {
+                    Log::warning('Activation KLASSCI : canal familial non accepté', [
+                        'workflow_id' => $workflow->id,
+                        'status' => $result->status,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                $this->dispatches->record($workflow, 'email', $requestId);
+                Log::warning('Activation KLASSCI : échec envoi familial', [
+                    'workflow_id' => $workflow->id,
+                    'exception' => $e::class,
+                ]);
             }
-
-            return true;
-        } catch (\Throwable $e) {
-            $this->dispatches->record($workflow, 'email', $requestId);
-            Log::warning('Activation KLASSCI : exception envoi e-mail', [
-                'workflow_id' => $workflow->id,
-                'exception' => $e::class,
-            ]);
-
-            return false;
         }
+
+        return $sent > 0;
     }
 
     /**

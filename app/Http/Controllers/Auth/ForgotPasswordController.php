@@ -56,27 +56,37 @@ class ForgotPasswordController extends Controller
     public function sendResetLinkEmail(Request $request)
     {
         $this->validateEmail($request);
+        $email = mb_strtolower(trim((string) $request->input('email')));
 
-        // Nous enverrons le lien de réinitialisation du mot de passe à cet utilisateur. Une fois que nous
-        // l'avons envoyé, nous informerons l'utilisateur que nous avons envoyé un e-mail. Ensuite, ils
-        // peuvent utiliser le lien pour réinitialiser leur mot de passe.
-        try {
-            $response = $this->broker()->sendResetLink(
-                $this->credentials($request)
-            );
-        } catch (TransportExceptionInterface $e) {
-            // Le courriel n'est pas parti (messagerie refusée ou plafond atteint) :
-            // le dire à l'écran plutôt qu'une page d'erreur, et le garder au journal.
-            Log::warning('Réinitialisation du mot de passe : courriel non envoyé', ['erreur' => $e->getMessage()]);
-
-            throw ValidationException::withMessages([
-                'email' => ["Le courriel de réinitialisation n'a pas pu partir. Réessayez dans quelques minutes."],
-            ]);
+        // Accepter aussi l'e-mail d'un parent, car le parent et l'étudiant
+        // utilisent exactement le même compte. On n'affiche jamais si une
+        // adresse est connue : protection anti-énumération.
+        $comptes = \App\Models\User::query()->where('email', $email)->get();
+        if ($comptes->isEmpty()) {
+            $ids = \App\Models\ESBTPEtudiant::query()
+                ->where('email_personnel', $email)
+                ->orWhere('email', $email)
+                ->orWhereHas('parents', fn ($q) => $q->where('email', $email))
+                ->distinct()->limit(10)->pluck('user_id')->filter();
+            $comptes = \App\Models\User::whereIn('id', $ids)->get();
         }
 
-        return $response == Password::RESET_LINK_SENT
-                    ? $this->sendResetLinkResponse($request, $response)
-                    : $this->sendResetLinkFailedResponse($request, $response);
+        foreach ($comptes->take(10) as $compte) {
+            if (! $compte->is_active
+                || ! app(\App\Services\Admissions\StudentAccessInvitation::class)
+                    ->assurerEmailPrincipal($compte)) {
+                continue;
+            }
+            try {
+                $this->broker()->sendResetLink(['email' => $compte->email]);
+            } catch (\Throwable $e) {
+                Log::warning('Réinitialisation du compte partagé non envoyée', [
+                    'user_id' => $compte->id, 'exception' => $e::class,
+                ]);
+            }
+        }
+
+        return back()->with('status', 'Si cette adresse est associée à un compte KLASSCI, un lien sécurisé a été envoyé à l’étudiant et aux parents rattachés.');
     }
 
     /**

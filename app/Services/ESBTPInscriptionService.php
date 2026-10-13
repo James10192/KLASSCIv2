@@ -187,6 +187,23 @@ class ESBTPInscriptionService
                 $this->attachParentsToEtudiant($etudiant, $parentsData, $userId);
             }
 
+            // Un parent utilise le compte de son enfant. Si l'étudiant
+            // n'a pas de courriel, prendre une adresse de parent lié comme
+            // adresse principale du compte (nécessaire au broker Laravel).
+            if ($etudiant->user_id) {
+                $compte = $etudiant->user;
+                if ($compte && ! $compte->email) {
+                    foreach ($etudiant->parents as $parent) {
+                        $adresse = app(\App\Services\Emails\AdresseDeCompte::class)->pour($parent->email);
+                        if ($adresse) {
+                            $compte->email = $adresse;
+                            $compte->save();
+                            break;
+                        }
+                    }
+                }
+            }
+
             // 8. Enregistrement du paiement initial (si fourni)
             if ($paiementData && !empty($paiementData)) {
                 $paiementData['inscription_id'] = $inscription->id;
@@ -200,6 +217,18 @@ class ESBTPInscriptionService
                 }
 
                 ESBTPPaiement::create($paiementData);
+            }
+
+            // La livraison part seulement après le commit définitif de la
+            // transaction éventuelle du contrôleur : aucun lien pour un compte annulé.
+            if ($etudiant->user_id) {
+                $compte = $etudiant->user;
+                if ($compte && $compte->email) {
+                    DB::afterCommit(static function () use ($compte): void {
+                        app(\App\Services\Admissions\StudentAccessInvitation::class)
+                            ->inviter($compte, 'activation');
+                    });
+                }
             }
 
             DB::commit();
@@ -270,8 +299,8 @@ class ESBTPInscriptionService
         // identifiant ; sans adresse reelle, l'e-mail reste vide.
         $email = app(\App\Services\Emails\AdresseDeCompte::class)->pour($etudiantData['email_personnel'] ?? null);
 
-        // Générer un mot de passe aléatoire
-        $password = Str::random(10);
+        // Secret inaccessible : activation exclusivement via un lien à usage unique.
+        $password = Str::random(64);
 
         $user = User::create([
             'name' => $etudiantData['prenoms'] . ' ' . $etudiantData['nom'],
@@ -280,11 +309,9 @@ class ESBTPInscriptionService
             'email' => $email,
             'username' => $username,
             'password' => Hash::make($password),
-            'is_active' => true
+            'is_active' => true,
+            'must_change_password' => true
         ]);
-
-        // Enregistrer le mot de passe généré en session pour l'afficher plus tard
-        session()->put('generated_password', $password);
 
         // Assigner le rôle étudiant
         $role = Role::where('name', 'etudiant')->first();
@@ -448,11 +475,10 @@ class ESBTPInscriptionService
                     $user->is_active = true;
                     $user->save();
 
-                    // Stocker les informations du compte dans la session
+                    // Ne jamais afficher ni transmettre un mot de passe temporaire.
                     session()->flash('account_info', [
                         'username' => $user->username,
-                        'password' => session('generated_password'),
-                        'role' => 'Étudiant'
+                        'role' => 'Étudiant',
                     ]);
                 }
             }

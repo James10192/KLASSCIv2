@@ -60,7 +60,7 @@ class ESBTPEtudiantController extends Controller
         // deux contrôleurs.
         $this->middleware('permission:students.view', ['only' => ['index']]);
         $this->middleware('permission:students.create', ['only' => ['create', 'store']]);
-        $this->middleware('permission:students.edit', ['only' => ['edit', 'update']]);
+        $this->middleware('permission:students.edit', ['only' => ['edit', 'update', 'createUserAccount', 'resetPassword']]);
         $this->middleware('permission:students.delete', ['only' => ['destroy']]);
     }
 
@@ -1009,9 +1009,19 @@ class ESBTPEtudiantController extends Controller
             // identifiant ; sans adresse reelle, l'e-mail reste vide.
             $email = app(\App\Services\Emails\AdresseDeCompte::class)->pour($etudiant->email_personnel ?: $etudiant->email);
 
-            // Secret individuel et imprévisible, provisoire en attendant
-            // l'invitation par lien à usage unique pour les comptes historiques.
-            $password = \App\Services\Admissions\MotDePasseTemporaireEtudiant::generer();
+            // Un secret aléatoire est stocké mais jamais remis à un agent.
+            // L'étudiant définit le sien par lien sécurisé.
+            $password = \Illuminate\Support\Str::random(64);
+
+            // Le tuteur peut recevoir et utiliser le même compte.
+            if (! $email) {
+                foreach ($etudiant->parents as $parent) {
+                    $email = app(\App\Services\Emails\AdresseDeCompte::class)->pour($parent->email);
+                    if ($email) {
+                        break;
+                    }
+                }
+            }
 
             // Créer le compte utilisateur
             $user = User::create([
@@ -1035,12 +1045,15 @@ class ESBTPEtudiantController extends Controller
             $etudiant->user_id = $user->id;
             $etudiant->save();
 
-            return redirect()
-                ->back()
-                ->with('success', 'Compte utilisateur créé avec succès!')
+            $sent = $email
+                && app(\App\Services\Admissions\StudentAccessInvitation::class)->inviter($user, 'activation');
+
+            return redirect()->back()
+                ->with($sent ? 'success' : 'warning', $sent
+                    ? 'Compte créé. Un lien personnel pour définir le mot de passe a été transmis à l’adresse de l’étudiant.'
+                    : 'Compte créé, mais aucun e-mail d’activation n’a été envoyé. Vérifiez l’adresse de l’étudiant et renvoyez son lien depuis sa fiche.')
                 ->with('account_created', true)
-                ->with('new_username', $username)
-                ->with('new_password', $password);
+                ->with('new_username', $username);
 
         } catch (\Exception $e) {
             return redirect()
@@ -1054,55 +1067,32 @@ class ESBTPEtudiantController extends Controller
      */
     public function resetPassword(ESBTPEtudiant $etudiant)
     {
-        try {
-            if (!$etudiant->user_id) {
-                return redirect()
-                    ->back()
-                    ->with('error', 'Cet étudiant n\'a pas de compte utilisateur.');
-            }
-
-            $user = User::find($etudiant->user_id);
-            if (!$user) {
-                return redirect()
-                    ->back()
-                    ->with('error', 'Compte utilisateur introuvable.');
-            }
-
-            $defaultPassword = \App\Services\Admissions\MotDePasseTemporaireEtudiant::generer();
-
-            // Update password AND force password change on first login
-            $user->password = Hash::make($defaultPassword);
-            $user->must_change_password = true; // Force password change
-            $user->save();
-
-            // Log action
-            \Log::info('🔑 Password reset for student to default', [
-                'etudiant_id' => $etudiant->id,
-                'user_id' => $etudiant->user_id,
-                'student_name' => $user->name,
-                'reset_by' => auth()->user()->name,
-                'timestamp' => now(),
-                'must_change_password' => true
-            ]);
-
-            return redirect()
-                ->back()
-                ->with('success', 'Mot de passe temporaire individuel créé : '.$defaultPassword.'. Remettez-le uniquement à l’étudiant concerné par un canal vérifié ; changement obligatoire à la première connexion.')
-                ->with('new_password', $defaultPassword);
-
-        } catch (\Exception $e) {
-            \Log::error('❌ Password reset failed for student', [
-                'etudiant_id' => $etudiant->id,
-                'error' => $e->getMessage()
-            ]);
-
-            return redirect()
-                ->back()
-                ->with('error', 'Erreur lors de la réinitialisation du mot de passe: ' . $e->getMessage());
+        if (! $etudiant->user_id || ! ($user = User::find($etudiant->user_id))) {
+            return back()->with('error', 'Aucun compte utilisateur actif associé à cet étudiant.');
         }
+
+        if (! $user->email) {
+            return back()->with('error', 'Aucun e-mail utilisable sur le compte. Vérifiez l’adresse de l’étudiant avant de demander un lien.');
+        }
+
+        // Ne jamais modifier le mot de passe en base lors de la demande.
+        // Le jeton Laravel n'est utilisable qu'une fois et expire automatiquement.
+        $sent = app(\App\Services\Admissions\StudentAccessInvitation::class)
+            ->inviter($user, 'reinitialisation');
+
+        \Log::info('Demande de lien de récupération étudiant', [
+            'etudiant_id' => $etudiant->id,
+            'user_id' => $user->id,
+            'actor_id' => auth()->id(),
+            'email_accepted' => $sent,
+        ]);
+
+        return back()->with($sent ? 'success' : 'error', $sent
+            ? 'Un lien personnel de réinitialisation a été envoyé à l’adresse e-mail de l’étudiant. Son mot de passe actuel reste valable jusqu’à utilisation du lien.'
+            : 'Le lien n’a pas pu être envoyé. Vérifiez la messagerie et réessayez.');
     }
 
-    /**
+        /**
      * Obtenir les classes disponibles pour une filière, un niveau et une année donnés.
      */
     public function getClasses(Request $request)

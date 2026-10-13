@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-13 · #1575 · Connexion et fiche étudiant : invitation par lien sécurisé reçue par l'étudiant et ses parents liés, réinitialisation sans code temporaire, nouvelle connexion par e-mail + OTP et écrans de récupération premium. Vérifier les captures et les envois réels sur présentation avant propagation.
 - 2026-10-12 · #1573 · Enseignants > Exporter : choisissez BTS, LMD ou les deux, puis les classes, filières, niveaux, matières typées, UE et parcours LMD. Les noms et matières homonymes sont séparés par système/maquette jusque dans les PDF et Excel.
 - 2026-10-12 · #1572 · Paiements : correction du mode de règlement accessible depuis la fiche du versement avec droit dédié ; modal et fond Bootstrap stabilisés dans la liste pendant les rafraîchissements AJAX.
 - 2026-10-12 · #1570 · Enseignants > Exporter : choix des colonnes, rubriques par matière/classe/niveau/filière, nouvelle liste épurée et orientation A4 portrait/paysage automatique ; Excel reprend exactement les colonnes et les rubriques choisies.

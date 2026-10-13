@@ -34,21 +34,28 @@ class PasswordChangeController extends Controller
     {
         $user = auth()->user();
 
-        $request->validate([
-            'current_password' => ['required', 'current_password'],
-            'password' => ['required', 'confirmed', 'different:current_password', new MotDePasseNonGenerique, Password::min(8)
-                ->letters()
-                ->numbers()
-            ],
-        ], [
+        // À la première connexion imposée, l'ancien mot de passe n'est pas
+        // requis. Pour une expiration ou un changement volontaire, on exige
+        // toujours la connaissance de l'ancien secret.
+        // Seule une expiration exige la saisie de l'ancien mot de passe.
+        // La première configuration et les changements depuis une session
+        // déjà authentifiée demandent uniquement le nouveau mot de passe.
+        $requiresCurrent = UserService::isPasswordExpired($user);
+
+        $rules = [
+            'password' => ['required', 'confirmed', new MotDePasseNonGenerique,
+                Password::min(8)->letters()->numbers()],
+        ];
+        if ($requiresCurrent) {
+            $rules['current_password'] = ['required', 'current_password'];
+            $rules['password'][] = 'different:current_password';
+        }
+
+        $request->validate($rules, [
             'current_password.required' => 'Le mot de passe actuel est requis.',
-            'current_password.current_password' => 'Le mot de passe actuel est incorrect. Vérifiez que vous avez bien saisi votre mot de passe actuel (celui utilisé pour vous connecter).',
-            'password.different' => 'Le nouveau mot de passe doit être différent de l\'actuel.',
-            'password.required' => 'Le nouveau mot de passe est requis.',
-            'password.confirmed' => 'La confirmation du mot de passe ne correspond pas. Vérifiez que les deux champs "Nouveau mot de passe" sont identiques.',
-            'password.min' => 'Le nouveau mot de passe doit contenir au moins 8 caractères.',
-            'password.letters' => 'Le nouveau mot de passe doit contenir au moins une lettre.',
-            'password.numbers' => 'Le nouveau mot de passe doit contenir au moins un chiffre.',
+            'current_password.current_password' => 'Le mot de passe actuel est incorrect.',
+            'password.different' => 'Choisissez un mot de passe différent.',
+            'password.confirmed' => 'La confirmation ne correspond pas.',
         ]);
 
         // Mettre à jour le mot de passe (le mutateur setPasswordAttribute hashe automatiquement)
@@ -65,6 +72,6 @@ class PasswordChangeController extends Controller
         \Log::info('Mot de passe changé avec succès', ['user_id' => $user->id, 'email' => $user->email]);
 
         return redirect()->route('dashboard')->with('success',
-            'Votre mot de passe a été changé avec succès. Bienvenue dans le système ESBTP!');
+            'Votre mot de passe a été changé avec succès. Bienvenue sur KLASSCI !');
     }
 }

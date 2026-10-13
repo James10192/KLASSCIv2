@@ -142,9 +142,15 @@ class ResetPasswordController extends Controller
 
         $user->save();
 
+        // L'activation par lien est souvent la première connexion réelle.
+        // Conserver ce jalon pour le suivi du compte et invalider les
+        // anciennes sessions après changement de secret.
+        app(\App\Services\UserService::class)->markFirstLogin($user);
+
         event(new PasswordReset($user));
 
         Auth::login($user);
+        request()->session()->regenerate();
     }
 
     /**
