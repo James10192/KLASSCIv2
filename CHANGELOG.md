@@ -11,6 +11,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Accès étudiants et parents — compte partagé sécurisé :** invitations d'activation et réinitialisations par lien personnel à usage unique, remis individuellement à l'étudiant et aux parents liés sans mot de passe en clair. Connexion alternative par code OTP de cinq minutes à l'adresse étudiante ou parentale, sans contourner la double authentification TOTP ; nouvelle fenêtre premium depuis la fiche étudiant, écrans connexion/récupération/changement harmonisés. Les réinscriptions adressent leurs confirmations à l'étudiant et aux parents autorisés. Aucun déploiement sur les établissements sans contrôle du tenant présentation.
+
 - **Exports enseignants — séparation BTS/LMD :** filtre BTS, LMD ou les deux, avec matières et classes contextualisées, semestres LMD S1 à S10, UE et parcours. Les enseignants des bulletins BTS et ceux des planifications LMD sont lus depuis leurs sources canoniques ; aucune matière homonyme, UE ou parcours n'est fusionné par simple libellé. Les exports PDF/Excel conservent le système et les anciens liens restent BTS par défaut.
 
 - **Paiements — correction du mode de règlement stabilisée :** sur le suivi des paiements, les fenêtres ne disparaissent plus au rafraîchissement automatique ou lors du défilement AJAX en laissant un écran bloqué par le fond Bootstrap. La correction est également disponible sur la fiche du versement pour les utilisateurs ayant la permission dédiée, uniquement avant rapprochement. Formulaire, validation du motif et animations existants conservés.
