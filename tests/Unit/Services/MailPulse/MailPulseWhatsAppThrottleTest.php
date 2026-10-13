@@ -82,6 +82,33 @@ class MailPulseWhatsAppThrottleTest extends TestCase
         Http::assertSentCount(2);
     }
 
+    public function test_per_minute_limit_is_shared_across_recipients(): void
+    {
+        config()->set('services.mailpulse.whatsapp_min_spacing_seconds', 0);
+        config()->set('services.mailpulse.whatsapp_per_minute', 2);
+        $client = app(MailPulseClient::class);
+
+        $this->assertTrue($client->sendWhatsAppMessage($this->message('+2250707111111'), 'one')->ok);
+        $this->assertTrue($client->sendWhatsAppMessage($this->message('+2250707222222'), 'two')->ok);
+        $deferred = $client->sendWhatsAppMessage($this->message('+2250707333333'), 'three');
+
+        $this->assertSame('whatsapp_pacing', $deferred->status);
+        Http::assertSentCount(2);
+    }
+
+    public function test_cache_failure_fails_closed_instead_of_sending_whatsapp(): void
+    {
+        Cache::shouldReceive('lock')->once()->andThrow(new \\RuntimeException('cache down'));
+
+        $result = app(MailPulseClient::class)->sendWhatsAppMessage($this->message(), 'request-cache-down');
+
+        $this->assertFalse($result->ok);
+        $this->assertSame('whatsapp_pacing_unavailable', $result->status);
+        $this->assertSame(503, $result->httpStatus);
+        $this->assertSame(60, $result->retryAfter);
+        Http::assertNothingSent();
+    }
+
     public function test_disabled_pacing_keeps_existing_mailpulse_behavior(): void
     {
         config()->set('services.mailpulse.whatsapp_pacing_enabled', false);
