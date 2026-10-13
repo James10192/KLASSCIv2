@@ -1045,13 +1045,12 @@ class ESBTPEtudiantController extends Controller
             $etudiant->user_id = $user->id;
             $etudiant->save();
 
-            $sent = $email
-                && app(\App\Services\Admissions\StudentAccessInvitation::class)->inviter($user, 'activation');
+            $sent = app(\App\Services\Admissions\StudentAccessInvitation::class)->inviter($user, 'activation');
 
             return redirect()->back()
                 ->with($sent ? 'success' : 'warning', $sent
-                    ? 'Compte créé. Un lien personnel pour définir le mot de passe a été transmis à l’adresse de l’étudiant.'
-                    : 'Compte créé, mais aucun e-mail d’activation n’a été envoyé. Vérifiez l’adresse de l’étudiant et renvoyez son lien depuis sa fiche.')
+                    ? 'Compte créé. Le même lien personnel a été envoyé à l’étudiant et à ses parents rattachés disposant d’une adresse valide.'
+                    : 'Compte créé sans e-mail d’activation : renseignez une adresse valide pour l’étudiant ou un parent, puis renvoyez le lien.')
                 ->with('account_created', true)
                 ->with('new_username', $username);
 
@@ -1071,10 +1070,6 @@ class ESBTPEtudiantController extends Controller
             return back()->with('error', 'Aucun compte utilisateur actif associé à cet étudiant.');
         }
 
-        if (! $user->email) {
-            return back()->with('error', 'Aucun e-mail utilisable sur le compte. Vérifiez l’adresse de l’étudiant avant de demander un lien.');
-        }
-
         // Ne jamais modifier le mot de passe en base lors de la demande.
         // Le jeton Laravel n'est utilisable qu'une fois et expire automatiquement.
         $sent = app(\App\Services\Admissions\StudentAccessInvitation::class)
@@ -1088,7 +1083,7 @@ class ESBTPEtudiantController extends Controller
         ]);
 
         return back()->with($sent ? 'success' : 'error', $sent
-            ? 'Un lien personnel de réinitialisation a été envoyé à l’adresse e-mail de l’étudiant. Son mot de passe actuel reste valable jusqu’à utilisation du lien.'
+            ? 'Le même lien sécurisé a été transmis aux adresses disponibles de l’étudiant et de ses parents rattachés. Le mot de passe actuel reste valable jusqu’à utilisation du lien.'
             : 'Le lien n’a pas pu être envoyé. Vérifiez la messagerie et réessayez.');
     }
 
