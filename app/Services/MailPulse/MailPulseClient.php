@@ -201,6 +201,15 @@ class MailPulseClient
             return $this->failure('missing_api_key', null, $requestId, 'MAILPULSE_API_KEY est manquante.', 'Configurez MAILPULSE_API_KEY ou lancez en dry-run.');
         }
 
+        // Admission centralisée au dernier point de sortie WhatsApp.
+        // Concerne les workflows, les reprises d'outbox et les convocations.
+        if ($operation === 'whatsapp_send') {
+            $deferred = app(MailPulseWhatsAppThrottle::class)->reserve($payload, $apiKey, $requestId);
+            if ($deferred !== null) {
+                return $deferred;
+            }
+        }
+
         try {
             $response = Http::withToken($apiKey)
                 ->acceptJson()
