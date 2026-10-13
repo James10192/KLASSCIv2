@@ -113,6 +113,26 @@ cache commun, seule la limite côté passerelle fait autorité. Une file
 7. N'activer le garde sur `presentation` qu'après tests et avec destinataires
    internes consentants ; ne pas propager automatiquement aux autres tenants.
 
+## Phase 2 : e-mail familial autoritaire (13 octobre)
+
+Le routage dans `WorkflowEmailAuthority` sélectionne le **mailer Laravel**
+comme autorité unique pour `enrollment_created`, `reenrollment_created`,
+`payment_received`, `payment_rejected`, `absence_reported`,
+`low_attendance` et `low_grades`. Pour ces événements, la politique
+MailPulse refuse le **canal email uniquement** ; les canaux WhatsApp/SMS
+peuvent encore partir selon préférences, STOP et contrôle de débit.
+
+`FamilyWorkflowMailer` produit une seule copie par e-mail validé/dédupliqué
+du compte étudiant-parent ; les destinataires sont traités indépendamment
+sans CC/BCC. Les événements où aucun mailer Laravel ne remplace MailPulse
+(`grade_published`, `bulletin_published`, `fee_reminder`) restent sur
+le mailer MailPulse.
+
+**Limite explicite :** le mailer familial est encore synchrone ; un envoi
+accepté ne prouve pas la délivrance. Le futur chantier d'outbox e-mail
+transactionnelle et de webhook de suivi reste nécessaire. Ne pas confondre
+la suppression des doublons avec la garantie de livraison.
+
 ## Suite recommandée (non incluse dans ce premier lot)
 
 - Unifier l'envoi email dans une outbox transactionnelle et déclarer un
