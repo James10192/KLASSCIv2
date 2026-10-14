@@ -51,6 +51,25 @@ class AcademicFicheUxContractTest extends TestCase
         $this->assertStringContainsString('data-fng-new-eval', $content);
     }
 
+    public function test_academic_modals_use_explicit_viewport_centering(): void
+    {
+        $module = $this->view('esbtp/partials/fiche-notes-module.blade.php');
+        $premiumRule = file_get_contents(__DIR__.'/../../../.claude/rules/premium-redesign.md');
+
+        $this->assertStringContainsString(
+            '.fng-dialog{position:fixed;inset:0;margin:auto;box-sizing:border-box;',
+            $module
+        );
+        $this->assertStringContainsString('max-width:calc(100vw - 24px)', $module);
+        $this->assertStringContainsString('max-height:92dvh', $module);
+        $this->assertStringContainsString('.fng-dialog--document', $module);
+        $this->assertStringContainsString('document.body.appendChild(dlg)', $module);
+        $this->assertStringContainsString('dlg.showModal()', $module);
+        $this->assertStringContainsString('Modales premium compactes', $premiumRule);
+        $this->assertStringContainsString('position: fixed;', $premiumRule);
+        $this->assertStringContainsString('margin: auto;', $premiumRule);
+    }
+
     public function test_coefficient_modal_reinitializes_after_ajax_swap_without_duplicate_events(): void
     {
         $results = $this->view('esbtp/resultats/etudiant.blade.php');
