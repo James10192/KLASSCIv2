@@ -3,16 +3,16 @@
     <div class="fng-loading" role="status"><i class="fas fa-circle-notch fa-spin"></i> Chargement des évaluations et notes...</div>
 </section>
 <style>
-.fng-module{--fng-blue:#0453cb;--fng-ink:#17243b;--fng-muted:#64748b;margin:22px 0;font-family:inherit}
+.fng-module{--fng-blue:#0453cb;--fng-ink:#17243b;--fng-muted:#64748b;margin:16px 0;font-family:inherit}
 .fng-module *{box-sizing:border-box}
 .fng-loading,.fng-empty{padding:26px;text-align:center;color:#718096;font-size:14px}
 .fng-loading i,.fng-empty i{margin-right:8px;color:var(--fng-blue)}
-.fng-head{background:linear-gradient(115deg,#073b92 0%,#0453cb 69%,#2878eb 100%);padding:24px 28px;border-radius:20px;color:white;display:flex;justify-content:space-between;gap:16px;align-items:center;box-shadow:0 10px 28px rgba(4,83,203,.13)}
-.fng-head h3{margin:3px 0 7px;font-size:22px;font-weight:800;color:white;letter-spacing:-.6px}
-.fng-head p{margin:0;color:#dce9ff;font-size:13px}
-.fng-eyebrow{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.3px;color:#c4dbff}
-.fng-pill{border-radius:99px;background:rgba(255,255,255,.17);padding:7px 12px;white-space:nowrap;font-weight:700;font-size:12px}
-.fng-block{border:1px solid #e5eaf3;border-radius:18px;background:#fff;box-shadow:0 6px 22px rgba(24,47,88,.045);overflow:hidden;margin-top:14px}
+.fng-head{padding:9px 3px 13px;color:#17243b;display:flex;justify-content:space-between;gap:12px;align-items:center;border-bottom:1px solid #e2e8f0}
+.fng-head h3{margin:3px 0 4px;font-size:17px;font-weight:800;color:#162841;letter-spacing:-.35px}
+.fng-head p{margin:0;color:#64748b;font-size:12px}
+.fng-eyebrow{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#0453cb}
+.fng-pill{border-radius:99px;background:#eef5ff;color:#2257a5;padding:6px 10px;white-space:nowrap;font-weight:700;font-size:11px}
+.fng-block{border:1px solid #e5eaf3;border-radius:12px;background:#fff;box-shadow:none;overflow:hidden;margin-top:10px}
 .fng-block-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px;padding:19px 20px;border-bottom:1px solid #e9eef5}
 .fng-block-head strong{display:block;color:#17243b;font-size:16px;font-weight:800}
 .fng-block-head small{display:block;color:#64748b;font-size:12px;margin-top:5px}
@@ -57,7 +57,7 @@
 .fng-picker-menu[hidden]{display:none!important}.fng-dialog label.fng-check input{width:auto;margin:0}
 .fng-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .fng-modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.fng-modal-error{color:#b91c1c;font-size:12px;margin:8px 0;min-height:17px}
-@media(max-width:650px){.fng-head{padding:20px;align-items:flex-start}.fng-head h3{font-size:19px}.fng-pill{display:none}.fng-block-head{padding:14px}.fng-grid{grid-template-columns:1fr}}
+@media(max-width:650px){.fng-head{padding:10px 0 12px;align-items:flex-start}.fng-head h3{font-size:19px}.fng-pill{display:none}.fng-block-head{padding:14px}.fng-grid{grid-template-columns:1fr}}
 </style>
 <script>
 (() => {
@@ -257,6 +257,18 @@
         ()=>send(btn.dataset.deleteUrl,'DELETE',new FormData()),true);
     }
   });
-  reload();
+  // etudiants.show has several heavy tabs: avoid querying every evaluation
+  // when the administrative user never visits the Academic tab.
+  // The inscription page is visible immediately, so it loads normally.
+  if ('IntersectionObserver' in window) {
+    const observer=new IntersectionObserver(entries=>{
+      if (!entries.some(entry=>entry.isIntersecting)) return;
+      observer.disconnect();
+      reload();
+    },{rootMargin:'120px 0px'});
+    observer.observe(panel);
+  } else {
+    reload();
+  }
 })();
 </script>

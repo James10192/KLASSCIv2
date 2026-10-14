@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\ESBTP;
 
 use App\Http\Controllers\Controller;
+use App\Domain\AcademicPilotage\Services\GradeSheetNoteMutationGuard;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
@@ -115,7 +116,13 @@ final class FicheNotesController extends Controller
             && (int) $evaluation->annee_universitaire_id === (int) $inscription->annee_universitaire_id,
             404);
 
-        DB::transaction(fn () => $note->delete());
+        DB::transaction(function () use ($note, $evaluation): void {
+            // A validée grade sheet or locked scheduled exam must not be
+            // bypassed from the student/inscription side panel.
+            app(GradeSheetNoteMutationGuard::class)
+                ->assertEvaluationMutable((int) $evaluation->id, true);
+            $note->delete();
+        });
 
         return response()->json(['success' => true, 'message' => 'Note supprimée ; les résultats seront recalculés.']);
     }
