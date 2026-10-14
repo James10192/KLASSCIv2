@@ -132,6 +132,14 @@ jobs:
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Views/AcademicFicheUxContractTest.php --stop-on-failure
 
+      - name: Test classement par matière des évaluations en fiche
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Views/AcademicFicheMatiereUxContractTest.php --stop-on-failure
+
+      - name: Vérifier la syntaxe du regroupement JS des évaluations
+        if: github.event_name == 'pull_request'
+        run: node --check < resources/views/esbtp/partials/_fiche-notes-view-script.blade.php
+
       - name: Test cohérence des maquettes et filtres pédagogiques AJAX
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Views/AcademicPlanningUxContractTest.php --stop-on-failure

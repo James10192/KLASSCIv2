@@ -39,14 +39,44 @@
                 @endif
             </div>
         </div>
+        @if($evaluationsFiche->isNotEmpty())
+            <div class="fng-list-toolbar" aria-label="Organisation des évaluations">
+                <div class="fng-view-switch" role="group" aria-label="Mode d'affichage">
+                    <button type="button" class="fng-view-btn" data-fng-view="matiere" aria-pressed="true">
+                        <i class="fas fa-layer-group" aria-hidden="true"></i> Par matière
+                    </button>
+                    <button type="button" class="fng-view-btn" data-fng-view="periode" aria-pressed="false">
+                        <i class="fas fa-calendar-alt" aria-hidden="true"></i> Par semestre
+                    </button>
+                    <button type="button" class="fng-view-btn" data-fng-view="liste" aria-pressed="false">
+                        <i class="fas fa-list" aria-hidden="true"></i> Liste
+                    </button>
+                </div>
+                <label class="fng-search-field">
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                    <input type="search" data-fng-search placeholder="Matière ou évaluation…" autocomplete="off"
+                           aria-label="Filtrer les évaluations par matière ou titre">
+                </label>
+                <span class="fng-list-count" data-fng-visible-count aria-live="polite"></span>
+            </div>
+        @endif
         <div class="fng-scroll">
             <table class="fng-table">
-                <thead><tr><th>Évaluation / Matière</th><th>Période</th><th>Barème · Coef.</th><th>Note</th><th>Statut</th><th class="fng-right">Actions</th></tr></thead>
+                <thead><tr><th>Matière / Évaluation</th><th>Période</th><th>Barème · Coef.</th><th>Note</th><th>Statut</th><th class="fng-right">Actions</th></tr></thead>
                 <tbody>
                     @forelse($evaluationsFiche as $eval)
                         @php $studentNote = $eval->notes->first(); @endphp
-                        <tr>
-                            <td><strong>{{ $eval->titre }}</strong><small>{{ $eval->matiere?->name ?? 'Matière inconnue' }} · {{ $eval->date_evaluation?->format('d/m/Y') ?? 'Sans date' }}</small></td>
+                        <tr data-fng-eval-row
+                            data-fng-order="{{ $loop->index }}"
+                            data-fng-matiere-id="{{ $eval->matiere_id ?? 'inconnue' }}"
+                            data-fng-matiere="{{ $eval->matiere?->name ?? 'Matière inconnue' }}"
+                            data-fng-titre="{{ $eval->titre }}"
+                            data-fng-periode="{{ $eval->periode }}">
+                            <td class="fng-eval-identite">
+                                <span class="fng-row-matiere">{{ $eval->matiere?->name ?? 'Matière inconnue' }}</span>
+                                <strong class="fng-row-evaluation">{{ $eval->titre }}</strong>
+                                <small>{{ $eval->date_evaluation?->format('d/m/Y') ?? 'Sans date' }}</small>
+                            </td>
                             <td>{{ preg_replace('/^semestre/', 'S', (string) $eval->periode) }}</td>
                             <td>{{ number_format((float)$eval->bareme, 1, ',', ' ') }} · ×{{ number_format((float)$eval->coefficient, 1, ',', ' ') }}</td>
                             <td>
@@ -64,7 +94,7 @@
                                             data-fng-note data-evaluation="{{ $eval->id }}"
                                             data-note="{{ $studentNote?->note ?? '' }}" data-absent="{{ $studentNote?->is_absent ? 1 : 0 }}"
                                             data-comment="{{ $studentNote?->commentaire ?? '' }}"
-                                            data-bareme="{{ $eval->bareme }}" data-title="{{ $eval->titre }}">
+                                            data-bareme="{{ $eval->bareme }}" data-title="{{ $eval->titre }}" data-matiere="{{ $eval->matiere?->name ?? 'Matière inconnue' }}">
                                             <i class="fas fa-{{ $studentNote ? 'pen' : 'plus' }}"></i>
                                         </button>
                                     @endif
@@ -74,13 +104,13 @@
                                             <i class="fas fa-{{ $eval->is_published ? 'eye-slash' : 'eye' }}"></i>
                                         </button>
                                         <button type="button" class="fng-icon-btn" title="Modifier titre, barème et coefficient" data-fng-edit-eval
-                                            data-id="{{ $eval->id }}" data-title="{{ $eval->titre }}" data-bareme="{{ $eval->bareme }}"
+                                            data-id="{{ $eval->id }}" data-title="{{ $eval->titre }}" data-matiere="{{ $eval->matiere?->name ?? 'Matière inconnue' }}" data-bareme="{{ $eval->bareme }}"
                                             data-coefficient="{{ $eval->coefficient }}"><i class="fas fa-sliders-h"></i></button>
                                     @endif
                                     @if($studentNote && $canDeleteNote)
                                         <button type="button" class="fng-icon-btn fng-danger" title="Supprimer cette note" data-fng-delete
                                             data-delete-url="{{ route('esbtp.fiche-notes.supprimer', ['inscription' => $ficheInsc->id, 'note' => $studentNote->id]) }}"
-                                            data-title="{{ $eval->titre }}"><i class="fas fa-trash"></i></button>
+                                            data-title="{{ $eval->titre }}" data-matiere="{{ $eval->matiere?->name ?? 'Matière inconnue' }}"><i class="fas fa-trash"></i></button>
                                     @endif
                                     <a class="fng-icon-btn" target="_blank" rel="noopener" title="Détails de l'évaluation" href="{{ route('esbtp.evaluations.show', $eval->id) }}"><i class="fas fa-arrow-up-right-from-square"></i></a>
                                 </div>
