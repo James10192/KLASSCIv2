@@ -35,6 +35,24 @@ final class MailPulseWorkflowIntent
         public readonly array $payload,
     ) {}
 
+    /**
+     * Rehydrate an intent from an encrypted, validated database record.
+     * This is intentionally distinct from accepting untrusted HTTP input.
+     */
+    public static function restore(string $event, array $payload): self
+    {
+        if (! in_array($event, [
+            self::PAYMENT_RECEIVED, self::PAYMENT_REJECTED, self::FEE_REMINDER,
+            self::ABSENCE_REPORTED, self::LOW_ATTENDANCE, self::GRADE_PUBLISHED,
+            self::BULLETIN_PUBLISHED, self::LOW_GRADES, self::ENROLLMENT_CREATED,
+            self::REENROLLMENT_CREATED,
+        ], true)) {
+            throw new \InvalidArgumentException('Unknown workflow event');
+        }
+
+        return new self($event, $payload);
+    }
+
     public static function paymentReceived(int $paiementId): self
     {
         return new self(self::PAYMENT_RECEIVED, ['paiement_id' => $paiementId]);
