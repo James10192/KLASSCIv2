@@ -126,6 +126,9 @@
     @@media (max-width: 768px) {
         .lp-tour-card { left: 1rem !important; right: 1rem !important; bottom: 1rem !important; top: auto !important; max-width: calc(100% - 2rem); }
     }
+    .lp-filter-error { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; padding: .85rem 1rem; margin: 0 0 1rem; border-radius: 10px; background: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; font-size: .84rem; }
+    .lp-filter-error button { border: 1px solid #9f1239; border-radius: 8px; padding: .35rem .75rem; color: #9f1239; background: white; font-weight: 700; }
+    .lp-filter-error button:focus-visible { outline: 2px solid #0453cb; outline-offset: 2px; }
 </style>
 @endpush
 @endonce
