@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Fiches académiques plus légères :** suppression du grand bandeau secondaire et des ombres inutiles dans le gestionnaire de notes intégré ; l’onglet Académique charge maintenant ses évaluations uniquement à l’affichage, sans bloquer l’ouverture initiale de la fiche étudiant et sans rechargement de page. Tests UX dédiés. La suppression de note depuis ces fiches est aussi interdite quand l'évaluation est liée à une fiche validée ou à un examen dont les notes sont verrouillées.
 - **Notifications — outbox des intentions chiffrées et reprise cPanel :** option de persistance MySQL dans la même transaction que l'événement métier avant enqueue, récupération par le planificateur sans worker, bail atomique anti-concurrence, statut d'échec et tentatives bornées, crypto des données scolaires. Désactivée par défaut avant migration et recette de la tâche cron.
 - **Fiches étudiant/inscription — gestion académique AJAX :** consultation des évaluations et notes par inscription et année, édition des notes et évaluations en dialogue, droits serveur, matière BTS/LMD canonique, liens vers bulletins et relevés.
 - **Absences — suppression des alertes périmées :** revalidation de la présence finale lors de l'émission MailPulse et à chaque reprise ; si le dernier appel rectifie « absent » en « présent », aucun WhatsApp/SMS/mail d'absence n'est délivré par MailPulse. Une séance impossible à rattacher est bloquée, et le motif de suppression est consigné.

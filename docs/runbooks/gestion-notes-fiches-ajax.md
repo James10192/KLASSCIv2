@@ -12,3 +12,9 @@
 
 ## Recette préalable
 Vérifier un étudiant réinscrit avec S1 dans la classe tronc commun puis S2 en spécialité ; un étudiant LMD avec ECUE ; un professeur ne disposant que de `notes.manage_own` (ne doit pas voir le gestionnaire administratif) ; un comptable sans `notes.view` ; un rôle avec lecture seule ; une évaluation non publiée ; une note déjà soumise/verrouillée ; une suppression interdite ; des notes nulles/absence ; un PDF historique.
+
+## Optimisation de l'intégration dans les fiches
+
+Le panneau de notes utilise un en-tête de section discret, sans second grand hero bleu ni carte décorative. Sur `etudiants.show`, les requêtes académiques attendent que l’onglet devienne visible ; sur `inscriptions.show`, le bloc visible est chargé immédiatement. `IntersectionObserver` déclenche un seul chargement, avec repli pour les navigateurs anciens. Les modifications conservent les fetch AJAX, transitions existantes, contrôles de permissions et dialogues.
+
+La suppression d'une note depuis la fiche est également soumise au verrou canonique `GradeSheetNoteMutationGuard`, sous transaction et verrou de fiche (`lockForUpdate`). Une fiche de notes validée ou un examen planifié avec `notes_locked` répond par conflit métier JSON (409), sans suppression ni recalcul indu.

@@ -126,7 +126,7 @@ jobs:
 
       - name: Test périmètre des notes dans les fiches
         if: github.event_name == 'pull_request'
-        run: php artisan test tests/Unit/Services/Notes/EvaluationsDeLaFicheTest.php --stop-on-failure
+        run: php artisan test tests/Unit/Services/Notes/EvaluationsDeLaFicheTest.php tests/Unit/Services/Notes/FicheNotesIntegrationUxTest.php --stop-on-failure
 
       - name: Test outbox persistante MailPulse et récupération cron
         if: github.event_name == 'pull_request'
