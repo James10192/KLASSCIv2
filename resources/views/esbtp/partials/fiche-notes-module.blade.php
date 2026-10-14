@@ -39,7 +39,9 @@
 .fng-status-ok{color:#0b8064;background:#e8f8f3}
 .fng-notice{border-radius:12px;padding:12px 15px;margin:12px 0;font-size:13px;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8}
 .fng-notice-error{border-color:#fecaca;background:#fff1f2;color:#be123c}
-.fng-dialog{border:none;border-radius:20px;box-shadow:0 30px 100px rgba(13,33,65,.35);width:min(490px,calc(100vw - 24px));max-height:85vh;overflow:auto;color:#17243b;padding:0}
+/* Dialog natif placé dans <body> : ancrage explicite dans le viewport, pas dans la page scrollée.
+   Ne PAS appliquer display:flex au <dialog> : showModal() gère focus et top layer. */
+.fng-dialog{position:fixed;inset:0;margin:auto;box-sizing:border-box;border:none;border-radius:20px;box-shadow:0 30px 100px rgba(13,33,65,.35);width:min(490px,calc(100vw - 24px));max-width:calc(100vw - 24px);max-height:85dvh;overflow:auto;color:#17243b;padding:0}
 .fng-dialog::backdrop{background:rgba(8,25,51,.55);backdrop-filter:blur(3px)}
 .fng-dialog--document{width:min(1050px,96vw);max-height:96vh}
 .fng-document-body{padding:12px;height:min(78vh,900px)}
