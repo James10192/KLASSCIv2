@@ -1,7 +1,15 @@
 {{-- Composant léger chargé par AJAX dans les fiches étudiant / inscription. --}}
-<section class="fng-module" data-fng-module data-url="{{ $url }}">
-    <div class="fng-loading" role="status"><i class="fas fa-circle-notch fa-spin"></i> Chargement des évaluations et notes...</div>
-</section>
+<details class="fng-disclosure">
+    <summary class="fng-summary">
+        <span class="fng-summary-label"><i class="fas fa-clipboard-check" aria-hidden="true"></i> Évaluations et notes</span>
+        <span class="fng-summary-hint">Consulter ou saisir <i class="fas fa-chevron-down" aria-hidden="true"></i></span>
+    </summary>
+    <div class="fng-disclosure-body">
+        <section class="fng-module" data-fng-module data-url="{{ $url }}">
+            <div class="fng-loading" role="status"><i class="fas fa-circle-notch fa-spin"></i> Chargement des évaluations et notes...</div>
+        </section>
+    </div>
+</details>
 <style>
 .fng-module{--fng-blue:#0453cb;--fng-ink:#17243b;--fng-muted:#64748b;margin:16px 0;font-family:inherit}
 .fng-module *{box-sizing:border-box}
@@ -57,12 +65,41 @@
 .fng-picker-menu[hidden]{display:none!important}.fng-dialog label.fng-check input{width:auto;margin:0}
 .fng-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .fng-modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.fng-modal-error{color:#b91c1c;font-size:12px;margin:8px 0;min-height:17px}
-@media(max-width:650px){.fng-head{padding:10px 0 12px;align-items:flex-start}.fng-head h3{font-size:19px}.fng-pill{display:none}.fng-block-head{padding:14px}.fng-grid{grid-template-columns:1fr}}
+@@media(max-width:650px){.fng-head{padding:20px;align-items:flex-start}.fng-head h3{font-size:19px}.fng-pill{display:none}.fng-block-head{padding:14px}.fng-grid{grid-template-columns:1fr}}
+
+/* Outil académique secondaire : une ligne dans la fiche, pas une carte géante. */
+.fng-disclosure{margin:14px 0 4px;border-top:1px solid #e2e8f0;font-family:inherit;min-width:0}
+.fng-summary{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;cursor:pointer;padding:12px 2px;list-style:none;color:#284267;font-size:13px;transition:color .16s}
+.fng-summary::-webkit-details-marker{display:none}
+.fng-summary:hover,.fng-summary:focus-visible{color:#0453cb}
+.fng-summary:focus-visible{outline:2px solid #0453cb;outline-offset:3px;border-radius:6px}
+.fng-summary-label{font-weight:800;display:flex;align-items:center;gap:9px}
+.fng-summary-label i{color:#0453cb}
+.fng-summary-hint{font-weight:600;font-size:12px;color:#64748b;display:flex;align-items:center;gap:8px}
+.fng-summary-hint i{transition:transform .2s}
+.fng-disclosure[open] .fng-summary-hint i{transform:rotate(180deg)}
+.fng-disclosure-body{border-top:1px solid #edf1f6;padding:10px 0}
+.fng-module{margin:0;min-width:0}
+.fng-block{border-radius:10px;box-shadow:none;margin-top:0}
+.fng-block+.fng-block{margin-top:10px}
+.fng-block-head{padding:12px 14px;gap:10px}
+.fng-block-head strong{font-size:14px}
+.fng-table th,.fng-table td{padding:10px 12px}
+.fng-dialog{width:min(560px,calc(100vw - 24px));max-height:92dvh;overscroll-behavior:contain;border-radius:16px}
+.fng-dialog.fng-dialog--document{width:min(1050px,96vw);max-height:96dvh}
+.fng-modal-head{position:sticky;top:0;background:#fff;z-index:3;padding:16px 20px;gap:12px}
+.fng-dialog form{padding:16px 20px}
+.fng-picker--up .fng-picker-menu{top:auto;bottom:calc(100% + 4px)}
+.fng-picker-menu{overscroll-behavior:contain}
+.fng-modal-footer{flex-wrap:wrap}
+.fng-btn.fng-danger{border-color:#fecaca;background:#fff1f2;color:#b91c1c}
+.fng-btn.fng-danger:hover{background:#fee2e2;border-color:#fca5a5}
+@@media(max-width:650px){.fng-summary{align-items:flex-start}.fng-summary-hint{font-size:11px}.fng-dialog{max-height:94dvh}}
 </style>
 <script>
 (() => {
-  const module = document.currentScript?.previousElementSibling?.previousElementSibling;
-  const panel = module?.matches?.('[data-fng-module]') ? module : document.querySelector('[data-fng-module]:not([data-fng-bound])');
+  const wrapper = document.currentScript?.previousElementSibling?.previousElementSibling;
+  const panel = wrapper?.querySelector?.('[data-fng-module]') || document.querySelector('[data-fng-module]:not([data-fng-bound])');
   if (!panel || panel.dataset.fngBound) return;
   panel.dataset.fngBound = '1';
   const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -138,6 +175,15 @@
         const visible=menu.hidden;
         dlg.querySelectorAll('.fng-picker-menu').forEach(el=>el.hidden=true);
         dlg.querySelectorAll('.fng-picker-trigger').forEach(el=>el.setAttribute('aria-expanded','false'));
+        if(visible){
+          const triggerRect=trigger.getBoundingClientRect();
+          const dialogRect=dlg.getBoundingClientRect();
+          const above=Math.max(0,triggerRect.top-Math.max(0,dialogRect.top)-12);
+          const below=Math.max(0,Math.min(window.innerHeight,dialogRect.bottom)-triggerRect.bottom-12);
+          const opensUp=below<150 && above>below;
+          picker.classList.toggle('fng-picker--up',opensUp);
+          menu.style.maxHeight=Math.max(80,Math.min(220,opensUp?above:below))+'px';
+        }
         menu.hidden=!visible;trigger.setAttribute('aria-expanded',String(visible));
         if(visible)menu.querySelector('[aria-selected=true]')?.scrollIntoView({block:'nearest'});
       });
@@ -149,7 +195,7 @@
         }
       });
       picker.addEventListener('keydown',e=>{
-        if(e.key==='Escape'){close();trigger.focus();e.stopPropagation();}
+        if(e.key==='Escape' && !menu.hidden){e.preventDefault();e.stopPropagation();close();trigger.focus();}
         if(['ArrowDown','ArrowUp'].includes(e.key) && !menu.hidden){
           e.preventDefault();
           const all=[...menu.querySelectorAll('[role=option]')];
@@ -159,6 +205,12 @@
         }
       });
       select.classList.add('fng-picker-native');
+      select.addEventListener('invalid', e => {
+        // Le select source est visuellement masqué : signaler l'erreur sur son vrai trigger.
+        e.preventDefault();
+        dlg.querySelector('.fng-modal-error').textContent='Veuillez sélectionner une valeur dans les listes requises.';
+        trigger.focus();
+      });
       select.after(picker);
       picker.append(trigger,menu);
       renderLabel();
@@ -169,17 +221,22 @@
       dlg.querySelectorAll('.fng-picker-trigger').forEach(el=>el.setAttribute('aria-expanded','false'));
     });
   }
+  let dialogSerial=0;
   function modal(title, body, onSubmit, danger=false) {
-    document.querySelector('.fng-dialog')?.remove();
+    const previous=document.querySelector('.fng-dialog');
+    if(previous){if(previous.open)previous.close();else previous.remove();}
     const dlg=document.createElement('dialog');
+    const opener=document.activeElement;
+    const titleId='fng-dialog-title-'+(++dialogSerial);
     dlg.className='fng-dialog';
-    dlg.innerHTML='<div class="fng-modal-head"><h3>'+escape(title)+'</h3><button type="button" data-fng-close aria-label="Fermer">×</button></div>'
+    dlg.setAttribute('aria-labelledby',titleId);
+    dlg.innerHTML='<div class="fng-modal-head"><h3 id="'+titleId+'">'+escape(title)+'</h3><button type="button" data-fng-close aria-label="Fermer">×</button></div>'
       +'<form><div class="fng-modal-fields">'+body+'</div><p class="fng-modal-error" role="alert"></p>'
       +'<div class="fng-modal-footer"><button type="button" data-fng-close class="fng-btn">Annuler</button>'
       +'<button type="submit" class="fng-btn '+(danger ? 'fng-danger' : 'fng-btn-primary')+'">'+(danger ? 'Confirmer la suppression' : 'Enregistrer')+'</button></div></form>';
     document.body.appendChild(dlg);
     dlg.addEventListener('click', e => {if(e.target.closest('[data-fng-close]'))dlg.close()});
-    dlg.addEventListener('close',()=>dlg.remove(),{once:true});
+    dlg.addEventListener('close',()=>{dlg.remove();if(opener?.isConnected)opener.focus({preventScroll:true});},{once:true});
     dlg.querySelector('form').addEventListener('submit',async e=>{
       e.preventDefault();
       if(busy) return;
@@ -214,15 +271,17 @@
       e.preventDefault();
       document.querySelector('.fng-dialog--document')?.close();
       const dlg=document.createElement('dialog');
+      const titleId='fng-dialog-title-'+(++dialogSerial);
       dlg.className='fng-dialog fng-dialog--document';
+      dlg.setAttribute('aria-labelledby',titleId);
       const title=escape(documentLink.textContent.trim());
-      dlg.innerHTML='<div class="fng-modal-head"><h3>'+title+'</h3><button type="button" data-fng-close aria-label="Fermer">×</button></div>'
+      dlg.innerHTML='<div class="fng-modal-head"><h3 id="'+titleId+'">'+title+'</h3><button type="button" data-fng-close aria-label="Fermer">×</button></div>'
         +'<div class="fng-document-body"><iframe title="'+title+'" loading="lazy"></iframe></div>'
         +'<div class="fng-document-alt"><a target="_blank" rel="noopener">Ouvrir le document dans un nouvel onglet ↗</a></div>';
       dlg.querySelector('iframe').src=url.href;
       dlg.querySelector('.fng-document-alt a').href=url.href;
       dlg.querySelector('[data-fng-close]').addEventListener('click',()=>dlg.close());
-      dlg.addEventListener('close',()=>dlg.remove(),{once:true});
+      dlg.addEventListener('close',()=>{dlg.remove();if(documentLink.isConnected)documentLink.focus({preventScroll:true});},{once:true});
       document.body.appendChild(dlg);
       dlg.showModal();
       return;
@@ -257,18 +316,21 @@
         ()=>send(btn.dataset.deleteUrl,'DELETE',new FormData()),true);
     }
   });
-  // etudiants.show has several heavy tabs: avoid querying every evaluation
-  // when the administrative user never visits the Academic tab.
-  // The inscription page is visible immediately, so it loads normally.
-  if ('IntersectionObserver' in window) {
+  // Charger le contenu uniquement lors de l'ouverture de la section.
+  let initialized=false;
+  const disclosure=panel.closest('details.fng-disclosure');
+  const activate=()=>{if(initialized)return;initialized=true;reload();};
+  if(disclosure){
+    disclosure.addEventListener('toggle',()=>{if(disclosure.open)activate();});
+    if(disclosure.open)activate();
+  }else if ('IntersectionObserver' in window) {
+    // Compatibilité des usages sans disclosure : conserver le lazy-load historique.
     const observer=new IntersectionObserver(entries=>{
       if (!entries.some(entry=>entry.isIntersecting)) return;
       observer.disconnect();
-      reload();
+      activate();
     },{rootMargin:'120px 0px'});
     observer.observe(panel);
-  } else {
-    reload();
-  }
+  }else activate();
 })();
 </script>

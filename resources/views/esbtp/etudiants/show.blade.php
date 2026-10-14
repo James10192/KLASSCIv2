@@ -3438,11 +3438,6 @@
 
 {{-- ─── TAB: ACADÉMIQUE ────────────────────────────────────────── --}}
 <div class="tab-panel" id="tab-academique">
-    @can('notes.view')
-        @include('esbtp.partials.fiche-notes-module', [
-            'url' => route('esbtp.fiche-notes.etudiant', $etudiant->id),
-        ])
-    @endcan
 @php
     /* ── Données ─────────────────────────────────────────────────── */
     $acadInscs = $etudiant->inscriptions->sortByDesc(fn($i) => sprintf(
@@ -3715,6 +3710,13 @@
         'academicJourney' => $academicJourney ?? null,
         'compact' => false,
     ])
+
+    {{-- Gestion des notes à la demande, après le parcours académique existant. --}}
+    @can('notes.view')
+        @include('esbtp.partials.fiche-notes-module', [
+            'url' => route('esbtp.fiche-notes.etudiant', $etudiant->id),
+        ])
+    @endcan
 
     @php
         $resultatsBtsAutorises = auth()->user()->can('bulletins.view') || auth()->user()->can('bulletins.view_own');

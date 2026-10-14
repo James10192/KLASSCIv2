@@ -1,12 +1,5 @@
 {{-- Données déjà filtrées par fiche, année et classe côté serveur. --}}
-<div class="fng-head">
-    <div>
-        <span class="fng-eyebrow"><i class="fas fa-graduation-cap"></i> Pilotage pédagogique</span>
-        <h3>Évaluations et notes</h3>
-        <p>Consultez, corrigez ou ajoutez des notes sans quitter cette fiche.</p>
-    </div>
-    <span class="fng-pill">{{ $blocks->count() }} inscription(s)</span>
-</div>
+{{-- Le titre est porté par la ligne intégrée à la fiche. Pas de deuxième hero. --}}
 @if($blocks->isEmpty())
     <div class="fng-empty"><i class="fas fa-folder-open"></i> Aucune inscription académique sur cette fiche.</div>
 @endif
