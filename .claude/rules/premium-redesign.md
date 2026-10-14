@@ -199,6 +199,29 @@ positionnement incorrect en haut à gauche. Toute modale doit être centrée
 imbriquées sans raison, afficher une fenêtre à `top:0;left:0`, modifier
 `dialog` ou `.modal` globalement pour résoudre un seul cas.
 
+## Tableaux académiques — priorité à la matière, pas au titre du devoir
+
+Dans les fiches étudiant/inscription, un titre d'évaluation est souvent générique
+(« Devoir », « Midterm », « Interrogation »). **La matière est donc l'identité
+principale** : afficher son nom lisiblement avant le titre, jamais en légende
+quasi invisible. Référence : `fiche-notes-contenu.blade.php`.
+
+- **Regroupement sobre** par matière (défaut) avec en-têtes repliables ; proposer
+  aussi par période/semestre et liste, sans dupliquer chaque évaluation dans
+  plusieurs tableaux ni créer une carte par matière.
+- **Recherche AJAX locale** par matière et titre, sans rafraîchissement ni
+  changement de période/année. Les actions et permissions restent sur la ligne.
+- **État utilisateur préservé** (mode, recherche, groupes repliés) lorsque des
+  notes sont sauvegardées via AJAX et que le tableau est rechargé.
+- **Modale de note** : citer explicitement la matière en premier et garder le
+  titre de l'évaluation comme contexte secondaire.
+- **Accessibilité / mobile** : boutons `aria-pressed`, groupes avec
+  `aria-expanded`, actions clavier, table horizontalement défilable si
+  nécessaire ; aucun nouvel ensemble de cartes, aucune moyenne inventée.
+- **Source de vérité unique** : mêmes IDs, notes, périodes, coefficients et
+  données filtrées serveur ; ne jamais recalculer les résultats pédagogiques
+  dans la couche de présentation.
+
 ## Pages SANS hero (formulaires)
 
 Les pages de formulaire (create, edit) utilisent le **`dashboard-header` standard** de `dashboard-moderne.css` — pas de hero gradient. Le hero est réservé aux pages de listing/dashboard.

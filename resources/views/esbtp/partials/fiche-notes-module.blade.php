@@ -97,6 +97,31 @@
 .fng-btn.fng-danger{border-color:#fecaca;background:#fff1f2;color:#b91c1c}
 .fng-btn.fng-danger:hover{background:#fee2e2;border-color:#fca5a5}
 @@media(max-width:650px){.fng-summary{align-items:flex-start}.fng-summary-hint{font-size:11px}.fng-dialog{max-height:94dvh}}
+
+/* Matière d'abord : modes de lecture sobres, sans carte supplémentaire. */
+.fng-list-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid #e7edf6;background:#fafcff}
+.fng-view-switch{display:inline-flex;gap:2px;padding:3px;border:1px solid #dae5f5;background:#f3f7ff;border-radius:10px}
+.fng-view-btn{border:0;background:transparent;border-radius:7px;padding:7px 11px;font-size:12px;color:#506783;font-weight:700;cursor:pointer;white-space:nowrap}
+.fng-view-btn[aria-pressed="true"]{background:#fff;color:#0453cb;box-shadow:0 1px 5px rgba(21,54,105,.13)}
+.fng-view-btn:focus-visible,.fng-group-toggle:focus-visible{outline:2px solid #0453cb;outline-offset:2px}
+.fng-search-field{display:flex;align-items:center;gap:7px;min-width:170px;flex:1;max-width:300px;border:1px solid #dce3ef;border-radius:9px;padding:0 10px;background:#fff;color:#72839d;margin:0}
+.fng-search-field:focus-within{border-color:#0453cb;box-shadow:0 0 0 3px rgba(4,83,203,.08)}
+.fng-search-field input{width:100%;min-width:0;padding:8px 0;border:0;outline:0;background:transparent;font:inherit;font-size:12px;color:#17243b}
+.fng-list-count{font-size:11px;color:#718096;font-weight:650;margin-left:auto;white-space:nowrap}
+.fng-eval-identite .fng-row-matiere{display:block;font-size:12px;color:#0453cb;font-weight:800;line-height:1.4}
+.fng-eval-identite .fng-row-evaluation{display:block;margin-top:2px;color:#243047;font-size:12px;font-weight:650}
+.fng-eval-identite small{display:block;margin-top:3px}
+.fng-block[data-fng-display="matiere"] .fng-row-matiere{display:none}
+.fng-block[data-fng-display="matiere"] .fng-row-evaluation{font-weight:750;color:#17243b}
+.fng-group-heading td{padding:0!important;background:#eff5ff!important;border-top:1px solid #d6e4f8!important}
+.fng-group-toggle{display:flex;align-items:center;width:100%;gap:10px;text-align:left;background:transparent;border:0;padding:10px 14px;cursor:pointer;color:#123d7b}
+.fng-group-title{font-size:12px;font-weight:850}
+.fng-group-count{font-size:11px;color:#667f9f;font-weight:650}
+.fng-group-toggle .fa-chevron-down{margin-left:auto;transition:transform .16s}
+.fng-group-toggle[aria-expanded="false"] .fa-chevron-down{transform:rotate(-90deg)}
+.fng-eval-context{font-size:12px;font-weight:650;color:#64748b;margin:0 0 12px}
+.fng-no-match td{padding:19px!important;text-align:center;color:#718096}
+@@media(max-width:650px){.fng-list-toolbar{align-items:stretch}.fng-view-switch{width:100%;justify-content:space-between;flex-wrap:wrap}.fng-view-btn{font-size:11px;padding:7px 8px}.fng-search-field{max-width:none;order:3;flex-basis:100%}.fng-list-count{align-self:center}}
 </style>
 <script>
 (() => {
@@ -109,11 +134,13 @@
   let busy = false;
   let notice = '';
   let noticeError = false;
+  @include('esbtp.partials._fiche-notes-view-script')
   async function reload() {
     try {
       const response = await fetch(panel.dataset.url, {headers:{'Accept':'text/html','X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'});
       if (!response.ok) throw new Error(response.status === 403 ? 'Permission de consultation des notes refusée.' : 'Impossible de charger les notes.');
       panel.innerHTML = (notice ? '<div class="fng-notice '+(noticeError ? 'fng-notice-error' : '')+'" role="status">'+escape(notice)+'</div>' : '')+await response.text();
+      initializeFngEvaluations();
       notice='';
     } catch(error) {
       panel.innerHTML = '<div class="fng-notice fng-notice-error" role="alert">'+escape(error.message)+'</div>';
@@ -295,7 +322,8 @@
       const field='<label>Note / '+escape(btn.dataset.bareme)+'<input name="note" type="number" required min="0" max="'+escape(btn.dataset.bareme)+'" step="0.01" value="'+escape(btn.dataset.note)+'"></label>'
         +'<label class="fng-check"><input type="checkbox" name="is_absent" value="1" '+(btn.dataset.absent==='1'?'checked':'')+'> Étudiant absent</label>'
         +'<label>Commentaire <textarea name="commentaire" rows="2">'+escape(btn.dataset.comment)+'</textarea></label>';
-      modal('Note · '+btn.dataset.title,field, fd=>{
+      modal('Note · '+(btn.dataset.matiere || btn.dataset.title),
+        '<p class="fng-eval-context">'+escape(btn.dataset.title)+'</p>'+field, fd=>{
         fd.set('evaluation_id',btn.dataset.evaluation);
         fd.set('etudiant_id',block.dataset.student);
         if(fd.has('is_absent'))fd.set('note','0');
@@ -306,7 +334,8 @@
         '<p>Confirmer la modification du statut de publication ? Une évaluation masquée ne peut plus recevoir de nouvelles notes.</p>',
         ()=>send(block.dataset.quickBase+'/'+encodeURIComponent(btn.dataset.id)+'/toggle-published','PATCH',new FormData()));
     }else if(btn.hasAttribute('data-fng-edit-eval')){
-      const body='<label>Titre<input name="titre" required maxlength="255" value="'+escape(btn.dataset.title)+'"></label>'
+      const body='<p class="fng-eval-context">'+escape(btn.dataset.matiere || '')+'</p>'
+        +'<label>Titre<input name="titre" required maxlength="255" value="'+escape(btn.dataset.title)+'"></label>'
         +'<div class="fng-grid"><label>Barème<input type="number" name="bareme" required step="0.5" min="1" max="100" value="'+escape(btn.dataset.bareme)+'"></label>'
         +'<label>Coefficient<input type="number" name="coefficient" required step="0.1" min="0.1" max="100" value="'+escape(btn.dataset.coefficient)+'"></label></div>';
       modal('Modifier l’évaluation',body,fd=>send(block.dataset.quickBase+'/'+encodeURIComponent(btn.dataset.id)+'/quick-update','PATCH',fd));
@@ -314,7 +343,7 @@
       const tpl=block.querySelector('[data-fng-eval-fields]');
       if(tpl)modal('Nouvelle évaluation',tpl.innerHTML,fd=>send(block.dataset.createEvaluation,'POST',fd));
     }else if(btn.hasAttribute('data-fng-delete')){
-      modal('Supprimer la note', '<p>Supprimer la note de l’évaluation <strong>'+escape(btn.dataset.title)+'</strong> ? Les résultats seront recalculés.</p>',
+      modal('Supprimer la note', '<p>Supprimer la note de <strong>'+escape(btn.dataset.matiere || 'cette matière')+'</strong> · '+escape(btn.dataset.title)+' ? Les résultats seront recalculés.</p>',
         ()=>send(btn.dataset.deleteUrl,'DELETE',new FormData()),true);
     }
   });
