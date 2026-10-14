@@ -82,7 +82,13 @@
         </div>
     </div>
 
-    <div class="lp-content-area" id="lpContent" data-tour-node="listing">
+    <div class="lp-filter-error" role="alert" x-show="error" x-cloak>
+        <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+        <span x-text="error"></span>
+        <button type="button" @click="retryFilters()" :disabled="loading">Réessayer</button>
+    </div>
+
+    <div class="lp-content-area" id="lpContent" data-tour-node="listing" x-show="!error">
         @include('esbtp.lmd.planning._listing')
     </div>
 

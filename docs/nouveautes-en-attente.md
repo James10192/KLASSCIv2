@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-14 · #1592 · Maquettes et emplois du temps BTS/LMD : changements S1/S2/Annuel, filtres rapides et destination de copie cohérents ; programmation LMD avec message de reprise en cas d'erreur, conflits de génération affichés sans altérer les libellés. Capture et recette de présentation requises avant propagation.
 - 2026-10-14 · #1589 · Fiches étudiant et inscription : évaluations et notes accessibles dans la partie académique sans grand bandeau, chargement à l'ouverture ; résultats et modales plus compacts sur écran large. Recette visuelle nécessaire avant propagation.
 - 2026-10-14 · #1590 · Fiche étudiant > Académique et fiche inscription : le gestionnaire des notes s'intègre sans grand bandeau secondaire et se charge à l'ouverture de l'onglet ; suppression empêchée pour les examens ou fiches de notes verrouillés.
 - 2026-10-14 · #1591 · Fiche inscription : le bandeau des informations du compte étudiant reste affichable avec le parcours sécurisé récent, sans exiger ni exposer de mot de passe temporaire.

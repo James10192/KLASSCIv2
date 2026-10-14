@@ -12,6 +12,7 @@ function matiereClassification() {
         loading: false,
         saving: false,
         loaded: false,
+        comboRequestSequence: 0,
         isTroncCommun: false,
         // Cette filiere a-t-elle un tronc commun parent dont les semestres
         // doivent AUSSI etre valides pour que la maquette s'applique ?
@@ -57,7 +58,16 @@ function matiereClassification() {
         },
 
         tryLoad() {
-            if (this.filiereId && this.niveauId) this.loadCombo();
+            if (this.filiereId && this.niveauId) {
+                this.loadCombo();
+            } else {
+                // Un filtre effacé invalide également toute requête précédente.
+                this.comboRequestSequence++;
+                this.loading = false;
+                this.loaded = false;
+                this.matieres = [];
+                this.recomputeKpis();
+            }
         },
 
         notify(message, type) {
@@ -81,15 +91,21 @@ function matiereClassification() {
         },
 
         async loadCombo() {
+            const sequence = ++this.comboRequestSequence;
+            const filiereId = this.filiereId;
+            const niveauId = this.niveauId;
             this.loading = true;
             this.loaded = false;
             try {
                 const url = "{{ route('esbtp.matieres.classification.combo') }}"
-                    + "?filiere_id=" + encodeURIComponent(this.filiereId)
-                    + "&niveau_id=" + encodeURIComponent(this.niveauId);
+                    + "?filiere_id=" + encodeURIComponent(filiereId)
+                    + "&niveau_id=" + encodeURIComponent(niveauId);
                 const res = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
                 if (!res.ok) throw new Error('Chargement impossible.');
                 const data = await res.json();
+                // Une réponse lente ne doit pas remplacer la nouvelle combinaison.
+                if (sequence !== this.comboRequestSequence
+                    || filiereId !== this.filiereId || niveauId !== this.niveauId) return;
                 this.isTroncCommun = !!data.is_tronc_commun;
                 this.dependDuTroncCommun = !!data.depend_du_tronc_commun;
                 this.filiereName = data.filiere || '';
@@ -106,9 +122,9 @@ function matiereClassification() {
                 this.recomputeKpis();
                 this.loaded = true;
             } catch (e) {
-                this.notify(e.message, 'error');
+                if (sequence === this.comboRequestSequence) this.notify(e.message, 'error');
             } finally {
-                this.loading = false;
+                if (sequence === this.comboRequestSequence) this.loading = false;
             }
         },
 
