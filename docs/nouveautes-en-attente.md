@@ -14,6 +14,7 @@ Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
 - 2026-10-14 · #1590 · Fiche étudiant > Académique et fiche inscription : le gestionnaire des notes s'intègre sans grand bandeau secondaire et se charge à l'ouverture de l'onglet ; suppression empêchée pour les examens ou fiches de notes verrouillés.
+- 2026-10-14 · #1591 · Fiche inscription : le bandeau des informations du compte étudiant reste affichable avec le parcours sécurisé récent, sans exiger ni exposer de mot de passe temporaire.
 - 2026-10-13 · #1585 · Fiche étudiant > Académique et fiche inscription : gestion des évaluations et notes en fenêtres AJAX (saisie, correction, suppression, publication), accès aux bulletins/relevés, permissions adaptées au rôle.
 - 2026-10-13 · #1577 · Étudiants et parents : confirmation de première inscription et de réinscription distribuée à chacun ; les liens de réinitialisation restent communs même si seul le parent a une adresse mail ou si plusieurs enfants partagent le même contact. Recette d'envoi sur présentation avant propagation.
 - 2026-10-13 · #1575 · Connexion et fiche étudiant : invitation par lien sécurisé reçue par l'étudiant et ses parents liés, réinitialisation sans code temporaire, nouvelle connexion par e-mail + OTP et écrans de récupération premium. Vérifier les captures et les envois réels sur présentation avant propagation.
