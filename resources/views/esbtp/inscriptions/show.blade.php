@@ -1280,18 +1280,23 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                 </div>
             @endif
 
-            @if(session('account_info'))
+            @php $accountInfo = session('account_info'); @endphp
+            @if($accountInfo)
                 <div class="alert alert-info alert-dismissible fade show" role="alert">
-                    <h6 class="alert-heading"><i class="fas fa-user-check me-2"></i>Informations de connexion générées</h6>
+                    <h6 class="alert-heading"><i class="fas fa-user-check me-2"></i>Informations du compte étudiant</h6>
                     <hr>
                     <div class="row">
                         <div class="col-md-6">
-                            <p class="mb-1"><strong>Nom d'utilisateur:</strong> {{ session('account_info')['username'] }}</p>
-                            <p class="mb-1"><strong>Rôle:</strong> {{ session('account_info')['role'] }}</p>
+                            <p class="mb-1"><strong>Nom d'utilisateur:</strong> {{ $accountInfo['username'] ?? 'Non renseigné' }}</p>
+                            <p class="mb-1"><strong>Rôle:</strong> {{ $accountInfo['role'] ?? 'Étudiant' }}</p>
                         </div>
                         <div class="col-md-6">
-                            <p class="mb-1"><strong>Mot de passe temporaire:</strong> <span class="badge bg-light text-dark p-2 font-monospace">{{ session('account_info')['password'] }}</span></p>
-                            <p class="mb-0 text-muted"><small>Veuillez communiquer ces informations à l'étudiant. Le mot de passe devra être changé à la première connexion.</small></p>
+                            @if(!empty($accountInfo['password']))
+                                <p class="mb-1"><strong>Mot de passe temporaire:</strong> <span class="badge bg-light text-dark p-2 font-monospace">{{ $accountInfo['password'] }}</span></p>
+                                <p class="mb-0 text-muted"><small>Veuillez communiquer ces informations à l'étudiant. Le mot de passe devra être changé à la première connexion.</small></p>
+                            @else
+                                <p class="mb-0 text-muted"><small>Aucun mot de passe temporaire n'est affiché pour ce compte. L'étudiant utilise son identifiant et le parcours d'activation sécurisé.</small></p>
+                            @endif
                         </div>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
