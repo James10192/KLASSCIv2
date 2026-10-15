@@ -222,6 +222,27 @@ quasi invisible. Référence : `fiche-notes-contenu.blade.php`.
   données filtrées serveur ; ne jamais recalculer les résultats pédagogiques
   dans la couche de présentation.
 
+## Paramètres premium — organisation par objectif (octobre 2026)
+
+Une page de réglages n'est pas un déversement de toutes les options dans un
+unique onglet : privilégier une navigation par **tâche utilisateur** (apparence
+du document, calculs et décisions, fonctionnement de l'établissement) au lieu
+de la structure des tables ou des développeurs.
+
+- Pour un ensemble dense, utiliser 2 à 4 **sous-rubriques compactes** ; pas
+  de grande carte décorative ni de duplication des contrôles.
+- Garder une **seule source de vérité** et les mêmes champs `name` / valeurs /
+  permissions / contrôles serveur. Pour les sous-vues purement visuelles,
+  masquer la section sans la retirer du formulaire ni désactiver ses champs.
+- Préserver les liens profonds historiques, l'accessibilité clavier et le
+  contexte du panneau visible lors d'une navigation.
+- Ne pas mélanger le style des bulletins avec les choix financiers des reçus :
+  `receipt_cashier_name_format` appartient à Comptabilité → Reçus,
+  sans clé concurrente dans la configuration des bulletins.
+- Toujours vérifier la sauvegarde inter-rubriques (une modification dans un
+  autre groupe ne doit pas être écrasée par un champ caché).
+- Réutiliser les composants visuels existants et les conventions responsive.
+
 ## Pages SANS hero (formulaires)
 
 Les pages de formulaire (create, edit) utilisent le **`dashboard-header` standard** de `dashboard-moderne.css` — pas de hero gradient. Le hero est réservé aux pages de listing/dashboard.
