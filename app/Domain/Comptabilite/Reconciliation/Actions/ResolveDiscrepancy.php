@@ -105,6 +105,7 @@ class ResolveDiscrepancy
             'created_by' => $user->id,
             'validated_by' => $user->id,
             'date_validation' => now(),
+            'validated_at' => now(),
         ]);
 
         $this->log($discrepancy->session, $paiement, 'create', [], $paiement->toArray(), ['create' => true], $motif, $user);
