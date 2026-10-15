@@ -54,6 +54,7 @@ class AvoirService
                 'created_by' => $userId,
                 'validateur_id' => $userId,
                 'date_validation' => now(),
+                'validated_at' => now(),
             ]);
 
             // Un avoir annule le versement LA OU CE VERSEMENT EST ALLE.
