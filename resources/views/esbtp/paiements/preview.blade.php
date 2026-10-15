@@ -589,6 +589,12 @@
                                 <div class="rc-kv-row">
                                     <div class="rc-kv-label">Date de paiement</div>
                                     <div class="rc-kv-value">{{ $paiement->date_paiement->format('d/m/Y') }}</div>
+                                    @if($paiement->created_at)
+                                        <small class="d-block text-muted">Saisi le {{ $paiement->created_at->format('d/m/Y à H:i') }}</small>
+                                    @endif
+                                    @if($paiement->date_validation)
+                                        <small class="d-block text-muted">Validé le {{ $paiement->date_validation->format('d/m/Y à H:i') }}</small>
+                                    @endif
                                 </div>
                                 <div class="rc-kv-row">
                                     <div class="rc-kv-label">Motif</div>
@@ -672,10 +678,10 @@
                         <!-- Signatures -->
                         <div class="rc-signatures">
                             <div class="rc-signature-box">
-                                <div class="rc-signature-label" style="color: {{ $primary }};">Date d'émission</div>
+                                <div class="rc-signature-label" style="color: {{ $primary }};">{{ $paiement->date_validation ? 'Validation' : 'Saisie' }}</div>
                                 <div class="rc-signature-line" style="border-color: {{ $primary }};">
                                     <div class="rc-signature-name">
-                                        {{ $paiement->date_validation ? $paiement->date_validation->format('d/m/Y') : date('d/m/Y') }}
+                                        {{ $paiement->date_validation?->format('d/m/Y à H:i') ?? $paiement->created_at?->format('d/m/Y à H:i') ?? '—' }}
                                     </div>
                                 </div>
                             </div>
@@ -684,7 +690,7 @@
                                 <div class="rc-signature-line" style="border-color: {{ $primary }};">
                                     <div class="rc-signature-name">
                                         {{-- Meme signataire que sur le recu imprime : celui qui l'a genere. --}}
-                                        {{ $paiement->signataire }}
+                                        {{ $paiement->encaisseur_recu }}
                                     </div>
                                 </div>
                             </div>
