@@ -192,7 +192,7 @@
                     <dd>{{ $paiement->reference_paiement }}</dd>
                 @endif
                 <dt>Date</dt>
-                <dd>{{ $paiement->date_paiement ? $paiement->date_paiement->format('d/m/Y H:i') : '—' }}</dd>
+                <dd>{{ $paiement->date_paiement ? $paiement->date_paiement->format('d/m/Y') : '—' }}</dd>
                 <dt>Caissier</dt>
                 <dd>{{ $paiement->creator?->name ?? '—' }}</dd>
                 <dt>Statut</dt>
