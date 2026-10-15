@@ -39,4 +39,25 @@ class PaymentActualTimestampDisplayTest extends TestCase
         $this->assertStringContainsString("SettingsHelper::get('receipt_cashier_name_format', 'full')", $model);
         $this->assertStringContainsString('name="setting_receipt_cashier_name_format"', $settings);
     }
+    public function test_pdf_preview_and_ledger_use_recorded_creation_and_validation_timestamps(): void
+    {
+        $receipt = file_get_contents(__DIR__.'/../../../resources/views/esbtp/paiements/partials/recu-exemplaire.blade.php');
+        $preview = file_get_contents(__DIR__.'/../../../resources/views/esbtp/paiements/preview.blade.php');
+        $ledger = file_get_contents(__DIR__.'/../../../resources/views/esbtp/paiements/partials/ligne-paiement.blade.php');
+
+        foreach ([$receipt, $preview, $ledger] as $view) {
+            $this->assertNotFalse($view);
+            $this->assertStringContainsString("created_at->format('d/m/Y à H:i')", $view);
+            $this->assertStringContainsString("date_validation->format('d/m/Y à H:i')", $view);
+            $this->assertStringNotContainsString("date_paiement->format('d/m/Y à H:i')", $view);
+        }
+
+        $this->assertStringNotContainsString("date('d/m/Y')", $receipt);
+        $this->assertStringNotContainsString("date('d/m/Y')", $preview);
+        $this->assertStringContainsString('$paiement->encaisseur_recu', $receipt);
+        $this->assertStringContainsString('$paiement->encaisseur_recu', $preview);
+        $this->assertStringNotContainsString('$paiement->signataire', $receipt);
+        $this->assertStringNotContainsString('$paiement->signataire', $preview);
+    }
+
 }

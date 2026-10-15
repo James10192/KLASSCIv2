@@ -101,6 +101,9 @@
             @if($paiement->created_at)
                 <div class="fee-note">Saisi le {{ $paiement->created_at->format('d/m/Y à H:i') }}</div>
             @endif
+            @if($paiement->date_validation)
+                <div class="fee-note">Validé le {{ $paiement->date_validation->format('d/m/Y à H:i') }}</div>
+            @endif
         </td>
         <td>
             <div class="lbl">Statut d'affectation</div>
@@ -236,8 +239,8 @@
 <table class="signs" width="100%" border="0" cellspacing="0" cellpadding="0">
     <tr>
         <td>
-            <div class="sign-title">Date d'émission</div>
-            <div class="sign-line">{{ $paiement->date_validation ? $paiement->date_validation->format('d/m/Y') : date('d/m/Y') }}</div>
+            <div class="sign-title">{{ $paiement->date_validation ? 'Validation' : 'Saisie' }}</div>
+            <div class="sign-line">{{ $paiement->date_validation?->format('d/m/Y à H:i') ?? $paiement->created_at?->format('d/m/Y à H:i') ?? '—' }}</div>
         </td>
         <td>
             <div class="sign-title">Signature et Cachet</div>
@@ -247,7 +250,7 @@
                  le papier, pas celle qui a coche la validation ensuite — souvent
                  un autre poste, parfois un autre jour. C'est aussi le nom deja
                  imprime sur « Encaisse par ». --}}
-            <div class="sign-line">{{ $paiement->signataire }}</div>
+            <div class="sign-line">{{ $paiement->encaisseur_recu }}</div>
         </td>
     </tr>
 </table>

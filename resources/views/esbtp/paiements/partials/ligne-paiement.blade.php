@@ -88,6 +88,12 @@
             <i class="far fa-calendar-alt"></i>
             <span>{{ $paiement->date_paiement->format('d/m/Y') }}</span>
         </div>
+        @if($paiement->created_at)
+            <small class="text-muted d-block" title="Horodatage réel de saisie">Saisi {{ $paiement->created_at->format('d/m/Y à H:i') }}</small>
+        @endif
+        @if($paiement->date_validation)
+            <small class="text-muted d-block" title="Horodatage réel de validation">Validé {{ $paiement->date_validation->format('d/m/Y à H:i') }}</small>
+        @endif
     </td>
     <td class="pi-cell-amount">
         @php

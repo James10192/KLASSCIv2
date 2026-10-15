@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Reçus — heures de saisie et validation :** le reçu PDF, son aperçu et la liste indiquent les horodatages réellement enregistrés, distincts de la date comptable. La signature respecte le choix tenant nom complet/initiales et n'utilise jamais la date du jour à la place d'une validation absente.
 - **Paiements — horodatages fiables :** sur le détail mobile et les reçus PDF, la date comptable n'affiche plus une heure artificielle 00:00 ; le reçu distingue désormais la date de paiement de la véritable date et heure de saisie si disponible. Le format de l'encaisseur demeure configurable par établissement.
 - **Paiements et reçus :** le détail distingue la date comptable et l'heure réelle de saisie, au lieu d'afficher 00:00 ; les reçus PDF et leur aperçu proposent désormais le nom complet ou les initiales de l'encaisseur selon un paramètre propre à l'établissement, regroupé avec les réglages comptables.
 - **Détail d'un paiement — menu Reçu PDF visible :** les actions Prévisualiser/Télécharger passent devant les cartes de détails quand le menu est ouvert, sans masquer ni modifier les informations du paiement ; superposition restaurée après fermeture.
