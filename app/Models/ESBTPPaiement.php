@@ -110,6 +110,7 @@ class ESBTPPaiement extends Model implements Auditable
         'createur_id',
         'validateur_id',
         'date_validation',
+        'validated_at',
         'motif', // Scolarité, frais d'inscription, frais divers, etc.
         'numero_recu',
         'commentaire',
@@ -138,6 +139,7 @@ class ESBTPPaiement extends Model implements Auditable
         'date_paiement' => 'date',
         'date_echeance' => 'date',
         'date_validation' => 'datetime',
+        'validated_at' => 'datetime',
         'metadata' => 'json', // Ajouté pour la nouvelle colonne JSON
         'ventilation_rectifiee_le' => 'datetime',
     ];
