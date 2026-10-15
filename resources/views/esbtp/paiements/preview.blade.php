@@ -593,7 +593,7 @@
                                         <small class="d-block text-muted">Saisi le {{ $paiement->created_at->format('d/m/Y à H:i') }}</small>
                                     @endif
                                     @if($paiement->date_validation)
-                                        <small class="d-block text-muted">Validé le {{ $paiement->date_validation->format('d/m/Y à H:i') }}</small>
+                                        <small class="d-block text-muted">Validé le {{ $paiement->dateValidationLisible() }}</small>
                                     @endif
                                 </div>
                                 <div class="rc-kv-row">
@@ -681,7 +681,7 @@
                                 <div class="rc-signature-label" style="color: {{ $primary }};">{{ $paiement->date_validation ? 'Validation' : 'Saisie' }}</div>
                                 <div class="rc-signature-line" style="border-color: {{ $primary }};">
                                     <div class="rc-signature-name">
-                                        {{ $paiement->date_validation?->format('d/m/Y à H:i') ?? $paiement->created_at?->format('d/m/Y à H:i') ?? '—' }}
+                                        {{ $paiement->date_validation ? $paiement->dateValidationLisible() : ($paiement->created_at?->format('d/m/Y à H:i') ?? '—') }}
                                     </div>
                                 </div>
                             </div>

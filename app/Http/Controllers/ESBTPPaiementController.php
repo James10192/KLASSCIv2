@@ -1743,7 +1743,7 @@ class ESBTPPaiementController extends Controller
                 'paiement' => [
                     'id' => $paiement->id,
                     'status' => 'validé',
-                    'date_validation' => optional($paiement->fresh()->date_validation)->format('d/m/Y H:i'),
+                    'date_validation' => $paiement->fresh()->dateValidationLisible('d/m/Y H:i'),
                 ],
             ]);
         } catch (\Throwable $e) {

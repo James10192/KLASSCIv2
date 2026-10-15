@@ -102,7 +102,7 @@
                 <div class="fee-note">Saisi le {{ $paiement->created_at->format('d/m/Y à H:i') }}</div>
             @endif
             @if($paiement->date_validation)
-                <div class="fee-note">Validé le {{ $paiement->date_validation->format('d/m/Y à H:i') }}</div>
+                <div class="fee-note">Validé le {{ $paiement->dateValidationLisible() }}</div>
             @endif
         </td>
         <td>
@@ -240,7 +240,7 @@
     <tr>
         <td>
             <div class="sign-title">{{ $paiement->date_validation ? 'Validation' : 'Saisie' }}</div>
-            <div class="sign-line">{{ $paiement->date_validation?->format('d/m/Y à H:i') ?? $paiement->created_at?->format('d/m/Y à H:i') ?? '—' }}</div>
+            <div class="sign-line">{{ $paiement->date_validation ? $paiement->dateValidationLisible() : ($paiement->created_at?->format('d/m/Y à H:i') ?? '—') }}</div>
         </td>
         <td>
             <div class="sign-title">Signature et Cachet</div>

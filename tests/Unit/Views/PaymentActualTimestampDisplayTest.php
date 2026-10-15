@@ -20,7 +20,7 @@ class PaymentActualTimestampDisplayTest extends TestCase
             $mobile
         );
         $this->assertStringContainsString(
-            "\$paiement->date_validation->format('d/m/Y H:i')",
+            "\$paiement->dateValidationLisible('d/m/Y H:i')",
             $mobile
         );
     }
@@ -48,8 +48,9 @@ class PaymentActualTimestampDisplayTest extends TestCase
         foreach ([$receipt, $preview, $ledger] as $view) {
             $this->assertNotFalse($view);
             $this->assertStringContainsString("created_at->format('d/m/Y à H:i')", $view);
-            $this->assertStringContainsString("date_validation->format('d/m/Y à H:i')", $view);
+            $this->assertStringContainsString("dateValidationLisible()", $view);
             $this->assertStringNotContainsString("date_paiement->format('d/m/Y à H:i')", $view);
+            $this->assertStringNotContainsString("date_validation->format('d/m/Y à H:i')", $view);
         }
 
         $this->assertStringNotContainsString("date('d/m/Y')", $receipt);

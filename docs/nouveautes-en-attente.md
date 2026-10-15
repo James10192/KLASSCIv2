@@ -13,6 +13,8 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-15 · #1607 · Journal de caisse : une validation ancienne n'affiche plus 00:00, et les validations nouvelles affichent l'heure enregistrée. À vérifier sur présentation avant déploiement.
+- 2026-10-15 · #1607 · Horodatage des validations : heure exacte à partir des nouvelles décisions, « heure non conservée » pour les historiques, même présentation sur reçus et listes ; migration et recette sur présentation impératives avant établissement.
 - 2026-10-15 · #1605 · Paramètres bulletins : trois sous-rubriques pertinentes sans duplication des champs ni changement de calcul. Tester les sauvegardes et les liens profonds sur présentation avant propagation.
 - 2026-10-15 · #1604 · Reçus et liste des paiements : heure de saisie et de validation réellement enregistrées, date comptable inchangée, signature au format du caissier choisi. Recette visuelle/PDF requise avant propagation.
 - 2026-10-15 · #1602 · Paiements : sur les reçus, date de paiement distincte de l'heure de saisie réellement enregistrée ; détail mobile sans minuit artificiel. Le choix nom complet/initiales du caissier reste dans Comptabilité > Reçus. Recette PDF et mobile nécessaire avant propagation.
