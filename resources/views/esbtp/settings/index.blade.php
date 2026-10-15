@@ -948,6 +948,14 @@
     .att-sim-out strong { color: #0453cb; }
     .att-warn { background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.28); border-radius: 10px; padding: 10px 12px; color: #92400e; font-size: .82rem; display: flex; gap: 8px; }
     .att-warn ul { margin: 0; padding-left: 18px; }
+
+/* Sous-rubriques des réglages : les champs restent dans le formulaire original. */
+.settings-page-premium .settings-topic-nav{display:flex;flex-wrap:wrap;gap:6px;padding:8px;margin:0 0 16px;background:#f5f8fe;border:1px solid #dce6f5;border-radius:12px}
+.settings-page-premium .settings-topic-btn{padding:9px 12px;border:0;border-radius:9px;background:transparent;color:#4b607b;font-size:.81rem;font-weight:700;cursor:pointer}
+.settings-page-premium .settings-topic-btn.is-active{background:#fff;color:#0453cb;box-shadow:0 1px 5px rgba(4,83,203,.1)}
+.settings-page-premium .settings-topic-btn:focus-visible{outline:2px solid #0453cb;outline-offset:2px}
+.settings-page-premium .settings-topic-pane[hidden]{display:none!important}
+@media(max-width:650px){.settings-page-premium .settings-topic-nav{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}.settings-page-premium .settings-topic-btn{white-space:nowrap;flex:0 0 auto}}
 </style>
 @endpush
 
@@ -1340,6 +1348,13 @@
 
                 <!-- Tab 2: Configuration PDF -->
                 <div class="tab-pane fade" id="pdf" role="tabpanel">
+<div class="settings-topic-nav" role="group" aria-label="Rubriques pdf">
+<button type="button" class="settings-topic-btn is-active" data-settings-topic="pdf" data-settings-target="identite" aria-pressed="true">Identité & couleurs</button>
+<button type="button" class="settings-topic-btn" data-settings-topic="pdf" data-settings-target="mise" aria-pressed="false">Mise en page</button>
+<button type="button" class="settings-topic-btn" data-settings-topic="pdf" data-settings-target="recus" aria-pressed="false">Reçus</button>
+<button type="button" class="settings-topic-btn" data-settings-topic="pdf" data-settings-target="apercu" aria-pressed="false">Aperçu</button>
+</div>
+<div class="settings-topic-pane" data-settings-pane-group="pdf" data-settings-pane="identite">
 
             <!-- Section 2: Logo & Identité Visuelle -->
             <div class="settings-section">
@@ -1570,6 +1585,7 @@
             {{-- ========================================================== --}}
             {{-- Section : Mise en page & Marges (Phase 9) --}}
             {{-- ========================================================== --}}
+</div><div class="settings-topic-pane" data-settings-pane-group="pdf" data-settings-pane="mise" hidden>
             <div class="settings-section" x-data="pdfAdvancedSection()">
                 <div class="section-header">
                     <div class="section-icon pdf">
@@ -1814,6 +1830,7 @@
             {{-- ========================================================== --}}
             {{-- Section : Aperçu PDF (Phase 9) --}}
             {{-- ========================================================== --}}
+</div><div class="settings-topic-pane" data-settings-pane-group="pdf" data-settings-pane="apercu" hidden>
             <div class="settings-section" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1px solid #bfdbfe;">
                 <div class="section-header">
                     <div class="section-icon pdf" style="background: linear-gradient(135deg, #0453cb, #3b7ddb); color: #fff;">
@@ -1845,12 +1862,23 @@
                     </small>
                 </div>
             </div>
-
+</div>
+<div class="settings-topic-pane" data-settings-pane-group="pdf" data-settings-pane="recus" hidden>
+    @include('esbtp.settings.partials._recu-identite')
+</div>
                 </div>
                 <!-- End Tab 2: Configuration PDF -->
 
                 <!-- Tab 3: Configuration Bulletin -->
                 <div class="tab-pane fade" id="bulletin" role="tabpanel">
+<div class="settings-topic-nav" role="group" aria-label="Rubriques bulletin">
+<button type="button" class="settings-topic-btn is-active" data-settings-topic="bulletin" data-settings-target="apparence" aria-pressed="true">Apparence</button>
+<button type="button" class="settings-topic-btn" data-settings-topic="bulletin" data-settings-target="calculs" aria-pressed="false">Règles BTS</button>
+<button type="button" class="settings-topic-btn" data-settings-topic="bulletin" data-settings-target="appreciations" aria-pressed="false">Conduite & appréciations</button>
+<button type="button" class="settings-topic-btn" data-settings-topic="bulletin" data-settings-target="scolarite" aria-pressed="false">Scolarité</button>
+<button type="button" class="settings-topic-btn" data-settings-topic="bulletin" data-settings-target="mentions" aria-pressed="false">Assiduité & mentions</button>
+</div>
+<div class="settings-topic-pane" data-settings-pane-group="bulletin" data-settings-pane="apparence">
 
             <div class="settings-section" id="bulletin-style">
                 <div class="section-header">
@@ -2113,6 +2141,7 @@
                 </div>
             </div>
 
+</div><div class="settings-topic-pane" data-settings-pane-group="bulletin" data-settings-pane="calculs" hidden>
             <!-- Section 3: Statistiques de classe -->
             <div class="settings-section">
                 <div class="section-header">
@@ -2359,6 +2388,7 @@
                 </div>
             </div>
 
+</div><div class="settings-topic-pane" data-settings-pane-group="bulletin" data-settings-pane="appreciations" hidden>
             <!-- Section 6: Note de Conduite -->
             <div class="settings-section">
                 <div class="section-header">
@@ -2441,6 +2471,7 @@
                 ])
             </div>
 
+</div><div class="settings-topic-pane" data-settings-pane-group="bulletin" data-settings-pane="scolarite" hidden>
             <div class="settings-section">
                 <div class="section-header">
                     <div class="section-icon"><i class="fas fa-user-check"></i></div>
@@ -2697,6 +2728,7 @@
 
             @include('esbtp.settings.partials.traces-lentes-reglages')
 
+</div><div class="settings-topic-pane" data-settings-pane-group="bulletin" data-settings-pane="mentions" hidden>
             <!-- Section 6b: Assiduite / Saisie manuelle d'heures -->
             <div class="settings-section">
                 <div class="section-header">
@@ -2742,7 +2774,7 @@
 
                 @include('esbtp.settings.partials.mention-rules-editor')
             </div>
-
+</div>
                 </div>
                 <!-- End Tab 3: Configuration Bulletin -->
 
@@ -4023,6 +4055,48 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Les rubriques ne retirent jamais d'inputs du formulaire de paramètres.
+    const showTopic = (group, key) => {
+        const panes = [...document.querySelectorAll('[data-settings-pane-group="'+group+'"]')];
+        if (!panes.some(p => p.dataset.settingsPane === key)) return;
+        panes.forEach(p => { p.hidden = p.dataset.settingsPane !== key; });
+        document.querySelectorAll('[data-settings-topic="'+group+'"]').forEach(button => {
+            const active = button.dataset.settingsTarget === key;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-pressed', String(active));
+        });
+        try { sessionStorage.setItem('klassci-settings-topic-'+group, key); } catch (_) {}
+    };
+    document.querySelectorAll('[data-settings-topic]').forEach(button => {
+        button.addEventListener('click', () => showTopic(button.dataset.settingsTopic, button.dataset.settingsTarget));
+    });
+    ['pdf','bulletin'].forEach(group => {
+        try { const key = sessionStorage.getItem('klassci-settings-topic-'+group); if (key) showTopic(group,key); } catch (_) {}
+    });
+    document.querySelectorAll('#settingsTabs [data-bs-toggle="tab"]').forEach(tab => {
+        tab.addEventListener('shown.bs.tab', () => {
+            try { sessionStorage.setItem('klassci-settings-main-tab', tab.dataset.bsTarget); } catch (_) {}
+        });
+    });
+    try {
+        const target = sessionStorage.getItem('klassci-settings-main-tab');
+        const tab = target && document.querySelector('#settingsTabs [data-bs-target="'+target+'"]');
+        if (tab && window.bootstrap?.Tab) window.bootstrap.Tab.getOrCreateInstance(tab).show();
+    } catch (_) {}
+    // Un champ invalide doit être visible, même après retour de validation.
+    const invalid = document.querySelector('.settings-topic-pane .is-invalid, .settings-topic-pane [aria-invalid="true"]');
+    if (invalid) {
+        const pane = invalid.closest('[data-settings-pane-group]');
+        if (pane) {
+            showTopic(pane.dataset.settingsPaneGroup, pane.dataset.settingsPane);
+            const tabPane = pane.closest('.tab-pane');
+            const trigger = tabPane && document.querySelector('#settingsTabs [data-bs-target="#'+tabPane.id+'"]');
+            if (trigger && window.bootstrap?.Tab) window.bootstrap.Tab.getOrCreateInstance(trigger).show();
+        }
+    }
 });
 
 // Fonction pour tout cocher/décocher dans une section

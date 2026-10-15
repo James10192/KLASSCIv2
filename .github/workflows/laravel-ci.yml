@@ -135,6 +135,10 @@ jobs:
       - name: Test menu de reçu au-dessus des cartes paiement
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Views/PaymentReceiptDropdownLayerTest.php --stop-on-failure
+      - name: Test horodatage de paiement et options de reçu
+        if: github.event_name == 'pull_request'
+        run: |
+          php artisan test tests/Unit/Paiements/ReceiptCashierDisplayTest.php --stop-on-failure
 
       - name: Test classement par matière des évaluations en fiche
         if: github.event_name == 'pull_request'

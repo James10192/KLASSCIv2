@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Paiements — heures réelles et reçus personnalisables :** l'heure de saisie provient de l'horodatage de création et la validation dispose de son propre instant enregistré, distinct de la date comptable. Les paiements anciens sans horaire fiable l'indiquent. Les PDF de reçu affichent « Encaissé par » au choix en nom complet ou initiales par établissement. Les réglages PDF et bulletins gagnent des sous-rubriques navigables, sans modifier la sauvegarde globale.
 - **Détail d'un paiement — menu Reçu PDF visible :** les actions Prévisualiser/Télécharger passent devant les cartes de détails quand le menu est ouvert, sans masquer ni modifier les informations du paiement ; superposition restaurée après fermeture.
 - **Notes des fiches — lecture par matière :** les évaluations sont regroupées par matière par défaut, avec modes par semestre et liste, recherche instantanée et groupes repliables. La matière est mise en avant dans les lignes et les fenêtres de saisie de note ; le choix d'affichage demeure après modification AJAX.
 - **Modales académiques recentrées :** la fenêtre compacte « Nouvelle évaluation » et l'aperçu des documents des fiches étudiants/inscriptions s'ouvrent au centre de l'écran visible, même après défilement, sans modifier les champs, les sélecteurs ni les actions AJAX. Modèle documenté dans les règles de design premium.

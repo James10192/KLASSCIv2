@@ -663,7 +663,13 @@
                                     <i class="fas fa-user-circle me-1"></i>Encaissé par
                                 </span>
                                 <span style="font-size: 16px; font-weight: 700; color: {{ $primary }};">
-                                    {{ $paiement->creator->name }}
+                                    {{ \App\Domain\Comptabilite\Paiements\Services\IdentiteEncaisseurRecu::afficher($paiement->creator->name) }}
+                                    <div style="font-size:.72rem;font-weight:400;color:#64748b;margin-top:4px;">
+                                        Saisi : {{ $paiement->created_at?->format('d/m/Y H:i') ?? '—' }}
+                                        @if($paiement->date_validation)
+                                            · Validé : {{ $paiement->validation_recorded_at?->format('d/m/Y H:i') ?? ($paiement->date_validation->format('d/m/Y').' (heure non conservée)') }}
+                                        @endif
+                                    </div>
                                 </span>
                             </div>
                         </div>

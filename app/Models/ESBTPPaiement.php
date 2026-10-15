@@ -38,6 +38,7 @@ class ESBTPPaiement extends Model implements Auditable
         'statut',
         'validateur_id',
         'date_validation',
+        'validation_recorded_at',
         'numero_recu',
         'reference_externe',
         'metadata',
@@ -110,6 +111,7 @@ class ESBTPPaiement extends Model implements Auditable
         'createur_id',
         'validateur_id',
         'date_validation',
+        'validation_recorded_at',
         'motif', // Scolarité, frais d'inscription, frais divers, etc.
         'numero_recu',
         'commentaire',
@@ -137,10 +139,28 @@ class ESBTPPaiement extends Model implements Auditable
         'montant' => 'float',
         'date_paiement' => 'date',
         'date_echeance' => 'date',
-        'date_validation' => 'datetime',
+        // DATE métier historique : aucune heure stockée.
+        'date_validation' => 'date',
+        'validation_recorded_at' => 'datetime',
         'metadata' => 'json', // Ajouté pour la nouvelle colonne JSON
         'ventilation_rectifiee_le' => 'datetime',
     ];
+
+    /**
+     * Historiser l'instant de validation/rejet quelle que soit l'entrée métier
+     * (caisse, admission, API, régularisation), sans inventer d'heure pour
+     * des paiements historiques. N'affecte pas le jour comptable.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $paiement): void {
+            if ((! $paiement->exists || $paiement->isDirty('status'))
+                && in_array($paiement->status, ['validé', 'rejeté'], true)
+                && ! $paiement->validation_recorded_at) {
+                $paiement->validation_recorded_at = now();
+            }
+        });
+    }
 
     /**
      * Les attributs qui doivent être chiffrés pour la sécurité

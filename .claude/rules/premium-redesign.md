@@ -199,6 +199,29 @@ positionnement incorrect en haut à gauche. Toute modale doit être centrée
 imbriquées sans raison, afficher une fenêtre à `top:0;left:0`, modifier
 `dialog` ou `.modal` globalement pour résoudre un seul cas.
 
+## Paramètres métier — navigation par domaine sans perdre les sauvegardes
+
+Les pages de réglages KLASSCI distinguent : Identité / PDF / Reçus /
+Bulletins BTS (apparence, statistiques, règles du conseil, conduite) /
+Scolarité / LMD / Comptabilité / Communications.
+
+- Les sous-rubriques d'un domaine doivent **réduire la longueur perçue**
+  sans masquer les champs de façon irréversible : intitulés précis,
+  états actifs visibles, clavier et mobile horizontalement défilable.
+- Un formulaire qui enregistrait plusieurs réglages reste **un formulaire
+  canonique unique**. Ne jamais le découper en petits formulaires sans
+  corriger au préalable le serveur, surtout pour les cases décochées
+  (absence de champ = valeur désactivée). Les panneaux cachés restent
+  dans le DOM et sont envoyés dans le même POST.
+- Retenir la sous-rubrique choisie après sauvegarde. Permettre de
+  retrouver rapidement les erreurs de validation, même quand elles
+  concernent une rubrique précédemment masquée.
+- Par tenant : une option d'affichage d'un reçu ne modifie pas le
+  nom légal de l'agent, ses permissions, ni la signature du document.
+- Toute DATE métier SQL doit rester un jour comptable : pour afficher
+  une heure, utiliser un vrai DATETIME/TIMESTAMP de l'événement.
+  Ne jamais fabriquer 00:00 sur les fiches, les PDFs ou les exports.
+
 ## Tableaux académiques — priorité à la matière, pas au titre du devoir
 
 Dans les fiches étudiant/inscription, un titre d'évaluation est souvent générique

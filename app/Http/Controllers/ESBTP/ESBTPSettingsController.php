@@ -72,6 +72,7 @@ class ESBTPSettingsController extends Controller
         $this->ensureAttendanceNoteSettings();
         $this->ensureBtsBulletinPolicySettings();
         $this->ensureBulletinStyleSetting();
+        $this->ensureReceiptCashierDisplaySetting();
         $appreciationScaleSettings = app(AppreciationScaleSettingsService::class);
         $appreciationScaleSettings->ensureDefaults();
         $this->ensureMailPulseSettings();
@@ -109,6 +110,11 @@ class ESBTPSettingsController extends Controller
             return $refus;
         }
 
+        $recuMode = $request->input('setting_'.\App\Domain\Comptabilite\Paiements\Services\IdentiteEncaisseurRecu::KEY);
+        if ($recuMode !== null && ! in_array($recuMode, \App\Domain\Comptabilite\Paiements\Services\IdentiteEncaisseurRecu::options(), true)) {
+            return $this->refus($request, 'Choisissez nom complet ou initiales pour les reçus.');
+        }
+
         $rangAnnuelDemande = $request->input('setting_'.\App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::KEY);
         if ($rangAnnuelDemande !== null && ! in_array($rangAnnuelDemande, [
             \App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::SPECIALISATION,
@@ -123,6 +129,7 @@ class ESBTPSettingsController extends Controller
             $this->ensureMentionSettings();
             $this->ensureBtsBulletinPolicySettings();
             $this->ensureBulletinStyleSetting();
+            $this->ensureReceiptCashierDisplaySetting();
             $appreciationScaleSettings = app(AppreciationScaleSettingsService::class);
             $appreciationScaleSettings->ensureDefaults();
             $this->ensureMailPulseSettings();
@@ -1230,6 +1237,24 @@ class ESBTPSettingsController extends Controller
         return $request->expectsJson()
             ? response()->json(['success' => false, 'message' => $message], 422)
             : back()->withInput()->with('error', $message);
+    }
+
+    private function ensureReceiptCashierDisplaySetting(): void
+    {
+        \App\Models\Setting::firstOrCreate(
+            ['key' => \App\Domain\Comptabilite\Paiements\Services\IdentiteEncaisseurRecu::KEY],
+            [
+                'value' => \App\Domain\Comptabilite\Paiements\Services\IdentiteEncaisseurRecu::NOM,
+                'type' => 'string',
+                'group' => 'pdf',
+                'category' => 'pdf',
+                'description' => 'Identité de l’encaisseur sur les reçus PDF : nom ou initiales',
+                'is_required' => false,
+                'default_value' => 'nom',
+                'validation_rules' => ['in:nom,initiales'],
+                'sort_order' => 90,
+            ]
+        );
     }
 
     private function ensureBulletinStyleSetting(): void

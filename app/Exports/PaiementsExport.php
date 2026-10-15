@@ -106,7 +106,8 @@ class PaiementsExport implements FromCollection, WithHeadings, WithMapping, With
             $this->getStatutLabel($paiement->status),
             $paiement->numero_recu ?? 'N/A',
             $paiement->validatedBy ? $paiement->validatedBy->name : 'N/A',
-            $paiement->date_validation ? $paiement->date_validation->format('d/m/Y H:i') : 'N/A',
+            $paiement->validation_recorded_at?->format('d/m/Y H:i')
+                ?? ($paiement->date_validation ? $paiement->date_validation->format('d/m/Y').' (heure inconnue)' : 'N/A'),
             $paiement->commentaire ?? '',
             $inscription && $inscription->anneeUniversitaire ? $inscription->anneeUniversitaire->name : 'N/A',
         ];
