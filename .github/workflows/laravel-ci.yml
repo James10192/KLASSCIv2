@@ -136,6 +136,10 @@ jobs:
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Views/PaymentReceiptDropdownLayerTest.php --stop-on-failure
 
+      - name: Test horodatage et identité caissier des reçus
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Views/PaymentReceiptTimeIdentityContractTest.php --stop-on-failure
+
       - name: Test classement par matière des évaluations en fiche
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Views/AcademicFicheMatiereUxContractTest.php --stop-on-failure

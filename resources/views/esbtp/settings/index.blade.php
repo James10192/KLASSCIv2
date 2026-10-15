@@ -3873,7 +3873,35 @@
 
                 <!-- Tab 7: Comptabilité / SAARI -->
                 <div class="tab-pane fade" id="compta" role="tabpanel">
-                    <div class="settings-section">
+                    <nav class="d-flex flex-wrap gap-2 mb-3 mt-3" aria-label="Rubriques comptabilité">
+                        <a class="btn btn-sm btn-outline-primary" href="#compta-recus">Reçus et encaissements</a>
+                        <a class="btn btn-sm btn-outline-secondary" href="#compta-saari">Exports comptables SAARI</a>
+                    </nav>
+                    <div class="settings-section" id="compta-recus">
+                        <div class="section-header">
+                            <div class="section-icon"><i class="fas fa-receipt"></i></div>
+                            <div>
+                                <h3 class="section-title">Reçus et encaissements</h3>
+                                <p class="section-description">Identité du caissier imprimée sur le PDF, propre à cet établissement. Le journal conserve toujours son identité complète.</p>
+                            </div>
+                        </div>
+                        <fieldset class="mb-0">
+                            <legend class="form-label-modern">Afficher « Encaissé par » sur le reçu</legend>
+                            @php $receiptCashierFormat = old('setting_receipt_cashier_name_format', \App\Helpers\SettingsHelper::get('receipt_cashier_name_format', 'full')); @endphp
+                            <div class="d-flex flex-wrap gap-3">
+                                <label class="d-flex align-items-center gap-2">
+                                    <input type="radio" name="setting_receipt_cashier_name_format" value="full" {{ $receiptCashierFormat === 'full' ? 'checked' : '' }}>
+                                    Nom complet
+                                </label>
+                                <label class="d-flex align-items-center gap-2">
+                                    <input type="radio" name="setting_receipt_cashier_name_format" value="initials" {{ $receiptCashierFormat === 'initials' ? 'checked' : '' }}>
+                                    Initiales (ex. J. C. A.)
+                                </label>
+                            </div>
+                            <small class="text-muted">S'applique à la prévisualisation et aux nouveaux PDF générés, sans modifier le nom dans les données financières.</small>
+                        </fieldset>
+                    </div>
+                    <div class="settings-section" id="compta-saari">
                         <div class="section-header">
                             <div class="section-icon" style="background:linear-gradient(135deg, #10b981, #0ea5e9); color:#fff;">
                                 <i class="fas fa-calculator"></i>

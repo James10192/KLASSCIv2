@@ -663,7 +663,7 @@
                                     <i class="fas fa-user-circle me-1"></i>Encaissé par
                                 </span>
                                 <span style="font-size: 16px; font-weight: 700; color: {{ $primary }};">
-                                    {{ $paiement->creator->name }}
+                                    {{ $paiement->encaisseur_recu }}
                                 </span>
                             </div>
                         </div>

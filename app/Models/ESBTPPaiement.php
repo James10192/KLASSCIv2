@@ -311,6 +311,28 @@ class ESBTPPaiement extends Model implements Auditable
     }
 
     /**
+     * Le libellé du caissier sur les reçus est propre à chaque établissement.
+     * La préférence ne modifie jamais l'identité réelle dans la base ou les audits.
+     */
+    public function getEncaisseurRecuAttribute(): string
+    {
+        $nom = trim((string) $this->signataire);
+        $format = (string) \App\Helpers\SettingsHelper::get('receipt_cashier_name_format', 'full');
+
+        if ($format !== 'initials') {
+            return $nom;
+        }
+
+        $parties = preg_split('/\\s+/u', $nom, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $initiales = array_map(
+            static fn (string $partie): string => mb_strtoupper(mb_substr($partie, 0, 1)),
+            $parties
+        );
+
+        return $initiales ? implode('.', $initiales).'.' : $nom;
+    }
+
+    /**
      * Utilisateur qui a mis à jour l'entrée.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo

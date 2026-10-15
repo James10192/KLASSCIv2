@@ -717,7 +717,34 @@ class ESBTPSettingsController extends Controller
                     if ($appreciationScaleSettings->shouldSkipGenericSetting($request, $settingKey)) {
                         continue;
                     }
-                    
+
+                    // Paramètre de reçu nouveau pour les anciens tenants : whitelist stricte,
+                    // sans rendre d'autres clés arbitraires créables par ce formulaire.
+                    if ($settingKey === 'receipt_cashier_name_format') {
+                        if (!in_array($value, ['full', 'initials'], true)) {
+                            $errors[$settingKey] = 'Choisissez Nom complet ou Initiales.';
+                            continue;
+                        }
+                        $settingRecu = Setting::firstOrCreate(
+                            ['key' => $settingKey],
+                            [
+                                'value' => 'full',
+                                'type' => 'string',
+                                'group' => 'comptabilite',
+                                'category' => 'comptabilite',
+                                'description' => 'Identité du caissier sur les reçus PDF',
+                                'is_required' => false,
+                                'created_by' => auth()->id(),
+                                'updated_by' => auth()->id(),
+                            ]
+                        );
+                        if ((string) $settingRecu->value !== $value) {
+                            $settingRecu->update(['value' => $value, 'updated_by' => auth()->id()]);
+                            $updatedSettings[] = $settingKey;
+                        }
+                        continue;
+                    }
+
                     $setting = Setting::where('key', $settingKey)->first();
 
                     if ($setting) {
