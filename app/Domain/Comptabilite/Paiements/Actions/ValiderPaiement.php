@@ -43,6 +43,7 @@ class ValiderPaiement
             $verrou->update([
                 'status' => 'validé',
                 'date_validation' => now(),
+                'validated_at' => now(),
                 'validateur_id' => $validateur?->id,
             ]);
         });
