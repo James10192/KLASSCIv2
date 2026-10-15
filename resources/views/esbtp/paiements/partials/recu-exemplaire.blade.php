@@ -96,6 +96,11 @@
         <td>
             <div class="lbl">Date de paiement</div>
             <div class="val">{{ $paiement->date_paiement->format('d/m/Y') }}</div>
+            {{-- La date métier n'a aucune heure (colonne DATE). L'heure vérifiable
+                 de saisie vient de created_at, pas de date_paiement à 00:00. --}}
+            @if($paiement->created_at)
+                <div class="fee-note">Saisi le {{ $paiement->created_at->format('d/m/Y à H:i') }}</div>
+            @endif
         </td>
         <td>
             <div class="lbl">Statut d'affectation</div>
