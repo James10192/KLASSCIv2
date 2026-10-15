@@ -234,6 +234,7 @@ class ESBTPInscriptionPaiementController extends Controller
                 $paiement->update([
                     "status" => "validé",
                     "date_validation" => now(),
+                    "validated_at" => now(),
                     "validateur_id" => auth()->id(),
                 ]);
 
@@ -791,6 +792,7 @@ class ESBTPInscriptionPaiementController extends Controller
                     "date_paiement" => now(),
                     "status" => "validé",
                     "date_validation" => now(),
+                    "validated_at" => now(),
                     "validateur_id" => Auth::id(),
                     "created_by" => Auth::id(),
                 ]);
