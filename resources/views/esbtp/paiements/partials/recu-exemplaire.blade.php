@@ -223,7 +223,15 @@
 <table class="encaissed" width="100%" border="0" cellspacing="0" cellpadding="0">
     <tr>
         <td class="encaissed-lbl">Encaissé par</td>
-        <td class="encaissed-val">{{ $paiement->creator->name }}</td>
+        <td class="encaissed-val">
+            {{ \App\Domain\Comptabilite\Paiements\Services\IdentiteEncaisseurRecu::afficher($paiement->creator->name) }}
+            <div style="font-size:7pt;font-weight:400;color:#64748b;margin-top:2px;">
+                Saisi : {{ $paiement->created_at?->format('d/m/Y H:i') ?? '—' }}
+                @if($paiement->date_validation)
+                    · Validé : {{ $paiement->validation_recorded_at?->format('d/m/Y H:i') ?? ($paiement->date_validation->format('d/m/Y').' (heure non conservée)') }}
+                @endif
+            </div>
+        </td>
     </tr>
 </table>
 @endif
