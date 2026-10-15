@@ -36,6 +36,9 @@ class PaymentValidatedAtContractTest extends TestCase
             $this->assertStringContainsString("'validated_at' => now()", $content, $path);
         }
 
+        $this->assertStringContainsString("'validated_at' => now()", $this->source('app/Http/Controllers/ESBTPInscriptionController.php'));
+        $this->assertStringContainsString("'validated_at' => now()", $this->source('app/Services/Admissions/ManagedInscriptionWorkflow.php'));
+
         $enrollment = $this->source('app/Http/Controllers/ESBTPInscriptionPaiementController.php');
         $this->assertSame(2, substr_count($enrollment, '"validated_at" => now()'));
 
