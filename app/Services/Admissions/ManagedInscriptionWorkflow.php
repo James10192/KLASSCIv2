@@ -199,6 +199,7 @@ final class ManagedInscriptionWorkflow
                 'numero_recu' => ESBTPPaiement::genererNumeroRecu('PRE'),
                 'validateur_id' => $userId,
                 'date_validation' => now(),
+                'validated_at' => now(),
                 'created_by' => $userId,
                 'updated_by' => $userId,
             ]);
