@@ -13,6 +13,8 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-15 · #1601 · Paiements : heure réelle des nouvelles validations visible sur le détail bureau/mobile et dans l'export Excel ; historique conservé sans fabriquer de fausses heures. Migration de schéma nécessaire avant propagation.
+- 2026-10-15 · #1600 · Paiements : heure de saisie réelle sur le détail, réglage « Encaissé par » nom complet ou initiales dans Comptabilité > Reçus et encaissements et sur les PDF. Audit complémentaire de l'heure de validation et des autres écrans dans #1599.
 - 2026-10-15 · #1596 · Détail d'un paiement : le menu « Reçu PDF » et ses actions restent visibles devant les cartes en dessous, sur ordinateur comme sur tablette. Vérification de présentation nécessaire avant propagation.
 - 2026-10-14 · #1595 · Fiches étudiants/inscriptions : notes regroupées par matière, consultables également par semestre ou en liste, avec recherche et affichage de la matière dans la modale ; vue conservée après saisie sans rechargement. Recette visuelle requise avant propagation.
 - 2026-10-14 · #1594 · Fiches étudiant et inscription : les fenêtres de saisie d'évaluation et de consultation de documents s'ouvrent au centre de l'écran, avec taille adaptée au mobile et sans changer les actions des formulaires. Capture de recette nécessaire avant propagation.
