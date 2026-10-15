@@ -146,6 +146,10 @@
     padding: 0 24px 40px;
     position: relative; z-index: 3;
 }
+/* Les cartes passent devant le hero au repos. Uniquement lorsque le reçu PDF
+   est ouvert, remonter le contexte de pile parent (z-index:2 initial) au-dessus
+   des cartes (z-index:3) : un z-index sur le menu seul ne suffirait pas. */
+.ps-page.ps-receipt-menu-open .ps-hero-inner { z-index: 5; }
 
 /* ── CARDS ────────────────────────────────────────────────────── */
 .ps-card {
@@ -789,6 +793,15 @@
 <script src="{{ asset('js/paiements/mode-reglement.js') }}?v={{ @filemtime(public_path('js/paiements/mode-reglement.js')) ?: '1' }}"></script>
 <script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}"></script>
 <script>
+// Le menu Bootstrap "Reçu PDF" doit passer au-dessus des cartes qui chevauchent
+// le hero. Élever son parent uniquement pendant l'ouverture, sans changer
+// la position, les animations ni les handlers Bootstrap.
+document.querySelectorAll('.ps-page .ps-dropdown').forEach(dropdown => {
+    const page = dropdown.closest('.ps-page');
+    dropdown.addEventListener('show.bs.dropdown', () => page?.classList.add('ps-receipt-menu-open'));
+    dropdown.addEventListener('hidden.bs.dropdown', () => page?.classList.remove('ps-receipt-menu-open'));
+});
+
 // Copy receipt number on click
 document.querySelectorAll('.ps-receipt').forEach(el => {
     el.addEventListener('click', function() {

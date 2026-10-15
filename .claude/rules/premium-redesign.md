@@ -711,6 +711,7 @@ Quand un dropdown premium s'ouvre, il doit pouvoir **déborder visuellement** de
 - Éviter `transform` sur hover/focus des cards qui contiennent des dropdowns (crée un nouveau stacking context)
 - Prévoir `position: relative` + `z-index` sur la card active (`:focus-within`) et sur le field du select
 - Vérifier que le menu (`.au-select-menu` / Select2 dropdown) passe au-dessus des sections suivantes
+- Sur un **hero surmontant des cartes à marge négative**, regarder les contextes empilés **des ancêtres** : augmenter le `z-index` du menu seul ne suffit pas si le conteneur du hero est sous celui des cartes. Élever temporairement le parent uniquement pendant l'ouverture (événements Bootstrap `show.bs.dropdown` / `hidden.bs.dropdown`) ; restaurer ensuite le niveau normal.
 
 Sans ça, on obtient le bug classique : menu tronqué, labels de la section d'en bas qui passent au-dessus, UX cassée.
 
