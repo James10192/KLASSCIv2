@@ -327,7 +327,10 @@
                 </div>
                 <div class="ps-date">
                     <i class="fas fa-calendar-day"></i>
-                    {{ $paiement->date_paiement ? $paiement->date_paiement->format('d/m/Y à H:i') : '—' }}
+                    {{ $paiement->date_paiement ? $paiement->date_paiement->format('d/m/Y') : '—' }}
+                    @if($paiement->created_at)
+                        <span class="ps-date-time" title="Heure réelle de création de cette saisie"> · Saisi à {{ $paiement->created_at->format('H:i') }}</span>
+                    @endif
                 </div>
                 <div style="margin-top:14px;">
                     <span class="ps-status">

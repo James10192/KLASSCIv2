@@ -223,7 +223,7 @@
 <table class="encaissed" width="100%" border="0" cellspacing="0" cellpadding="0">
     <tr>
         <td class="encaissed-lbl">Encaissé par</td>
-        <td class="encaissed-val">{{ $paiement->creator->name }}</td>
+        <td class="encaissed-val">{{ $paiement->encaisseur_recu }}</td>
     </tr>
 </table>
 @endif
