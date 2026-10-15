@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Détail d'un paiement — menu Reçu PDF visible :** les actions Prévisualiser/Télécharger passent devant les cartes de détails quand le menu est ouvert, sans masquer ni modifier les informations du paiement ; superposition restaurée après fermeture.
 - **Notes des fiches — lecture par matière :** les évaluations sont regroupées par matière par défaut, avec modes par semestre et liste, recherche instantanée et groupes repliables. La matière est mise en avant dans les lignes et les fenêtres de saisie de note ; le choix d'affichage demeure après modification AJAX.
 - **Modales académiques recentrées :** la fenêtre compacte « Nouvelle évaluation » et l'aperçu des documents des fiches étudiants/inscriptions s'ouvrent au centre de l'écran visible, même après défilement, sans modifier les champs, les sélecteurs ni les actions AJAX. Modèle documenté dans les règles de design premium.
 - **Parcours pédagogiques — filtres AJAX fiabilisés :** les maquettes de bulletin et la classification des matières conservent la bonne période/filière/niveau lors de changements rapides et des retours navigateur. L'aperçu des copies S1/S2 et les emplois du temps n'affichent plus de réponses obsolètes ; la programmation LMD propose de réessayer après une erreur sans modifier silencieusement les données affichées, et les conflits de génération protègent les libellés dynamiques.
