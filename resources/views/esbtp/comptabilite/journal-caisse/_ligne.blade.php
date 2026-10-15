@@ -20,7 +20,7 @@
     <td>
         @if($p->validatedBy)
         {{ $p->validatedBy->name }}
-        <div class="jc-table-meta">{{ optional($p->date_validation)->format('d/m/Y H:i') }}</div>
+        <div class="jc-table-meta">{{ $p->date_validation ? $p->dateValidationLisible('d/m/Y H:i') : '—' }}</div>
         @else
         <span class="jc-table-meta">—</span>
         @endif
