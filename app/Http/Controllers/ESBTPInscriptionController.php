@@ -2606,6 +2606,8 @@ class ESBTPInscriptionController extends Controller
                     'reference_paiement' => $request->reference_paiement,
                     'type_paiement' => 'inscription',
                     'status' => 'validé',
+                    'date_validation' => now(),
+                    'validated_at' => now(),
                     'annee_universitaire_id' => $anneeCourante->id,
                     'validateur_id' => Auth::id(),
                     'created_by' => Auth::id(),
