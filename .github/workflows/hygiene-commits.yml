@@ -407,6 +407,9 @@ jobs:
           php vendor/bin/phpunit tests/Feature/Paiements/EncaisserMobileTest.php --no-coverage
           php vendor/bin/phpunit tests/Feature/Caisse/CashSessionServiceTest.php --no-coverage
 
+      - name: Horodatage réel de la validation et du rejet
+        run: php vendor/bin/phpunit tests/Feature/Paiements/PaymentValidationRecordedAtTest.php --no-coverage
+
       - name: Caisse - reliquats AJAX, idempotence et permissions
         run: php vendor/bin/phpunit tests/Feature/Paiements/ReliquatCaisseAjaxTest.php --no-coverage
 

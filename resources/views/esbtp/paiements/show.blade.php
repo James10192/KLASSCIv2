@@ -526,7 +526,7 @@
                     @if($paiement->status == 'validé' && $paiement->date_validation)
                     <div class="ps-info">
                         <span class="ps-info-lbl">Validé le</span>
-                        <span class="ps-info-val">{{ $paiement->date_validation->format('d/m/Y à H:i') }}</span>
+                        <span class="ps-info-val">{{ $paiement->dateValidationLisible() }}</span>
                     </div>
                     <div class="ps-info">
                         <span class="ps-info-lbl">Validé par</span>
@@ -695,7 +695,7 @@
                     <div class="ps-tl-text">
                         Paiement validé
                         @if($paiement->validatedBy) par <strong>{{ $paiement->validatedBy->name }}</strong>@endif
-                        <br><span class="ps-tl-date"><i class="fas fa-clock me-1"></i>{{ $paiement->date_validation->format('d/m/Y à H:i') }}</span>
+                        <br><span class="ps-tl-date"><i class="fas fa-clock me-1"></i>{{ $paiement->dateValidationLisible() }}</span>
                     </div>
                 </div>
                 @endif
@@ -706,7 +706,7 @@
                     <div class="ps-tl-text">
                         <strong style="color:#dc2626;">Paiement rejeté</strong>
                         @if($paiement->validatedBy) par <strong>{{ $paiement->validatedBy->name }}</strong>@endif
-                        <br><span class="ps-tl-date"><i class="fas fa-clock me-1"></i>{{ $paiement->date_validation->format('d/m/Y à H:i') }}</span>
+                        <br><span class="ps-tl-date"><i class="fas fa-clock me-1"></i>{{ $paiement->dateValidationLisible() }}</span>
                         @if($paiement->commentaire)
                         <div class="ps-tl-reason" style="margin-top:8px;padding:10px 12px;background:#fef2f2;border-left:3px solid #dc2626;border-radius:6px;font-size:.85rem;color:#7f1d1d;line-height:1.5;">
                             <strong style="color:#dc2626;font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">

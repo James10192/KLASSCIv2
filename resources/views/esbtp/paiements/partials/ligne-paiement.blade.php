@@ -92,7 +92,7 @@
             <small class="text-muted d-block" title="Horodatage réel de saisie">Saisi {{ $paiement->created_at->format('d/m/Y à H:i') }}</small>
         @endif
         @if($paiement->date_validation)
-            <small class="text-muted d-block" title="Horodatage réel de validation">Validé {{ $paiement->date_validation->format('d/m/Y à H:i') }}</small>
+            <small class="text-muted d-block" title="Horodatage réel de validation">Validé {{ $paiement->dateValidationLisible() }}</small>
         @endif
     </td>
     <td class="pi-cell-amount">

@@ -201,7 +201,7 @@
                 </dd>
                 @if($paiement->validatedBy && $paiement->date_validation)
                     <dt>{{ $paiement->status === 'rejeté' ? 'Rejeté par' : 'Validé par' }}</dt>
-                    <dd>{{ $paiement->validatedBy->name }} · {{ $paiement->date_validation->format('d/m/Y H:i') }}</dd>
+                    <dd>{{ $paiement->validatedBy->name }} · {{ $paiement->dateValidationLisible('d/m/Y H:i') }}</dd>
                 @endif
             </dl>
             <div class="tot">

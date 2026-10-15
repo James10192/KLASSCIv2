@@ -38,6 +38,7 @@ class ESBTPPaiement extends Model implements Auditable
         'statut',
         'validateur_id',
         'date_validation',
+        'validation_recorded_at',
         'numero_recu',
         'reference_externe',
         'metadata',
@@ -110,6 +111,7 @@ class ESBTPPaiement extends Model implements Auditable
         'createur_id',
         'validateur_id',
         'date_validation',
+        // validation_recorded_at reste volontairement hors de fillable : événement serveur uniquement.
         'motif', // Scolarité, frais d'inscription, frais divers, etc.
         'numero_recu',
         'commentaire',
@@ -137,10 +139,43 @@ class ESBTPPaiement extends Model implements Auditable
         'montant' => 'float',
         'date_paiement' => 'date',
         'date_echeance' => 'date',
-        'date_validation' => 'datetime',
+        // La colonne métier historique est un DATE ; elle ne possède aucune heure.
+        'date_validation' => 'date',
+        'validation_recorded_at' => 'datetime',
         'metadata' => 'json', // Ajouté pour la nouvelle colonne JSON
         'ventilation_rectifiee_le' => 'datetime',
     ];
+
+    /**
+     * Instant réel de validation/rejet, indépendant des dates métier.
+     *
+     * Ne jamais remplir l'horodatage d'un paiement historique sur une
+     * modification sans transition de statut ; une heure perdue reste inconnue.
+     * Les validations via le modèle (caisse, admission, rejet, API) passent ici.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $paiement): void {
+            $statut = (string) ($paiement->status ?? '');
+            if (! in_array($statut, ['validé', 'rejeté'], true)) {
+                return;
+            }
+            if (! $paiement->exists || $paiement->isDirty('status')) {
+                $paiement->validation_recorded_at = now();
+            }
+        });
+    }
+
+    /** Validation horodatée ou, pour un ancien paiement, date sans heure fictive. */
+    public function dateValidationLisible(string $format = 'd/m/Y à H:i'): string
+    {
+        if ($this->validation_recorded_at) {
+            return $this->validation_recorded_at->format($format);
+        }
+        return $this->date_validation
+            ? $this->date_validation->format('d/m/Y').' · heure non conservée'
+            : '—';
+    }
 
     /**
      * Les attributs qui doivent être chiffrés pour la sécurité

@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Paiements — validation horodatée sans minuit fictif :** nouveau champ distinct et nullable pour l'instant réel de validation/rejet. Le jour comptable historique reste en DATE, les reçus, listes, aperçus et exports affichent l'heure réelle ou « heure non conservée » pour les anciens paiements, sans inventer des heures rétroactives.
 - **Paramètres bulletins — navigation contextualisée :** les réglages sont répartis en Apparence, Calculs/Décisions et Fonctionnement, sans changer le formulaire unique, les valeurs ou les règles d'établissement. Les anciens liens profonds continuent d'ouvrir la rubrique correspondante.
 - **Reçus — heures de saisie et validation :** le reçu PDF, son aperçu et la liste indiquent les horodatages réellement enregistrés, distincts de la date comptable. La signature respecte le choix tenant nom complet/initiales et n'utilise jamais la date du jour à la place d'une validation absente.
 - **Paiements — horodatages fiables :** sur le détail mobile et les reçus PDF, la date comptable n'affiche plus une heure artificielle 00:00 ; le reçu distingue désormais la date de paiement de la véritable date et heure de saisie si disponible. Le format de l'encaisseur demeure configurable par établissement.
