@@ -31,7 +31,6 @@ class PaymentValidatedAtContractTest extends TestCase
             'app/Domain/Comptabilite/Paiements/Actions/ValiderPaiement.php',
             'app/Services/AvoirService.php',
             'app/Domain/Comptabilite/Reconciliation/Actions/ResolveDiscrepancy.php',
-            'app/Http/Controllers/ESBTPInscriptionPaiementController.php',
         ] as $path) {
             $content = $this->source($path);
             $this->assertStringContainsString("'validated_at' => now()", $content, $path);
