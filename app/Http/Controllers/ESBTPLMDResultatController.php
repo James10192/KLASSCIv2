@@ -87,17 +87,53 @@ class ESBTPLMDResultatController extends Controller
      */
     public function etudiant(Request $request, ESBTPEtudiant $etudiant)
     {
+        $request->validate([
+            'annee_universitaire_id' => ['nullable', 'integer', 'exists:esbtp_annee_universitaires,id'],
+            'inscription_id' => ['nullable', 'integer', 'exists:esbtp_inscriptions,id'],
+            'classe_id' => ['nullable', 'integer', 'exists:esbtp_classes,id'],
+            'semestre' => ['nullable', 'integer', 'between:1,12'],
+        ]);
+
         $annees = ESBTPAnneeUniversitaire::orderByDesc('start_date')->get();
         $anneeId = $request->annee_universitaire_id
             ?? $annees->firstWhere('is_current', true)?->id;
 
-        $inscriptions = $etudiant->inscriptions()
-            ->where('status', 'active')
-            ->where('workflow_step', 'etudiant_cree')
+        $inscriptionsQuery = $etudiant->inscriptions()
+            ->when(! $request->filled('inscription_id'), fn ($query) => $query
+                ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree'))
             ->when($anneeId, fn ($query, $id) => $query->where('annee_universitaire_id', $id))
             ->whereHas('classe', fn ($query) => $query->where('systeme_academique', 'LMD'))
-            ->with('classe.niveau', 'classe.filiere')
-            ->get();
+            ->with('classe.niveau', 'classe.filiere');
+
+        // Les liens venant d'une fiche portent l'inscription exacte. Un ID
+        // provenant de l'URL ne peut sélectionner ni un autre étudiant, ni
+        // une autre année, classe ou un parcours BTS.
+        $inscriptionSelectionnee = $request->filled('inscription_id')
+            ? (int) $request->input('inscription_id')
+            : null;
+        if ($inscriptionSelectionnee !== null) {
+            $inscriptionsQuery->whereKey($inscriptionSelectionnee);
+        }
+        if ($request->filled('classe_id')) {
+            $inscriptionsQuery->where('classe_id', (int) $request->input('classe_id'));
+        }
+        $inscriptions = $inscriptionsQuery->get();
+        if ($inscriptionSelectionnee !== null || $request->filled('classe_id')) {
+            abort_if($inscriptions->isEmpty(), 404, 'Inscription LMD introuvable dans ce contexte.');
+        }
+
+        $semestresAutorises = $inscriptions
+            ->flatMap(fn ($inscription) => $inscription->classe->getSemestresLMD())
+            ->map(fn ($semestre) => (int) $semestre)->unique()->sort()->values();
+        $semestreSelectionne = $request->filled('semestre')
+            ? (int) $request->input('semestre')
+            : null;
+        abort_if(
+            $semestreSelectionne !== null && ! $semestresAutorises->contains($semestreSelectionne),
+            422,
+            'Ce semestre ne correspond pas à cette inscription LMD.'
+        );
 
         $resultats = $inscriptions->flatMap(function ($inscription) use ($etudiant, $anneeId): Collection {
             $classe = $inscription->classe;
@@ -106,12 +142,14 @@ class ESBTPLMDResultatController extends Controller
             }
 
             return collect($classe->getSemestresLMD())
-                ->map(fn (int $semestre): array => $this->lmdResults->calculerProjectionLive(
-                    $etudiant->id,
-                    $classe->id,
-                    (int) $anneeId,
-                    $semestre
-                ));
+                ->map(function (int $semestre) use ($etudiant, $classe, $anneeId, $inscription): array {
+                    return array_merge($this->lmdResults->calculerProjectionLive(
+                        $etudiant->id,
+                        $classe->id,
+                        (int) $anneeId,
+                        $semestre
+                    ), ['inscription_id' => $inscription->id]);
+                });
         })->sortBy([
             ['annee_universitaire_id', 'desc'],
             ['semestre', 'asc'],
@@ -126,7 +164,10 @@ class ESBTPLMDResultatController extends Controller
             'creditsCumules',
             'creditsTotauxCumules',
             'annees',
-            'anneeId'
+            'anneeId',
+            'semestresAutorises',
+            'semestreSelectionne',
+            'inscriptionSelectionnee'
         ));
     }
 

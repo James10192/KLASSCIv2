@@ -3720,28 +3720,70 @@
 
     @php
         $resultatsBtsAutorises = auth()->user()->can('bulletins.view') || auth()->user()->can('bulletins.view_own');
-        $resultatsLmdAutorises = auth()->user()->can('lmd.resultats.view');
-        $lienResultatsInscription = static function ($insc) use ($etudiant, $resultatsBtsAutorises, $resultatsLmdAutorises): ?string {
+        $resultatsLmdAutorises = auth()->user()->can('lmd.resultats.view') && auth()->user()->can('module.lmd.access');
+        $cartesResultatsBts = [];
+        $lienResultatsInscription = static function ($insc, ?string $periodeDemandee = null) use ($etudiant, $resultatsBtsAutorises, $resultatsLmdAutorises, &$cartesResultatsBts): ?string {
             if (!$insc || !$insc->annee_universitaire_id || !$insc->classe_id) return null;
             $lmd = $insc->classe?->systeme_academique === 'LMD';
             if ($lmd && !$resultatsLmdAutorises) return null;
             if (!$lmd && !$resultatsBtsAutorises) return null;
-            return $lmd
-                ? route('esbtp.lmd.resultats.etudiant', ['etudiant' => $etudiant->id, 'annee_universitaire_id' => $insc->annee_universitaire_id])
-                : route('esbtp.resultats.etudiant', ['etudiant' => $etudiant->id, 'annee_universitaire_id' => $insc->annee_universitaire_id, 'classe_id' => $insc->classe_id, 'include_all_statuses' => 1]);
+            if ($lmd) {
+                $semestres = $insc->classe->getSemestresLMD();
+                $semestre = $periodeDemandee === null ? (int) ($semestres[0] ?? 0) : (int) $periodeDemandee;
+                if (!in_array($semestre, $semestres, true)) return null;
+
+                return route('esbtp.lmd.resultats.etudiant', [
+                    'etudiant' => $etudiant->id,
+                    'inscription_id' => $insc->id,
+                    'classe_id' => $insc->classe_id,
+                    'annee_universitaire_id' => $insc->annee_universitaire_id,
+                    'semestre' => $semestre,
+                ]);
+            }
+
+            $periode = match ($periodeDemandee) {
+                '1', 'semestre1' => 'semestre1',
+                '2', 'semestre2' => 'semestre2',
+                null, 'annuel' => 'annuel',
+                default => null,
+            };
+            if ($periode === null) return null;
+
+            $classesParSemestre = $cartesResultatsBts[$insc->id]
+                ??= app(\App\Services\ESBTP\BtsStudentAcademicRecords::class)->classMap($insc);
+            $classeId = $periode === 'annuel'
+                ? $insc->classe_id
+                : $classesParSemestre[$periode . '_classe_id'];
+
+            return route('esbtp.resultats.etudiant', [
+                'etudiant' => $etudiant->id,
+                'inscription_id' => $insc->id,
+                'annee_universitaire_id' => $insc->annee_universitaire_id,
+                'classe_id' => $classeId,
+                'periode' => $periode,
+                'include_all_statuses' => 1,
+            ]);
         };
     @endphp
 
-    {{-- Action de génération indépendante de la présence de notes ou d'un bulletin. --}}
+    {{-- Navigation et régénération sur l'inscription de l'année courante,
+         sans conditionner l'action à la présence préalable de notes. --}}
     @php
-        $inscBulletinCourante = $acadAnneeCourante
+        $acadInscriptionNavigation = $acadAnneeCourante
             ? $acadInscs->first(fn ($i) => $i->annee_universitaire_id === $acadAnneeCourante->id)
-            : null;
-        $inscBulletinCourante ??= $acadInscs->first();
+            : $acadInscs->first();
+        $acadInscriptionNavigation ??= $acadInscs->first();
     @endphp
-    @if($inscBulletinCourante)
-        <div style="margin-bottom:14px;">
-            @include('esbtp.etudiants.partials.bulletin-regeneration-actions', ['inscription' => $inscBulletinCourante])
+    @if($acadInscriptionNavigation)
+        <div id="inscription-raccourci-{{ $acadInscriptionNavigation->id }}" style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+            @if($lienResultatsInscription($acadInscriptionNavigation))
+                <a href="{{ $lienResultatsInscription($acadInscriptionNavigation) }}" class="insc-btn view">
+                    <i class="fas fa-chart-bar" aria-hidden="true"></i> Voir les résultats — {{ $acadInscriptionNavigation->anneeUniversitaire?->name ?? 'Inscription' }}
+                </a>
+            @endif
+            @include('esbtp.etudiants.partials.bulletin-regeneration-actions', ['inscription' => $acadInscriptionNavigation])
+        </div>
+    @endif
         </div>
     @endif
 
@@ -3809,8 +3851,8 @@
         <div class="lmd-sem-panel" data-sem="{{ $_bul->semestre }}" style="{{ $idx !== $bulletinsLMD->count() - 1 ? 'display:none;' : '' }}">
         <div class="acad-hero">
             <div class="acad-hero-top">
-                @if($lienResultatsInscription($acadRef))
-                    <a href="{{ $lienResultatsInscription($acadRef) }}" class="insc-btn view" style="float:right;margin-left:12px;"><i class="fas fa-chart-bar"></i> Voir les résultats</a>
+                @if($lienResultatsInscription($acadRef, (string) $_bul->semestre))
+                    <a href="{{ $lienResultatsInscription($acadRef, (string) $_bul->semestre) }}" class="insc-btn view" style="float:right;margin-left:12px;"><i class="fas fa-chart-bar"></i> Résultats S{{ $_bul->semestre }}</a>
                 @endif
                 <div>
                     <div class="acad-hero-label"><i class="fas fa-graduation-cap" style="margin-right:5px;"></i>Bilan LMD</div>
@@ -4740,7 +4782,7 @@
             ? $autreResultatsBruts->groupBy(fn($r) => $r->periode ?? 'N/A')
             : collect();
     @endphp
-    <div class="acad-arch-card">
+    <div class="acad-arch-card" id="inscription-{{ $autreInsc->id }}">
         <button class="acad-arch-toggle"
                 data-bs-toggle="collapse"
                 data-bs-target="#{{ $autreArchKey }}"
@@ -6748,6 +6790,22 @@ function switchLmdSem(sem) {
     if (urlTab) {
         const t = document.querySelector('[data-tab="' + urlTab + '"]');
         if (t) t.click();
+    }
+    // Retour depuis les résultats : retrouver l'inscription consultée, y
+    // compris lorsque son bilan se situe dans une archive repliée.
+    const inscriptionId = new URLSearchParams(window.location.search).get('inscription_id');
+    if (urlTab === 'academique' && /^\d+$/.test(inscriptionId || '')) {
+        const card = document.getElementById('inscription-' + inscriptionId)
+            || document.getElementById('inscription-raccourci-' + inscriptionId);
+        if (card) {
+            const collapse = card.querySelector('.collapse');
+            if (collapse && window.bootstrap && bootstrap.Collapse) {
+                bootstrap.Collapse.getOrCreateInstance(collapse, { toggle: false }).show();
+            }
+            requestAnimationFrame(function () {
+                card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        }
     }
 })();
 </script>

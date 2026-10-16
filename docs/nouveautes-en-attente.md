@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-16 · #1611 · Fiche étudiant et résultats BTS/LMD : consultation par inscription, classe, année et semestre, retour contextualisé et navigation AJAX. Vérifier parcours BTS tronc commun et LMD sur présentation avant propagation.
 - 2026-10-16 · #1610 · Modification d'inscription et réinscription : les places affichées pour chaque classe correspondent à l'année du dossier ou à l'année de destination choisie, sans confondre avec l'année courante. Vérifier deux promotions sur présentation, édition intégrée et changement d'année, avant toute propagation.
 - 2026-10-16 · #1609 · Inscription : un souci de génération de lien d'activation ne fait plus apparaître comme échoué un dossier enregistré ; restauration des liens de mot de passe oublié après migration. Contrôler les éventuels dossiers créés malgré l'ancien message d'erreur avant une nouvelle tentative.
 - 2026-10-16 · #1608 · Documents académiques : relevé interne BTS individuel, émission/aperçu du relevé LMD depuis les fiches et navigation vers le PV collectif sur les classes LMD ; recette PDF/permissions/mobile sur presentation avant toute autre instance.
