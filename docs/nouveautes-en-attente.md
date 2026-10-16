@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-16 · correctif fermeture modale bulletin · Après recalcul et actualisation AJAX du bilan, la fenêtre de régénération se referme automatiquement sans rechargement ; confirmation affichée avec lien vers le bulletin si disponible. En cas d’échec de la lecture AJAX, possibilité de réessayer sans recalculer.
 - 2026-10-16 · correctif bulletin AJAX · Sur la fiche étudiant, fenêtre de régénération centrée ; moyenne, rang et bilan académique se mettent à jour automatiquement après le recalcul, y compris pour une ancienne inscription, sans rechargement de la page.
 - 2026-10-16 · correctif incidents ESBTP · Les pages résultats et notes restent consultables lors d'un décalage de routes de relevés BTS ; le bouton Fiche étudiant conserve désormais le contexte de l'inscription sélectionnée. Vérifier le cache des routes du serveur.
 - 2026-10-16 · #1612 (correctif) · Fiche étudiant : ne plus afficher les actions de régénération si la route Laravel correspondante n'est pas disponible, pour éviter une erreur 500 pendant les mises à jour ; vérification du déploiement et du cache des routes toujours nécessaire.

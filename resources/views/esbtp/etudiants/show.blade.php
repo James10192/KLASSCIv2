@@ -6715,6 +6715,43 @@
     if (!dialog || !confirm || !feedback) return;
     let selected = null;
     let completed = false;
+    let lastBulletinUrl = null;
+
+    // Le résultat reste visible hors de la modale et le lien PDF est préservé.
+    function notifyBulletinSuccess(message) {
+        document.getElementById('insc-bulletin-success-notice')?.remove();
+        const notice = document.createElement('div');
+        notice.id = 'insc-bulletin-success-notice';
+        notice.className = 'alert alert-success shadow-sm';
+        notice.setAttribute('role', 'status');
+        notice.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:1100;' +
+            'max-width:min(430px,calc(100vw - 32px));display:flex;align-items:center;' +
+            'gap:12px;margin:0;overflow-wrap:anywhere';
+        const label = document.createElement('span');
+        label.textContent = message;
+        notice.appendChild(label);
+        if (lastBulletinUrl) {
+            const link = document.createElement('a');
+            link.href = lastBulletinUrl;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.textContent = 'Voir le bulletin';
+            notice.appendChild(link);
+        }
+        const dismiss = document.createElement('button');
+        dismiss.type = 'button';
+        dismiss.className = 'btn-close';
+        dismiss.setAttribute('aria-label', 'Fermer la notification');
+        dismiss.addEventListener('click', () => notice.remove());
+        notice.appendChild(dismiss);
+        document.body.appendChild(notice);
+        window.setTimeout(() => notice.remove(), 12000);
+    }
+
+    function finishAjaxSuccess(message) {
+        if (dialog.open) dialog.close();
+        notifyBulletinSuccess(message);
+    }
 
     // Le serveur reste la source de vérité des moyennes, rangs, mentions et PDF.
     // On récupère la fiche fraîche, sans rechargement ni deuxième calcul client.
@@ -6784,6 +6821,7 @@
                 await refreshAcademicBilan();
                 feedback.style.color = '#047857';
                 feedback.textContent = 'Bilan académique et moyennes actualisés sans rechargement.';
+                finishAjaxSuccess(feedback.textContent);
             } catch (error) {
                 feedback.style.color = '#b45309';
                 feedback.textContent = error.message || 'Actualisation indisponible.';
@@ -6798,6 +6836,7 @@
         if (!target) return;
         selected = target;
         completed = false;
+        lastBulletinUrl = null;
         confirm.disabled = false;
         confirm.textContent = 'Confirmer';
         feedback.style.color = '#b91c1c';
@@ -6831,8 +6870,11 @@
             if (!response.ok || !result.ok) throw new Error(result.message || 'La régénération a été refusée.');
             completed = true;
             selected = null;
+            lastBulletinUrl = result.bulletin_url || null;
+            let refreshed = false;
             try {
                 await refreshAcademicBilan();
+                refreshed = true;
                 feedback.style.color = '#047857';
                 feedback.textContent = (result.message || 'Bulletin recalculé.') + ' Le bilan et les moyennes sont actualisés.';
             } catch (refreshError) {
@@ -6851,6 +6893,7 @@
                 link.style.marginLeft = '8px';
                 feedback.append(document.createElement('br'), link);
             }
+            if (refreshed) finishAjaxSuccess(feedback.textContent);
         } catch (error) {
             feedback.style.color = '#b91c1c';
             feedback.textContent = error.message || 'Impossible de générer le bulletin.';
