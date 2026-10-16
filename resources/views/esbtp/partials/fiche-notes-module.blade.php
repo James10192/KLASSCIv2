@@ -318,6 +318,37 @@
     const btn=e.target.closest('button');
     if(!btn) return;
     const block=btn.closest('[data-fng-inscription]');if(!block)return;
+    if(btn.hasAttribute('data-fng-lmd-releve')){
+      btn.disabled=true;
+      try {
+        const response=await fetch(btn.dataset.statusUrl,{
+          credentials:'same-origin',headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}
+        });
+        const data=await response.json().catch(()=>({}));
+        if(!response.ok)throw new Error(data.message || 'Impossible de vérifier le relevé LMD.');
+        if(data.releve){
+          block.querySelector('[data-fng-lmd-preview]')?.click();
+        }else if(!data.readiness?.ok){
+          notice=(data.readiness?.reasons || ['Le relevé ne peut pas encore être émis.']).join(' ');
+          noticeError=true;
+          await reload();
+        }else if(btn.dataset.canIssue==='1'){
+          const dialog=modal('Émettre le relevé LMD',
+            '<p>Le relevé individuel sera figé à partir des bulletins publiés. Cette émission est tracée et ne modifie aucune note.</p>',
+            form=>send(btn.dataset.issueUrl,'POST',form));
+          dialog?.querySelector('button[type=submit]')?.replaceChildren('Émettre le relevé');
+        }else{
+          notice="Le relevé n'est pas encore émis. Une personne autorisée doit l'émettre.";
+          noticeError=true;
+          await reload();
+        }
+      }catch(error){
+        notice=error.message;
+        noticeError=true;
+        await reload();
+      }finally{if(btn.isConnected)btn.disabled=false}
+      return;
+    }
     if(btn.hasAttribute('data-fng-note')){
       const field='<label>Note / '+escape(btn.dataset.bareme)+'<input name="note" type="number" required min="0" max="'+escape(btn.dataset.bareme)+'" step="0.01" value="'+escape(btn.dataset.note)+'"></label>'
         +'<label class="fng-check"><input type="checkbox" name="is_absent" value="1" '+(btn.dataset.absent==='1'?'checked':'')+'> Étudiant absent</label>'

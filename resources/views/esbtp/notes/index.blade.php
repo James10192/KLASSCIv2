@@ -7,6 +7,14 @@
 <link rel="stylesheet" href="{{ asset('css/notes-management.css') }}?v={{ @filemtime(public_path('css/notes-management.css')) ?: '1' }}">
 <style>
     .note-input.nm-note-refused { border-color: #dc2626 !important; background: rgba(220,38,38,.06) !important; }
+    .nm-quick-document {display:inline-flex;align-items:center;gap:6px;padding:8px 11px;border-radius:9px;border:1px solid rgba(255,255,255,.4);color:#fff;font-size:12px;font-weight:700;text-decoration:none}
+    .nm-quick-document:hover,.nm-quick-document:focus-visible {color:#fff;background:rgba(255,255,255,.15)}
+    .nm-quick-document[hidden]{display:none!important}
+    .nm-student-docs {display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+    .nm-student-docs a {color:#0453cb;font-size:11px;font-weight:650;text-decoration:underline;text-underline-offset:2px}
+    .nm-student-docs a:focus-visible{outline:2px solid #0453cb;outline-offset:2px}
+    @@media(max-width:640px){.nm-quick-document{padding:7px 9px;font-size:11px}}
+
 </style>
 @endpush
 
@@ -172,6 +180,10 @@
                         <span class="nm-network-dot"></span>
                         <span class="nm-network-label">Synchronisé</span>
                     </div>
+                    @can('bulletins.view')
+                        <a id="nm-class-bulletins" class="nm-quick-document" target="_blank" rel="noopener" hidden
+                            title="Consulter et exporter les bulletins de cette classe"><i class="fas fa-file-pdf"></i> Bulletins BTS</a>
+                    @endcan
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
                 </div>
             </div>
@@ -970,6 +982,16 @@ function selectClass(classId, className) {
     }
     currentClassId = classId;
     currentClassname = className;
+    // Navigation documentaire sans changer la page de saisie.
+    // notes.index est réservé au BTS ; les PV se trouvent sur l'écran
+    // esbtp.lmd.notes.index, dont les classes et semestres sont distincts.
+    const bulletinLink = document.getElementById('nm-class-bulletins');
+    if(bulletinLink){
+        bulletinLink.hidden = false;
+        bulletinLink.href = @json(route('esbtp.bulletins.index')) +
+            '?classe_id=' + encodeURIComponent(classId) +
+            '&annee_universitaire_id=' + encodeURIComponent(nmAcademicYearId);
+    }
 
     // Mettre à jour l'UI
     $('#selectedClassLabel').text(className);
@@ -1285,6 +1307,18 @@ function renderNotesGrid(students, sortedEvaluations) {
         const phaseBadge = phaseLabel && phaseLabel !== 'Classe actuelle'
             ? `<span class="badge bg-light text-primary border mt-1">${nmEscapeHtml(phaseLabel)}</span>`
             : '';
+        const studentDocumentUrl = @json(route('esbtp.etudiants.show', ['etudiant' => '__ETUDIANT__']))
+            .replace('__ETUDIANT__', encodeURIComponent(student.id));
+        const btsDocumentUrl = @json(route('esbtp.bts.releves.preview', ['etudiant' => '__ETUDIANT__', 'annee' => '__ANNEE__']))
+            .replace('__ETUDIANT__', encodeURIComponent(student.id))
+            .replace('__ANNEE__', encodeURIComponent(nmAcademicYearId));
+        const canViewStudent = @json(auth()->user()->can('students.view'));
+        const canViewBulletin = @json(auth()->user()->can('bulletins.view'));
+        const documentLinks = '<div class="nm-student-docs">'
+            + (canViewStudent ? '<a href="'+nmEscapeHtml(studentDocumentUrl)+'" target="_blank" rel="noopener">Fiche · Documents ↗</a>' : '')
+            + (canViewStudent && canViewBulletin
+                ? '<a href="'+nmEscapeHtml(btsDocumentUrl)+'" target="_blank" rel="noopener" title="Relevé interne BTS publié">Relevé BTS ↗</a>' : '')
+            + '</div>';
         const row = $(`
             <tr data-student-id="${student.id}">
                 <td class="fw-medium notes-student-col">
@@ -1294,6 +1328,7 @@ function renderNotesGrid(students, sortedEvaluations) {
                             <div class="nm-student-fullname" title="${escapedFullName}">${escapedFullName}</div>
                             <div class="nm-student-matricule">${escapedMatricule}</div>
                             ${phaseBadge}
+                            ${documentLinks}
                         </div>
                     </div>
                 </td>

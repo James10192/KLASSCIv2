@@ -34,8 +34,29 @@
                     <a class="fng-btn" title="Ouvrir le bulletin / relevé {{ $bul->periode }}" data-fng-document target="_blank" rel="noopener"
                         href="{{ route('esbtp.bulletins.preview-pdf', $bul->id) }}"><i class="fas fa-file-pdf"></i> {{ $bul->periode }}</a>
                 @endforeach
-                @if(($ficheInsc->classe?->systeme_academique ?? '') === 'LMD' && auth()->user()->can('lmd.releve.view'))
-                    <a class="fng-btn" data-fng-document target="_blank" rel="noopener" href="{{ route('esbtp.lmd.releves.preview', ['etudiant' => $student->id, 'annee' => $ficheInsc->annee_universitaire_id]) }}"><i class="fas fa-file-pdf"></i> Relevé LMD</a>
+                @if(($ficheInsc->classe?->systeme_academique ?? '') === 'LMD')
+                    @can('lmd.releve.view')
+                        <button type="button" class="fng-btn" data-fng-lmd-releve
+                            data-status-url="{{ route('esbtp.lmd.releves.status', ['etudiant' => $student->id, 'annee' => $ficheInsc->annee_universitaire_id]) }}"
+                            data-issue-url="{{ route('esbtp.lmd.releves.issue', ['etudiant' => $student->id, 'annee' => $ficheInsc->annee_universitaire_id]) }}"
+                            data-can-issue="{{ auth()->user()->can('lmd.releve.issue') ? '1' : '0' }}">
+                            <i class="fas fa-file-pdf"></i> Relevé LMD
+                        </button>
+                        <a hidden data-fng-lmd-preview data-fng-document target="_blank" rel="noopener"
+                            href="{{ route('esbtp.lmd.releves.preview', ['etudiant' => $student->id, 'annee' => $ficheInsc->annee_universitaire_id]) }}">Relevé LMD</a>
+                    @endcan
+                    @if(auth()->user()->can('module.lmd.access') && auth()->user()->can('lmd.jury.view'))
+                        <a class="fng-btn" target="_blank" rel="noopener"
+                            href="{{ route('esbtp.lmd.jurys.index', ['classe_id' => $ficheInsc->classe_id, 'annee_universitaire_id' => $ficheInsc->annee_universitaire_id]) }}"
+                            title="Le PV est un document collectif de jury"><i class="fas fa-users"></i> PV du jury</a>
+                    @endif
+                @elseif(auth()->user()->can('students.view') && auth()->user()->can('bulletins.view'))
+                    <a class="fng-btn" data-fng-document target="_blank" rel="noopener"
+                        href="{{ route('esbtp.bts.releves.preview', ['etudiant' => $student->id, 'annee' => $ficheInsc->annee_universitaire_id]) }}"
+                        title="Relevé interne de l'établissement, distinct du relevé national BTS"><i class="fas fa-file-pdf"></i> Relevé BTS</a>
+                    <a class="fng-btn" target="_blank" rel="noopener"
+                        href="{{ route('esbtp.bts.releves.download', ['etudiant' => $student->id, 'annee' => $ficheInsc->annee_universitaire_id]) }}"
+                        title="Télécharger le relevé interne BTS"><i class="fas fa-download"></i> PDF</a>
                 @endif
             </div>
         </div>
