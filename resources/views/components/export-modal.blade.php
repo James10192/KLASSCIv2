@@ -1,7 +1,7 @@
 @props([
     'previewUrl',
     'pdfUrl',
-    'excelUrl',
+    'excelUrl' => null,
     'emailUrl' => null,
     'buttonClass' => 'an-btn an-btn--glass',
     'label' => 'Exporter',
@@ -30,6 +30,7 @@
                 <small>Format A4 imprimable</small>
             </div>
         </a>
+        @if($excelUrl)
         <a :href="window.appendFiltersToUrl('{{ $excelUrl }}')" class="export-menu-item" @click="open = false">
             <i class="fas fa-file-excel"></i>
             <div>
@@ -37,6 +38,7 @@
                 <small>Données brutes (.xlsx)</small>
             </div>
         </a>
+        @endif
         {{-- Le mailer mailpulse ne transporte pas de pièce jointe : ne pas proposer ce qu'il refuserait. --}}
         @if($emailUrl && ! \App\Mail\Transport\MailPulseTransport::actif())
             <button type="button" @click="window.askEmailExport('{{ $emailUrl }}'); open = false" class="export-menu-item export-menu-item--button">
