@@ -4338,6 +4338,27 @@ class BulletinService
             throw new \RuntimeException('Classe invalide pour le calcul du coefficient.');
         }
 
+        // Une fiche de spécialité peut afficher le S1 réellement suivi dans
+        // la classe de tronc commun. Sa surcharge locale prime alors sur
+        // les coefficients de la classe de spécialité demandée.
+        if ($etudiantId !== null && $periode === 'semestre1') {
+            $classMap = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
+            $classeS1 = (int) ($classMap['semestre1_classe_id'] ?? $classeId);
+            if ($classeS1 > 0 && $classeS1 !== $classeId) {
+                $coefficientTroncCommunLocal = $this->coefficientLocalPourClasse(
+                    $matiereId, $classeS1, $anneeUniversitaireId, $periode
+                );
+                if ($coefficientTroncCommunLocal !== null) {
+                    return $this->coefficientCache[$cacheKey] = $coefficientTroncCommunLocal;
+                }
+            }
+        }
+
+        $coefficientLocal = $this->coefficientLocalPourClasse($matiereId, $classeId, $anneeUniversitaireId, $periode);
+        if ($coefficientLocal !== null) {
+            return $this->coefficientCache[$cacheKey] = $coefficientLocal;
+        }
+
         $coefficient = ESBTPMatiereCoefficient::where('matiere_id', $matiereId)
             ->where('filiere_id', $classe->filiere_id)
             ->where('niveau_etude_id', $classe->niveau_etude_id)
@@ -4379,6 +4400,23 @@ class BulletinService
         $this->coefficientCache[$cacheKey] = (float) $coefficient;
 
         return $this->coefficientCache[$cacheKey];
+    }
+
+    private function coefficientLocalPourClasse(int $matiereId, int $classeId, int $anneeUniversitaireId, string $periode): ?float
+    {
+        $configLocale = ESBTPConfigMatiere::query()
+            ->where('matiere_id', $matiereId)
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->where('periode', $periode)
+            ->value('config');
+        for ($decode = 0; $decode < 3 && is_string($configLocale); $decode++) {
+            $configLocale = json_decode($configLocale, true);
+        }
+        $coefficientLocal = is_array($configLocale) ? ($configLocale['coefficient'] ?? null) : null;
+
+        return $coefficientLocal !== null && is_numeric($coefficientLocal) && (float) $coefficientLocal > 0
+            ? (float) $coefficientLocal : null;
     }
 
     /**

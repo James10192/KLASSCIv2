@@ -2195,10 +2195,10 @@ Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['aut
     // IMPORTANT: Cette route doit Ãªtre AVANT les routes /{evaluation} pour Ã©viter les conflits
     Route::get('/load-matieres', [ESBTPEvaluationController::class, 'loadMatieres'])->name('load-matieres');
     Route::get('/coefficients/modal', [ESBTPEvaluationController::class, 'coefficientsModal'])->name('coefficients.modal');
-    Route::post('/coefficients/update', [ESBTPEvaluationController::class, 'updateCoefficients'])->name('coefficients.update');
+    Route::post('/coefficients/update', [ESBTPEvaluationController::class, 'updateCoefficients'])->middleware('permission:bulletins.configure')->name('coefficients.update');
     Route::get('/coefficients/check', [ESBTPEvaluationController::class, 'checkCoefficient'])->name('coefficients.check');
     // Sous-lot Î´
-    Route::post('/coefficients/copy', [ESBTPEvaluationController::class, 'copyCoefficients'])->name('coefficients.copy');
+    Route::post('/coefficients/copy', [ESBTPEvaluationController::class, 'copyCoefficients'])->middleware('permission:bulletins.configure')->name('coefficients.copy');
     Route::get('/coefficients/completion', [ESBTPEvaluationController::class, 'coefficientsCompletion'])->name('coefficients.completion');
     Route::get('/coefficients/read', [ESBTPEvaluationController::class, 'readCoefficients'])->name('coefficients.read');
 
@@ -2904,7 +2904,7 @@ Route::middleware(['auth', 'permission:bulletins.configure'])->group(function ()
     Route::get('/esbtp-special/bulletins/config-matieres', [ESBTPBulletinConfigController::class, 'configMatieresTypeFormation'])->name('esbtp.bulletins.config-matieres');
     Route::post('/esbtp-special/bulletins/save-config-matieres', [ESBTPBulletinConfigController::class, 'saveConfigMatieresTypeFormation'])->name('esbtp.bulletins.save-config-matieres');
     Route::get('/esbtp-special/bulletins/config-matieres/inline-data', [ESBTPBulletinConfigController::class, 'inlineConfigMatieresData'])->name('esbtp.bulletins.config-matieres.inline-data');
-    Route::post('/esbtp-special/bulletins/config-matieres/inline-save', [ESBTPBulletinConfigController::class, 'saveInlineConfigMatieres'])->name('esbtp.bulletins.config-matieres.inline-save');
+    Route::post('/esbtp-special/bulletins/config-matieres/inline-save', [ESBTPBulletinConfigController::class, 'saveInlineConfigMatieres'])->middleware('paywall')->name('esbtp.bulletins.config-matieres.inline-save');
     // Sous-lot Î´ â€” copy config-matieres entre semestres
     Route::post('/esbtp-special/bulletins/config-matieres/copy', [ESBTPBulletinConfigController::class, 'copyConfigMatieres'])->name('esbtp.bulletins.config-matieres.copy');
     // Sous-lot Î² AJAX â€” switch S1/S2/Annuel sans reload
@@ -2915,6 +2915,10 @@ Route::middleware(['auth', 'permission:bulletins.configure'])->group(function ()
         ->name('esbtp.bulletins.copy-professeurs-from-other-semestre');
     Route::post('/esbtp-special/bulletins/save-professeurs', [ESBTPBulletinConfigController::class, 'saveProfesseurs'])->name('esbtp.bulletins.save-professeurs');
 });
+
+Route::get('/esbtp-special/bulletins/configuration-groupe', \App\Http\Controllers\ESBTPPedagogicalGroupConfigurationController::class)
+    ->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'permission:bulletins.configure|lmd.structure.view', 'paywall'])
+    ->name('esbtp.bulletins.configuration-groupe');
 
 // Routes classes â€” PROTÃ‰GÃ‰ES
 Route::middleware(['auth'])->group(function () {
