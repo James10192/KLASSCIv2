@@ -2,6 +2,8 @@
     $(document).ready(function() {
         const form = $('form[data-places-info-target]').first();
         const placesTargetId = form.data('places-info-target');
+        const anneeUniversitaireId = String(form.attr('data-annee-universitaire-id') || '');
+        let placesRequestId = 0;
 
         // Déverrouille le select classe_id quand la case "Correction d'erreur de saisie" est cochée.
         // Event listener natif (DOM non réactif sans Alpine x-watch).
@@ -16,6 +18,7 @@
         }
 
         function updatePlacesInfo(classeId) {
+            const requestId = ++placesRequestId;
             const target = placesTargetId ? $('#' + placesTargetId) : $();
             if (!target.length) {
                 return;
@@ -27,10 +30,16 @@
                 return;
             }
 
+            if (!anneeUniversitaireId) {
+                target.text('Année universitaire de cette inscription introuvable : places non disponibles.');
+                target.removeClass('text-success text-muted').addClass('text-danger');
+                return;
+            }
+
             target.text('Chargement des places disponibles...');
             target.removeClass('text-danger text-success').addClass('text-muted');
 
-            fetch(`/esbtp/classes/${classeId}/available-places`)
+            fetch(`/esbtp/classes/${encodeURIComponent(classeId)}/available-places?annee_universitaire_id=${encodeURIComponent(anneeUniversitaireId)}`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('error');
@@ -38,6 +47,10 @@
                     return response.json();
                 })
                 .then(data => {
+                    if (requestId !== placesRequestId) return;
+                    if (String(data.annee_universitaire_id ?? '') !== anneeUniversitaireId) {
+                        throw new Error('Année universitaire incohérente dans la réponse des places.');
+                    }
                     const available = data.available_places ?? 0;
                     const capacity = data.capacity ?? 0;
                     const isFull = Number(available) <= 0;
@@ -50,6 +63,7 @@
                     }
                 })
                 .catch(() => {
+                    if (requestId !== placesRequestId) return;
                     target.text('Impossible de récupérer les places disponibles.');
                     target.removeClass('text-success text-muted').addClass('text-danger');
                 });

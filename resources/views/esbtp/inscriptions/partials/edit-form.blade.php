@@ -50,7 +50,7 @@
             @endif
 
             <div id="{{ $formWrapperId }}" class="{{ $isEmbedded && $embeddedSuccessMessage ? 'd-none' : '' }}">
-            <form method="POST" action="{{ route('esbtp.inscriptions.update', $inscription->id) }}" id="{{ $formIdentifier }}" data-inscription-id="{{ $inscription->id }}" data-places-info-target="{{ $placesInfoId }}">
+            <form method="POST" action="{{ route('esbtp.inscriptions.update', $inscription->id) }}" id="{{ $formIdentifier }}" data-inscription-id="{{ $inscription->id }}" data-annee-universitaire-id="{{ $inscription->annee_universitaire_id }}" data-places-info-target="{{ $placesInfoId }}">
                 @csrf
                 @method('PUT')
                 <input type="hidden" name="embedded_mode" value="{{ $isEmbedded ? 1 : 0 }}">

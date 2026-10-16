@@ -921,87 +921,7 @@
             });
     }
 
-    // ========================================
-    // VÉRIFICATION PLACES DISPONIBLES (pour "autre filière")
-    // ========================================
-    window.checkAutrePlacesDisponibles = function(classeId) {
-        const placesInfo = document.getElementById('autreClassePlacesInfo');
-        if (!placesInfo) {
-            return;
-        }
-
-        // Si aucune classe sélectionnée (option vide), effacer l'info des places
-        if (!classeId) {
-            placesInfo.innerHTML = '';
-            return;
-        }
-
-        placesInfo.innerHTML = `
-            <div class="d-flex align-items-center text-muted small mt-2">
-                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
-                Vérification des places...
-            </div>
-        `;
-        if (typeof window.setReinscriptionButtonState === 'function') {
-            window.setReinscriptionButtonState(false, 'Vérification des places disponibles en cours...');
-        }
-
-        fetch(`/esbtp/classes/${classeId}/available-places`)
-            .then(response => response.json())
-            .then(data => {
-                const available = Number(data.available_places);
-                const capacity = data.capacity !== undefined ? Number(data.capacity) : null;
-
-                const capacityText = capacity !== null && !isNaN(capacity) ? ` / ${capacity}` : '';
-                let message = `Places disponibles: <strong>${Math.max(available, 0)}</strong>${capacityText}`;
-                let alertClass = 'alert-success';
-                let buttonMessage = '';
-
-                if (available <= 5) {
-                    alertClass = 'alert-warning';
-                    buttonMessage = available > 0
-                        ? `Il reste ${available} place(s).`
-                        : buttonMessage;
-                    if (available > 0) {
-                        message += `<br><small class="text-warning">Il ne reste que ${available} place(s) disponibles.</small>`;
-                    }
-                }
-
-                if (available <= 0) {
-                    alertClass = 'alert-danger';
-                    message = capacityText
-                        ? `<strong>Aucune place disponible !</strong> (0${capacityText})`
-                        : '<strong>Aucune place disponible !</strong>';
-                    message += '<br><small class="text-danger">Veuillez sélectionner une autre classe avant de poursuivre.</small>';
-                    if (typeof window.setReinscriptionButtonState === 'function') {
-                        window.setReinscriptionButtonState(false, 'Classe complète. Choisissez une autre classe pour finaliser la réinscription.');
-                    }
-                } else {
-                    // Places disponibles - activer le bouton
-                    if (buttonMessage) {
-                        if (typeof window.setReinscriptionButtonState === 'function') {
-                            window.setReinscriptionButtonState(true, buttonMessage);
-                        }
-                    } else {
-                        if (typeof window.setReinscriptionButtonState === 'function') {
-                            window.setReinscriptionButtonState(true);
-                        }
-                    }
-                }
-
-                placesInfo.innerHTML = `<div class="alert ${alertClass} p-2 mt-2">${message}</div>`;
-
-                // Charger les frais pour cette classe
-                loadAutreFrais(classeId);
-            })
-            .catch(error => {
-                console.error('Erreur vérification places:', error);
-                placesInfo.innerHTML = '<div class="alert alert-danger p-2 mt-2">Erreur lors de la récupération des places.</div>';
-                if (typeof window.setReinscriptionButtonState === 'function') {
-                    window.setReinscriptionButtonState(false, 'Erreur lors de la récupération des places. Réessayez ou sélectionnez une autre classe.');
-                }
-            });
-    }
+    @include('esbtp.reinscription.partials.places-availability-autre-js')
 
     // ========================================
     // CHARGEMENT FRAIS POUR "AUTRE FILIÈRE"
@@ -1251,7 +1171,9 @@ document.addEventListener('DOMContentLoaded', function() {
     updateClassesParDecision();
 
     // Rendre les fonctions globales pour le composant Alpine
+    let nouvellePlacesRequestId = 0;
     window.fetchAvailablePlaces = function fetchAvailablePlaces(classeId) {
+        const requestId = ++nouvellePlacesRequestId;
         if (!placesInfo) {
             return;
         }
@@ -1270,7 +1192,14 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         setReinscriptionButtonState(false, 'Vérification des places disponibles en cours...');
 
-        fetch(`/esbtp/classes/${classeId}/available-places`)
+        const placesUrl = urlPlacesPourAnnee(classeId);
+        if (!placesUrl) {
+            placesInfo.textContent = 'Sélectionnez une année universitaire pour consulter les places.';
+            setReinscriptionButtonState(false, 'Sélectionnez une année universitaire.');
+            return;
+        }
+
+        fetch(placesUrl)
             .then(function(response) {
                 if (!response.ok) {
                     throw new Error('HTTP ' + response.status);
@@ -1278,6 +1207,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 return response.json();
             })
             .then(function(data) {
+                if (requestId !== nouvellePlacesRequestId) return;
+                if (!reponsePlacesPourAnneeValide(data)) {
+                    throw new Error('Réponse des places pour une autre année universitaire.');
+                }
                 if (typeof data.available_places === 'undefined') {
                     placesInfo.innerHTML = '<div class="alert alert-danger p-2 mt-2">Réponse invalide du serveur.</div>';
                     setReinscriptionButtonState(false, 'Impossible de vérifier les places disponibles pour cette classe.');
@@ -1326,6 +1259,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 placesInfo.innerHTML = `<div class="alert ${alertClass} p-2 mt-2">${message}</div>`;
             })
             .catch(function(error) {
+                if (requestId !== nouvellePlacesRequestId) return;
                 debugError('Erreur de vérification des places:', error);
                 placesInfo.innerHTML = '<div class="alert alert-danger p-2 mt-2">Erreur lors de la récupération des places.</div>';
                 setReinscriptionButtonState(false, 'Erreur lors de la récupération des places. Réessayez ou sélectionnez une autre classe.');
@@ -1369,6 +1303,18 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     }
+
+    // Lorsque l'année de destination change, ne jamais garder le quota d'une autre année.
+    document.getElementById('annee_universitaire_id')?.addEventListener('change', function() {
+        const autreFiliere = document.getElementById('autre_filiere')?.checked;
+        if (autreFiliere) {
+            const classeId = window.autreClasseSelector?.selectedValue;
+            window.checkAutrePlacesDisponibles(classeId);
+        } else {
+            const classeId = window.nouvelleClasseSelector?.selectedValue;
+            window.fetchAvailablePlaces(classeId);
+        }
+    });
 
     // Exposer globalement pour être utilisée par loadAutreFrais()
     window.displayFrais = function displayFrais(fraisData) {
