@@ -18,19 +18,31 @@ final class StudentAccessInvitation
 {
     public function inviter(User $user, string $motif = 'activation'): bool
     {
-        if (! $this->assurerEmailPrincipal($user)) {
-            return false;
-        }
-
-        $token = Password::broker()->createToken($user);
+        $token = null;
 
         try {
+            if (! $this->assurerEmailPrincipal($user)) {
+                return false;
+            }
+
+            // createToken() supprime l'ancien jeton avant d'en insérer un :
+            // une table manquante doit rester une erreur de notification.
+            $token = Password::broker()->createToken($user);
             $this->envoyerAvecJeton($user, $token, $motif);
 
             return true;
         } catch (\Throwable $e) {
-            Password::broker()->deleteToken($user);
-            Log::warning('Invitation étudiant : livraison impossible', [
+            if ($token !== null) {
+                try {
+                    Password::broker()->deleteToken($user);
+                } catch (\Throwable $nettoyage) {
+                    Log::warning('Invitation étudiant : nettoyage du jeton impossible', [
+                        'user_id' => $user->id, 'exception' => $nettoyage::class,
+                    ]);
+                }
+            }
+
+            Log::warning('Invitation étudiant : génération ou livraison impossible', [
                 'user_id' => $user->id, 'exception' => $e::class,
             ]);
 
