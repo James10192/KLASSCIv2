@@ -131,6 +131,12 @@
                     </div>
                 </div>
                 <div class="sr-hero-actions">
+                    @can('students.view')
+                        <a href="{{ route('esbtp.etudiants.show', ['etudiant' => $etudiant->id, 'tab' => 'academique', 'inscription_id' => $inscription?->id]) }}"
+                           class="sr-hero-btn">
+                            <i class="fas fa-user-graduate" aria-hidden="true"></i> Fiche étudiant
+                        </a>
+                    @endcan
                     @if(isset($classe) && $classe && auth()->user()->can('admin.access'))
                         <a href="{{ route('esbtp.resultats.classe.edit', $classe->id) }}?annee_universitaire_id={{ $annee_id }}&semestre={{ isset($periode) && str_starts_with($periode, 'semestre') ? str_replace('semestre', '', $periode) : '' }}"
                            class="sr-hero-btn">
@@ -576,6 +582,13 @@
         // l'ancienne classe.
         document.querySelectorAll('.sr-auto-filter').forEach(function(el) {
             el.addEventListener('change', function() {
+                // Changer manuellement de classe/année quitte le contexte de
+                // l'inscription initiale. Sinon un lien profond historique
+                // imposerait cet ID à une autre année après le changement.
+                if (this.name === 'classe_id' || this.name === 'annee_universitaire_id') {
+                    var inscriptionInput = document.getElementById('sr-inscription-input');
+                    if (inscriptionInput) inscriptionInput.remove();
+                }
                 srSubmitFilter();
             });
         });
