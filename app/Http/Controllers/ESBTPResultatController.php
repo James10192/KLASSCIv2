@@ -1179,6 +1179,7 @@ class ESBTPResultatController extends Controller
 
         return view('esbtp.resultats.etudiant', compact(
             'etudiant',
+            'inscription',
             'classe',
             'classe_id',
             'parcoursSemestres',

@@ -1309,14 +1309,19 @@ function renderNotesGrid(students, sortedEvaluations) {
             : '';
         const studentDocumentUrl = @json(route('esbtp.etudiants.show', ['etudiant' => '__ETUDIANT__']))
             .replace('__ETUDIANT__', encodeURIComponent(student.id));
-        const btsDocumentUrl = @json(route('esbtp.bts.releves.preview', ['etudiant' => '__ETUDIANT__', 'annee' => '__ANNEE__']))
+        @php
+            $btsPreviewUrlTemplate = \Illuminate\Support\Facades\Route::has('esbtp.bts.releves.preview')
+                ? route('esbtp.bts.releves.preview', ['etudiant' => '__ETUDIANT__', 'annee' => '__ANNEE__'])
+                : null;
+        @endphp
+        const btsDocumentUrl = (@json($btsPreviewUrlTemplate) || '')
             .replace('__ETUDIANT__', encodeURIComponent(student.id))
             .replace('__ANNEE__', encodeURIComponent(nmAcademicYearId));
         const canViewStudent = @json(auth()->user()->can('students.view'));
         const canViewBulletin = @json(auth()->user()->can('bulletins.view'));
         const documentLinks = '<div class="nm-student-docs">'
             + (canViewStudent ? '<a href="'+nmEscapeHtml(studentDocumentUrl)+'" target="_blank" rel="noopener">Fiche · Documents ↗</a>' : '')
-            + (canViewStudent && canViewBulletin
+            + (canViewStudent && canViewBulletin && btsDocumentUrl
                 ? '<a href="'+nmEscapeHtml(btsDocumentUrl)+'" target="_blank" rel="noopener" title="Relevé interne BTS publié">Relevé BTS ↗</a>' : '')
             + '</div>';
         const row = $(`
