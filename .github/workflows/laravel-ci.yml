@@ -132,6 +132,10 @@ jobs:
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Views/AcademicFicheUxContractTest.php --stop-on-failure
 
+      - name: Test documents académiques BTS et LMD sur les fiches
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Views/AcademicDocumentsNavigationTest.php --stop-on-failure
+
       - name: Test menu de reçu au-dessus des cartes paiement
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Views/PaymentReceiptDropdownLayerTest.php --stop-on-failure

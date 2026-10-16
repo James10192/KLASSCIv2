@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-16 · #1608 · Documents académiques : relevé interne BTS individuel, émission/aperçu du relevé LMD depuis les fiches et navigation vers le PV collectif sur les classes LMD ; recette PDF/permissions/mobile sur presentation avant toute autre instance.
 - 2026-10-15 · #1607 · Journal de caisse : une validation ancienne n'affiche plus 00:00, et les validations nouvelles affichent l'heure enregistrée. À vérifier sur présentation avant déploiement.
 - 2026-10-15 · #1607 · Horodatage des validations : heure exacte à partir des nouvelles décisions, « heure non conservée » pour les historiques, même présentation sur reçus et listes ; migration et recette sur présentation impératives avant établissement.
 - 2026-10-15 · #1605 · Paramètres bulletins : trois sous-rubriques pertinentes sans duplication des champs ni changement de calcul. Tester les sauvegardes et les liens profonds sur présentation avant propagation.

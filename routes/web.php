@@ -3616,6 +3616,22 @@ Route::middleware([
         ->name('esbtp.lmd.releves.official-documents.stream');
 });
 
+// Relevé interne BTS : document individuel construit depuis les bulletins
+// déjà publiés. Distinct du relevé national DEXCO, sans émission officielle.
+Route::middleware([
+    'auth',
+    'paywall',
+    'permission:students.view',
+    'permission:bulletins.view',
+])->group(function () {
+    Route::get('/esbtp/bts/releves/{etudiant}/{annee}/apercu', [\App\Http\Controllers\ESBTP\BtsStudentTranscriptController::class, 'preview'])
+        ->middleware('throttle:30,1')
+        ->name('esbtp.bts.releves.preview');
+    Route::get('/esbtp/bts/releves/{etudiant}/{annee}/telecharger', [\App\Http\Controllers\ESBTP\BtsStudentTranscriptController::class, 'download'])
+        ->middleware('throttle:20,1')
+        ->name('esbtp.bts.releves.download');
+});
+
 Route::get('/verifier-document-officiel', [\App\Domain\OfficialDocuments\Http\OfficialDocumentController::class, 'showVerifyForm'])
     ->middleware('throttle:30,1')
     ->name('official-documents.verify.form');
