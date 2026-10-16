@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Control Center interne ADC :** console de lecture des traces de lenteur et d'echec, par route et periode, reservee aux super-administrateurs d'exploitation. Ne requiert ni VPS, ni Redis, ni daemon sur cPanel.
 - **Inscriptions et réinscriptions — disponibilité des classes par année :** lors de la modification d'une inscription, le nombre de places est maintenant celui de son année universitaire, y compris dans le formulaire intégré. En réinscription, les deux modes de sélection utilisent l'année de destination choisie et actualisent le quota sans rechargement. Aucune classe ni inscription n'est déplacée automatiquement.
 - **Inscriptions et comptes étudiants — invitation fiabilisée :** une inscription enregistrée reste réussie même si l'envoi du lien d'activation échoue ; le stockage des jetons de réinitialisation est rétabli par une migration compatible avec les établissements possédant déjà la table, sans modifier les comptes ni les mots de passe.
 - **Bulletins — régénération depuis une inscription :** action de recalcul BTS/LMD liée à la classe et à l'année réelles du dossier, avec contrôle des prérequis, des permissions et des bulletins déjà publiés ou signés.

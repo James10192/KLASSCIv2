@@ -3877,3 +3877,5 @@ Route::get('/convocation-rdv/{jeton}', [\App\Http\Controllers\API\Public\Convoca
 Route::post('/mobile/profil', [\App\Http\Controllers\PwaController::class, 'profil'])
     ->middleware(['auth', 'throttle:10,1'])
     ->name('mobile.profil');
+// Console d'exploitation ADC (lecture seule, hors parcours des ecoles).
+require __DIR__.'/exploitation-control-center.php';
