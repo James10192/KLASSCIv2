@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-16 · #1612 (correctif) · Fiche étudiant : ne plus afficher les actions de régénération si la route Laravel correspondante n'est pas disponible, pour éviter une erreur 500 pendant les mises à jour ; vérification du déploiement et du cache des routes toujours nécessaire.
 - 2026-10-16 · #1611 · Fiche étudiant et résultats BTS/LMD : consultation par inscription, classe, année et semestre, retour contextualisé et navigation AJAX. Vérifier parcours BTS tronc commun et LMD sur présentation avant propagation.
 - 2026-10-16 · #1610 · Modification d'inscription et réinscription : les places affichées pour chaque classe correspondent à l'année du dossier ou à l'année de destination choisie, sans confondre avec l'année courante. Vérifier deux promotions sur présentation, édition intégrée et changement d'année, avant toute propagation.
 - 2026-10-16 · #1609 · Inscription : un souci de génération de lien d'activation ne fait plus apparaître comme échoué un dossier enregistré ; restauration des liens de mot de passe oublié après migration. Contrôler les éventuels dossiers créés malgré l'ancien message d'erreur avant une nouvelle tentative.
