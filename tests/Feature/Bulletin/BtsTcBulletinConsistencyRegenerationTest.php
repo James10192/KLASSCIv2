@@ -3,6 +3,7 @@
 namespace Tests\Feature\Bulletin;
 
 use App\Models\ESBTPConfigMatiere;
+use App\Models\ESBTPBulletin;
 use App\Models\ESBTPMatiereCoefficient;
 use App\Models\Setting;
 use App\Services\ESBTP\BulletinConsistencyService;
@@ -54,6 +55,40 @@ class BtsTcBulletinConsistencyRegenerationTest extends TestCase
         self::assertSame(15.0, (float) $snapshot['official_effective_total']);
         self::assertSame(15.0, (float) $snapshot['current_recomputed_effective_total']);
         self::assertSame(0.0, (float) $snapshot['difference_value']);
+    }
+
+    public function test_un_bulletin_publie_ne_peut_pas_etre_regenere(): void
+    {
+        $this->monterLaClasse();
+        $etudiant = $this->etudiantInscrit();
+        $matiere = $this->matiereAvecType('general', 1);
+        $this->seedConfiguredBulletin($etudiant->id, $this->classe->id, $this->annee->id, 'semestre1', [$matiere->id], []);
+        $bulletin = ESBTPBulletin::where('etudiant_id', $etudiant->id)->firstOrFail();
+        $bulletin->update(['is_published' => true]);
+        $avant = $bulletin->fresh()->updated_at;
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('publié ou signé');
+
+        try {
+            app(BulletinConsistencyService::class)->regenerateOfficialBulletin($etudiant->id, $this->classe->id, $this->annee->id, 'semestre1');
+        } finally {
+            self::assertTrue((bool) $bulletin->fresh()->is_published);
+            self::assertTrue($avant->equalTo($bulletin->fresh()->updated_at));
+        }
+    }
+
+    public function test_un_bulletin_signe_ne_peut_pas_etre_regenere(): void
+    {
+        $this->monterLaClasse();
+        $etudiant = $this->etudiantInscrit();
+        $matiere = $this->matiereAvecType('general', 1);
+        $this->seedConfiguredBulletin($etudiant->id, $this->classe->id, $this->annee->id, 'semestre1', [$matiere->id], []);
+        ESBTPBulletin::where('etudiant_id', $etudiant->id)->update(['signature_directeur' => true]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('publié ou signé');
+        app(BulletinConsistencyService::class)->regenerateOfficialBulletin($etudiant->id, $this->classe->id, $this->annee->id, 'semestre1');
     }
 
     private function matiereAvecType(string $type, int $coefficient)

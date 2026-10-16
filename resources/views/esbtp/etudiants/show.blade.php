@@ -3766,19 +3766,22 @@
         };
     @endphp
 
-    {{-- Le lien de navigation vise l'inscription de l'année courante, y compris
-         sans notes. $acadRef demeure indépendant pour les KPI historiques. --}}
+    {{-- Navigation et régénération sur l'inscription de l'année courante,
+         sans conditionner l'action à la présence préalable de notes. --}}
     @php
         $acadInscriptionNavigation = $acadAnneeCourante
             ? $acadInscs->first(fn ($i) => $i->annee_universitaire_id === $acadAnneeCourante->id)
             : $acadInscs->first();
         $acadInscriptionNavigation ??= $acadInscs->first();
     @endphp
-    @if($acadInscriptionNavigation && $lienResultatsInscription($acadInscriptionNavigation))
+    @if($acadInscriptionNavigation)
         <div id="inscription-raccourci-{{ $acadInscriptionNavigation->id }}" style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
-            <a href="{{ $lienResultatsInscription($acadInscriptionNavigation) }}" class="insc-btn view">
-                <i class="fas fa-chart-bar" aria-hidden="true"></i> Voir les résultats — {{ $acadInscriptionNavigation->anneeUniversitaire?->name ?? 'Inscription' }}
-            </a>
+            @if($lienResultatsInscription($acadInscriptionNavigation))
+                <a href="{{ $lienResultatsInscription($acadInscriptionNavigation) }}" class="insc-btn view">
+                    <i class="fas fa-chart-bar" aria-hidden="true"></i> Voir les résultats — {{ $acadInscriptionNavigation->anneeUniversitaire?->name ?? 'Inscription' }}
+                </a>
+            @endif
+            @include('esbtp.etudiants.partials.bulletin-regeneration-actions', ['inscription' => $acadInscriptionNavigation])
         </div>
     @endif
 
@@ -4806,6 +4809,9 @@
         </button>
         <div class="collapse" id="{{ $autreArchKey }}">
             <div class="acad-arch-body">
+                <div style="margin-bottom:10px;">
+                    @include('esbtp.etudiants.partials.bulletin-regeneration-actions', ['inscription' => $autreInsc])
+                </div>
                 @if($lienResultatsInscription($autreInsc))
                     <div style="text-align:right;margin-bottom:8px;">
                         <a href="{{ $lienResultatsInscription($autreInsc) }}" class="insc-btn view"><i class="fas fa-chart-bar"></i> Voir les résultats</a>
@@ -6653,9 +6659,88 @@
     <x-photo-etudiant :etudiant="$etudiant" />
 @endcan
 
+<dialog id="insc-bulletin-dialog" aria-labelledby="insc-bulletin-title" style="border:0;border-radius:16px;padding:0;max-width:min(470px,92vw);width:100%;box-shadow:0 24px 70px rgba(15,23,42,.3);">
+    <form method="dialog" style="background:#fff;padding:25px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:13px;">
+            <span style="display:grid;place-items:center;width:44px;height:44px;background:#eff6ff;border-radius:13px;color:#0453cb;"><i class="fas fa-file-alt" aria-hidden="true"></i></span>
+            <div>
+                <h3 id="insc-bulletin-title" style="margin:0;font-size:1.15rem;font-weight:800;color:#0f172a;">Générer le bulletin</h3>
+                <div id="insc-bulletin-subtitle" style="font-size:.8rem;color:#64748b;"></div>
+            </div>
+        </div>
+        <p style="font-size:.86rem;color:#475569;line-height:1.5;">Les moyennes seront recalculées à partir des données académiques officielles. Les bulletins publiés ou signés restent protégés.</p>
+        <label for="insc-bulletin-reason" style="display:block;font-size:.79rem;font-weight:700;color:#334155;">Motif si vous êtes habilité à générer un dossier incomplet (facultatif)</label>
+        <textarea id="insc-bulletin-reason" rows="2" maxlength="1000" style="width:100%;border:1px solid #cbd5e1;border-radius:9px;padding:9px;margin-top:5px;"></textarea>
+        <p id="insc-bulletin-feedback" role="alert" aria-live="polite" style="font-size:.82rem;color:#b91c1c;min-height:1.3rem;margin:10px 0;"></p>
+        <div style="display:flex;justify-content:flex-end;gap:9px;">
+            <button type="submit" class="btn btn-outline-secondary">Annuler</button>
+            <button type="button" id="insc-bulletin-confirm" class="btn btn-primary" style="background:#0453cb;border-color:#0453cb;">Confirmer</button>
+        </div>
+    </form>
+</dialog>
+
 @endsection
 
 @push('scripts')
+<script>
+(function () {
+    const dialog = document.getElementById('insc-bulletin-dialog');
+    const confirm = document.getElementById('insc-bulletin-confirm');
+    if (!dialog || !confirm) return;
+    let selected = null;
+    document.addEventListener('click', function (event) {
+        const target = event.target.closest('[data-bulletin-regenerate]');
+        if (!target) return;
+        selected = target;
+        document.getElementById('insc-bulletin-title').textContent = 'Générer / régénérer le bulletin ' + target.dataset.bulletinLibelle;
+        document.getElementById('insc-bulletin-subtitle').textContent = target.dataset.bulletinAnnee;
+        document.getElementById('insc-bulletin-feedback').textContent = '';
+        document.getElementById('insc-bulletin-reason').value = '';
+        dialog.showModal();
+    });
+    confirm.addEventListener('click', async function () {
+        if (!selected || confirm.disabled) return;
+        confirm.disabled = true;
+        confirm.textContent = 'Traitement…';
+        const feedback = document.getElementById('insc-bulletin-feedback');
+        const formData = new FormData();
+        formData.append('periode', selected.dataset.bulletinPeriode);
+        formData.append('incomplete_reason', document.getElementById('insc-bulletin-reason').value);
+        try {
+            const response = await fetch(selected.dataset.bulletinUrl, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData,
+            });
+            const result = await response.json();
+            if (!response.ok || !result.ok) throw new Error(result.message || 'La régénération a été refusée.');
+            feedback.style.color = '#047857';
+            feedback.textContent = result.message;
+            const refresh = document.createElement('button');
+            refresh.type = 'button';
+            refresh.className = 'btn btn-sm btn-outline-primary';
+            refresh.style.margin = '8px 0 0';
+            refresh.textContent = 'Actualiser le bilan académique';
+            refresh.addEventListener('click', function () { window.location.reload(); });
+            feedback.append(document.createElement('br'), refresh);
+            if (result.bulletin_url) {
+                const link = document.createElement('a');
+                link.href = result.bulletin_url;
+                link.textContent = 'Voir le bulletin';
+                link.style.marginLeft = '8px';
+                feedback.append(link);
+            }
+        } catch (error) {
+            feedback.style.color = '#b91c1c';
+            feedback.textContent = error.message || 'Impossible de générer le bulletin.';
+        } finally {
+            confirm.disabled = false;
+            confirm.textContent = 'Confirmer';
+        }
+    });
+})();
+</script>
 <script src="{{ asset('js/frais/regenerer-modal.js') }}?v={{ @filemtime(public_path('js/frais/regenerer-modal.js')) ?: '1' }}"></script>
 <script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}"></script>
 <script src="{{ asset('js/student-inscription-repair.js') }}?v={{ @filemtime(public_path('js/student-inscription-repair.js')) ?: '1' }}"></script>

@@ -345,8 +345,12 @@ class BulletinService
         // Récupérer le bulletin pour obtenir les professeurs configurés
         $bulletin = ESBTPBulletin::where('etudiant_id', $etudiantId)
             ->where('classe_id', $classeId)
-            ->where('periode', $periode)
+            // Le bulletin peut porter l'alias historique « 1 »/« 2 » ; les
+            // notes et moyennes, elles, doivent rester lues en période
+            // canonique « semestre1 »/« semestre2 ».
+            ->whereIn('periode', $this->periodeAliases((string) $periode))
             ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->orderByDesc('updated_at')
             ->first();
 
         // VÉRIFICATION OBLIGATOIRE : S'assurer que la configuration existe
@@ -3005,6 +3009,13 @@ class BulletinService
 
         $effectif = $this->getValidatedClassStudentCount($cohortClasseId, $anneeUniversitaireId, $periode);
         foreach ($bulletins as $bulletin) {
+            // Un autre étudiant peut être régénéré après publication de ce
+            // bulletin. Le classement le prend toujours en compte mais ne
+            // doit jamais modifier son rang, son effectif ni son horodatage.
+            if ($bulletin->is_published || $bulletin->signature_responsable
+                || $bulletin->signature_directeur || $bulletin->signature_parent) {
+                continue;
+            }
             $average = $averages[(int) $bulletin->id] ?? null;
             $bulletin->effectif_classe = $effectif;
             $bulletin->rang = $average === null ? null : $this->rankAmongAverages($averages, $average);

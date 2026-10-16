@@ -111,6 +111,17 @@ class LMDBulletinService
     ): ESBTPLMDBulletin {
         return DB::transaction(function () use ($etudiantId, $classeId, $anneeUniversitaireId, $semestre, $skipRanksAndStats) {
 
+            $existant = ESBTPLMDBulletin::query()
+                ->where('etudiant_id', $etudiantId)
+                ->where('classe_id', $classeId)
+                ->where('annee_universitaire_id', $anneeUniversitaireId)
+                ->where('semestre', $semestre)
+                ->lockForUpdate()
+                ->first();
+            if ($existant && $existant->is_published) {
+                throw new \RuntimeException('Ce bulletin LMD est publié : régénération interdite.');
+            }
+
             $classe = ESBTPClasse::with(['parcours.mention.domaine', 'parcours.filiere', 'niveau'])->findOrFail($classeId);
 
             // 0. La composition du semestre, lue AVANT la moindre écriture.
@@ -838,6 +849,9 @@ class LMDBulletinService
                 $rang = $position;
                 $lastMoyenne = $moy;
             }
+            if ($bulletin->is_published) {
+                continue;
+            }
             $bulletin->update([
                 'rang' => $rang,
                 'effectif' => $effectif,
@@ -857,6 +871,11 @@ class LMDBulletinService
 
         if ($bulletinIds->isEmpty()) return;
 
+        // Les stats de promotion lisent toute la cohorte ; leur écriture ne
+        // doit jamais retoucher les snapshots d'un bulletin déjà publié.
+        $mutableBulletinIds = ESBTPLMDBulletin::whereIn('id', $bulletinIds)
+            ->where('is_published', false)->pluck('id');
+
         // Stats par UE
         $statsUE = ESBTPLMDResultatUE::whereIn('bulletin_id', $bulletinIds)
             ->whereNotNull('moyenne')
@@ -867,7 +886,7 @@ class LMDBulletinService
             ->keyBy('unite_enseignement_id');
 
         foreach ($statsUE as $ueId => $stat) {
-            ESBTPLMDResultatUE::whereIn('bulletin_id', $bulletinIds)
+            ESBTPLMDResultatUE::whereIn('bulletin_id', $mutableBulletinIds)
                 ->where('unite_enseignement_id', $ueId)
                 ->update([
                     'stat_min' => round($stat->min_moy, 2),
@@ -886,7 +905,7 @@ class LMDBulletinService
             ->keyBy('matiere_id');
 
         foreach ($statsECUE as $matiereId => $stat) {
-            ESBTPLMDResultatECUE::whereIn('bulletin_id', $bulletinIds)
+            ESBTPLMDResultatECUE::whereIn('bulletin_id', $mutableBulletinIds)
                 ->where('matiere_id', $matiereId)
                 ->update([
                     'stat_min' => round($stat->min_moy, 2),
@@ -915,6 +934,9 @@ class LMDBulletinService
                 if ($m !== $lastMoy) {
                     $rang = $position;
                     $lastMoy = $m;
+                }
+                if (! $mutableBulletinIds->contains($r->bulletin_id)) {
+                    continue;
                 }
                 $r->update(['rang' => $rang]);
             }
