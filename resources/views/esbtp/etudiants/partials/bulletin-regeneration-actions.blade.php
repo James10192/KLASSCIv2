@@ -1,3 +1,5 @@
+{{-- Un cache des routes obsolète ne doit jamais faire échouer la fiche étudiant. --}}
+@if(\Illuminate\Support\Facades\Route::has('esbtp.bulletins.regenerer-inscription'))
 @php
     $estLmd = $inscription->classe?->systeme_academique === 'LMD';
     $autorise = auth()->user()->can('students.view') && ($estLmd
@@ -39,4 +41,5 @@
             </button>
         @endforeach
     </div>
+@endif
 @endif
