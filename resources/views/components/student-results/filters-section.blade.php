@@ -4,6 +4,9 @@
     <form id="sr-filter-form" action="{{ route('esbtp.resultats.etudiant', $etudiant) }}" method="GET" class="filter-form">
         {{-- Hidden période field — updated by JS when tabs are clicked --}}
         <input type="hidden" name="periode" id="sr-periode-input" value="{{ $periode ?? 'annuel' }}">
+        @if(request()->filled('inscription_id'))
+            <input type="hidden" name="inscription_id" id="sr-inscription-input" value="{{ (int) request('inscription_id') }}">
+        @endif
 
         <div class="sr-filter-row">
             @php $classesList = $classes ?? collect(); $classesCount = is_countable($classesList) ? count($classesList) : 0; @endphp

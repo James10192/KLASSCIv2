@@ -19,7 +19,8 @@ class BtsAnnualAggregationService
         ?int $anneeId,
         ?int $requestedClasseId,
         string $periode,
-        bool $includeAllStatuses = true
+        bool $includeAllStatuses = true,
+        ?int $requestedInscriptionId = null
     ): array {
         $allYearInscriptions = $etudiant->inscriptions()
             ->with([
@@ -36,12 +37,20 @@ class BtsAnnualAggregationService
             ->get();
 
         $filtered = $includeAllStatuses ? $allYearInscriptions : $allYearInscriptions->where('status', 'active')->values();
-        $selected = $requestedClasseId
-            ? $filtered->firstWhere('classe_id', $requestedClasseId)
-            : $filtered->first();
-        $selected ??= $requestedClasseId
-            ? $allYearInscriptions->firstWhere('classe_id', $requestedClasseId)
-            : $allYearInscriptions->first();
+        // Un lien depuis une carte d'inscription doit rester sur CETTE inscription,
+        // y compris lorsqu'un étudiant possède deux dossiers dans la même année.
+        // L'identifiant est contrôlé après le filtrage par étudiant et année.
+        if ($requestedInscriptionId !== null) {
+            $selected = $filtered->firstWhere('id', $requestedInscriptionId);
+            abort_unless($selected, 404, 'Inscription absente de ce parcours académique.');
+        } else {
+            $selected = $requestedClasseId
+                ? $filtered->firstWhere('classe_id', $requestedClasseId)
+                : $filtered->first();
+            $selected ??= $requestedClasseId
+                ? $allYearInscriptions->firstWhere('classe_id', $requestedClasseId)
+                : $allYearInscriptions->first();
+        }
 
         // Demander une classe ou l'etudiant n'a aucune inscription rendait cette
         // classe telle quelle : sur la page de resultats, choisir « Semestre 2 »
@@ -77,7 +86,11 @@ class BtsAnnualAggregationService
         // On passe l'inscription deja elue : deux elections dans le meme systeme
         // finissaient par se contredire sur les dossiers reinscrits.
         $carte = $anneeId
-            ? $this->carteAnnuelle->resolveForInscription($selected, (int) $anneeId, $requestedClasseId)
+            ? $this->carteAnnuelle->resolveForInscription(
+                $selected,
+                (int) $anneeId,
+                $requestedInscriptionId === null ? $requestedClasseId : (int) $selected->classe_id
+            )
             : null;
 
         $classeDuSemestre = null;

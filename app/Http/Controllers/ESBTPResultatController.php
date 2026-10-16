@@ -648,15 +648,31 @@ class ESBTPResultatController extends Controller
         $annee_id = $annee_universitaire_id;
 
         $etudiant = ESBTPEtudiant::with('user')->findOrFail($id);
+        $requestedInscriptionId = $request->filled('inscription_id') ? (int) $request->input('inscription_id') : null;
         $aggregationContext = $this->btsAnnualAggregationService->resolveStudentContext(
             $etudiant,
             $annee_universitaire_id,
             $requestedClasseId,
             $periode,
-            $include_all_statuses
+            $include_all_statuses,
+            $requestedInscriptionId
         );
         $allYearInscriptions = $aggregationContext['all_inscriptions'] ?? collect();
         $inscription = $aggregationContext['inscription'];
+        if ($requestedInscriptionId && $inscription?->classe?->isLMD()) {
+            abort(422, 'Cette inscription est LMD : consultez les résultats LMD.');
+        }
+        if ($requestedInscriptionId && $requestedClasseId) {
+            $classesDuParcours = array_merge(
+                [(int) $inscription->classe_id],
+                array_values($aggregationContext['classe_par_semestre'] ?? [])
+            );
+            abort_unless(
+                in_array($requestedClasseId, array_map('intval', $classesDuParcours), true),
+                422,
+                'Cette classe ne correspond pas au parcours de cette inscription.'
+            );
+        }
         $inscriptionForAlert = $inscription ?? $allYearInscriptions->first();
         $classe_id = $aggregationContext['effective_classe_id'] ?? $requestedClasseId;
 
