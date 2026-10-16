@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-16 · #1609 · Inscription : un souci de génération de lien d'activation ne fait plus apparaître comme échoué un dossier enregistré ; restauration des liens de mot de passe oublié après migration. Contrôler les éventuels dossiers créés malgré l'ancien message d'erreur avant une nouvelle tentative.
 - 2026-10-16 · #1608 · Documents académiques : relevé interne BTS individuel, émission/aperçu du relevé LMD depuis les fiches et navigation vers le PV collectif sur les classes LMD ; recette PDF/permissions/mobile sur presentation avant toute autre instance.
 - 2026-10-15 · #1607 · Journal de caisse : une validation ancienne n'affiche plus 00:00, et les validations nouvelles affichent l'heure enregistrée. À vérifier sur présentation avant déploiement.
 - 2026-10-15 · #1607 · Horodatage des validations : heure exacte à partir des nouvelles décisions, « heure non conservée » pour les historiques, même présentation sur reçus et listes ; migration et recette sur présentation impératives avant établissement.

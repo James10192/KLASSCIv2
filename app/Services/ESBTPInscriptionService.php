@@ -225,8 +225,16 @@ class ESBTPInscriptionService
                 $compte = $etudiant->user;
                 if ($compte && $compte->email) {
                     DB::afterCommit(static function () use ($compte): void {
-                        app(\App\Services\Admissions\StudentAccessInvitation::class)
-                            ->inviter($compte, 'activation');
+                        try {
+                            app(\App\Services\Admissions\StudentAccessInvitation::class)
+                                ->inviter($compte, 'activation');
+                        } catch (\Throwable $e) {
+                            // L'inscription est déjà validée : l'envoi du lien
+                            // ne doit jamais provoquer un faux échec/rejeu.
+                            Log::warning('Inscription enregistrée, invitation d’accès indisponible', [
+                                'user_id' => $compte->id, 'exception' => $e::class,
+                            ]);
+                        }
                     });
                 }
             }

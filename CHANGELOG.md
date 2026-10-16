@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Inscriptions et comptes étudiants — invitation fiabilisée :** une inscription enregistrée reste réussie même si l'envoi du lien d'activation échoue ; le stockage des jetons de réinitialisation est rétabli par une migration compatible avec les établissements possédant déjà la table, sans modifier les comptes ni les mots de passe.
 - **Documents académiques contextuels :** relevé BTS interne depuis les bulletins publiés, relevé individuel LMD avec contrôle de préparation et émission AJAX, accès aux PV de jury LMD et aux documents depuis les fiches et la grille de notes. Les permissions et périmètres étudiant/année restent applicables ; aucun PV individuel fictif ni relevé national BTS généré.
 - **Paiements — validation horodatée sans minuit fictif :** nouveau champ distinct et nullable pour l'instant réel de validation/rejet. Le jour comptable historique reste en DATE, les reçus, listes, aperçus et exports affichent l'heure réelle ou « heure non conservée » pour les anciens paiements, sans inventer des heures rétroactives.
 - **Paramètres bulletins — navigation contextualisée :** les réglages sont répartis en Apparence, Calculs/Décisions et Fonctionnement, sans changer le formulaire unique, les valeurs ou les règles d'établissement. Les anciens liens profonds continuent d'ouvrir la rubrique correspondante.
