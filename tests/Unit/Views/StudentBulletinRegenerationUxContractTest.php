@@ -35,6 +35,11 @@ class StudentBulletinRegenerationUxContractTest extends TestCase
         $this->assertStringContainsString("lmd-sem-tab.active", $script);
         $this->assertStringContainsString("liveAverage.replaceWith(nextAverage)", $script);
         $this->assertStringContainsString("completed = true;", $script);
+        $this->assertStringContainsString('if (refreshed) finishAjaxSuccess(feedback.textContent);', $script);
+        $this->assertStringContainsString('finishAjaxSuccess(feedback.textContent);', $script);
+        $this->assertStringContainsString('if (dialog.open) dialog.close();', $script);
+        $this->assertStringContainsString("lastBulletinUrl = result.bulletin_url || null;", $script);
+        $this->assertStringContainsString("retry.textContent = 'Réessayer l’actualisation';", $script);
         $this->assertStringNotContainsString('window.location.reload()', $script);
     }
 }
