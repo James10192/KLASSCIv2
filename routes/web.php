@@ -272,6 +272,16 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     Route::middleware(['permission:reports.academic.annuel', 'throttle:60,1'])->get('/esbtp/rapports/annuel/pdf/preview', [\App\Http\Controllers\AcademicPilotageReportController::class, 'annuelPdfPreview'])
         ->name('esbtp.rapports.annuel.pdf-preview');
 
+    // Effectifs par classe : droits de consultation distincts du droit d'export.
+    Route::middleware(['permission:reports.view'])->get('/esbtp/rapports/effectifs', [\App\Http\Controllers\ClasseEffectifsReportController::class, 'index'])
+        ->name('esbtp.rapports.effectifs.index');
+    Route::middleware(['permission:reports.view', 'throttle:60,1'])->get('/esbtp/rapports/effectifs/data', [\App\Http\Controllers\ClasseEffectifsReportController::class, 'data'])
+        ->name('esbtp.rapports.effectifs.data');
+    Route::middleware(['permission:reports.view', 'permission:reports.generate', 'throttle:30,1'])->get('/esbtp/rapports/effectifs/pdf/preview', [\App\Http\Controllers\ClasseEffectifsReportController::class, 'preview'])
+        ->name('esbtp.rapports.effectifs.pdf-preview');
+    Route::middleware(['permission:reports.view', 'permission:reports.generate', 'throttle:10,1'])->get('/esbtp/rapports/effectifs/pdf', [\App\Http\Controllers\ClasseEffectifsReportController::class, 'download'])
+        ->name('esbtp.rapports.effectifs.pdf');
+
     // Lot 9 â€” Dashboard widget-based (universel, gated par permissions)
     // Premier consommateur : rÃ´les custom (Lot 8). Accessible Ã  tous via /dashboard/widgets.
     Route::prefix('dashboard/widgets')->name('dashboard.widgets.')->group(function () {

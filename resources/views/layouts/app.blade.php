@@ -1701,6 +1701,15 @@
                     @endcan
 
                     <!-- Grades & Reports Section -->
+                    @can('reports.view')
+                        <div class="menu-category">Rapports d'effectifs</div>
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.rapports.effectifs.index') }}" class="menu-link {{ Request::routeIs('esbtp.rapports.effectifs.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-users-rectangle"></i></div>
+                                <div class="menu-text">Effectifs par classe</div>
+                            </a>
+                        </div>
+                    @endcan
                     @can('module.notes_evaluations.access')
                     @can('notes.view')
                         @canany(['reports.academic.rentree', 'reports.academic.trimestre', 'reports.academic.annuel'])

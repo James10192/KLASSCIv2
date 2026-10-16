@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Rapport des effectifs par classe :** nouveau pilotage par année universitaire, seuil minimal (15 par défaut), nombre de classes ou toutes, tri, filière/mention et niveau. Totaux calculés sur les inscriptions actives validées de l'année, élèves dédoublonnés ; filtres et pagination AJAX sans rechargement, PDF A4 aux couleurs de l'établissement, accès contrôlé par permissions.
 - **Fiche étudiant — fermeture après recalcul AJAX :** après une régénération réussie et le rafraîchissement du bilan, la fenêtre se ferme sans recharger la page ; une notification confirme le résultat et conserve le lien vers le bulletin. Si la lecture AJAX échoue, la fenêtre reste ouverte pour réessayer sans relancer le calcul.
 - **Fiche étudiant — bulletin sans rechargement :** la modale de génération est recentrée sur desktop et mobile, et la réussite d'un recalcul met à jour les moyennes, rangs et bilans (y compris les archives) via une lecture AJAX de la fiche ; l'onglet, les sections ouvertes et le module de notes sont conservés, sans recharge de page.
 - **Fiches et résultats étudiants — correctif erreurs 500 :** restitution de l'inscription sélectionnée à la vue des résultats BTS ; garde de disponibilité pour les relevés BTS dans les fiches et les notes (et LMD dans la fiche), afin qu'une route absente du cache ne rende plus la page inaccessible. Vérifier la synchronisation et le cache Laravel sur chaque école.
