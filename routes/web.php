@@ -2869,6 +2869,9 @@ Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|iden
     Route::post('/esbtp-special/bulletins-regenerate', [ESBTPBulletinController::class, 'regenerateOfficialBulletin'])
         ->middleware('permission:bulletins.edit')
         ->name('esbtp.bulletins.regenerate');
+    Route::post('/esbtp-special/bulletins/inscriptions/{inscription}/regenerer', \App\Http\Controllers\ESBTPInscriptionBulletinRegenerationController::class)
+        ->middleware(['permission:students.view', 'paywall'])
+        ->name('esbtp.bulletins.regenerer-inscription');
     Route::get('/esbtp/bulletins/preview', [ESBTPBulletinController::class, 'previewBulletin'])->name('esbtp.bulletins.preview');
     Route::get('/esbtp/bulletins/generer-classe/preflight', [ESBTPBulletinController::class, 'preflightClasseBulletins'])->name('esbtp.bulletins.generer-classe.preflight');
     // bulletins.delete et non bulletins.generate : detruire des moyennes
