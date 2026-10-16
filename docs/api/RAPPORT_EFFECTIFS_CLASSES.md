@@ -15,7 +15,7 @@ Tous les endpoints sont derrière l'authentification existante de KLASSCI, sur l
 | --- | --- | --- | --- |
 | `annee_universitaire_id` | Identifiant d'année existante | Année `is_current` | Filtrer les **inscriptions** de cette année (jamais la colonne année des classes) |
 | `min_inscrits` | Entier `0..10000` | `15` | Nombre minimal d'élèves distincts dans une classe |
-| `nombre_classes` | `10`, `20`, `50`, `100`, `200`, `500`, `all` | `20` | Limiter les classes **après** tri et seuil |
+| `nombre_classes` | Entier `1..500` ou `all` | `20` | Limiter les classes **après** tri et seuil ; l'interface propose les valeurs courantes |
 | `sort` | `effectif_desc`, `nom_asc` | `effectif_desc` | Tri décroissant par effectif ou alphabétique (puis ID) |
 | `filiere_id` | ID existant (optionnel) | Aucun | Filière ou mention de la classe (selon cursus) |
 | `niveau_id` | ID existant (optionnel) | Aucun | Niveau de la classe |

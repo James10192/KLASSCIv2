@@ -3,7 +3,6 @@
 namespace Tests\Feature\Reports;
 
 use App\Domain\Exports\Reports\ClasseEffectifsReport;
-use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
@@ -12,6 +11,7 @@ use App\Models\User;
 use App\Services\Reports\ClasseEffectifsReportService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -150,6 +150,11 @@ class ClasseEffectifsReportTest extends TestCase
         $this->assertSame('Promotion 01', $rapport['rows']->first()->name);
         $this->assertSame('Promotion 10', $rapport['rows']->last()->name);
 
+        $un = $this->build(['min_inscrits' => 1, 'nombre_classes' => '1']);
+        $this->assertSame(11, $un['eligible_count']);
+        $this->assertSame(1, $un['retained_count']);
+        $this->assertSame(1, $un['unique_students']);
+
         $first = $classes->first();
         $filtered = $this->build(['min_inscrits' => 1, 'filiere_id' => $first->filiere_id, 'niveau_id' => $first->niveau_etude_id]);
         $this->assertSame(1, $filtered['retained_count']);
@@ -224,8 +229,12 @@ class ClasseEffectifsReportTest extends TestCase
     {
         $classe = ESBTPClasse::factory()->create(['name' => 'Économie générale']);
         $this->inscrire($classe, $this->annee);
-        SettingsHelper::set('school_name', 'Université Test Côte d’Ivoire');
-        SettingsHelper::set('school_logo', 'logos/fichier-inexistant-rapport.png');
+        DB::table('settings')->updateOrInsert(['key' => 'school_name'], [
+            'value' => 'Université Test Côte d’Ivoire', 'type' => 'string', 'is_active' => true,
+        ]);
+        DB::table('settings')->updateOrInsert(['key' => 'school_logo'], [
+            'value' => 'logos/fichier-inexistant-rapport.png', 'type' => 'string', 'is_active' => true,
+        ]);
         Cache::flush();
 
         $this->actingAs($this->lecteur(true));

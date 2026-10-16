@@ -36,7 +36,7 @@
             </div>
             <div class="eff-field">
                 <label for="eff-nombre">Nombre de classes</label>
-                <x-au-select name="nombre_classes" id="eff-nombre" :value="$filters['nombre_classes']" :options="['10' => '10 premières', '20' => '20 premières', '50' => '50 premières', '100' => '100 premières', '200' => '200 premières', '500' => '500 premières', 'all' => 'Toutes les classes']" placeholder="Nombre de classes" :placeholder-is-first-option="false" label="Nombre de classes" />
+                <x-au-select name="nombre_classes" id="eff-nombre" :value="$filters['nombre_classes']" :options="['1' => '1 classe', '5' => '5 premières', '10' => '10 premières', '15' => '15 premières', '20' => '20 premières', '25' => '25 premières', '50' => '50 premières', '100' => '100 premières', '200' => '200 premières', '500' => '500 premières', 'all' => 'Toutes les classes']" placeholder="Nombre de classes" :placeholder-is-first-option="false" label="Nombre de classes" />
             </div>
             <div class="eff-field">
                 <label for="eff-sort">Trier par</label>

@@ -30,7 +30,15 @@ class ClasseEffectifsFilterRequest extends FormRequest
         return [
             'annee_universitaire_id' => ['nullable', 'integer', Rule::exists('esbtp_annee_universitaires', 'id')->whereNull('deleted_at')],
             'min_inscrits' => ['required', 'integer', 'between:0,10000'],
-            'nombre_classes' => ['required', Rule::in(['10', '20', '50', '100', '200', '500', 'all'])],
+            'nombre_classes' => ['required', function (string $attribute, mixed $value, \Closure $fail): void {
+                if ($value === 'all') {
+                    return;
+                }
+                $number = filter_var($value, FILTER_VALIDATE_INT);
+                if ($number === false || $number < 1 || $number > 500) {
+                    $fail('Le nombre de classes doit être compris entre 1 et 500, ou « Toutes les classes ».');
+                }
+            }],
             'sort' => ['required', Rule::in(['effectif_desc', 'nom_asc'])],
             'filiere_id' => ['nullable', 'integer', Rule::exists('esbtp_filieres', 'id')->whereNull('deleted_at')],
             'niveau_id' => ['nullable', 'integer', Rule::exists('esbtp_niveau_etudes', 'id')->whereNull('deleted_at')],
