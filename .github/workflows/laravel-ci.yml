@@ -114,6 +114,10 @@ jobs:
       # noms irresolus anterieurs, chacun demandant de decider si le modele doit
       # naitre ou la relation mourir. Les traiter est un chantier ; les laisser
       # bloquer chaque PR en serait un autre.
+      - name: Test disponibilités des classes selon l'année des inscriptions
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/InscriptionEditFormScriptsTest.php --stop-on-failure
+
       - name: Test auth étudiant-parent (routes et compatibilité)
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Feature/Auth/SharedStudentAccountRoutesTest.php --stop-on-failure
