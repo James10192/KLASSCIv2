@@ -484,6 +484,9 @@
                     </div>
                 </div>
                 <div class="cm-hero-actions" style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
+                    <a href="{{ route('esbtp.bulletins.configuration-groupe', ['classe_id' => $_classeId, 'annee_universitaire_id' => $_anneeId, 'periode' => $_periode === 'annuel' ? 'semestre1' : $_periode]) }}" class="cm-btn cm-btn--glass">
+                        <i class="fas fa-layer-group"></i><span>Configuration par groupe</span>
+                    </a>
                     {{-- Switch S1/S2/Annuel dans le hero (AJAX no-reload, rule ajax-no-reload-premium) --}}
                     <div class="cm-period-switch" :class="{ loading: loadingSwitch }">
                         <button type="button" @click="switchPeriode('semestre1')" :class="{ active: currentPeriode === 'semestre1' }" :disabled="loadingSwitch">

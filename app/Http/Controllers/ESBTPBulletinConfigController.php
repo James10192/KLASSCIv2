@@ -175,7 +175,7 @@ class ESBTPBulletinConfigController extends Controller
         }
 
         // Récupérer les configurations existantes
-        $configsMatieres = ESBTPConfigMatiere::withTrashed()->where([
+        $configsMatieres = ESBTPConfigMatiere::query()->where([
             'classe_id' => $classe_id,
             'periode' => $periode,
             'annee_universitaire_id' => $annee_universitaire_id,
@@ -191,9 +191,7 @@ class ESBTPBulletinConfigController extends Controller
 
             // Si une configuration existe pour cette matière
             if ($config && isset($config->config)) {
-                $configData = is_array($config->config)
-                    ? $config->config
-                    : (json_decode((string) $config->config, true) ?: []);
+                $configData = $this->configPayload($config->config);
                 $typeFormation = $configData['type'] ?? $configData['type_formation'] ?? null;
             } else {
                 $typeCanonique = $this->bulletinService->resolveMatiereTypeFormation(
@@ -296,7 +294,7 @@ class ESBTPBulletinConfigController extends Controller
 
         $byMatiere = [];
         foreach ($configs as $c) {
-            $cfg = is_string($c->config) ? (json_decode($c->config, true) ?: []) : ($c->config ?? []);
+            $cfg = $this->configPayload($c->config);
             $type = $cfg['type'] ?? null;
             if (in_array($type, ['general', 'technique'], true)) {
                 $byMatiere[$c->matiere_id] = $type;
@@ -384,9 +382,10 @@ class ESBTPBulletinConfigController extends Controller
             ->where('classe_id', $validated['classe_id'])
             ->where('annee_universitaire_id', $validated['annee_universitaire_id'])
             ->where('periode', $validated['source_periode'])
-            ->get();
+            ->get()
+            ->filter(fn ($src) => in_array($this->configPayload($src->config)['type'] ?? null, ['general', 'technique'], true));
 
-        $targets = ESBTPConfigMatiere::where('classe_id', $validated['classe_id'])
+        $targets = ESBTPConfigMatiere::withTrashed()->where('classe_id', $validated['classe_id'])
             ->where('annee_universitaire_id', $validated['annee_universitaire_id'])
             ->where('periode', $validated['target_periode'])
             ->get()
@@ -395,16 +394,18 @@ class ESBTPBulletinConfigController extends Controller
         $preview = ['create' => [], 'update' => [], 'skip' => []];
         foreach ($sources as $src) {
             $existing = $targets->get($src->matiere_id);
-            $srcType = (json_decode($src->config, true)['type'] ?? null) ?: 'general';
+            $sourceConfig = $this->configPayload($src->config);
+            $targetConfig = $this->configPayload($existing?->config);
+            $srcType = $sourceConfig['type'];
             $row = [
                 'matiere_id' => $src->matiere_id,
                 'matiere_name' => $src->matiere->name ?? '#'.$src->matiere_id,
                 'source_type' => $srcType,
-                'target_existing_type' => $existing ? (json_decode($existing->config, true)['type'] ?? null) : null,
+                'target_existing_type' => $targetConfig['type'] ?? null,
             ];
             if (!$existing) {
                 $preview['create'][] = $row;
-            } elseif ($validated['mode'] === 'override') {
+            } elseif ($validated['mode'] === 'override' || ! in_array($targetConfig['type'] ?? null, ['general', 'technique'], true)) {
                 $preview['update'][] = $row;
             } else {
                 $preview['skip'][] = $row + ['reason' => 'Cible déjà configurée (mode merge)'];
@@ -429,20 +430,27 @@ class ESBTPBulletinConfigController extends Controller
         DB::transaction(function () use ($sources, $targets, $validated, &$created, &$updated, &$skipped) {
             foreach ($sources as $src) {
                 $existing = $targets->get($src->matiere_id);
-                if ($existing && $validated['mode'] === 'merge') {
+                $configCible = $this->configPayload($existing?->config);
+                if ($existing && $validated['mode'] === 'merge' && in_array($configCible['type'] ?? null, ['general', 'technique'], true)) {
                     $skipped++;
                     continue;
                 }
-                ESBTPConfigMatiere::updateOrCreate([
+                $configCible['type'] = $this->configPayload($src->config)['type'];
+                $enregistrement = ESBTPConfigMatiere::withTrashed()->updateOrCreate([
                     'matiere_id' => $src->matiere_id,
                     'classe_id' => $validated['classe_id'],
                     'periode' => $validated['target_periode'],
                     'annee_universitaire_id' => $validated['annee_universitaire_id'],
                 ], [
-                    'config' => $src->config,
+                    // « Copier le type » ne doit pas écraser un coefficient
+                    // S2 local existant avec celui de S1.
+                    'config' => $configCible,
                     'updated_by' => Auth::id(),
                     'created_by' => Auth::id(),
                 ]);
+                if ($enregistrement->trashed()) {
+                    $enregistrement->restore();
+                }
                 if ($existing) $updated++; else $created++;
             }
         });
@@ -492,50 +500,57 @@ class ESBTPBulletinConfigController extends Controller
             $periodes = ($periode === 'annuel') ? ['semestre1', 'semestre2'] : [$periode];
 
             foreach ($periodes as $p) {
-                // Supprimer les configurations existantes qui ne sont plus dans la liste envoyée
+                // Une ligne peut aussi porter un coefficient local : retirer le
+                // classement ne doit jamais supprimer les autres réglages.
                 $existingConfigs = ESBTPConfigMatiere::withTrashed()
                     ->where([
                         'classe_id' => $classe_id,
                         'periode' => $p,
                         'annee_universitaire_id' => $annee_universitaire_id,
                     ])
-                    ->pluck('matiere_id')
-                    ->toArray();
+                    ->get();
 
                 $removedMatieres = array_diff(
-                    $existingConfigs,
+                    $existingConfigs->pluck('matiere_id')->all(),
                     array_keys(array_filter($matiere_types, function ($type) {
                         return $type !== 'none';
                     }))
                 );
 
                 if (! empty($removedMatieres)) {
-                    ESBTPConfigMatiere::withTrashed()
-                        ->where([
-                            'classe_id' => $classe_id,
-                            'periode' => $p,
-                            'annee_universitaire_id' => $annee_universitaire_id,
-                        ])
-                        ->whereIn('matiere_id', $removedMatieres)
-                        ->forceDelete();
+                    foreach ($existingConfigs->whereIn('matiere_id', $removedMatieres) as $existant) {
+                        $configuration = $this->configPayload($existant->config);
+                        unset($configuration['type'], $configuration['type_formation']);
+                        if ($configuration === []) {
+                            $existant->forceDelete();
+                        } else {
+                            $existant->update(['config' => $configuration, 'updated_by' => Auth::id()]);
+                        }
+                    }
                 }
 
                 foreach ($matiere_types as $matiere_id => $type) {
                     if ($type === 'general' || $type === 'technique') {
-                        ESBTPConfigMatiere::withTrashed()->updateOrCreate(
+                        $cleConfig = [
+                            'matiere_id' => $matiere_id,
+                            'classe_id' => $classe_id,
+                            'periode' => $p,
+                            'annee_universitaire_id' => $annee_universitaire_id,
+                        ];
+                        $existant = ESBTPConfigMatiere::withTrashed()->where($cleConfig)->first();
+                        $configuration = $this->configPayload($existant?->config);
+                        $configuration['type'] = $type;
+                        $enregistrement = ESBTPConfigMatiere::withTrashed()->updateOrCreate(
+                            $cleConfig,
                             [
-                                'matiere_id' => $matiere_id,
-                                'classe_id' => $classe_id,
-                                'periode' => $p,
-                                'annee_universitaire_id' => $annee_universitaire_id,
-                            ],
-                            [
-                                'config' => json_encode(['type' => $type]),
+                                'config' => $configuration,
                                 'created_by' => Auth::id(),
                                 'updated_by' => Auth::id(),
-                                'deleted_at' => null,
                             ]
                         );
+                        if ($enregistrement->trashed()) {
+                            $enregistrement->restore();
+                        }
                     }
                 }
             }
@@ -760,7 +775,7 @@ class ESBTPBulletinConfigController extends Controller
         foreach ($configsMatieres as $config) {
             if ($config->matiere) {
                 // Récupérer le type depuis le config en décodant le JSON et en cherchant la clé 'type'
-                $config_data = json_decode($config->config, true) ?? [];
+                $config_data = $this->configPayload($config->config);
                 $typeFormation = $config_data['type'] ?? null;
 
                 // Journaliser pour le débogage
@@ -1506,5 +1521,15 @@ class ESBTPBulletinConfigController extends Controller
             'source_periode_label' => $sourcePeriode === 'semestre1' ? 'Semestre 1' : 'Semestre 2',
             'count' => count($sourceProfesseurs),
         ]);
+    }
+
+    /** Les configurations anciennes peuvent être encodées deux fois. */
+    private function configPayload(mixed $config): array
+    {
+        for ($n = 0; $n < 3 && is_string($config); $n++) {
+            $config = json_decode($config, true);
+        }
+
+        return is_array($config) ? $config : [];
     }
 }
