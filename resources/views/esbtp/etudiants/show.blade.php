@@ -3784,8 +3784,6 @@
             @include('esbtp.etudiants.partials.bulletin-regeneration-actions', ['inscription' => $acadInscriptionNavigation])
         </div>
     @endif
-        </div>
-    @endif
 
     {{-- ══ BLOC TPE — Travail Personnel Etudiant attendu (lecture seule UEMOA) ══ --}}
     @if(($isLMD ?? false) && ($tpeAttendu ?? 0) > 0)
