@@ -6659,8 +6659,33 @@
     <x-photo-etudiant :etudiant="$etudiant" />
 @endcan
 
-<dialog id="insc-bulletin-dialog" aria-labelledby="insc-bulletin-title" style="border:0;border-radius:16px;padding:0;max-width:min(470px,92vw);width:100%;box-shadow:0 24px 70px rgba(15,23,42,.3);">
-    <form method="dialog" style="background:#fff;padding:25px;">
+<style>
+/* Même centrage accessible que les autres dialogues académiques, y compris sur mobile. */
+#insc-bulletin-dialog {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    box-sizing: border-box;
+    border: 0;
+    border-radius: 16px;
+    padding: 0;
+    width: min(470px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    color: #0f172a;
+    background: #fff;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, .3);
+}
+#insc-bulletin-dialog::backdrop {
+    background: rgba(15, 23, 42, .48);
+    backdrop-filter: blur(2px);
+}
+#insc-bulletin-dialog form { padding: clamp(16px, 3vw, 25px); }
+</style>
+<dialog id="insc-bulletin-dialog" aria-labelledby="insc-bulletin-title">
+    <form method="dialog" style="background:#fff;">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:13px;">
             <span style="display:grid;place-items:center;width:44px;height:44px;background:#eff6ff;border-radius:13px;color:#0453cb;"><i class="fas fa-file-alt" aria-hidden="true"></i></span>
             <div>
@@ -6686,57 +6711,152 @@
 (function () {
     const dialog = document.getElementById('insc-bulletin-dialog');
     const confirm = document.getElementById('insc-bulletin-confirm');
-    if (!dialog || !confirm) return;
+    const feedback = document.getElementById('insc-bulletin-feedback');
+    if (!dialog || !confirm || !feedback) return;
     let selected = null;
+    let completed = false;
+
+    // Le serveur reste la source de vérité des moyennes, rangs, mentions et PDF.
+    // On récupère la fiche fraîche, sans rechargement ni deuxième calcul client.
+    async function refreshAcademicBilan() {
+        const response = await fetch(window.location.href, {
+            method: 'GET',
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: { 'Accept': 'text/html', 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        if (!response.ok || response.redirected || !response.headers.get('content-type')?.includes('text/html')) {
+            throw new Error('Le bilan ne peut pas être actualisé automatiquement. Réessayez.');
+        }
+        const html = await response.text();
+        const parsed = new DOMParser().parseFromString(html, 'text/html');
+        const nextAcademic = parsed.getElementById('tab-academique');
+        const liveAcademic = document.getElementById('tab-academique');
+        const nextAverage = parsed.querySelector('#tab-overview .kpi-grid .kpi-card:first-child');
+        const liveAverage = document.querySelector('#tab-overview .kpi-grid .kpi-card:first-child');
+        if (!nextAcademic || !liveAcademic || !nextAverage || !liveAverage) {
+            throw new Error('Réponse de bilan incomplète : les valeurs affichées ont été conservées.');
+        }
+
+        // Les notes sont chargées par un module AJAX lié à son noeud DOM :
+        // le déplacer plutôt que le recréer pour conserver ses handlers et sa saisie.
+        const notesActuelles = liveAcademic.querySelector('.fng-disclosure');
+        const notesNouvelles = nextAcademic.querySelector('.fng-disclosure');
+        if (notesActuelles && notesNouvelles) notesNouvelles.replaceWith(notesActuelles);
+
+        const openedCollapses = Array.from(liveAcademic.querySelectorAll('.collapse.show[id]'))
+            .map(element => element.id);
+        const selectedSemestre = liveAcademic.querySelector('.lmd-sem-tab.active')?.dataset.sem || null;
+        const oldStrip = document.querySelector('.hero-kpi-strip');
+        const newStrip = parsed.querySelector('.hero-kpi-strip');
+        const scrollPosition = { x: window.scrollX, y: window.scrollY };
+
+        // Le HTML est recalculé pour l'étudiant sur TOUTES ses inscriptions.
+        // Une archive 2025-2026 ne remplace donc jamais la moyenne 2026-2027.
+        liveAcademic.replaceChildren(...Array.from(nextAcademic.childNodes));
+        liveAverage.replaceWith(nextAverage);
+        if (oldStrip && newStrip) oldStrip.replaceWith(newStrip);
+
+        openedCollapses.forEach(id => {
+            const collapse = Array.from(liveAcademic.querySelectorAll('.collapse[id]'))
+                .find(element => element.id === id);
+            if (!collapse) return;
+            collapse.classList.add('show');
+            const toggle = Array.from(liveAcademic.querySelectorAll('[data-bs-target]'))
+                .find(element => element.getAttribute('data-bs-target') === '#' + id);
+            if (toggle) toggle.setAttribute('aria-expanded', 'true');
+        });
+        if (selectedSemestre && typeof switchLmdSem === 'function') {
+            switchLmdSem(selectedSemestre);
+        }
+        window.scrollTo(scrollPosition.x, scrollPosition.y);
+    }
+
+    function proposeAjaxRetry() {
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'btn btn-sm btn-outline-primary';
+        retry.style.margin = '8px 0 0';
+        retry.textContent = 'Réessayer l’actualisation';
+        retry.addEventListener('click', async function () {
+            retry.disabled = true;
+            try {
+                await refreshAcademicBilan();
+                feedback.style.color = '#047857';
+                feedback.textContent = 'Bilan académique et moyennes actualisés sans rechargement.';
+            } catch (error) {
+                feedback.style.color = '#b45309';
+                feedback.textContent = error.message || 'Actualisation indisponible.';
+                proposeAjaxRetry();
+            }
+        });
+        feedback.append(document.createElement('br'), retry);
+    }
+
     document.addEventListener('click', function (event) {
         const target = event.target.closest('[data-bulletin-regenerate]');
         if (!target) return;
         selected = target;
+        completed = false;
+        confirm.disabled = false;
+        confirm.textContent = 'Confirmer';
+        feedback.style.color = '#b91c1c';
         document.getElementById('insc-bulletin-title').textContent = 'Générer / régénérer le bulletin ' + target.dataset.bulletinLibelle;
         document.getElementById('insc-bulletin-subtitle').textContent = target.dataset.bulletinAnnee;
-        document.getElementById('insc-bulletin-feedback').textContent = '';
+        feedback.textContent = '';
         document.getElementById('insc-bulletin-reason').value = '';
         dialog.showModal();
     });
+
     confirm.addEventListener('click', async function () {
-        if (!selected || confirm.disabled) return;
+        if (!selected || completed || confirm.disabled) return;
+        const target = selected;
         confirm.disabled = true;
         confirm.textContent = 'Traitement…';
-        const feedback = document.getElementById('insc-bulletin-feedback');
         const formData = new FormData();
-        formData.append('periode', selected.dataset.bulletinPeriode);
+        formData.append('periode', target.dataset.bulletinPeriode);
         formData.append('incomplete_reason', document.getElementById('insc-bulletin-reason').value);
         try {
-            const response = await fetch(selected.dataset.bulletinUrl, {
+            const response = await fetch(target.dataset.bulletinUrl, {
                 method: 'POST',
-                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
                 body: formData,
             });
             const result = await response.json();
             if (!response.ok || !result.ok) throw new Error(result.message || 'La régénération a été refusée.');
-            feedback.style.color = '#047857';
-            feedback.textContent = result.message;
-            const refresh = document.createElement('button');
-            refresh.type = 'button';
-            refresh.className = 'btn btn-sm btn-outline-primary';
-            refresh.style.margin = '8px 0 0';
-            refresh.textContent = 'Actualiser le bilan académique';
-            refresh.addEventListener('click', function () { window.location.reload(); });
-            feedback.append(document.createElement('br'), refresh);
+            completed = true;
+            selected = null;
+            try {
+                await refreshAcademicBilan();
+                feedback.style.color = '#047857';
+                feedback.textContent = (result.message || 'Bulletin recalculé.') + ' Le bilan et les moyennes sont actualisés.';
+            } catch (refreshError) {
+                // Ne jamais refaire le POST : seule la lecture AJAX peut être relancée.
+                feedback.style.color = '#b45309';
+                feedback.textContent = (result.message || 'Bulletin recalculé.') + ' ' +
+                    (refreshError.message || 'Actualisation visuelle indisponible.');
+                proposeAjaxRetry();
+            }
             if (result.bulletin_url) {
                 const link = document.createElement('a');
                 link.href = result.bulletin_url;
+                link.target = '_blank';
+                link.rel = 'noopener';
                 link.textContent = 'Voir le bulletin';
                 link.style.marginLeft = '8px';
-                feedback.append(link);
+                feedback.append(document.createElement('br'), link);
             }
         } catch (error) {
             feedback.style.color = '#b91c1c';
             feedback.textContent = error.message || 'Impossible de générer le bulletin.';
         } finally {
-            confirm.disabled = false;
-            confirm.textContent = 'Confirmer';
+            confirm.disabled = completed;
+            confirm.textContent = completed ? 'Terminé' : 'Confirmer';
         }
     });
 })();
