@@ -154,6 +154,14 @@ class Kernel extends ConsoleKernel
             ->onOneServer()
             ->name('admission-activation-durable-outbox');
 
+        // Durable workflow intents survive an unavailable queue worker.
+        // Short bounded passes are suitable for cPanel shared hosting.
+        $schedule->command('mailpulse:drain-workflow-intents --limit=5')
+            ->everyMinute()
+            ->withoutOverlapping(10)
+            ->name('mailpulse-drain-workflow-intents')
+            ->description('Récupère les workflows MailPulse persistés avant enqueue');
+
         $schedule->command('mailpulse:reconcile-parent-notifications --limit=50')
             ->everyFiveMinutes()
             ->withoutOverlapping()

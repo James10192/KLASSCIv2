@@ -18,7 +18,9 @@ class BulkUpdateMatieresConfigRequest extends FormRequest
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
             'semestre' => 'required|in:1,2',
             'coefficients' => 'nullable|array',
+            'coefficients.*' => 'required|numeric|min:0.1',
             'matiere_types' => 'nullable|array',
+            'matiere_types.*' => 'required|in:general,technique,none',
         ];
     }
 }

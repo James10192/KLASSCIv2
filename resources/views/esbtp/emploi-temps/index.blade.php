@@ -2505,136 +2505,7 @@
 </div>
 @endif
 
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const quickGenerateModal = document.getElementById('quickGenerateModal');
-    if (!quickGenerateModal) {
-        return;
-    }
-
-    const quickGenerateForm = quickGenerateModal.querySelector('form');
-    const submitButton = quickGenerateForm ? quickGenerateForm.querySelector('button[type="submit"]') : null;
-    const confirmModalEl = document.getElementById('quickGenerateConfirmModal');
-    const confirmList = document.getElementById('quickGenerateConflictList');
-    const confirmBtn = document.getElementById('quickGenerateConfirmBtn');
-    const confirmModal = confirmModalEl ? new bootstrap.Modal(confirmModalEl) : null;
-    let quickGenerateConfirmed = false;
-
-    const selectAllCheckbox = document.getElementById('quick-generate-select-all');
-    const checkboxes = () => quickGenerateModal.querySelectorAll('input[name="classes[]"]');
-
-    const updateHeaderState = () => {
-        const boxes = Array.from(checkboxes());
-        const checked = boxes.filter((box) => box.checked).length;
-        if (!selectAllCheckbox) {
-            return;
-        }
-        selectAllCheckbox.checked = checked > 0 && checked === boxes.length;
-        selectAllCheckbox.indeterminate = checked > 0 && checked < boxes.length;
-    };
-
-    if (selectAllCheckbox) {
-        selectAllCheckbox.addEventListener('change', () => {
-            checkboxes().forEach((checkbox) => {
-                checkbox.checked = selectAllCheckbox.checked;
-            });
-            selectAllCheckbox.indeterminate = false;
-        });
-    }
-
-    checkboxes().forEach((checkbox) => {
-        checkbox.addEventListener('change', updateHeaderState);
-    });
-
-    updateHeaderState();
-
-    if (quickGenerateForm) {
-        quickGenerateForm.addEventListener('submit', async (event) => {
-            if (quickGenerateConfirmed) {
-                return;
-            }
-
-            event.preventDefault();
-
-            const formData = new FormData(quickGenerateForm);
-            const actionUrl = "{{ route('esbtp.emploi-temps.quick-generate.preview') }}";
-            const token = quickGenerateForm.querySelector('input[name="_token"]')?.value || '';
-
-            if (submitButton) {
-                submitButton.disabled = true;
-                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Analyse...';
-            }
-
-            try {
-                const response = await fetch(actionUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': token,
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: formData
-                });
-
-                const payload = await response.json();
-                if (!response.ok || !payload.success) {
-                    throw new Error(payload.message || 'Erreur lors de la prévisualisation.');
-                }
-
-                if (payload.total_conflicts > 0 && confirmModal && confirmList) {
-                    confirmList.innerHTML = payload.conflicts.map((group) => {
-                        const itemsHtml = (group.items || []).map((item) => {
-                            const badgeClass = item.reason === 'occupied' ? 'bg-danger' : 'bg-warning text-dark';
-                            const reasonLabel = item.reason === 'occupied' ? 'Déjà occupé' : 'Indisponible';
-                            return `
-                                <li class="d-flex flex-wrap align-items-center gap-2 py-1">
-                                    <span class="badge ${badgeClass}">${reasonLabel}</span>
-                                    <span class="fw-semibold">${item.matiere}</span>
-                                    <span class="text-muted">${item.enseignant}</span>
-                                    <span class="text-muted">${item.jour} ${item.heure_debut}–${item.heure_fin}</span>
-                                </li>
-                            `;
-                        }).join('');
-
-                        return `
-                            <div class="p-3 border rounded-3 bg-light">
-                                <div class="fw-semibold mb-2">${group.class_name}</div>
-                                <ul class="list-unstyled mb-0">
-                                    ${itemsHtml}
-                                </ul>
-                            </div>
-                        `;
-                    }).join('');
-
-                    confirmModal.show();
-                } else {
-                    quickGenerateConfirmed = true;
-                    quickGenerateForm.submit();
-                }
-            } catch (error) {
-                alert(error.message || 'Erreur lors de la prévisualisation.');
-            } finally {
-                if (submitButton) {
-                    submitButton.disabled = false;
-                    submitButton.innerHTML = '<i class="fas fa-bolt me-1"></i>Générer';
-                }
-            }
-        });
-    }
-
-    if (confirmBtn && quickGenerateForm) {
-        confirmBtn.addEventListener('click', () => {
-            quickGenerateConfirmed = true;
-            if (confirmModal) {
-                confirmModal.hide();
-            }
-            quickGenerateForm.submit();
-        });
-    }
-});
-</script>
-@endpush
+@include('esbtp.emploi-temps.partials._quick-generate-script')
 
 @push('scripts')
 <script>
@@ -2821,8 +2692,13 @@ document.addEventListener('DOMContentLoaded', function () {
             return table;
         }
 
-        // AJAX Refresh Function
+        // Seul le dernier filtre sélectionné peut remplacer les trois vues.
+        let refreshSequence = 0;
+        let refreshController = null;
         function fetchEmploisTempsData() {
+            const sequence = ++refreshSequence;
+            if (refreshController) refreshController.abort();
+            refreshController = typeof AbortController === 'function' ? new AbortController() : null;
             const form = document.getElementById('filterForm');
             const formData = new FormData(form);
             const params = new URLSearchParams(formData);
@@ -2840,7 +2716,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json'
                 },
-                credentials: 'same-origin'
+                credentials: 'same-origin',
+                signal: refreshController ? refreshController.signal : undefined
             })
             .then(response => {
                 if (!response.ok) {
@@ -2849,7 +2726,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 return response.json();
             })
             .then(data => {
+                if (sequence !== refreshSequence) return;
                 if (data.success) {
+                    // DataTables must release its rows BEFORE replacing the tbody.
+                    const hasDataTable = typeof $ !== 'undefined' && typeof $.fn.dataTable !== 'undefined';
+                    if (hasDataTable && $.fn.dataTable.isDataTable('#emploiTempsTable')) {
+                        $('#emploiTempsTable').DataTable().destroy();
+                    }
                     // Update cards container
                     document.getElementById('cardsContainer').innerHTML = data.html_cards;
 
@@ -2861,11 +2744,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     // Update table body
                     document.getElementById('tableBody').innerHTML = data.html_table;
 
-                    // Reinitialize DataTable if in table view
-                    if (tableView.checked && typeof $ !== 'undefined' && typeof $.fn.dataTable !== 'undefined') {
-                        if ($.fn.dataTable.isDataTable('#emploiTempsTable')) {
-                            $('#emploiTempsTable').DataTable().destroy();
-                        }
+                    // Reinitialize DataTable on the fresh rows only.
+                    if (tableView.checked && hasDataTable) {
                         initializeDataTable();
                     }
 
@@ -2887,11 +2767,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             })
             .catch(error => {
+                if (sequence !== refreshSequence || error.name === 'AbortError') return;
                 debugError('❌ Fetch error:', error);
-                alert('Erreur de connexion au serveur: ' + error.message);
+                if (typeof window.klassciToast === 'function') {
+                    window.klassciToast('error', 'Erreur de connexion au serveur : ' + error.message);
+                } else {
+                    alert('Erreur de connexion au serveur: ' + error.message);
+                }
             })
             .finally(() => {
-                hideOverlay();
+                if (sequence === refreshSequence) hideOverlay();
             });
         }
 

@@ -5,6 +5,9 @@
 document.addEventListener('alpine:init', () => {
     Alpine.data('lpPlanning', () => ({
         loading: false,
+        error: '',
+        partialSequence: 0,
+        partialController: null,
         filters: {
             parcours_id: @json($filters['parcours_id']),
             niveau_id: @json($filters['niveau_id']),
@@ -20,12 +23,21 @@ document.addEventListener('alpine:init', () => {
             // backend computes the available semestres for the new niveau
             // and re-renders the semestre dropdown HTML accordingly.
             this.filters[key] = value || null;
-            await this.fetchPartial();
-            this.syncUrl();
+            const loaded = await this.fetchPartial();
+            if (loaded) this.syncUrl();
+        },
+
+        async retryFilters() {
+            const loaded = await this.fetchPartial();
+            if (loaded) this.syncUrl();
         },
 
         async fetchPartial() {
+            const sequence = ++this.partialSequence;
+            if (this.partialController) this.partialController.abort();
+            this.partialController = typeof AbortController === 'function' ? new AbortController() : null;
             this.loading = true;
+            this.error = '';
             try {
                 const params = new URLSearchParams();
                 Object.entries(this.filters).forEach(([k, v]) => {
@@ -33,9 +45,11 @@ document.addEventListener('alpine:init', () => {
                 });
                 const resp = await fetch(this.partialUrl + '?' + params.toString(), {
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    signal: this.partialController ? this.partialController.signal : undefined,
                 });
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);
                 const json = await resp.json();
+                if (sequence !== this.partialSequence) return false;
                 document.getElementById('lpKpis').innerHTML = json.kpis || '';
                 const lpContent = document.getElementById('lpContent');
                 lpContent.innerHTML = json.listing || '';
@@ -75,10 +89,14 @@ document.addEventListener('alpine:init', () => {
                         root.dataset.lpeContext = JSON.stringify(ctx);
                     } catch (e) { /* noop */ }
                 }
+                return true;
             } catch (e) {
+                if (sequence !== this.partialSequence || e.name === 'AbortError') return false;
                 console.error('Planning fetch failed:', e);
+                this.error = 'Le chargement du planning a échoué. Aucun changement n’a été appliqué ; réessayez.';
+                return false;
             } finally {
-                this.loading = false;
+                if (sequence === this.partialSequence) this.loading = false;
             }
         },
 

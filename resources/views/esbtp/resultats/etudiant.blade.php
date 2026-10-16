@@ -131,6 +131,12 @@
                     </div>
                 </div>
                 <div class="sr-hero-actions">
+                    @can('students.view')
+                        <a href="{{ route('esbtp.etudiants.show', ['etudiant' => $etudiant->id, 'tab' => 'academique', 'inscription_id' => $inscription?->id]) }}"
+                           class="sr-hero-btn">
+                            <i class="fas fa-user-graduate" aria-hidden="true"></i> Fiche étudiant
+                        </a>
+                    @endcan
                     @if(isset($classe) && $classe && auth()->user()->can('admin.access'))
                         <a href="{{ route('esbtp.resultats.classe.edit', $classe->id) }}?annee_universitaire_id={{ $annee_id }}&semestre={{ isset($periode) && str_starts_with($periode, 'semestre') ? str_replace('semestre', '', $periode) : '' }}"
                            class="sr-hero-btn">
@@ -398,7 +404,7 @@
         ])
 
         {{-- 3+4. Layout deux colonnes --}}
-        <div class="row mb-4">
+        <div class="row mb-4 sr-results-summary-row">
             <div class="col-lg-4 mb-3 mb-lg-0">
                 @include('components.student-results.student-info-card')
             </div>
@@ -510,7 +516,7 @@
     };
 
     // ═══ Init function — called on page load AND after AJAX swap ═══
-    function initStudentResults() {
+    function initStudentResults(skipCoefficientAutoOpen) {
         // Tooltips
         var tooltipList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         tooltipList.forEach(function(el) { new bootstrap.Tooltip(el); });
@@ -576,6 +582,13 @@
         // l'ancienne classe.
         document.querySelectorAll('.sr-auto-filter').forEach(function(el) {
             el.addEventListener('change', function() {
+                // Changer manuellement de classe/année quitte le contexte de
+                // l'inscription initiale. Sinon un lien profond historique
+                // imposerait cet ID à une autre année après le changement.
+                if (this.name === 'classe_id' || this.name === 'annee_universitaire_id') {
+                    var inscriptionInput = document.getElementById('sr-inscription-input');
+                    if (inscriptionInput) inscriptionInput.remove();
+                }
                 srSubmitFilter();
             });
         });
@@ -594,7 +607,7 @@
         // Coefficient modal auto-open
         var coeffContext = {{ $coeffContext ? 'true' : 'false' }};
         var urlCoeff = new URLSearchParams(window.location.search).get('open_coeff_modal') === '1';
-        if (coeffContext || urlCoeff) {
+        if (!skipCoefficientAutoOpen && (coeffContext || urlCoeff)) {
             var modalEl = document.getElementById('studentCoeffModal');
             if (modalEl && typeof bootstrap !== 'undefined') {
                 new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false }).show();
@@ -622,7 +635,12 @@
                 srbOpenDetailsModal(payload);
             });
         });
+
     }
+
+    // Le partial coefficients revient dans innerHTML après chaque filtre.
+    // La factory est idempotente et le script ne doit être activé qu'une seule fois.
+    @include('esbtp.resultats.partials._ajax-ui-helpers')
 
     function srbFormat(value, suffix) {
         if (value === null || value === undefined || isNaN(value)) return '—';
@@ -706,16 +724,6 @@
         new bootstrap.Modal(modalEl).show();
     }
 
-    function srAnnounceCoverage() {
-        var form = document.getElementById('sr-filter-form');
-        if (!form) return;
-        var classe = form.querySelector('[name="classe_id"]');
-        var annee = form.querySelector('[name="annee_universitaire_id"]');
-        var periode = document.getElementById('sr-periode-input');
-        window.dispatchEvent(new CustomEvent('couverture:contexte', {
-            detail: { classe_id: classe && classe.value, annee_universitaire_id: annee && annee.value, periode: periode && periode.value || 'annuel' }
-        }));
-    }
 
     // ═══ AJAX content swap ═══
     // Seule la DERNIÈRE demande s'affiche : deux clics rapides (S1 puis S2)
@@ -760,6 +768,7 @@
 
             // Re-initialize everything
             initStudentResults();
+            initCoefficientsAfterSwap();
 
             // Hide overlay
             if (overlay) overlay.classList.remove('active');
@@ -1000,7 +1009,10 @@
     });
 
     // ═══ Initial setup ═══
-    document.addEventListener('DOMContentLoaded', initStudentResults);
+    document.addEventListener('DOMContentLoaded', function () {
+        initStudentResults();
+        initCoefficientsAfterSwap();
+    });
 })();
 </script>
 @endpush

@@ -51,6 +51,14 @@
                                 onclick="openNotesModal({{ $classe->id }}, @js($classe->name))">
                             <i class="fas fa-edit"></i>Gérer les notes
                         </button>
+                        @if(auth()->user()->can('module.lmd.access')
+                            && auth()->user()->can('lmd.jury.view'))
+                            <a class="ln-card-btn ln-card-btn--outline" target="_blank" rel="noopener"
+                               href="{{ route('esbtp.lmd.jurys.index', ['classe_id' => $classe->id, 'annee_universitaire_id' => $anneeSelectionnee?->id]) }}"
+                               title="PV collectif de délibération des jurys de cette classe">
+                                <i class="fas fa-file-signature"></i>PV du jury
+                            </a>
+                        @endif
                     </div>
                 </div>
             @endforeach

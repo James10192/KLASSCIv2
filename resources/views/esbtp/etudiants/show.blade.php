@@ -3711,19 +3711,79 @@
         'compact' => false,
     ])
 
+    {{-- Gestion des notes à la demande, après le parcours académique existant. --}}
+    @can('notes.view')
+        @include('esbtp.partials.fiche-notes-module', [
+            'url' => route('esbtp.fiche-notes.etudiant', $etudiant->id),
+        ])
+    @endcan
+
     @php
         $resultatsBtsAutorises = auth()->user()->can('bulletins.view') || auth()->user()->can('bulletins.view_own');
-        $resultatsLmdAutorises = auth()->user()->can('lmd.resultats.view');
-        $lienResultatsInscription = static function ($insc) use ($etudiant, $resultatsBtsAutorises, $resultatsLmdAutorises): ?string {
+        $resultatsLmdAutorises = auth()->user()->can('lmd.resultats.view') && auth()->user()->can('module.lmd.access');
+        $cartesResultatsBts = [];
+        $lienResultatsInscription = static function ($insc, ?string $periodeDemandee = null) use ($etudiant, $resultatsBtsAutorises, $resultatsLmdAutorises, &$cartesResultatsBts): ?string {
             if (!$insc || !$insc->annee_universitaire_id || !$insc->classe_id) return null;
             $lmd = $insc->classe?->systeme_academique === 'LMD';
             if ($lmd && !$resultatsLmdAutorises) return null;
             if (!$lmd && !$resultatsBtsAutorises) return null;
-            return $lmd
-                ? route('esbtp.lmd.resultats.etudiant', ['etudiant' => $etudiant->id, 'annee_universitaire_id' => $insc->annee_universitaire_id])
-                : route('esbtp.resultats.etudiant', ['etudiant' => $etudiant->id, 'annee_universitaire_id' => $insc->annee_universitaire_id, 'classe_id' => $insc->classe_id, 'include_all_statuses' => 1]);
+            if ($lmd) {
+                $semestres = $insc->classe->getSemestresLMD();
+                $semestre = $periodeDemandee === null ? (int) ($semestres[0] ?? 0) : (int) $periodeDemandee;
+                if (!in_array($semestre, $semestres, true)) return null;
+
+                return route('esbtp.lmd.resultats.etudiant', [
+                    'etudiant' => $etudiant->id,
+                    'inscription_id' => $insc->id,
+                    'classe_id' => $insc->classe_id,
+                    'annee_universitaire_id' => $insc->annee_universitaire_id,
+                    'semestre' => $semestre,
+                ]);
+            }
+
+            $periode = match ($periodeDemandee) {
+                '1', 'semestre1' => 'semestre1',
+                '2', 'semestre2' => 'semestre2',
+                null, 'annuel' => 'annuel',
+                default => null,
+            };
+            if ($periode === null) return null;
+
+            $classesParSemestre = $cartesResultatsBts[$insc->id]
+                ??= app(\App\Services\ESBTP\BtsStudentAcademicRecords::class)->classMap($insc);
+            $classeId = $periode === 'annuel'
+                ? $insc->classe_id
+                : $classesParSemestre[$periode . '_classe_id'];
+
+            return route('esbtp.resultats.etudiant', [
+                'etudiant' => $etudiant->id,
+                'inscription_id' => $insc->id,
+                'annee_universitaire_id' => $insc->annee_universitaire_id,
+                'classe_id' => $classeId,
+                'periode' => $periode,
+                'include_all_statuses' => 1,
+            ]);
         };
     @endphp
+
+    {{-- Navigation et régénération sur l'inscription de l'année courante,
+         sans conditionner l'action à la présence préalable de notes. --}}
+    @php
+        $acadInscriptionNavigation = $acadAnneeCourante
+            ? $acadInscs->first(fn ($i) => $i->annee_universitaire_id === $acadAnneeCourante->id)
+            : $acadInscs->first();
+        $acadInscriptionNavigation ??= $acadInscs->first();
+    @endphp
+    @if($acadInscriptionNavigation)
+        <div id="inscription-raccourci-{{ $acadInscriptionNavigation->id }}" style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+            @if($lienResultatsInscription($acadInscriptionNavigation))
+                <a href="{{ $lienResultatsInscription($acadInscriptionNavigation) }}" class="insc-btn view">
+                    <i class="fas fa-chart-bar" aria-hidden="true"></i> Voir les résultats — {{ $acadInscriptionNavigation->anneeUniversitaire?->name ?? 'Inscription' }}
+                </a>
+            @endif
+            @include('esbtp.etudiants.partials.bulletin-regeneration-actions', ['inscription' => $acadInscriptionNavigation])
+        </div>
+    @endif
 
     {{-- ══ BLOC TPE — Travail Personnel Etudiant attendu (lecture seule UEMOA) ══ --}}
     @if(($isLMD ?? false) && ($tpeAttendu ?? 0) > 0)
@@ -3789,8 +3849,8 @@
         <div class="lmd-sem-panel" data-sem="{{ $_bul->semestre }}" style="{{ $idx !== $bulletinsLMD->count() - 1 ? 'display:none;' : '' }}">
         <div class="acad-hero">
             <div class="acad-hero-top">
-                @if($lienResultatsInscription($acadRef))
-                    <a href="{{ $lienResultatsInscription($acadRef) }}" class="insc-btn view" style="float:right;margin-left:12px;"><i class="fas fa-chart-bar"></i> Voir les résultats</a>
+                @if($lienResultatsInscription($acadRef, (string) $_bul->semestre))
+                    <a href="{{ $lienResultatsInscription($acadRef, (string) $_bul->semestre) }}" class="insc-btn view" style="float:right;margin-left:12px;"><i class="fas fa-chart-bar"></i> Résultats S{{ $_bul->semestre }}</a>
                 @endif
                 <div>
                     <div class="acad-hero-label"><i class="fas fa-graduation-cap" style="margin-right:5px;"></i>Bilan LMD</div>
@@ -4720,7 +4780,7 @@
             ? $autreResultatsBruts->groupBy(fn($r) => $r->periode ?? 'N/A')
             : collect();
     @endphp
-    <div class="acad-arch-card">
+    <div class="acad-arch-card" id="inscription-{{ $autreInsc->id }}">
         <button class="acad-arch-toggle"
                 data-bs-toggle="collapse"
                 data-bs-target="#{{ $autreArchKey }}"
@@ -4749,6 +4809,9 @@
         </button>
         <div class="collapse" id="{{ $autreArchKey }}">
             <div class="acad-arch-body">
+                <div style="margin-bottom:10px;">
+                    @include('esbtp.etudiants.partials.bulletin-regeneration-actions', ['inscription' => $autreInsc])
+                </div>
                 @if($lienResultatsInscription($autreInsc))
                     <div style="text-align:right;margin-bottom:8px;">
                         <a href="{{ $lienResultatsInscription($autreInsc) }}" class="insc-btn view"><i class="fas fa-chart-bar"></i> Voir les résultats</a>
@@ -6596,9 +6659,88 @@
     <x-photo-etudiant :etudiant="$etudiant" />
 @endcan
 
+<dialog id="insc-bulletin-dialog" aria-labelledby="insc-bulletin-title" style="border:0;border-radius:16px;padding:0;max-width:min(470px,92vw);width:100%;box-shadow:0 24px 70px rgba(15,23,42,.3);">
+    <form method="dialog" style="background:#fff;padding:25px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:13px;">
+            <span style="display:grid;place-items:center;width:44px;height:44px;background:#eff6ff;border-radius:13px;color:#0453cb;"><i class="fas fa-file-alt" aria-hidden="true"></i></span>
+            <div>
+                <h3 id="insc-bulletin-title" style="margin:0;font-size:1.15rem;font-weight:800;color:#0f172a;">Générer le bulletin</h3>
+                <div id="insc-bulletin-subtitle" style="font-size:.8rem;color:#64748b;"></div>
+            </div>
+        </div>
+        <p style="font-size:.86rem;color:#475569;line-height:1.5;">Les moyennes seront recalculées à partir des données académiques officielles. Les bulletins publiés ou signés restent protégés.</p>
+        <label for="insc-bulletin-reason" style="display:block;font-size:.79rem;font-weight:700;color:#334155;">Motif si vous êtes habilité à générer un dossier incomplet (facultatif)</label>
+        <textarea id="insc-bulletin-reason" rows="2" maxlength="1000" style="width:100%;border:1px solid #cbd5e1;border-radius:9px;padding:9px;margin-top:5px;"></textarea>
+        <p id="insc-bulletin-feedback" role="alert" aria-live="polite" style="font-size:.82rem;color:#b91c1c;min-height:1.3rem;margin:10px 0;"></p>
+        <div style="display:flex;justify-content:flex-end;gap:9px;">
+            <button type="submit" class="btn btn-outline-secondary">Annuler</button>
+            <button type="button" id="insc-bulletin-confirm" class="btn btn-primary" style="background:#0453cb;border-color:#0453cb;">Confirmer</button>
+        </div>
+    </form>
+</dialog>
+
 @endsection
 
 @push('scripts')
+<script>
+(function () {
+    const dialog = document.getElementById('insc-bulletin-dialog');
+    const confirm = document.getElementById('insc-bulletin-confirm');
+    if (!dialog || !confirm) return;
+    let selected = null;
+    document.addEventListener('click', function (event) {
+        const target = event.target.closest('[data-bulletin-regenerate]');
+        if (!target) return;
+        selected = target;
+        document.getElementById('insc-bulletin-title').textContent = 'Générer / régénérer le bulletin ' + target.dataset.bulletinLibelle;
+        document.getElementById('insc-bulletin-subtitle').textContent = target.dataset.bulletinAnnee;
+        document.getElementById('insc-bulletin-feedback').textContent = '';
+        document.getElementById('insc-bulletin-reason').value = '';
+        dialog.showModal();
+    });
+    confirm.addEventListener('click', async function () {
+        if (!selected || confirm.disabled) return;
+        confirm.disabled = true;
+        confirm.textContent = 'Traitement…';
+        const feedback = document.getElementById('insc-bulletin-feedback');
+        const formData = new FormData();
+        formData.append('periode', selected.dataset.bulletinPeriode);
+        formData.append('incomplete_reason', document.getElementById('insc-bulletin-reason').value);
+        try {
+            const response = await fetch(selected.dataset.bulletinUrl, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData,
+            });
+            const result = await response.json();
+            if (!response.ok || !result.ok) throw new Error(result.message || 'La régénération a été refusée.');
+            feedback.style.color = '#047857';
+            feedback.textContent = result.message;
+            const refresh = document.createElement('button');
+            refresh.type = 'button';
+            refresh.className = 'btn btn-sm btn-outline-primary';
+            refresh.style.margin = '8px 0 0';
+            refresh.textContent = 'Actualiser le bilan académique';
+            refresh.addEventListener('click', function () { window.location.reload(); });
+            feedback.append(document.createElement('br'), refresh);
+            if (result.bulletin_url) {
+                const link = document.createElement('a');
+                link.href = result.bulletin_url;
+                link.textContent = 'Voir le bulletin';
+                link.style.marginLeft = '8px';
+                feedback.append(link);
+            }
+        } catch (error) {
+            feedback.style.color = '#b91c1c';
+            feedback.textContent = error.message || 'Impossible de générer le bulletin.';
+        } finally {
+            confirm.disabled = false;
+            confirm.textContent = 'Confirmer';
+        }
+    });
+})();
+</script>
 <script src="{{ asset('js/frais/regenerer-modal.js') }}?v={{ @filemtime(public_path('js/frais/regenerer-modal.js')) ?: '1' }}"></script>
 <script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}"></script>
 <script src="{{ asset('js/student-inscription-repair.js') }}?v={{ @filemtime(public_path('js/student-inscription-repair.js')) ?: '1' }}"></script>
@@ -6646,6 +6788,22 @@ function switchLmdSem(sem) {
     if (urlTab) {
         const t = document.querySelector('[data-tab="' + urlTab + '"]');
         if (t) t.click();
+    }
+    // Retour depuis les résultats : retrouver l'inscription consultée, y
+    // compris lorsque son bilan se situe dans une archive repliée.
+    const inscriptionId = new URLSearchParams(window.location.search).get('inscription_id');
+    if (urlTab === 'academique' && /^\d+$/.test(inscriptionId || '')) {
+        const card = document.getElementById('inscription-' + inscriptionId)
+            || document.getElementById('inscription-raccourci-' + inscriptionId);
+        if (card) {
+            const collapse = card.querySelector('.collapse');
+            if (collapse && window.bootstrap && bootstrap.Collapse) {
+                bootstrap.Collapse.getOrCreateInstance(collapse, { toggle: false }).show();
+            }
+            requestAnimationFrame(function () {
+                card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        }
     }
 })();
 </script>

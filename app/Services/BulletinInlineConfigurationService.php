@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Domain\BtsTroncCommun\BtsMaquette;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
@@ -11,21 +12,23 @@ use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPMatiereFilierNiveau;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class BulletinInlineConfigurationService
 {
-    public function __construct(private BulletinService $bulletinService)
+    public function __construct(private BulletinService $bulletinService, private BtsMaquette $btsMaquette)
     {
     }
 
     public function data(int $classeId, int $anneeUniversitaireId, string $periode): array
     {
         $classe = ESBTPClasse::with(['filiere', 'niveau'])->findOrFail($classeId);
+        $this->assertClasseBts($classe);
         $periode = $this->bulletinService->normalizePeriode($periode);
         $matieres = $this->matieresPourConfiguration($classe, $anneeUniversitaireId, $periode);
         $periods = $this->periodsFor($periode);
 
-        $configRows = ESBTPConfigMatiere::withTrashed()
+        $configRows = ESBTPConfigMatiere::query()
             ->where('classe_id', $classe->id)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
             ->whereIn('periode', $periods)
@@ -46,7 +49,9 @@ class BulletinInlineConfigurationService
             ->map(function ($matiere) use ($configRows, $coefficientRows, $professeursTemplate) {
                 $existing = $configRows->get($matiere->id)?->first();
                 $existingType = $existing ? $this->normalizeConfigMatiereType($existing->config) : null;
-                $coefficient = $coefficientRows->get($matiere->id)?->first()?->coefficient;
+                $config = $this->decodeConfig($existing?->config);
+                $localCoefficient = $config['coefficient'] ?? null;
+                $coefficient = $localCoefficient ?? $coefficientRows->get($matiere->id)?->first()?->coefficient;
                 $professeur = trim((string) ($professeursTemplate[$matiere->id] ?? ''));
 
                 return [
@@ -57,6 +62,7 @@ class BulletinInlineConfigurationService
                     'existing_type' => $existingType,
                     'suggested_type' => $existingType ?: $this->guessMatiereType($matiere),
                     'coefficient' => $coefficient !== null ? (float) $coefficient : null,
+                    'coefficient_source' => $localCoefficient !== null ? 'classe' : ($coefficient !== null ? 'filiere' : 'manquant'),
                     'professeur' => $professeur,
                 ];
             })
@@ -89,7 +95,22 @@ class BulletinInlineConfigurationService
     public function save(array $validated, int $userId): array
     {
         $classe = ESBTPClasse::findOrFail($validated['classe_id']);
+        $this->assertClasseBts($classe);
         $periode = $this->bulletinService->normalizePeriode($validated['periode']);
+        $autorisees = collect($this->periodsFor($periode))
+            ->flatMap(fn ($p) => $this->matieresPourConfiguration($classe, (int) $validated['annee_universitaire_id'], $p)->pluck('id'))
+            ->map(fn ($id) => (int) $id)->unique()->all();
+        $soumises = array_unique(array_map('intval', array_merge(
+            array_keys($validated['matiere_type']),
+            array_keys($validated['coefficients'] ?? []),
+            array_keys($validated['professeurs'] ?? []),
+        )));
+        if (array_diff($soumises, $autorisees)) {
+            throw ValidationException::withMessages(['matiere_type' => 'Une matière ne relève pas de cette classe et de cette période.']);
+        }
+        if (array_diff(array_keys($validated['coefficients'] ?? []), array_keys($validated['matiere_type']))) {
+            throw ValidationException::withMessages(['coefficients' => 'Chaque coefficient doit correspondre à une matière du formulaire.']);
+        }
         $created = 0;
         $updated = 0;
         $removed = 0;
@@ -112,44 +133,42 @@ class BulletinInlineConfigurationService
                         'annee_universitaire_id' => (int) $validated['annee_universitaire_id'],
                     ];
 
+                    $existing = ESBTPConfigMatiere::withTrashed()->where($query)->first();
+                    $config = $this->decodeConfig($existing?->config);
                     if ($type === 'none') {
-                        $removed += ESBTPConfigMatiere::withTrashed()
-                            ->where($query)
-                            ->forceDelete();
+                        // Retire uniquement le classement, sans effacer le
+                        // coefficient classe ni les autres clés historiques.
+                        unset($config['type'], $config['type_formation']);
+                        $removed++;
+                    } else {
+                        $config['type'] = $type;
+                    }
+                    // Surcharge strictement classe / année / période : jamais
+                    // la table globale partagée par les classes d'une filière.
+                    if (array_key_exists($matiereId, $validated['coefficients'] ?? [])) {
+                        $valeur = $validated['coefficients'][$matiereId];
+                        if ($valeur === null || $valeur === '') {
+                            unset($config['coefficient']);
+                            $coefficientsRemoved++;
+                        } else {
+                            $config['coefficient'] = (float) $valeur;
+                            $coefficientsSaved++;
+                        }
+                    }
+                    if ($config === []) {
+                        ESBTPConfigMatiere::withTrashed()->where($query)->forceDelete();
                         continue;
                     }
-
-                    $existing = ESBTPConfigMatiere::withTrashed()->where($query)->first();
-                    ESBTPConfigMatiere::withTrashed()->updateOrCreate($query, [
-                        'config' => json_encode(['type' => $type]),
+                    $enregistrement = ESBTPConfigMatiere::withTrashed()->updateOrCreate($query, [
+                        'config' => $config,
                         'created_by' => $userId,
                         'updated_by' => $userId,
-                        'deleted_at' => null,
                     ]);
+                    if ($enregistrement->trashed()) {
+                        $enregistrement->restore();
+                    }
 
                     $existing ? $updated++ : $created++;
-                }
-
-                foreach (($validated['coefficients'] ?? []) as $matiereId => $coefficient) {
-                    $coefficientQuery = [
-                        'matiere_id' => (int) $matiereId,
-                        'filiere_id' => (int) $classe->filiere_id,
-                        'niveau_etude_id' => (int) $classe->niveau_etude_id,
-                        'annee_universitaire_id' => (int) $validated['annee_universitaire_id'],
-                        'periode' => $targetPeriode,
-                    ];
-
-                    if ($coefficient === null || $coefficient === '') {
-                        $coefficientsRemoved += ESBTPMatiereCoefficient::where($coefficientQuery)->delete();
-                        continue;
-                    }
-
-                    ESBTPMatiereCoefficient::updateOrCreate($coefficientQuery, [
-                        'coefficient' => (float) $coefficient,
-                        'created_by' => $userId,
-                        'updated_by' => $userId,
-                    ]);
-                    $coefficientsSaved++;
                 }
 
                 $this->saveProfesseursTemplate(
@@ -232,6 +251,13 @@ class BulletinInlineConfigurationService
         return $periode === 'annuel' ? ['semestre1', 'semestre2'] : [$periode];
     }
 
+    private function assertClasseBts(ESBTPClasse $classe): void
+    {
+        if ($classe->systeme_academique === 'LMD') {
+            throw ValidationException::withMessages(['classe_id' => 'Les UE/ECUE LMD se configurent dans leur maquette dédiée.']);
+        }
+    }
+
     private function matieresPourConfiguration(ESBTPClasse $classe, int $anneeUniversitaireId, string $periode): Collection
     {
         // Configuration d'un bulletin BTS (le LMD a `ESBTPLMDBulletinController`).
@@ -274,6 +300,16 @@ class BulletinInlineConfigurationService
                 ->values();
         }
 
+        // Une maquette BTS validée fait autorité sur le semestre. Si elle est
+        // absente/partielle, isPrevue() retourne null : repli historique.
+        // Les évaluations historiques hors maquette restent proposées plus bas.
+        if (in_array($periode, ['semestre1', 'semestre2'], true)) {
+            $semestre = $periode === 'semestre1' ? 1 : 2;
+            $official = $official->filter(fn ($matiere) =>
+                $this->btsMaquette->isPrevue($classe, (int) $matiere->id, $semestre) !== false
+            )->values();
+        }
+
         $officialIds = $official->pluck('id')->all();
         // Une evaluation a pu etre creee sur une ECUE avant que les ecrans
         // d'evaluation ne soient gardes : l'historique la ramenerait ici.
@@ -306,7 +342,7 @@ class BulletinInlineConfigurationService
 
     private function normalizeConfigMatiereType(mixed $config): ?string
     {
-        $configData = is_string($config) ? (json_decode($config, true) ?: []) : (array) $config;
+        $configData = $this->decodeConfig($config);
         $type = $configData['type'] ?? $configData['type_formation'] ?? null;
 
         return match ($type) {
@@ -314,6 +350,16 @@ class BulletinInlineConfigurationService
             'technique', 'technologique_professionnelle' => 'technique',
             default => null,
         };
+    }
+
+    /** Compatibilité avec les anciennes lignes JSON double-encodées. */
+    private function decodeConfig(mixed $config): array
+    {
+        for ($attempt = 0; $attempt < 3 && is_string($config); $attempt++) {
+            $config = json_decode($config, true);
+        }
+
+        return is_array($config) ? $config : [];
     }
 
     private function guessMatiereType(ESBTPMatiere $matiere): string

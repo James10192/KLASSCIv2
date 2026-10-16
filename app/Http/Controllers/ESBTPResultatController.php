@@ -648,15 +648,31 @@ class ESBTPResultatController extends Controller
         $annee_id = $annee_universitaire_id;
 
         $etudiant = ESBTPEtudiant::with('user')->findOrFail($id);
+        $requestedInscriptionId = $request->filled('inscription_id') ? (int) $request->input('inscription_id') : null;
         $aggregationContext = $this->btsAnnualAggregationService->resolveStudentContext(
             $etudiant,
             $annee_universitaire_id,
             $requestedClasseId,
             $periode,
-            $include_all_statuses
+            $include_all_statuses,
+            $requestedInscriptionId
         );
         $allYearInscriptions = $aggregationContext['all_inscriptions'] ?? collect();
         $inscription = $aggregationContext['inscription'];
+        if ($requestedInscriptionId && $inscription?->classe?->isLMD()) {
+            abort(422, 'Cette inscription est LMD : consultez les résultats LMD.');
+        }
+        if ($requestedInscriptionId && $requestedClasseId) {
+            $classesDuParcours = array_merge(
+                [(int) $inscription->classe_id],
+                array_values($aggregationContext['classe_par_semestre'] ?? [])
+            );
+            abort_unless(
+                in_array($requestedClasseId, array_map('intval', $classesDuParcours), true),
+                422,
+                'Cette classe ne correspond pas au parcours de cette inscription.'
+            );
+        }
         $inscriptionForAlert = $inscription ?? $allYearInscriptions->first();
         $classe_id = $aggregationContext['effective_classe_id'] ?? $requestedClasseId;
 
@@ -2299,13 +2315,38 @@ class ESBTPResultatController extends Controller
             $updatedCoeff = 0;
             $updatedTypes = 0;
 
-            // Mise à jour des coefficients dans la table pivot esbtp_classe_matiere
+            $autorisees = collect(app(\App\Services\BulletinInlineConfigurationService::class)
+                ->data((int) $classe->id, (int) $request->annee_universitaire_id, $periode)['matieres'])
+                ->pluck('id')->map(fn ($id) => (int) $id)->all();
+            $soumises = array_unique(array_map('intval', array_merge(
+                array_keys($request->coefficients ?? []), array_keys($request->matiere_types ?? [])
+            )));
+            if (array_diff($soumises, $autorisees)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'matiere_types' => 'Une matière ne relève pas de cette classe et de cette période.',
+                ]);
+            }
+
+            // Le pivot historique n'alimente pas le coefficient du bulletin.
+            // Conserver la surcharge propre à classe/année/semestre.
             if ($request->has('coefficients') && is_array($request->coefficients)) {
                 foreach ($request->coefficients as $matiereId => $coefficient) {
-                    $classe->matieres()->updateExistingPivot(
-                        $matiereId,
-                        ['coefficient' => floatval($coefficient)]
-                    );
+                    $query = [
+                        'matiere_id' => (int) $matiereId,
+                        'classe_id' => (int) $request->classe_id,
+                        'periode' => $periode,
+                        'annee_universitaire_id' => (int) $request->annee_universitaire_id,
+                    ];
+                    $existing = ESBTPConfigMatiere::withTrashed()->where($query)->first();
+                    $config = $existing?->config ?? [];
+                    for ($i = 0; $i < 3 && is_string($config); $i++) $config = json_decode($config, true);
+                    $config = is_array($config) ? $config : [];
+                    $config['coefficient'] = (float) $coefficient;
+                    $enregistrement = ESBTPConfigMatiere::withTrashed()->updateOrCreate($query, [
+                        'config' => $config,
+                        'created_by' => \Auth::id(), 'updated_by' => \Auth::id(),
+                    ]);
+                    if ($enregistrement->trashed()) $enregistrement->restore();
                     $updatedCoeff++;
                 }
             }
@@ -2313,33 +2354,30 @@ class ESBTPResultatController extends Controller
             // Mise à jour des types d'enseignement dans esbtp_config_matiere (même logique que saveConfigMatieresTypeFormation)
             if ($request->has('matiere_types') && is_array($request->matiere_types)) {
                 foreach ($request->matiere_types as $matiereId => $type) {
+                    $query = [
+                        'matiere_id' => (int) $matiereId,
+                        'classe_id' => (int) $request->classe_id,
+                        'periode' => $periode,
+                        'annee_universitaire_id' => (int) $request->annee_universitaire_id,
+                    ];
+                    $existing = ESBTPConfigMatiere::withTrashed()->where($query)->first();
+                    $config = $existing?->config ?? [];
+                    for ($i = 0; $i < 3 && is_string($config); $i++) $config = json_decode($config, true);
+                    $config = is_array($config) ? $config : [];
                     if ($type === 'none') {
-                        // Si "none", on supprime la config
-                        ESBTPConfigMatiere::where([
-                            'matiere_id' => $matiereId,
-                            'classe_id' => $request->classe_id,
-                            'periode' => $periode,
-                            'annee_universitaire_id' => $request->annee_universitaire_id,
-                        ])->forceDelete();
-
-                        continue;
+                        unset($config['type'], $config['type_formation']);
+                    } else {
+                        $config['type'] = $type;
                     }
-
-                    // Sinon on crée/met à jour la config avec type général ou technique
-                    ESBTPConfigMatiere::withTrashed()->updateOrCreate(
-                        [
-                            'matiere_id' => $matiereId,
-                            'classe_id' => $request->classe_id,
-                            'periode' => $periode,
-                            'annee_universitaire_id' => $request->annee_universitaire_id,
-                        ],
-                        [
-                            'config' => json_encode(['type' => $type]),
-                            'created_by' => \Auth::id(),
+                    if ($config === []) {
+                        ESBTPConfigMatiere::withTrashed()->where($query)->forceDelete();
+                    } else {
+                        $enregistrement = ESBTPConfigMatiere::withTrashed()->updateOrCreate($query, [
+                            'config' => $config, 'created_by' => \Auth::id(),
                             'updated_by' => \Auth::id(),
-                            'deleted_at' => null,
-                        ]
-                    );
+                        ]);
+                        if ($enregistrement->trashed()) $enregistrement->restore();
+                    }
                     $updatedTypes++;
                 }
             }
@@ -2367,6 +2405,9 @@ class ESBTPResultatController extends Controller
                 ],
             ]);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             \DB::rollBack();
             \Log::error('❌ Erreur bulk update config matières: '.$e->getMessage(), [

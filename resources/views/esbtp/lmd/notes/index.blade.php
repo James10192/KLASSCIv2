@@ -313,6 +313,9 @@
     }
     .ln-student-name { font-weight: 600; color: #1e293b; font-size: .82rem; white-space: nowrap; }
     .ln-student-mat { font-size: .68rem; color: #94a3b8; font-family: 'SF Mono', SFMono-Regular, monospace; }
+    .ln-student-doc-link { display:inline-flex; align-items:center; gap:4px; margin-top:3px; font-size: .68rem; color:#0453cb; font-weight:650; text-decoration:underline; text-underline-offset:2px; }
+    .ln-student-doc-link:hover { color:#033a8e; }
+    .ln-student-doc-link:focus-visible { outline:2px solid #0453cb; outline-offset:2px; border-radius:3px; }
 
     /* Note input */
     .ln-suivi { margin: .85rem 1.5rem 0; }
@@ -1193,7 +1196,9 @@ function buildNotesGrid() {
     evalRowHtml += '<th class="ln-col-appr">APPRÉCIATION</th>';
     evalRowHtml += '</tr>';
 
-    // ── Student rows ──
+    // ── Student rows : consultation individuelle sans perdre la saisie ──
+    const ficheRoute = @json(route('esbtp.etudiants.show', ['etudiant' => '__ETUDIANT__']));
+    const canViewStudentFiche = @json(auth()->user()->can('students.view'));
     let bodyHtml = '';
     students.forEach(stu => {
         const stuNotes = notesData[stu.id] || {};
@@ -1202,7 +1207,11 @@ function buildNotesGrid() {
         bodyHtml += `<td><div class="ln-stu-cell">
             <div class="ln-stu-avatar">${escHtml(initials.toUpperCase())}</div>
             <div><div class="ln-student-name">${escHtml(stu.nom)} ${escHtml(stu.prenoms)}</div>
-            <div class="ln-student-mat">${escHtml(stu.matricule || '')}</div></div>
+            <div class="ln-student-mat">${escHtml(stu.matricule || '')}</div>
+            ${canViewStudentFiche ? `<a class="ln-student-doc-link"
+                href="${escHtml(ficheRoute.replace('__ETUDIANT__', encodeURIComponent(stu.id)))}"
+                target="_blank" rel="noopener" title="Ouvrir les documents et le relevé individuel LMD">
+                <i class="fas fa-file-pdf" aria-hidden="true"></i>Fiche · Relevé ↗</a>` : ''}</div>
         </div></td>`;
 
         evals.forEach(ev => {

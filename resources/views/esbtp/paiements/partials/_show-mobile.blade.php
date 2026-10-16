@@ -192,7 +192,7 @@
                     <dd>{{ $paiement->reference_paiement }}</dd>
                 @endif
                 <dt>Date</dt>
-                <dd>{{ $paiement->date_paiement ? $paiement->date_paiement->format('d/m/Y H:i') : '—' }}</dd>
+                <dd>{{ $paiement->date_paiement ? $paiement->date_paiement->format('d/m/Y') : '—' }}</dd>
                 <dt>Caissier</dt>
                 <dd>{{ $paiement->creator?->name ?? '—' }}</dd>
                 <dt>Statut</dt>
@@ -201,7 +201,7 @@
                 </dd>
                 @if($paiement->validatedBy && $paiement->date_validation)
                     <dt>{{ $paiement->status === 'rejeté' ? 'Rejeté par' : 'Validé par' }}</dt>
-                    <dd>{{ $paiement->validatedBy->name }} · {{ $paiement->date_validation->format('d/m/Y H:i') }}</dd>
+                    <dd>{{ $paiement->validatedBy->name }} · {{ $paiement->dateValidationLisible('d/m/Y H:i') }}</dd>
                 @endif
             </dl>
             <div class="tot">

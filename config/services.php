@@ -127,6 +127,9 @@ return [
         'whatsapp_min_spacing_seconds' => (int) env('MAILPULSE_WHATSAPP_MIN_SPACING_SECONDS', 8),
         'default_language' => env('MAILPULSE_DEFAULT_LANGUAGE', 'fr'),
         'real_workflows_enabled' => env('MAILPULSE_REAL_WORKFLOWS_ENABLED', false),
+        // Activate ONLY after running the workflow-intents migration and
+        // validating schedule:run each minute on the cPanel tenant.
+        'workflow_intents_outbox_enabled' => env('MAILPULSE_WORKFLOW_INTENTS_OUTBOX_ENABLED', false),
         'test_api_secret' => env('TEST_API_SECRET'),
         'test_notification_email' => env('TEST_NOTIFICATION_EMAIL'),
         'test_notification_phone' => env('TEST_NOTIFICATION_PHONE'),

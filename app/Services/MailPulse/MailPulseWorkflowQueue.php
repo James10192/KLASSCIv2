@@ -24,6 +24,26 @@ class MailPulseWorkflowQueue
                 return;
             }
 
+            // Opt-in durable handoff. A failure after the database insert
+            // cannot silently erase the event: cron reconciles the persisted
+            // record even when Redis, DB jobs or workers are unavailable.
+            $outbox = app(MailPulseWorkflowIntentOutbox::class);
+            if ($outbox->enabled()) {
+                try {
+                    $id = $outbox->record($intent);
+                    $outbox->enqueueAfterCommit($id);
+                } catch (Throwable $persistError) {
+                    // Fail closed, not an untracked API call. No exception is
+                    // allowed to undo a successful payment or admission.
+                    Log::critical('MailPulse intent could not be persisted', [
+                        'event' => $intent->event,
+                        'exception' => $persistError::class,
+                    ]);
+                }
+
+                return;
+            }
+
             // afterCommit keeps the worker from reading rows the caller has not
             // committed yet. The sync driver ignores it and runs inline, which
             // matches the behaviour that existed before this queue was added.
@@ -33,6 +53,17 @@ class MailPulseWorkflowQueue
                 'event' => $intent->event,
                 'error' => $e->getMessage(),
             ]);
+
+            // In durable mode, an exception before the DB insert must NEVER
+            // silently trigger an untracked external call. Escalate instead;
+            // the business transaction itself remains unaffected.
+            if (app(MailPulseWorkflowIntentOutbox::class)->enabled()) {
+                Log::critical('MailPulse durable workflow could not start', [
+                    'event' => $intent->event,
+                    'exception' => $e::class,
+                ]);
+                return;
+            }
 
             $this->runInline($intent);
         }

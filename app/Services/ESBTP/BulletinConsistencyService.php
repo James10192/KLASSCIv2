@@ -4,6 +4,7 @@ namespace App\Services\ESBTP;
 
 use App\Models\ESBTPBulletin;
 use App\Services\BulletinService;
+use Illuminate\Support\Facades\DB;
 
 class BulletinConsistencyService
 {
@@ -54,7 +55,9 @@ class BulletinConsistencyService
         }
 
         $hasDivergence = $officialBulletin !== null && ! empty($differenceReasons);
-        $canRegenerate = $officialBulletin !== null && ($current['configuration']['ready'] ?? false);
+        $canRegenerate = $officialBulletin !== null
+            && ! $this->isProtected($officialBulletin)
+            && ($current['configuration']['ready'] ?? false);
 
         return [
             'official_bulletin_exists' => $officialBulletin !== null,
@@ -99,20 +102,48 @@ class BulletinConsistencyService
     public function regenerateOfficialBulletin(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): array
     {
         $normalizedPeriode = $this->bulletinService->normalizePeriode($periode);
-        $officialBulletin = $this->findOfficialBulletin($etudiantId, $classeId, $anneeUniversitaireId, $normalizedPeriode);
+        DB::transaction(function () use ($etudiantId, $classeId, $anneeUniversitaireId, $normalizedPeriode): void {
+            $aliases = $this->bulletinService->periodeAliases($normalizedPeriode);
+            $officialBulletins = ESBTPBulletin::query()
+                ->where('etudiant_id', $etudiantId)
+                ->where('classe_id', $classeId)
+                ->where('annee_universitaire_id', $anneeUniversitaireId)
+                ->whereIn('periode', $aliases)
+                ->orderByDesc('updated_at')
+                ->lockForUpdate()
+                ->get();
 
-        if (! $officialBulletin) {
-            throw new \RuntimeException('Aucun bulletin officiel existant à régénérer.');
-        }
+            if ($officialBulletins->count() > 1) {
+                throw new \RuntimeException('Plusieurs bulletins officiels existent pour ce semestre (périodes legacy) : consolidation manuelle requise.');
+            }
+            $officialBulletin = $officialBulletins->first();
 
-        $this->bulletinService->genererDonneesBulletin(
-            $etudiantId,
-            $classeId,
-            $anneeUniversitaireId,
-            $normalizedPeriode
-        );
+            if (! $officialBulletin) {
+                throw new \RuntimeException('Aucun bulletin officiel existant à régénérer.');
+            }
+            if ($this->isProtected($officialBulletin)) {
+                throw new \RuntimeException('Ce bulletin est publié ou signé : régénération interdite.');
+            }
+
+            // Le moteur lit les moyennes manuelles sous la période canonique,
+            // mais retrouve le bulletin existant via les alias historiques.
+            $this->bulletinService->genererDonneesBulletin(
+                $etudiantId,
+                $classeId,
+                $anneeUniversitaireId,
+                $normalizedPeriode
+            );
+        });
 
         return $this->getSnapshot($etudiantId, $classeId, $anneeUniversitaireId, $normalizedPeriode);
+    }
+
+    private function isProtected(ESBTPBulletin $bulletin): bool
+    {
+        return (bool) $bulletin->is_published
+            || (bool) $bulletin->signature_responsable
+            || (bool) $bulletin->signature_directeur
+            || (bool) $bulletin->signature_parent;
     }
 
     private function findOfficialBulletin(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): ?ESBTPBulletin

@@ -73,7 +73,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, json, tokenizer
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, pdo_sqlite, dom, filter, gd, json, tokenizer
           tools: composer
 
       - name: Get Composer Cache Directory
@@ -114,15 +114,67 @@ jobs:
       # noms irresolus anterieurs, chacun demandant de decider si le modele doit
       # naitre ou la relation mourir. Les traiter est un chantier ; les laisser
       # bloquer chaque PR en serait un autre.
+      - name: Test disponibilités des classes selon l'année des inscriptions
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/InscriptionEditFormScriptsTest.php --stop-on-failure
+
       - name: Test auth étudiant-parent (routes et compatibilité)
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Feature/Auth/SharedStudentAccountRoutesTest.php --stop-on-failure
+
+      - name: Test réparation des jetons de connexion et inscription sûre
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Feature/Auth/PasswordResetStorageRepairTest.php --stop-on-failure
 
       # La limitation de débit WhatsApp ne doit jamais appeler MailPulse
       # quand le quota ou le cache partagé bloque le départ.
       - name: Test absences corrigées et reprise MailPulse
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Services/MailPulse/MailPulseAbsenceValidityTest.php --stop-on-failure
+
+      - name: Test périmètre des notes dans les fiches
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Services/Notes/EvaluationsDeLaFicheTest.php tests/Unit/Services/Notes/FicheNotesIntegrationUxTest.php --stop-on-failure
+
+      - name: Test ergonomie des fiches et modales AJAX
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Views/AcademicFicheUxContractTest.php --stop-on-failure
+
+      - name: Test documents académiques BTS et LMD sur les fiches
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Views/AcademicDocumentsNavigationTest.php --stop-on-failure
+
+      - name: Test menu de reçu au-dessus des cartes paiement
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Views/PaymentReceiptDropdownLayerTest.php --stop-on-failure
+
+      - name: Test horodatages véridiques des paiements et reçus
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Views/PaymentActualTimestampDisplayTest.php --stop-on-failure
+
+      - name: Test horodatage et identité caissier des reçus
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Views/PaymentReceiptTimeIdentityContractTest.php --stop-on-failure
+
+      - name: Test navigation des réglages bulletins
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Views/BulletinSettingsNavigationTest.php --stop-on-failure
+
+      - name: Test classement par matière des évaluations en fiche
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Views/AcademicFicheMatiereUxContractTest.php --stop-on-failure
+
+      - name: Vérifier la syntaxe du regroupement JS des évaluations
+        if: github.event_name == 'pull_request'
+        run: node --check < resources/views/esbtp/partials/_fiche-notes-view-script.blade.php
+
+      - name: Test cohérence des maquettes et filtres pédagogiques AJAX
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Views/AcademicPlanningUxContractTest.php --stop-on-failure
+
+      - name: Test outbox persistante MailPulse et récupération cron
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Services/MailPulse/MailPulseWorkflowIntentOutboxTest.php --stop-on-failure
 
       - name: Test garde débit MailPulse WhatsApp
         if: github.event_name == 'pull_request'

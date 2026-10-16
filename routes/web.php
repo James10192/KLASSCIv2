@@ -2168,6 +2168,19 @@ Route::post('esbtp/emploi-temps/{id}/set-current', [App\Http\Controllers\ESBTPEm
     ->name('esbtp.emploi-temps.set-current')
     ->middleware(['auth', 'permission:timetables.edit']);
 
+// Gestion contextuelle des notes dans les fiches (lecture séparée des
+// modifications, chaque endpoint conserve le contrôle d'accès serveur).
+Route::middleware(['auth', 'permission:notes.view', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk'])
+    ->prefix('esbtp/fiche-notes')->name('esbtp.fiche-notes.')->group(function () {
+        Route::get('/etudiants/{etudiant}', [\App\Http\Controllers\ESBTP\FicheNotesController::class, 'etudiant'])
+            ->whereNumber('etudiant')->name('etudiant')->middleware('permission:students.view');
+        Route::get('/inscriptions/{inscription}', [\App\Http\Controllers\ESBTP\FicheNotesController::class, 'inscription'])
+            ->whereNumber('inscription')->name('inscription')->middleware('permission:inscriptions.view|students.view');
+        Route::delete('/inscriptions/{inscription}/notes/{note}', [\App\Http\Controllers\ESBTP\FicheNotesController::class, 'supprimerNote'])
+            ->whereNumber('inscription')->whereNumber('note')->name('supprimer')
+            ->middleware(['permission:notes.delete', 'throttle:30,1']);
+    });
+
 // Routes pour les Ã©valuations
 // La seconde clause ferme le groupe à qui ne porte AUCUN droit sur les
 // évaluations : `admin.access` seul (caissier, comptable) suffisait à créer,
@@ -2176,23 +2189,23 @@ Route::post('esbtp/emploi-temps/{id}/set-current', [App\Http\Controllers\ESBTPEm
 Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'permission:evaluations.view|evaluations.create|evaluations.edit|view_evaluations|create_evaluations|edit_evaluations'])->group(function () {
     Route::get('/', [ESBTPEvaluationController::class, 'index'])->name('index');
     Route::get('/create', [ESBTPEvaluationController::class, 'create'])->name('create');
-    Route::post('/', [ESBTPEvaluationController::class, 'store'])->name('store');
+    Route::post('/', [ESBTPEvaluationController::class, 'store'])->name('store')->middleware('permission:evaluations.create');
 
     // AJAX: Charger matiÃ¨res disponibles pour une classe (via combinaisons globales)
     // IMPORTANT: Cette route doit Ãªtre AVANT les routes /{evaluation} pour Ã©viter les conflits
     Route::get('/load-matieres', [ESBTPEvaluationController::class, 'loadMatieres'])->name('load-matieres');
     Route::get('/coefficients/modal', [ESBTPEvaluationController::class, 'coefficientsModal'])->name('coefficients.modal');
-    Route::post('/coefficients/update', [ESBTPEvaluationController::class, 'updateCoefficients'])->name('coefficients.update');
+    Route::post('/coefficients/update', [ESBTPEvaluationController::class, 'updateCoefficients'])->middleware('permission:bulletins.configure')->name('coefficients.update');
     Route::get('/coefficients/check', [ESBTPEvaluationController::class, 'checkCoefficient'])->name('coefficients.check');
     // Sous-lot Î´
-    Route::post('/coefficients/copy', [ESBTPEvaluationController::class, 'copyCoefficients'])->name('coefficients.copy');
+    Route::post('/coefficients/copy', [ESBTPEvaluationController::class, 'copyCoefficients'])->middleware('permission:bulletins.configure')->name('coefficients.copy');
     Route::get('/coefficients/completion', [ESBTPEvaluationController::class, 'coefficientsCompletion'])->name('coefficients.completion');
     Route::get('/coefficients/read', [ESBTPEvaluationController::class, 'readCoefficients'])->name('coefficients.read');
 
     Route::get('/{evaluation}/refresh-row', [ESBTPEvaluationController::class, 'refreshRow'])->name('refresh-row');
     // Quick edit (titre + barÃ¨me + coefficient) â€” utilisÃ© depuis le modal notes (PR #4)
     Route::patch('/{evaluation}/quick-update', [ESBTPEvaluationController::class, 'quickUpdate'])
-        ->middleware('throttle:30,1')
+        ->middleware(['permission:evaluations.edit', 'throttle:30,1'])
         ->name('quick-update');
     Route::patch('/{evaluation}/cancel', [ESBTPEvaluationController::class, 'cancel'])->name('cancel');
     Route::patch('/{evaluation}/restore', [ESBTPEvaluationController::class, 'restore'])->name('restore');
@@ -2201,7 +2214,7 @@ Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['aut
     Route::get('/{evaluation}/edit', [ESBTPEvaluationController::class, 'edit'])->whereNumber('evaluation')->name('edit');
     Route::put('/{evaluation}', [ESBTPEvaluationController::class, 'update'])->whereNumber('evaluation')->name('update');
     Route::delete('/{evaluation}', [ESBTPEvaluationController::class, 'destroy'])->whereNumber('evaluation')->name('destroy');
-    Route::patch('/{evaluation}/toggle-published', [ESBTPEvaluationController::class, 'togglePublished'])->name('toggle-published');
+    Route::patch('/{evaluation}/toggle-published', [ESBTPEvaluationController::class, 'togglePublished'])->name('toggle-published')->middleware('permission:evaluations.edit');
     Route::patch('/{evaluation}/toggle-notes-published', [ESBTPEvaluationController::class, 'toggleNotesPublished'])->name('toggle-notes-published');
     Route::patch('/{evaluation}/update-status', [ESBTPEvaluationController::class, 'updateStatus'])->name('update-status');
     Route::get('/{evaluation}/pdf', [ESBTPEvaluationController::class, 'generatePdf'])->name('pdf');
@@ -2856,6 +2869,9 @@ Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|iden
     Route::post('/esbtp-special/bulletins-regenerate', [ESBTPBulletinController::class, 'regenerateOfficialBulletin'])
         ->middleware('permission:bulletins.edit')
         ->name('esbtp.bulletins.regenerate');
+    Route::post('/esbtp-special/bulletins/inscriptions/{inscription}/regenerer', \App\Http\Controllers\ESBTPInscriptionBulletinRegenerationController::class)
+        ->middleware(['permission:students.view', 'paywall'])
+        ->name('esbtp.bulletins.regenerer-inscription');
     Route::get('/esbtp/bulletins/preview', [ESBTPBulletinController::class, 'previewBulletin'])->name('esbtp.bulletins.preview');
     Route::get('/esbtp/bulletins/generer-classe/preflight', [ESBTPBulletinController::class, 'preflightClasseBulletins'])->name('esbtp.bulletins.generer-classe.preflight');
     // bulletins.delete et non bulletins.generate : detruire des moyennes
@@ -2888,7 +2904,7 @@ Route::middleware(['auth', 'permission:bulletins.configure'])->group(function ()
     Route::get('/esbtp-special/bulletins/config-matieres', [ESBTPBulletinConfigController::class, 'configMatieresTypeFormation'])->name('esbtp.bulletins.config-matieres');
     Route::post('/esbtp-special/bulletins/save-config-matieres', [ESBTPBulletinConfigController::class, 'saveConfigMatieresTypeFormation'])->name('esbtp.bulletins.save-config-matieres');
     Route::get('/esbtp-special/bulletins/config-matieres/inline-data', [ESBTPBulletinConfigController::class, 'inlineConfigMatieresData'])->name('esbtp.bulletins.config-matieres.inline-data');
-    Route::post('/esbtp-special/bulletins/config-matieres/inline-save', [ESBTPBulletinConfigController::class, 'saveInlineConfigMatieres'])->name('esbtp.bulletins.config-matieres.inline-save');
+    Route::post('/esbtp-special/bulletins/config-matieres/inline-save', [ESBTPBulletinConfigController::class, 'saveInlineConfigMatieres'])->middleware('paywall')->name('esbtp.bulletins.config-matieres.inline-save');
     // Sous-lot Î´ â€” copy config-matieres entre semestres
     Route::post('/esbtp-special/bulletins/config-matieres/copy', [ESBTPBulletinConfigController::class, 'copyConfigMatieres'])->name('esbtp.bulletins.config-matieres.copy');
     // Sous-lot Î² AJAX â€” switch S1/S2/Annuel sans reload
@@ -2899,6 +2915,10 @@ Route::middleware(['auth', 'permission:bulletins.configure'])->group(function ()
         ->name('esbtp.bulletins.copy-professeurs-from-other-semestre');
     Route::post('/esbtp-special/bulletins/save-professeurs', [ESBTPBulletinConfigController::class, 'saveProfesseurs'])->name('esbtp.bulletins.save-professeurs');
 });
+
+Route::get('/esbtp-special/bulletins/configuration-groupe', \App\Http\Controllers\ESBTPPedagogicalGroupConfigurationController::class)
+    ->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'permission:bulletins.configure|lmd.structure.view', 'paywall'])
+    ->name('esbtp.bulletins.configuration-groupe');
 
 // Routes classes â€” PROTÃ‰GÃ‰ES
 Route::middleware(['auth'])->group(function () {
@@ -3603,6 +3623,22 @@ Route::middleware([
         ->name('esbtp.lmd.releves.official-documents.stream');
 });
 
+// Relevé interne BTS : document individuel construit depuis les bulletins
+// déjà publiés. Distinct du relevé national DEXCO, sans émission officielle.
+Route::middleware([
+    'auth',
+    'paywall',
+    'permission:students.view',
+    'permission:bulletins.view',
+])->group(function () {
+    Route::get('/esbtp/bts/releves/{etudiant}/{annee}/apercu', [\App\Http\Controllers\ESBTP\BtsStudentTranscriptController::class, 'preview'])
+        ->middleware('throttle:30,1')
+        ->name('esbtp.bts.releves.preview');
+    Route::get('/esbtp/bts/releves/{etudiant}/{annee}/telecharger', [\App\Http\Controllers\ESBTP\BtsStudentTranscriptController::class, 'download'])
+        ->middleware('throttle:20,1')
+        ->name('esbtp.bts.releves.download');
+});
+
 Route::get('/verifier-document-officiel', [\App\Domain\OfficialDocuments\Http\OfficialDocumentController::class, 'showVerifyForm'])
     ->middleware('throttle:30,1')
     ->name('official-documents.verify.form');
@@ -3841,6 +3877,5 @@ Route::get('/convocation-rdv/{jeton}', [\App\Http\Controllers\API\Public\Convoca
 Route::post('/mobile/profil', [\App\Http\Controllers\PwaController::class, 'profil'])
     ->middleware(['auth', 'throttle:10,1'])
     ->name('mobile.profil');
-
 // Console d'exploitation ADC (lecture seule, hors parcours des ecoles).
 require __DIR__.'/exploitation-control-center.php';

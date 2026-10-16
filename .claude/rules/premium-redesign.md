@@ -139,6 +139,110 @@ Rangée 2 (stats-grid / ph-kpis) :
 }
 ```
 
+## Modales premium compactes — modèle validé « Nouvelle évaluation » (octobre 2026)
+
+**Référence visuelle :** la petite fenêtre blanche `Nouvelle évaluation` de
+`resources/views/esbtp/partials/fiche-notes-module.blade.php`.
+Elle est appréciée pour sa **densité et sa sobriété**, PAS pour son ancien
+positionnement incorrect en haut à gauche. Toute modale doit être centrée
+**dans la fenêtre visible**, y compris après défilement de la fiche.
+
+- **Structure :** en-tête blanc simple (titre direct et croix discrète),
+  séparateur fin, formulaire sans cartes décoratives, boutons secondaires et
+  action principale alignés à droite. Pas de nouveau hero bleu ou de KPI.
+- **Champs :** labels lisibles au-dessus, une colonne pour les champs longs,
+  deux colonnes pour les champs courts associés (type/semestre, horaires,
+  barème/coefficient) seulement si la largeur le permet ; jamais de colonne
+  vide artificielle. Coins 8–10 px, bordures `#dce3ef`, focus bleu KLASSCI.
+- **Surface :** fond blanc, arrondis 12–16 px, ombre maîtrisée, backdrop sombre.
+  Largeur adaptée au contenu (`width:min(560px,calc(100vw - 24px))` pour un
+  formulaire, et un variant explicite pour aperçu PDF). Hauteur limitée au
+  viewport, scroll **dans** la modale. Sur mobile, 1 colonne et au moins 12 px
+  de marge périphérique.
+- **Centrage obligatoire pour `<dialog>` natif :**
+  ```css
+  .feature-dialog {
+      position: fixed;
+      inset: 0;
+      margin: auto;
+      box-sizing: border-box;
+      width: min(560px, calc(100vw - 24px));
+      max-width: calc(100vw - 24px);
+      max-height: calc(100dvh - 24px);
+      overflow-y: auto;
+      border: 0;
+      border-radius: 16px;
+      background: #fff;
+  }
+  .feature-dialog::backdrop { background: rgba(8, 25, 51, .55); }
+  ```
+  Utiliser `showModal()` et le **top layer natif**, ajouter le dialogue à
+  `document.body` si créé dynamiquement ; ne jamais appliquer
+  `display:flex`, `transform:translate(...)`, `top:50%` ou une position
+  absolue globale sur un dialogue natif pour le centrer. Ces recettes peuvent
+  le déplacer hors du viewport ou casser la gestion native du focus.
+  Pour Bootstrap, conserver son propre `.modal-dialog-centered` : les deux
+  familles de modales ne doivent pas partager de correctif CSS universel.
+- **Fonctionnement :** `aria-labelledby` pointant sur le vrai titre ;
+  fermeture croix / Annuler / Échap, retour du focus à l'élément déclencheur,
+  validation serveur inchangée, erreurs explicites dans la fenêtre, bouton
+  bloqué pendant la requête, aucun reload après sauvegarde AJAX.
+- **Sélecteurs :** utiliser les pickers premium de `premium-selects.md`,
+  avec clavier, Échap, focus et menu visible/non tronqué. Préserver
+  exactement les `name`, `value`, `data-*` et les événements des formulaires.
+- **Non-régression :** tester centré à plusieurs positions de scroll, zoom
+  navigateur, viewport 375/768/1440 px, formulaire court et long,
+  liste déroulante près du bas, modale ouverte/fermée plusieurs fois,
+  clic Annuler/Échap, soumission AJAX réussie et erreur.
+
+**Interdit :** rendre la modale plein écran sur bureau, ajouter des cartes
+imbriquées sans raison, afficher une fenêtre à `top:0;left:0`, modifier
+`dialog` ou `.modal` globalement pour résoudre un seul cas.
+
+## Tableaux académiques — priorité à la matière, pas au titre du devoir
+
+Dans les fiches étudiant/inscription, un titre d'évaluation est souvent générique
+(« Devoir », « Midterm », « Interrogation »). **La matière est donc l'identité
+principale** : afficher son nom lisiblement avant le titre, jamais en légende
+quasi invisible. Référence : `fiche-notes-contenu.blade.php`.
+
+- **Regroupement sobre** par matière (défaut) avec en-têtes repliables ; proposer
+  aussi par période/semestre et liste, sans dupliquer chaque évaluation dans
+  plusieurs tableaux ni créer une carte par matière.
+- **Recherche AJAX locale** par matière et titre, sans rafraîchissement ni
+  changement de période/année. Les actions et permissions restent sur la ligne.
+- **État utilisateur préservé** (mode, recherche, groupes repliés) lorsque des
+  notes sont sauvegardées via AJAX et que le tableau est rechargé.
+- **Modale de note** : citer explicitement la matière en premier et garder le
+  titre de l'évaluation comme contexte secondaire.
+- **Accessibilité / mobile** : boutons `aria-pressed`, groupes avec
+  `aria-expanded`, actions clavier, table horizontalement défilable si
+  nécessaire ; aucun nouvel ensemble de cartes, aucune moyenne inventée.
+- **Source de vérité unique** : mêmes IDs, notes, périodes, coefficients et
+  données filtrées serveur ; ne jamais recalculer les résultats pédagogiques
+  dans la couche de présentation.
+
+## Paramètres premium — organisation par objectif (octobre 2026)
+
+Une page de réglages n'est pas un déversement de toutes les options dans un
+unique onglet : privilégier une navigation par **tâche utilisateur** (apparence
+du document, calculs et décisions, fonctionnement de l'établissement) au lieu
+de la structure des tables ou des développeurs.
+
+- Pour un ensemble dense, utiliser 2 à 4 **sous-rubriques compactes** ; pas
+  de grande carte décorative ni de duplication des contrôles.
+- Garder une **seule source de vérité** et les mêmes champs `name` / valeurs /
+  permissions / contrôles serveur. Pour les sous-vues purement visuelles,
+  masquer la section sans la retirer du formulaire ni désactiver ses champs.
+- Préserver les liens profonds historiques, l'accessibilité clavier et le
+  contexte du panneau visible lors d'une navigation.
+- Ne pas mélanger le style des bulletins avec les choix financiers des reçus :
+  `receipt_cashier_name_format` appartient à Comptabilité → Reçus,
+  sans clé concurrente dans la configuration des bulletins.
+- Toujours vérifier la sauvegarde inter-rubriques (une modification dans un
+  autre groupe ne doit pas être écrasée par un champ caché).
+- Réutiliser les composants visuels existants et les conventions responsive.
+
 ## Pages SANS hero (formulaires)
 
 Les pages de formulaire (create, edit) utilisent le **`dashboard-header` standard** de `dashboard-moderne.css` — pas de hero gradient. Le hero est réservé aux pages de listing/dashboard.
@@ -628,6 +732,7 @@ Quand un dropdown premium s'ouvre, il doit pouvoir **déborder visuellement** de
 - Éviter `transform` sur hover/focus des cards qui contiennent des dropdowns (crée un nouveau stacking context)
 - Prévoir `position: relative` + `z-index` sur la card active (`:focus-within`) et sur le field du select
 - Vérifier que le menu (`.au-select-menu` / Select2 dropdown) passe au-dessus des sections suivantes
+- Sur un **hero surmontant des cartes à marge négative**, regarder les contextes empilés **des ancêtres** : augmenter le `z-index` du menu seul ne suffit pas si le conteneur du hero est sous celui des cartes. Élever temporairement le parent uniquement pendant l'ouverture (événements Bootstrap `show.bs.dropdown` / `hidden.bs.dropdown`) ; restaurer ensuite le niveau normal.
 
 Sans ça, on obtient le bug classique : menu tronqué, labels de la section d'en bas qui passent au-dessus, UX cassée.
 

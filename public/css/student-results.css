@@ -2564,3 +2564,53 @@
 .srb-perimees__liste { margin: 0; padding-left: 1.1rem; font-size: .78rem; color: #1e293b; }
 .srb-perimees__liste li { margin-bottom: .15rem; }
 .srb-perimees .srb-action { align-self: flex-start; margin-top: .2rem; }
+
+/* ================================================================
+   Fiche résultat : densité maîtrisée (sans modifier les calculs).
+   Les tableaux de matières restent pleine largeur pour préserver
+   leurs six colonnes et les exports. Les détails courts passent
+   en deux colonnes sur desktop uniquement.
+   ================================================================ */
+.sr-results-summary-row {
+    align-items: flex-start;
+}
+.sr-results-summary-row .sr-student-card {
+    height: auto;
+    padding: 1.25rem;
+}
+.sr-results-summary-row .sr-student-avatar {
+    width: 72px;
+    height: 72px;
+    margin-bottom: .75rem;
+}
+.sr-results-summary-row .sr-student-name {
+    font-size: 1.05rem;
+}
+.sr-results-summary-row .sr-student-details {
+    gap: .75rem;
+}
+@media (min-width: 1200px) {
+    .sr-evaluations-card .sr-accordion {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: start;
+        gap: .65rem;
+    }
+    .sr-evaluations-card .sr-accordion-item {
+        margin: 0;
+        min-width: 0;
+    }
+    .sr-evaluations-card .sr-accordion-trigger {
+        gap: .5rem;
+        padding: .75rem;
+    }
+    .sr-evaluations-card .sr-accordion-trigger-left,
+    .sr-evaluations-card .sr-accordion-subject {
+        min-width: 0;
+    }
+    .sr-evaluations-card .sr-eval-item {
+        grid-template-columns: minmax(0, 1fr) repeat(3, auto);
+        gap: .5rem;
+        padding: .75rem;
+    }
+}

@@ -948,6 +948,15 @@
     .att-sim-out strong { color: #0453cb; }
     .att-warn { background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.28); border-radius: 10px; padding: 10px 12px; color: #92400e; font-size: .82rem; display: flex; gap: 8px; }
     .att-warn ul { margin: 0; padding-left: 18px; }
+
+    /* Navigation secondaire des bulletins : aucune carte ajoutée et pas de formulaire dupliqué. */
+    .settings-page-premium .settings-bulletin-nav{display:flex;gap:6px;flex-wrap:wrap;margin:18px 0 8px;padding:5px;border:1px solid #dae4f2;background:#f4f8fd;border-radius:12px}
+    .settings-page-premium .settings-bulletin-nav-btn{border:0;border-radius:9px;background:transparent;color:#536683;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+    .settings-page-premium .settings-bulletin-nav-btn[aria-pressed="true"]{background:#fff;color:#0453cb;box-shadow:0 1px 5px rgba(33,65,112,.12)}
+    .settings-page-premium .settings-bulletin-nav-btn:focus-visible{outline:2px solid #0453cb;outline-offset:2px}
+    .settings-page-premium .settings-bulletin-help{margin:0 0 16px;color:#64748b;font-size:12px}
+    .settings-page-premium #bulletin > .settings-section[hidden]{display:none!important}
+    @media(max-width:650px){.settings-page-premium .settings-bulletin-nav{flex-direction:column}.settings-page-premium .settings-bulletin-nav-btn{width:100%;justify-content:flex-start}}
 </style>
 @endpush
 
@@ -1851,8 +1860,14 @@
 
                 <!-- Tab 3: Configuration Bulletin -->
                 <div class="tab-pane fade" id="bulletin" role="tabpanel">
+                    <nav class="settings-bulletin-nav" aria-label="Rubriques des paramètres bulletins">
+                        <button type="button" class="settings-bulletin-nav-btn" data-settings-bulletin-view="apparence" aria-pressed="true"><i class="fas fa-palette" aria-hidden="true"></i> Apparence et contenu</button>
+                        <button type="button" class="settings-bulletin-nav-btn" data-settings-bulletin-view="pedagogie" aria-pressed="false"><i class="fas fa-graduation-cap" aria-hidden="true"></i> Calculs et décisions</button>
+                        <button type="button" class="settings-bulletin-nav-btn" data-settings-bulletin-view="administration" aria-pressed="false"><i class="fas fa-sliders-h" aria-hidden="true"></i> Options de fonctionnement</button>
+                    </nav>
+                    <p class="settings-bulletin-help">Des réglages regroupés par usage. La sauvegarde reste unique et conserve toutes les valeurs, y compris celles des autres rubriques.</p>
 
-            <div class="settings-section" id="bulletin-style">
+            <div class="settings-section" data-settings-bulletin-group="apparence" id="bulletin-style">
                 <div class="section-header">
                     <div class="section-icon bulletin"><i class="fas fa-layer-group"></i></div>
                     <div>
@@ -1891,7 +1906,7 @@
             </div>
 
             <!-- Section 1: En-tete du Bulletin -->
-            <div class="settings-section">
+            <div class="settings-section" data-settings-bulletin-group="apparence">
                 <div class="section-header">
                     <div class="section-icon bulletin"><i class="fas fa-heading"></i></div>
                     <div>
@@ -1964,7 +1979,7 @@
             </div>
 
             <!-- Section 2: Affichage du Contenu -->
-            <div class="settings-section">
+            <div class="settings-section" data-settings-bulletin-group="apparence">
                 <div class="section-header">
                     <div class="section-icon display"><i class="fas fa-eye"></i></div>
                     <div>
@@ -2114,7 +2129,7 @@
             </div>
 
             <!-- Section 3: Statistiques de classe -->
-            <div class="settings-section">
+            <div class="settings-section" data-settings-bulletin-group="pedagogie">
                 <div class="section-header">
                     <div class="section-icon stats"><i class="fas fa-chart-bar"></i></div>
                     <div>
@@ -2169,7 +2184,7 @@
             </div>
 
             <!-- Section 4: Tronc Commun / Specialisation -->
-            <div class="settings-section">
+            <div class="settings-section" data-settings-bulletin-group="pedagogie">
                 <div class="section-header">
                     <div class="section-icon tronc"><i class="fas fa-code-branch"></i></div>
                     <div>
@@ -2225,7 +2240,7 @@
             </div>
 
             <!-- Section 5: Ponderation des semestres -->
-            <div class="settings-section" id="bts-bulletin-policy">
+            <div class="settings-section" data-settings-bulletin-group="pedagogie" id="bts-bulletin-policy">
                 <div class="section-header">
                     <div class="section-icon ponderation"><i class="fas fa-balance-scale"></i></div>
                     <div>
@@ -2291,7 +2306,7 @@
                 </div>
             </div>
 
-            <div class="settings-section">
+            <div class="settings-section" data-settings-bulletin-group="pedagogie">
                 <div class="section-header">
                     <div class="section-icon ponderation"><i class="fas fa-gavel"></i></div>
                     <div>
@@ -2360,7 +2375,7 @@
             </div>
 
             <!-- Section 6: Note de Conduite -->
-            <div class="settings-section">
+            <div class="settings-section" data-settings-bulletin-group="pedagogie">
                 <div class="section-header">
                     <div class="section-icon conduite"><i class="fas fa-user-shield"></i></div>
                     <div>
@@ -2441,7 +2456,7 @@
                 ])
             </div>
 
-            <div class="settings-section">
+            <div class="settings-section" data-settings-bulletin-group="administration">
                 <div class="section-header">
                     <div class="section-icon"><i class="fas fa-user-check"></i></div>
                     <div>
@@ -2668,7 +2683,7 @@
             </div>
 
             <!-- Section 6a: Interface mobile -->
-            <div class="settings-section">
+            <div class="settings-section" data-settings-bulletin-group="administration">
                 <div class="section-header">
                     <div class="section-icon"><i class="fas fa-mobile-screen-button"></i></div>
                     <div>
@@ -2698,7 +2713,7 @@
             @include('esbtp.settings.partials.traces-lentes-reglages')
 
             <!-- Section 6b: Assiduite / Saisie manuelle d'heures -->
-            <div class="settings-section">
+            <div class="settings-section" data-settings-bulletin-group="administration">
                 <div class="section-header">
                     <div class="section-icon"><i class="fas fa-list-check"></i></div>
                     <div>
@@ -2731,7 +2746,7 @@
             </div>
 
             <!-- Section 7: Mentions et Seuils -->
-            <div class="settings-section">
+            <div class="settings-section" data-settings-bulletin-group="pedagogie">
                 <div class="section-header">
                     <div class="section-icon mentions"><i class="fas fa-medal"></i></div>
                     <div>
@@ -3873,7 +3888,35 @@
 
                 <!-- Tab 7: Comptabilité / SAARI -->
                 <div class="tab-pane fade" id="compta" role="tabpanel">
-                    <div class="settings-section">
+                    <nav class="d-flex flex-wrap gap-2 mb-3 mt-3" aria-label="Rubriques comptabilité">
+                        <a class="btn btn-sm btn-outline-primary" href="#compta-recus">Reçus et encaissements</a>
+                        <a class="btn btn-sm btn-outline-secondary" href="#compta-saari">Exports comptables SAARI</a>
+                    </nav>
+                    <div class="settings-section" id="compta-recus">
+                        <div class="section-header">
+                            <div class="section-icon"><i class="fas fa-receipt"></i></div>
+                            <div>
+                                <h3 class="section-title">Reçus et encaissements</h3>
+                                <p class="section-description">Identité du caissier imprimée sur le PDF, propre à cet établissement. Le journal conserve toujours son identité complète.</p>
+                            </div>
+                        </div>
+                        <fieldset class="mb-0">
+                            <legend class="form-label-modern">Afficher « Encaissé par » sur le reçu</legend>
+                            @php $receiptCashierFormat = old('setting_receipt_cashier_name_format', \App\Helpers\SettingsHelper::get('receipt_cashier_name_format', 'full')); @endphp
+                            <div class="d-flex flex-wrap gap-3">
+                                <label class="d-flex align-items-center gap-2">
+                                    <input type="radio" name="setting_receipt_cashier_name_format" value="full" {{ $receiptCashierFormat === 'full' ? 'checked' : '' }}>
+                                    Nom complet
+                                </label>
+                                <label class="d-flex align-items-center gap-2">
+                                    <input type="radio" name="setting_receipt_cashier_name_format" value="initials" {{ $receiptCashierFormat === 'initials' ? 'checked' : '' }}>
+                                    Initiales (ex. J. C. A.)
+                                </label>
+                            </div>
+                            <small class="text-muted">S'applique à la prévisualisation et aux nouveaux PDF générés, sans modifier le nom dans les données financières.</small>
+                        </fieldset>
+                    </div>
+                    <div class="settings-section" id="compta-saari">
                         <div class="section-header">
                             <div class="section-icon" style="background:linear-gradient(135deg, #10b981, #0ea5e9); color:#fff;">
                                 <i class="fas fa-calculator"></i>
@@ -3979,6 +4022,44 @@
 
 @push('scripts')
 <script>
+
+/* Onglets internes au bulletin : seules les sections visibles changent,
+   tous les inputs restent dans le formulaire existant pour ne pas perdre les réglages. */
+document.addEventListener('DOMContentLoaded', function () {
+    const pane = document.getElementById('bulletin');
+    if (!pane) return;
+    const buttons = [...pane.querySelectorAll('[data-settings-bulletin-view]')];
+    const sections = [...pane.querySelectorAll('[data-settings-bulletin-group]')];
+    function showGroup(group) {
+        if (!buttons.some(b => b.dataset.settingsBulletinView === group)) return;
+        buttons.forEach(button => {
+            button.setAttribute('aria-pressed', String(button.dataset.settingsBulletinView === group));
+        });
+        sections.forEach(section => {
+            section.hidden = section.dataset.settingsBulletinGroup !== group;
+        });
+    }
+    buttons.forEach(button => button.addEventListener('click', () => showGroup(button.dataset.settingsBulletinView)));
+    showGroup('apparence');
+
+    // Liens profonds historiques (#bts-bulletin-policy) et comptabilité.
+    function revealHash() {
+        const raw = window.location.hash.slice(1);
+        if (!raw) return;
+        const target = document.getElementById(raw);
+        if (!target) return;
+        const tabPane = target.closest('#settingsTabContent > .tab-pane');
+        if (!tabPane) return;
+        const tab = document.querySelector('#settingsTabs [data-bs-target="#' + tabPane.id + '"]');
+        if (tab && window.bootstrap?.Tab) bootstrap.Tab.getOrCreateInstance(tab).show();
+        const subsection = target.closest('[data-settings-bulletin-group]');
+        if (subsection) showGroup(subsection.dataset.settingsBulletinGroup);
+        requestAnimationFrame(() => target.scrollIntoView({block:'start',behavior:'auto'}));
+    }
+    revealHash();
+    window.addEventListener('hashchange', revealHash);
+});
+
 document.addEventListener('DOMContentLoaded', function() {
     // Animation au scroll
     const observer = new IntersectionObserver((entries) => {
