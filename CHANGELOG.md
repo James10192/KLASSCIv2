@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Fiches et résultats étudiants — correctif erreurs 500 :** restitution de l'inscription sélectionnée à la vue des résultats BTS ; garde de disponibilité pour les relevés BTS dans les fiches et les notes (et LMD dans la fiche), afin qu'une route absente du cache ne rende plus la page inaccessible. Vérifier la synchronisation et le cache Laravel sur chaque école.
 - **Fiche étudiant — repli sûr si la route de régénération manque :** le bouton de génération/régénération n'est affiché que lorsque sa route Laravel est enregistrée, évitant une erreur 500 lors d'un déploiement incomplet ou d'un ancien cache de routes ; aucun changement des permissions ou du calcul.
 - **Control Center interne ADC :** console de lecture des traces de lenteur et d'echec, par route et periode, reservee aux super-administrateurs d'exploitation. Ne requiert ni VPS, ni Redis, ni daemon sur cPanel.
 - **Inscriptions et réinscriptions — disponibilité des classes par année :** lors de la modification d'une inscription, le nombre de places est maintenant celui de son année universitaire, y compris dans le formulaire intégré. En réinscription, les deux modes de sélection utilisent l'année de destination choisie et actualisent le quota sans rechargement. Aucune classe ni inscription n'est déplacée automatiquement.

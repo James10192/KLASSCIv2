@@ -36,6 +36,9 @@
                 @endforeach
                 @if(($ficheInsc->classe?->systeme_academique ?? '') === 'LMD')
                     @can('lmd.releve.view')
+                        @if(\Illuminate\Support\Facades\Route::has('esbtp.lmd.releves.status')
+                            && \Illuminate\Support\Facades\Route::has('esbtp.lmd.releves.issue')
+                            && \Illuminate\Support\Facades\Route::has('esbtp.lmd.releves.preview'))
                         <button type="button" class="fng-btn" data-fng-lmd-releve
                             data-status-url="{{ route('esbtp.lmd.releves.status', ['etudiant' => $student->id, 'annee' => $ficheInsc->annee_universitaire_id]) }}"
                             data-issue-url="{{ route('esbtp.lmd.releves.issue', ['etudiant' => $student->id, 'annee' => $ficheInsc->annee_universitaire_id]) }}"
@@ -44,6 +47,7 @@
                         </button>
                         <a hidden data-fng-lmd-preview data-fng-document target="_blank" rel="noopener"
                             href="{{ route('esbtp.lmd.releves.preview', ['etudiant' => $student->id, 'annee' => $ficheInsc->annee_universitaire_id]) }}">Relevé LMD</a>
+                        @endif
                     @endcan
                     @if(auth()->user()->can('module.lmd.access') && auth()->user()->can('lmd.jury.view'))
                         <a class="fng-btn" target="_blank" rel="noopener"
@@ -51,12 +55,16 @@
                             title="Le PV est un document collectif de jury"><i class="fas fa-users"></i> PV du jury</a>
                     @endif
                 @elseif(auth()->user()->can('students.view') && auth()->user()->can('bulletins.view'))
+                    @if(\Illuminate\Support\Facades\Route::has('esbtp.bts.releves.preview'))
                     <a class="fng-btn" data-fng-document target="_blank" rel="noopener"
                         href="{{ route('esbtp.bts.releves.preview', ['etudiant' => $student->id, 'annee' => $ficheInsc->annee_universitaire_id]) }}"
                         title="Relevé interne de l'établissement, distinct du relevé national BTS"><i class="fas fa-file-pdf"></i> Relevé BTS</a>
+                    @endif
+                    @if(\Illuminate\Support\Facades\Route::has('esbtp.bts.releves.download'))
                     <a class="fng-btn" target="_blank" rel="noopener"
                         href="{{ route('esbtp.bts.releves.download', ['etudiant' => $student->id, 'annee' => $ficheInsc->annee_universitaire_id]) }}"
                         title="Télécharger le relevé interne BTS"><i class="fas fa-download"></i> PDF</a>
+                    @endif
                 @endif
             </div>
         </div>
