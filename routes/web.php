@@ -2217,16 +2217,16 @@ Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['aut
     Route::patch('/{evaluation}/quick-update', [ESBTPEvaluationController::class, 'quickUpdate'])
         ->middleware(['permission:evaluations.edit', 'throttle:30,1'])
         ->name('quick-update');
-    Route::patch('/{evaluation}/cancel', [ESBTPEvaluationController::class, 'cancel'])->name('cancel');
-    Route::patch('/{evaluation}/restore', [ESBTPEvaluationController::class, 'restore'])->name('restore');
+    Route::patch('/{evaluation}/cancel', [ESBTPEvaluationController::class, 'cancel'])->name('cancel')->middleware('permission:evaluations.edit|edit_evaluations');
+    Route::patch('/{evaluation}/restore', [ESBTPEvaluationController::class, 'restore'])->name('restore')->middleware('permission:evaluations.edit|edit_evaluations');
     // whereNumber Ã©vite que evaluations/active-external-links etc. soit capturÃ© par show/update/destroy
     Route::get('/{evaluation}', [ESBTPEvaluationController::class, 'show'])->whereNumber('evaluation')->name('show');
     Route::get('/{evaluation}/edit', [ESBTPEvaluationController::class, 'edit'])->whereNumber('evaluation')->name('edit');
-    Route::put('/{evaluation}', [ESBTPEvaluationController::class, 'update'])->whereNumber('evaluation')->name('update');
-    Route::delete('/{evaluation}', [ESBTPEvaluationController::class, 'destroy'])->whereNumber('evaluation')->name('destroy');
-    Route::patch('/{evaluation}/toggle-published', [ESBTPEvaluationController::class, 'togglePublished'])->name('toggle-published')->middleware('permission:evaluations.edit');
-    Route::patch('/{evaluation}/toggle-notes-published', [ESBTPEvaluationController::class, 'toggleNotesPublished'])->name('toggle-notes-published');
-    Route::patch('/{evaluation}/update-status', [ESBTPEvaluationController::class, 'updateStatus'])->name('update-status');
+    Route::put('/{evaluation}', [ESBTPEvaluationController::class, 'update'])->whereNumber('evaluation')->name('update')->middleware('permission:evaluations.edit|edit_evaluations');
+    Route::delete('/{evaluation}', [ESBTPEvaluationController::class, 'destroy'])->whereNumber('evaluation')->name('destroy')->middleware('permission:evaluations.edit|edit_evaluations');
+    Route::patch('/{evaluation}/toggle-published', [ESBTPEvaluationController::class, 'togglePublished'])->name('toggle-published')->middleware('permission:evaluations.edit|edit_evaluations');
+    Route::patch('/{evaluation}/toggle-notes-published', [ESBTPEvaluationController::class, 'toggleNotesPublished'])->name('toggle-notes-published')->middleware('permission:evaluations.edit|edit_evaluations');
+    Route::patch('/{evaluation}/update-status', [ESBTPEvaluationController::class, 'updateStatus'])->name('update-status')->middleware('permission:evaluations.edit|edit_evaluations');
     Route::get('/{evaluation}/pdf', [ESBTPEvaluationController::class, 'generatePdf'])->name('pdf');
     Route::get('/{evaluation}/pdf/preview', [ESBTPEvaluationController::class, 'previewPdf'])
         ->name('pdf-preview')

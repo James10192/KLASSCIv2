@@ -23,6 +23,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -1170,20 +1172,35 @@ class ESBTPEvaluationController extends Controller
 
     public function togglePublished(Request $request, ESBTPEvaluation $evaluation)
     {
+        // Champ optionnel : les anciens formulaires de show et fiche-notes restent compatibles.
+        // Les appels AJAX de l'index envoient l'état cible pour rendre le PATCH idempotent.
+        $validated = $request->validate([
+            'is_published' => ['sometimes', 'required', 'boolean'],
+        ]);
+
         try {
-            $isPublished = ! $evaluation->is_published;
+            $result = DB::transaction(function () use ($evaluation, $validated) {
+                $locked = ESBTPEvaluation::query()->lockForUpdate()->findOrFail($evaluation->getKey());
+                $target = array_key_exists('is_published', $validated)
+                    ? (bool) $validated['is_published']
+                    : ! (bool) $locked->is_published;
+                $changed = (bool) $locked->is_published !== $target;
 
-            $evaluation->update([
-                'is_published' => $isPublished,
-                'notes_published' => $isPublished ? $evaluation->notes_published : false,
-                'updated_by' => Auth::id(),
-            ]);
+                if ($changed) {
+                    $locked->update([
+                        'is_published' => $target,
+                        'notes_published' => $target ? $locked->notes_published : false,
+                        'updated_by' => Auth::id(),
+                    ]);
+                    if ($locked->status !== ESBTPEvaluation::STATUS_CANCELLED) {
+                        $locked->syncAutomaticStatus();
+                    }
+                }
 
-            if ($evaluation->status !== ESBTPEvaluation::STATUS_CANCELLED) {
-                $evaluation->syncAutomaticStatus();
-            }
+                return ['is_published' => (bool) $locked->is_published, 'unchanged' => ! $changed];
+            });
 
-            $message = $evaluation->is_published
+            $message = $result['is_published']
                 ? 'Évaluation publiée avec succès.'
                 : 'Évaluation dépubliée avec succès. Les notes ont été masquées.';
 
@@ -1192,12 +1209,18 @@ class ESBTPEvaluationController extends Controller
                     'success' => true,
                     'message' => $message,
                     'evaluation_id' => $evaluation->id,
-                    'is_published' => (bool) $evaluation->is_published,
+                    'is_published' => $result['is_published'],
+                    'unchanged' => $result['unchanged'],
                 ]);
             }
 
             return back()->with('success', $message);
         } catch (\Exception $e) {
+            Log::error('Échec de publication d\'évaluation', [
+                'evaluation_id' => $evaluation->getKey(),
+                'exception' => $e,
+            ]);
+
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
@@ -1211,32 +1234,48 @@ class ESBTPEvaluationController extends Controller
 
     public function toggleNotesPublished(Request $request, ESBTPEvaluation $evaluation)
     {
-        if (! $evaluation->canPublishNotes() && ! $evaluation->notes_published) {
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Les notes ne peuvent pas être publiées pour cette évaluation.',
-                ], 422);
-            }
-
-            return back()->with('error', 'Les notes ne peuvent pas être publiées pour cette évaluation.');
-        }
+        $validated = $request->validate([
+            'notes_published' => ['sometimes', 'required', 'boolean'],
+        ]);
 
         try {
-            if (! $evaluation->is_published && ! $evaluation->notes_published) {
-                $evaluation->is_published = true;
-                $evaluation->updated_by = Auth::id();
-                if ($evaluation->status !== ESBTPEvaluation::STATUS_CANCELLED) {
-                    $evaluation->syncAutomaticStatus();
+            $result = DB::transaction(function () use ($evaluation, $validated) {
+                $locked = ESBTPEvaluation::query()->lockForUpdate()->findOrFail($evaluation->getKey());
+                $target = array_key_exists('notes_published', $validated)
+                    ? (bool) $validated['notes_published']
+                    : ! (bool) $locked->notes_published;
+                $changed = (bool) $locked->notes_published !== $target;
+
+                if ($changed && $target && ! $locked->canPublishNotes()) {
+                    return ['not_allowed' => true];
                 }
+
+                if ($changed) {
+                    if ($target && ! $locked->is_published) {
+                        $locked->is_published = true;
+                        $locked->updated_by = Auth::id();
+                        if ($locked->status !== ESBTPEvaluation::STATUS_CANCELLED) {
+                            $locked->syncAutomaticStatus();
+                        }
+                    }
+                    $locked->update([
+                        'notes_published' => $target,
+                        'updated_by' => Auth::id(),
+                    ]);
+                }
+
+                return ['notes_published' => (bool) $locked->notes_published, 'unchanged' => ! $changed];
+            });
+
+            if (! empty($result['not_allowed'])) {
+                $message = 'Les notes ne peuvent pas être publiées pour cette évaluation.';
+
+                return $request->wantsJson()
+                    ? response()->json(['success' => false, 'message' => $message], 422)
+                    : back()->with('error', $message);
             }
 
-            $evaluation->update([
-                'notes_published' => ! $evaluation->notes_published,
-                'updated_by' => Auth::id(),
-            ]);
-
-            $message = $evaluation->notes_published
+            $message = $result['notes_published']
                 ? 'Notes publiées avec succès.'
                 : 'Notes dépubliées avec succès.';
 
@@ -1245,12 +1284,18 @@ class ESBTPEvaluationController extends Controller
                     'success' => true,
                     'message' => $message,
                     'evaluation_id' => $evaluation->id,
-                    'notes_published' => (bool) $evaluation->notes_published,
+                    'notes_published' => $result['notes_published'],
+                    'unchanged' => $result['unchanged'],
                 ]);
             }
 
             return back()->with('success', $message);
         } catch (\Exception $e) {
+            Log::error('Échec de publication des notes d\'évaluation', [
+                'evaluation_id' => $evaluation->getKey(),
+                'exception' => $e,
+            ]);
+
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,

@@ -1299,9 +1299,10 @@
 function initializeEvaluations() {
     const filtersForm = document.getElementById('evaluations-filter-form');
     const resultsContainer = document.getElementById('evaluations-results');
-    if (!filtersForm || !resultsContainer) {
+    if (!filtersForm || !resultsContainer || resultsContainer.dataset.evaluationsInitialized === '1') {
         return;
     }
+    resultsContainer.dataset.evaluationsInitialized = '1';
 
     const searchInput = document.getElementById('evaluations-search');
     const hiddenSearch = document.getElementById('filter-search');
@@ -1315,6 +1316,8 @@ function initializeEvaluations() {
     let nextPage = null;
     let loadingMore = false;
     const selectedIds = new Set();
+    const processingIds = new Set();
+    let bulkProcessing = false;
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     const rowUrlTemplate = resultsContainer.dataset.rowUrlTemplate || '';
     const publishUrlTemplate = resultsContainer.dataset.publishUrlTemplate || '';
@@ -1373,10 +1376,11 @@ function initializeEvaluations() {
     }
 
     function setBulkProcessing(isProcessing) {
+        bulkProcessing = Boolean(isProcessing);
         if (!bulkBar) {
             return;
         }
-        bulkBar.classList.toggle('is-processing', Boolean(isProcessing));
+        bulkBar.classList.toggle('is-processing', bulkProcessing);
         bulkBar.querySelectorAll('button').forEach((button) => {
             button.disabled = Boolean(isProcessing);
         });
@@ -1426,6 +1430,9 @@ function initializeEvaluations() {
         if (wrapper) {
             wrapper.classList.toggle('is-loading', Boolean(isLoading));
         }
+        row.querySelectorAll('[data-evaluation-action]').forEach((button) => {
+            button.disabled = Boolean(isLoading);
+        });
     }
 
     function triggerEvaluationRowHighlight(row, actionType = 'update') {
@@ -1638,112 +1645,123 @@ function initializeEvaluations() {
         updateBulkBar();
         const selectAll = resultsContainer.querySelector('#evaluations-select-all');
         if (selectAll) {
-            const total = resultsContainer.querySelectorAll('.evaluation-checkbox').length;
-            selectAll.indeterminate = selectedIds.size > 0 && selectedIds.size < total;
-            selectAll.checked = selectedIds.size > 0 && selectedIds.size === total;
+            const visible = Array.from(resultsContainer.querySelectorAll('.evaluation-checkbox'));
+            const checkedCount = visible.filter((checkbox) => checkbox.checked).length;
+            selectAll.indeterminate = checkedCount > 0 && checkedCount < visible.length;
+            selectAll.checked = visible.length > 0 && checkedCount === visible.length;
         }
     }
+
+    // La délégation reste unique : les lignes sont remplacées après les appels AJAX.
+    // La capture évite le stopPropagation des cellules d'actions dans evaluation-row.
+    resultsContainer.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-evaluation-action]');
+        if (!button || !resultsContainer.contains(button)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (!button.disabled) handleAction(button);
+    }, true);
+
+    resultsContainer.addEventListener('change', (event) => {
+        const target = event.target;
+        if (target.matches('.evaluation-checkbox')) {
+            handleRowSelection(event);
+            return;
+        }
+        if (target.matches('#evaluations-select-all')) {
+            resultsContainer.querySelectorAll('.evaluation-checkbox').forEach((checkbox) => {
+                checkbox.checked = target.checked;
+                const id = Number(checkbox.value);
+                if (target.checked) selectedIds.add(id);
+                else selectedIds.delete(id);
+            });
+            updateBulkBar();
+            return;
+        }
+        if (target.matches('#evaluations-per-page') && perPageInput) {
+            perPageInput.value = target.value;
+            if (pageInput) pageInput.value = '1';
+            submitFilterForm();
+        }
+    });
 
     function initRowInteractions() {
-        resultsContainer.querySelectorAll('.evaluation-checkbox').forEach((checkbox) => {
-            checkbox.addEventListener('change', handleRowSelection);
-            if (selectedIds.has(Number(checkbox.value))) {
-                checkbox.checked = true;
-            }
+        const checkboxes = resultsContainer.querySelectorAll('.evaluation-checkbox');
+        checkboxes.forEach((checkbox) => {
+            checkbox.checked = selectedIds.has(Number(checkbox.value));
         });
-
         const selectAll = resultsContainer.querySelector('#evaluations-select-all');
         if (selectAll) {
-            const checkboxes = resultsContainer.querySelectorAll('.evaluation-checkbox');
-            selectAll.indeterminate = selectedIds.size > 0 && selectedIds.size < checkboxes.length;
-            selectAll.checked = selectedIds.size > 0 && selectedIds.size === checkboxes.length;
-            selectAll.addEventListener('change', () => {
-                const checked = selectAll.checked;
-                resultsContainer.querySelectorAll('.evaluation-checkbox').forEach((checkbox) => {
-                    checkbox.checked = checked;
-                    const id = Number(checkbox.value);
-                    if (checked) {
-                        selectedIds.add(id);
-                    } else {
-                        selectedIds.delete(id);
-                    }
-                });
-                updateBulkBar();
-            });
+            const checkedCount = Array.from(checkboxes).filter((checkbox) => checkbox.checked).length;
+            selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+            selectAll.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
         }
-
-        resultsContainer.querySelectorAll('[data-evaluation-action]').forEach((button) => {
-            button.addEventListener('click', (event) => {
-                event.preventDefault();
-                handleAction(button);
-            });
-        });
-
-        const perPageSelect = document.getElementById('evaluations-per-page');
-        if (perPageSelect) {
-            perPageSelect.value = perPageInput.value || perPageSelect.value;
-            perPageSelect.addEventListener('change', () => {
-            perPageInput.value = perPageSelect.value;
-            if (pageInput) {
-                pageInput.value = '1';
-            }
-            submitFilterForm();
-        });
-    }
-
+        const perPageSelect = resultsContainer.querySelector('#evaluations-per-page');
+        if (perPageSelect && perPageInput) perPageSelect.value = perPageInput.value || perPageSelect.value;
         updateBulkBar();
     }
 
-    function performEvaluationAction({ action, url, method, evaluationId, refreshRow = true }) {
-        if (!action || !url || !evaluationId) {
-            return Promise.resolve();
+    // Un résultat explicite est indispensable aux lots : ne jamais masquer un 429/500.
+    async function performEvaluationAction({
+        action, url, method, evaluationId, refreshRow = true,
+        payload = null, silentSuccess = false, silentError = false
+    }) {
+        const id = Number(evaluationId);
+        if (!action || !url || !id || processingIds.has(id)) {
+            return { ok: false, skipped: true, message: 'Action déjà en cours ou invalide.' };
         }
 
+        processingIds.add(id);
+        setRowLoadingState(id, true);
         const headers = {
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
         };
+        if (method !== 'GET' && csrfToken) headers['X-CSRF-TOKEN'] = csrfToken;
+        if (payload !== null) headers['Content-Type'] = 'application/json';
 
-        if (method !== 'GET' && csrfToken) {
-            headers['X-CSRF-TOKEN'] = csrfToken;
-        }
-
-        setRowLoadingState(evaluationId, true);
-
-        return fetch(url, {
-            method,
-            headers
-        })
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                return response.json();
-            })
-            .then((data) => {
-                if (!data.success) {
-                    throw new Error(data.message || 'Action impossible');
-                }
-                if (data.message) {
-                    showToast(data.message, 'success');
-                }
-                if (data.warning) window.evAfficherAvertissement(data.warning, data.warning_links);
-                if (data.deleted || action === 'delete') {
-                    selectedIds.delete(Number(evaluationId));
-                    if (refreshRow) {
-                        submitFilterForm(false);
-                    }
-                    return;
-                }
-                if (refreshRow) {
-                    const highlightType = action === 'cancel' ? 'cancel' : 'update';
-                    return refreshEvaluationRow(evaluationId, highlightType).then(() => fetchSummaryOnly());
-                }
-            })
-            .catch((error) => {
-                showToast(error.message || "Erreur lors du traitement de l'action", 'error');
-                setRowLoadingState(evaluationId, false);
+        try {
+            const response = await fetch(url, {
+                method,
+                headers,
+                ...(payload !== null ? { body: JSON.stringify(payload) } : {})
             });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) {
+                const error = new Error(data.message || (
+                    response.status === 429
+                        ? 'Trop de requêtes : patientez avant de réessayer.'
+                        : `Erreur HTTP ${response.status || 'réseau'}.`
+                ));
+                error.status = response.status;
+                error.retryAfter = response.headers.get('Retry-After');
+                throw error;
+            }
+
+            if (!silentSuccess && data.message) showToast(data.message, 'success');
+            if (data.warning) window.evAfficherAvertissement?.(data.warning, data.warning_links);
+            if (data.deleted || action === 'delete') selectedIds.delete(id);
+
+            if (refreshRow) {
+                if (data.deleted || action === 'delete') {
+                    await submitFilterForm(false);
+                } else {
+                    const highlightType = action === 'cancel' ? 'cancel' : 'update';
+                    await Promise.all([refreshEvaluationRow(id, highlightType), fetchSummaryOnly()]);
+                }
+            }
+            return { ok: true };
+        } catch (error) {
+            let message = error.message || "Erreur lors du traitement de l'action.";
+            if (error.status === 429 && error.retryAfter) {
+                message += ` Délai indiqué par le serveur : ${error.retryAfter}.`;
+            }
+            if (!silentError) showToast(message, 'error');
+            return { ok: false, status: error.status || 0, message };
+        } finally {
+            processingIds.delete(id);
+            setRowLoadingState(id, false);
+        }
     }
 
     function handleAction(button) {
@@ -1751,21 +1769,15 @@ function initializeEvaluations() {
         const url = button.getAttribute('data-url');
         const method = button.getAttribute('data-method') || 'POST';
         const row = button.closest('tr[data-evaluation-id]');
-        const evaluationId = row ? row.getAttribute('data-evaluation-id') : null;
+        const evaluationId = row ? Number(row.getAttribute('data-evaluation-id')) : null;
+        if (!action || !url || !evaluationId || bulkProcessing || processingIds.has(evaluationId)) return;
 
-        if (!action || !url || !evaluationId) {
-            return;
-        }
+        if (action === 'delete' && !window.confirm('Confirmez-vous la suppression de cette évaluation ?')) return;
+        if (action === 'cancel' && !window.confirm("Confirmez-vous l'annulation de cette évaluation ?")) return;
 
-        if (action === 'delete' && !window.confirm('Confirmez-vous la suppression de cette évaluation ?')) {
-            return;
-        }
-
-        if (action === 'cancel' && !window.confirm("Confirmez-vous l'annulation de cette évaluation ?")) {
-            return;
-        }
-
-        performEvaluationAction({ action, url, method, evaluationId, refreshRow: true });
+        const meta = getRowMeta(evaluationId);
+        const payload = action === 'toggle-notes' ? { notes_published: !meta.notesPublished } : null;
+        performEvaluationAction({ action, url, method, evaluationId, payload });
     }
 
     function animateBulkButton(button) {
@@ -1778,72 +1790,75 @@ function initializeEvaluations() {
         setTimeout(() => button.classList.remove('bulk-action-animate'), 900);
     }
 
-    function runBulkAction(actionKey, triggerButton = null) {
+    async function runBulkAction(actionKey, triggerButton = null) {
+        if (bulkProcessing || processingIds.size) return;
         const ids = Array.from(selectedIds);
-        if (!ids.length) {
-            return;
-        }
+        if (!ids.length) return;
 
-        const requiresConfirm = ['delete', 'cancel'];
-        if (requiresConfirm.includes(actionKey)) {
+        if (['delete', 'cancel'].includes(actionKey)) {
             const message = actionKey === 'delete'
                 ? 'Confirmez-vous la suppression des évaluations sélectionnées ?'
                 : "Confirmez-vous l'annulation des évaluations sélectionnées ?";
-            if (!window.confirm(message)) {
-                return;
-            }
+            if (!window.confirm(message)) return;
         }
 
         let filteredIds = ids;
-        if (actionKey === 'publish') {
-            filteredIds = ids.filter((id) => !getRowMeta(id).isPublished);
-        } else if (actionKey === 'unpublish') {
-            filteredIds = ids.filter((id) => getRowMeta(id).isPublished);
-        } else if (actionKey === 'publish-notes') {
-            filteredIds = ids.filter((id) => getRowMeta(id).canPublishNotes);
-        } else if (actionKey === 'cancel') {
-            filteredIds = ids.filter((id) => getRowMeta(id).status !== 'cancelled');
-        }
+        if (actionKey === 'publish') filteredIds = ids.filter((id) => !getRowMeta(id).isPublished);
+        else if (actionKey === 'unpublish') filteredIds = ids.filter((id) => getRowMeta(id).isPublished);
+        else if (actionKey === 'publish-notes') filteredIds = ids.filter((id) => getRowMeta(id).canPublishNotes);
+        else if (actionKey === 'cancel') filteredIds = ids.filter((id) => getRowMeta(id).status !== 'cancelled');
 
         if (!filteredIds.length) {
             showToast('Aucune évaluation éligible pour cette action.', 'error');
-            setBulkProcessing(false);
             return;
         }
 
         const actionConfig = {
-            publish: { template: publishUrlTemplate, method: 'PATCH', action: 'toggle-published' },
-            unpublish: { template: publishUrlTemplate, method: 'PATCH', action: 'toggle-published' },
-            'publish-notes': { template: notesUrlTemplate, method: 'PATCH', action: 'toggle-notes' },
+            publish: { template: publishUrlTemplate, method: 'PATCH', action: 'toggle-published', payload: { is_published: true } },
+            unpublish: { template: publishUrlTemplate, method: 'PATCH', action: 'toggle-published', payload: { is_published: false } },
+            'publish-notes': { template: notesUrlTemplate, method: 'PATCH', action: 'toggle-notes', payload: { notes_published: true } },
             cancel: { template: cancelUrlTemplate, method: 'PATCH', action: 'cancel' },
             delete: { template: deleteUrlTemplate, method: 'DELETE', action: 'delete' },
         };
-
         const config = actionConfig[actionKey];
-        if (!config || !config.template) {
-            return;
-        }
+        if (!config || !config.template) return;
 
-        const shouldRefreshRow = actionKey !== 'delete';
         setBulkProcessing(true);
-        filteredIds.reduce((promise, id) => {
-            const url = resolveActionUrl(config.template, id);
-            return promise.then(() => performEvaluationAction({
-                action: config.action,
-                url,
-                method: config.method,
-                evaluationId: id,
-                refreshRow: shouldRefreshRow
-            }));
-        }, Promise.resolve()).then(() => {
-            if (!shouldRefreshRow) {
-                submitFilterForm(false);
+        let completed = 0;
+        let failure = null;
+        try {
+            // Une seule mutation séquentielle par ligne, sans GET ligne + GET compteur.
+            for (const id of filteredIds) {
+                const outcome = await performEvaluationAction({
+                    action: config.action,
+                    url: resolveActionUrl(config.template, id),
+                    method: config.method,
+                    evaluationId: id,
+                    payload: config.payload ?? null,
+                    refreshRow: false,
+                    silentSuccess: true,
+                    silentError: true
+                });
+                if (!outcome.ok) {
+                    failure = outcome;
+                    break; // 429, erreur réseau ou serveur : aucun autre PATCH.
+                }
+                completed++;
+            }
+            if (completed) {
+                // Une unique requête actualise les lignes et les compteurs.
+                await submitFilterForm(false);
+            }
+            if (failure) {
+                showToast(`${completed}/${filteredIds.length} évaluation(s) traitée(s). Lot interrompu : ${failure.message}`, 'error');
+            } else {
+                showToast(`${completed} évaluation(s) traitée(s) avec succès.`, 'success');
+                animateBulkButton(triggerButton);
             }
             updateBulkBar();
-            animateBulkButton(triggerButton);
-        }).finally(() => {
+        } finally {
             setBulkProcessing(false);
-        });
+        }
     }
 
     /**
