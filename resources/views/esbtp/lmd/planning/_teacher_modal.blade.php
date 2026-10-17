@@ -1,57 +1,97 @@
-{{-- Modal d'assignation enseignant — modes :
-     - role='enseignant_ecue' : pool de plusieurs enseignants possibles pour l'ECUE
-     - role='responsable_ue'  : un responsable unique pour l'UE (UEMOA 03/2007/CM)
-     Le professeur REEL d'une classe est ensuite resolu/confirmé sur les evaluations et seances. --}}
+{{-- Pool ECUE multi-enseignants et responsable UE unique. --}}
 @can('lmd.planning.edit')
 <div id="lptBackdrop"
      class="lpt-backdrop"
      x-data="lptModal()"
      :class="{ 'lpt-backdrop--open': open }"
      @lpt:open.window="onOpen($event.detail)"
-     @keydown.escape.window="open = false"
-     @click.self="open = false"
+     @keydown.escape.window="handleEscape($event)"
+     @click.self="closeModal()"
      x-cloak>
-    <div class="lpt-modal" role="dialog" aria-labelledby="lptTitle">
+    <div class="lpt-modal" role="dialog" aria-modal="true" aria-labelledby="lptTitle" :aria-busy="saving || loadingPool" @keydown.tab="trapFocus($event)">
         <div class="lpt-header">
-            <div>
+            <div class="lpt-header-text">
                 <h3 id="lptTitle">
-                    <i class="fas fa-chalkboard-teacher"></i>
-                    <span x-show="role === 'responsable_ue'">Assigner le responsable de l'UE</span>
-                    <span x-show="role !== 'responsable_ue'">Professeurs possibles pour l'ECUE</span>
+                    <i class="fas fa-chalkboard-teacher" aria-hidden="true"></i>
+                    <span x-show="role === 'responsable_ue'">Responsable de l'UE</span>
+                    <span x-show="role !== 'responsable_ue'">Professeurs de l'ECUE</span>
                 </h3>
                 <div class="lpt-header-meta" x-text="targetLabel"></div>
             </div>
-            <button type="button" class="lpt-close" @click="open = false" aria-label="Fermer">
-                <i class="fas fa-times"></i>
+            <button type="button" class="lpt-close" @click="closeModal()" :disabled="saving" aria-label="Fermer">
+                <i class="fas fa-times" aria-hidden="true"></i>
             </button>
         </div>
         <div class="lpt-body">
             <div x-show="role !== 'responsable_ue'">
-                <div class="alert alert-info py-2 mb-3">
-                    <i class="fas fa-info-circle me-1"></i>
-                    Un parcours peut avoir plusieurs classes : cochez ici tous les professeurs susceptibles d'assurer cet ECUE. KLASSCI déterminera ensuite le professeur réel de chaque classe à partir de ses évaluations et séances.
+                <p class="lpt-context-hint">
+                    <i class="fas fa-info-circle" aria-hidden="true"></i>
+                    Plusieurs enseignants peuvent être prévus pour cet ECUE. Le professeur réel reste confirmé par classe.
+                </p>
+                <div class="lpt-loading" x-show="loadingPool" role="status" aria-live="polite" x-cloak>
+                    <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i>
+                    Lecture des affectations…
                 </div>
-                <input type="search" class="form-control mb-3" x-model="teacherSearch" placeholder="Rechercher un enseignant…">
-                <div class="lpt-teacher-pool">
-                    @foreach($enseignants as $enseignant)
-                        @php $lptSearch = mb_strtolower(trim(($enseignant->name ?? '').' '.($enseignant->email ?? '')), 'UTF-8'); @endphp
-                        <label class="lpt-teacher-option"
-                               x-show="!teacherSearch || @js($lptSearch).includes(teacherSearch.toLocaleLowerCase('fr'))">
-                            <input type="checkbox" value="{{ $enseignant->id }}" x-model.number="selectedIds">
-                            <span>
-                                <strong>{{ $enseignant->name }}</strong>
-                                @if($enseignant->email)<small>{{ $enseignant->email }}</small>@endif
-                            </span>
-                        </label>
-                    @endforeach
+                <div class="lpt-load-error" x-show="loadError && !loadingPool" role="alert" x-cloak>
+                    <span x-text="loadError"></span>
+                    <button type="button" @click="retryPool()">Réessayer</button>
                 </div>
-                <div class="lpt-empty-hint" x-show="selectedIds.length === 0" x-cloak>
-                    <i class="fas fa-info-circle"></i>
-                    <span>Aucun professeur n'est encore prévu pour cet ECUE.</span>
+                <div x-show="!loadingPool && !loadError" x-cloak>
+                    <div class="lpt-section-heading">
+                        <span>Enseignants sélectionnés</span>
+                        <span class="lpt-count" x-text="selectedIds.length + ' sélectionné(s)'"></span>
+                    </div>
+                    <div class="lpt-selected-list" aria-live="polite">
+                        <template x-for="teacher in selectedTeachers" :key="teacher.id">
+                            <div class="lpt-selected-option">
+                                <span class="lpt-avatar" x-text="initials(teacher.name)"></span>
+                                <span class="lpt-option-details">
+                                    <strong x-text="teacher.name"></strong>
+                                    <small x-text="teacher.email || 'Enseignant'"></small>
+                                </span>
+                                <button type="button" class="lpt-remove" @click="removeTeacher(teacher.id)"
+                                        :aria-label="'Retirer ' + teacher.name" title="Retirer cet enseignant">
+                                    <i class="fas fa-times" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </template>
+                        <div class="lpt-empty-hint" x-show="selectedIds.length === 0" x-cloak>
+                            <i class="fas fa-user-plus" aria-hidden="true"></i>
+                            Aucun enseignant sélectionné.
+                        </div>
+                    </div>
+
+                    <label class="lpt-section-heading lpt-available-title" for="lptTeacherSearch">
+                        <span>Autres enseignants disponibles</span>
+                    </label>
+                    <div class="lpt-search-wrap">
+                        <i class="fas fa-search" aria-hidden="true"></i>
+                        <input id="lptTeacherSearch" x-ref="search" type="search" x-model.debounce.150ms="teacherSearch"
+                               placeholder="Rechercher par nom ou e-mail…" autocomplete="off"
+                               aria-label="Rechercher parmi les enseignants disponibles">
+                    </div>
+                    <div class="lpt-teacher-pool" aria-label="Enseignants disponibles">
+                        <template x-for="teacher in availableTeachers" :key="teacher.id">
+                            <button type="button" class="lpt-available-option" @click="addTeacher(teacher.id)">
+                                <span class="lpt-avatar" x-text="initials(teacher.name)"></span>
+                                <span class="lpt-option-details">
+                                    <strong x-text="teacher.name"></strong>
+                                    <small x-text="teacher.email || 'Enseignant'"></small>
+                                </span>
+                                <i class="fas fa-plus-circle" aria-hidden="true"></i>
+                                <span class="sr-only" x-text="'Ajouter ' + teacher.name"></span>
+                            </button>
+                        </template>
+                        <div class="lpt-empty-hint" x-show="availableTeachers.length === 0" x-cloak>
+                            <i class="fas fa-search" aria-hidden="true"></i>
+                            <span x-text="teacherSearch ? 'Aucun résultat pour cette recherche.' : 'Tous les enseignants disponibles sont sélectionnés.'"></span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <div x-show="role === 'responsable_ue'" x-cloak>
+                <p class="lpt-context-hint">Un seul enseignant peut être responsable de cette UE.</p>
                 <x-au-user-picker
                     name="lpt_user_id"
                     :users="$enseignants"
@@ -60,28 +100,23 @@
                     empty-icon="fa-user-slash"
                     empty-hint="Enregistrer ce choix retire l'assignation actuelle" />
                 <div class="lpt-empty-hint" x-show="!currentTeacherId" x-cloak>
-                    <i class="fas fa-info-circle"></i>
-                    <span>Le responsable d'UE apparaîtra ici une fois sélectionné.</span>
+                    <i class="fas fa-info-circle" aria-hidden="true"></i>
+                    Aucun responsable affecté pour cette UE.
                 </div>
             </div>
         </div>
         <div class="lpt-actions">
-            <button type="button" class="lpt-btn lpt-btn-secondary" @click="open = false">Annuler</button>
+            <button type="button" class="lpt-btn lpt-btn-secondary" @click="closeModal()" :disabled="saving">Annuler</button>
             <button type="button" class="lpt-btn lpt-btn-danger"
                     x-show="role === 'responsable_ue' && currentTeacherId"
-                    @click="unassign()"
-                    :disabled="saving">
-                <i class="fas fa-user-times"></i> Désassigner
+                    @click="unassign()" :disabled="saving">
+                <i class="fas fa-user-times" aria-hidden="true"></i> Désassigner
             </button>
-            <button type="button" class="lpt-btn lpt-btn-primary" @click="commit()" :disabled="saving">
-                <span x-show="!saving"><i class="fas fa-check"></i> Enregistrer</span>
-                <span x-show="saving"><i class="fas fa-spinner fa-spin"></i> Enregistrement…</span>
+            <button type="button" class="lpt-btn lpt-btn-primary" @click="commit()" :disabled="saving || loadingPool || !!loadError">
+                <span x-show="!saving"><i class="fas fa-check" aria-hidden="true"></i> Enregistrer</span>
+                <span x-show="saving"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Enregistrement…</span>
             </button>
         </div>
     </div>
 </div>
-
-<style>
-.lpt-teacher-pool{max-height:320px;overflow:auto;border:1px solid #e2e8f0;border-radius:12px}.lpt-teacher-option{display:flex;gap:.7rem;align-items:center;padding:.7rem .85rem;border-bottom:1px solid #eef2f7;cursor:pointer}.lpt-teacher-option:last-child{border-bottom:0}.lpt-teacher-option:hover{background:#f8fafc}.lpt-teacher-option span{display:flex;flex-direction:column;min-width:0}.lpt-teacher-option small{font-size:.72rem;color:#64748b}.lpt-teacher-option input{width:18px;height:18px;accent-color:#0453cb;flex-shrink:0}
-</style>
 @endcan

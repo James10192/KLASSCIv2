@@ -19,6 +19,7 @@ document.addEventListener('alpine:init', () => {
         init() {},
 
         async reload(value, key) {
+            window.dispatchEvent(new CustomEvent('lpt:context-changed'));
             // Server-side cascade : just fetch with the new filter, the
             // backend computes the available semestres for the new niveau
             // and re-renders the semestre dropdown HTML accordingly.
@@ -209,7 +210,7 @@ window.lpvRow = function () {
 // UE row expand/collapse — event delegation survives AJAX innerHTML replace.
 document.addEventListener('click', function (e) {
     const row = e.target.closest('.js-ue-row');
-    if (!row) return;
+    if (!row || e.target.closest('button, a, input, select, textarea, [role="button"]')) return;
     const container = row.closest('#lpContent');
     if (!container) return;
     const idx = row.dataset.idx;

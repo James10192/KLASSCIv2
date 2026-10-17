@@ -11,6 +11,7 @@ use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPPlanificationAcademique;
+use App\Observers\ESBTPPlanificationTeacherPoolObserver;
 use App\Models\ESBTPUniteEnseignement;
 use App\Models\User;
 use App\Services\VolumeBudgetService;
@@ -172,7 +173,7 @@ class ESBTPLMDPlanningController extends Controller
             return $this->handlePlanifQueryException($e, $ecueId, $context);
         }
 
-        $planif->load('enseignantPrincipal:id,name');
+        $planif->load('enseignantPrincipal:id,name', 'teachers:id,user_id');
 
         // Silent #1 : signaler distinctement création vs mise à jour pour
         // que l'UI puisse afficher un toast contextuel.
@@ -429,6 +430,9 @@ class ESBTPLMDPlanningController extends Controller
         // deux colonnes ne puissent jamais être écrasées par une payload
         // client si la FormRequest était étendue un jour avec ces clés.
         $planif->fill($request->validated());
+        if ($request->exists('enseignants_secondaires') && $request->input('enseignants_secondaires') === null) {
+            $planif->enseignants_secondaires = [];
+        }
 
         if ($wasCreated) {
             $planif->created_by = auth()->id();
@@ -443,6 +447,12 @@ class ESBTPLMDPlanningController extends Controller
             + ($planif->volume_horaire_tpe ?? 0);
 
         $planif->save();
+
+        // Une sauvegarde volontaire du pool doit nettoyer le pivot historique,
+        // même si les valeurs du JSON n'ont pas changé (observer non déclenché).
+        if ($request->exists('enseignant_principal_id') || $request->exists('enseignants_secondaires')) {
+            app(ESBTPPlanificationTeacherPoolObserver::class)->synchroniser($planif);
+        }
 
         return [$planif, $wasCreated];
     }
@@ -596,6 +606,12 @@ class ESBTPLMDPlanningController extends Controller
             $planif->setRelation('enseignantPrincipal', null);
         }
 
+        $poolIds = $planif->poolUserIds();
+        $users = User::whereIn('id', $poolIds)->get(['id', 'name'])->keyBy('id');
+        $poolTeachers = $poolIds->map(fn ($id) => $users->get($id))
+            ->filter()->map(fn ($user) => ['id' => (int) $user->id, 'name' => $user->name])
+            ->values()->all();
+
         return [
             'id' => $planif->id,
             'volume_horaire_cm' => $planif->volume_horaire_cm,
@@ -608,6 +624,8 @@ class ESBTPLMDPlanningController extends Controller
             'credits_ects' => $planif->credits_ects,
             'enseignant_principal_id' => $planif->enseignant_principal_id,
             'enseignant_name' => $planif->enseignantPrincipal?->name,
+            'enseignant_ids' => $poolIds->all(),
+            'enseignants' => $poolTeachers,
         ];
     }
 
@@ -838,7 +856,7 @@ class ESBTPLMDPlanningController extends Controller
         }
 
         $query = ESBTPPlanificationAcademique::query()
-            ->with('enseignantPrincipal:id,name')
+            ->with(['enseignantPrincipal:id,name', 'teachers:id,user_id'])
             ->where('filiere_id', $parcours->filiere_id)
             ->where('annee_universitaire_id', $filters['annee_id'])
             ->whereIn('matiere_id', $matiereIds);
@@ -850,7 +868,21 @@ class ESBTPLMDPlanningController extends Controller
             $query->where('semestre', $filters['semestre']);
         }
 
-        return $query->get()->keyBy('matiere_id');
+        $planifs = $query->get();
+        $teacherIds = $planifs->flatMap(fn ($planif) => $planif->poolUserIds())->unique()->values();
+        $teachers = $teacherIds->isEmpty()
+            ? collect()
+            : User::whereIn('id', $teacherIds)->get(['id', 'name'])->keyBy('id');
+
+        foreach ($planifs as $planif) {
+            $ids = $planif->poolUserIds();
+            $planif->setAttribute('teacher_pool_ids', $ids->all());
+            $planif->setAttribute('teacher_pool_names', $ids
+                ->map(fn ($id) => $teachers->get($id)?->name)
+                ->filter()->values()->all());
+        }
+
+        return $planifs->keyBy('matiere_id');
     }
 }
 

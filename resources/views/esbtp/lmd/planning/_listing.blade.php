@@ -93,7 +93,8 @@
                                 @if($canEditUe)
                                     <button type="button"
                                             class="lpe-resp-btn @if($respName) lpe-resp-btn--assigned @endif"
-                                            title="Responsable de l'UE (UEMOA)"
+                                            title="{{ $respName ? 'Responsable UE : ' . $respName : 'Assigner un responsable UE' }}"
+                                            aria-label="{{ $respName ? 'Responsable UE : ' . $respName . '. Modifier' : 'Assigner le responsable de l’UE ' . $ueLabel }}"
                                             data-lpe-ue-id="{{ $ue->id }}"
                                             data-lpe-teacher-id="{{ $respId ?? '' }}"
                                             data-lpe-teacher-name="{{ $respName ?? '' }}"
@@ -116,8 +117,14 @@
                                 $ecue = $entry['ecue'];
                                 $planif = $entry['planif'];
                                 $canEdit = auth()->user()?->can('lmd.planning.edit') && $filters['niveau_id'] && $filters['semestre'];
-                                $teacherName = $planif?->enseignantPrincipal?->name;
-                                $teacherId = $planif?->enseignant_principal_id;
+                                $teacherNames = $planif?->teacher_pool_names ?? [];
+                                $teacherIds = $planif?->teacher_pool_ids ?? [];
+                                $teacherCount = count($teacherNames);
+                                $teacherFullNames = implode(' / ', $teacherNames);
+                                $teacherSummary = $teacherCount
+                                    ? $teacherNames[0] . ($teacherCount > 1 ? ' +' . ($teacherCount - 1) : '')
+                                    : null;
+                                $teacherId = $teacherIds[0] ?? null;
                                 $ecueLabel = trim((!empty($ecue->code) ? $ecue->code_affiche . ' · ' : '') . $ecue->name);
                             @endphp
                             <tr class="lp-ecue-row js-ecue-row" data-parent-idx="{{ $idx }}" style="display:none;">
@@ -183,19 +190,22 @@
                                 @if($canEdit)
                                     <td>
                                         <button type="button"
-                                                class="lpe-teacher-btn @if($teacherName) lpe-teacher-btn--assigned @endif"
+                                                class="lpe-teacher-btn @if($teacherCount) lpe-teacher-btn--assigned @endif"
+                                                title="{{ $teacherFullNames ?: 'Assigner des enseignants' }}"
+                                                aria-label="{{ $teacherFullNames ? 'Enseignants affectés : ' . $teacherFullNames . '. Modifier' : 'Assigner des enseignants à ' . $ecueLabel }}"
                                                 data-lpe-ecue-id="{{ $ecue->id }}"
                                                 data-lpe-teacher-id="{{ $teacherId ?? '' }}"
-                                                data-lpe-teacher-name="{{ $teacherName ?? '' }}"
+                                                data-lpe-teacher-ids='@json($teacherIds)'
+                                                data-lpe-teacher-name="{{ $teacherFullNames }}"
                                                 data-lpe-ecue-label="{{ $ecueLabel }}"
                                                 x-data="lpeTeacherTrigger()"
                                                 @click="openPicker()">
-                                            <i class="fas {{ $teacherName ? 'fa-user-check' : 'fa-user-plus' }}"></i>
-                                            <span class="lpe-teacher-name">{{ $teacherName ?: '+ Assigner' }}</span>
+                                            <i class="fas {{ $teacherCount ? 'fa-user-check' : 'fa-user-plus' }}"></i>
+                                            <span class="lpe-teacher-name">{{ $teacherSummary ?: '+ Assigner' }}</span>
                                         </button>
                                     </td>
                                 @else
-                                    <td>{{ $teacherName ?? '—' }}</td>
+                                    <td><span class="lpe-teacher-readonly" title="{{ $teacherFullNames }}">{{ $teacherFullNames ?: '—' }}</span></td>
                                 @endif
                             </tr>
                             @if($bulkEnabled)
