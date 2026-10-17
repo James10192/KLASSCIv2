@@ -21,6 +21,13 @@ class EvaluationPublicationActionsTest extends TestCase
     {
         parent::setUp();
 
+        // En CI, aucune installation/abonnement tenant : conserver auth et permissions.
+        $this->withoutMiddleware([
+            \App\Http\Middleware\CheckInstalled::class,
+            \App\Http\Middleware\EnsureInstalled::class,
+            \App\Http\Middleware\PaywallMiddleware::class,
+        ]);
+
         foreach (['admin.access', 'evaluations.view', 'evaluations.edit'] as $name) {
             Permission::findOrCreate($name, 'web');
         }
