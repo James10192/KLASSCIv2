@@ -808,34 +808,7 @@ class TachesBulletinsArrierePlanTest extends TestCase
 
     public function test_le_composant_ne_connait_que_les_taches_du_visiteur(): void
     {
-        // Le compositeur de vues global lit les rôles du visiteur.
-        Schema::create('roles', function (Blueprint $t) {
-            $t->id();
-            $t->string('name');
-            $t->string('guard_name')->default('web');
-            $t->timestamps();
-        });
-        Schema::create('permissions', function (Blueprint $t) {
-            $t->id();
-            $t->string('name');
-            $t->string('guard_name')->default('web');
-            $t->timestamps();
-        });
-        Schema::create('model_has_roles', function (Blueprint $t) {
-            $t->unsignedBigInteger('role_id');
-            $t->string('model_type');
-            $t->unsignedBigInteger('model_id');
-        });
-        Schema::create('model_has_permissions', function (Blueprint $t) {
-            $t->unsignedBigInteger('permission_id');
-            $t->string('model_type');
-            $t->unsignedBigInteger('model_id');
-        });
-        Schema::create('role_has_permissions', function (Blueprint $t) {
-            $t->unsignedBigInteger('permission_id');
-            $t->unsignedBigInteger('role_id');
-        });
-
+        // Les tables Spatie sont partagées par toutes les fixtures du test.
         $this->generation(userId: 1, eleves: 2);
         $this->generation(userId: 2, eleves: 2, periode: 'semestre2');
 
