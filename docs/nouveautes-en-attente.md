@@ -13,7 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
-- 2026-10-17 · #À-ATTRIBUER · Planning LMD : noms des professeurs ECUE et responsable UE visibles, sélection multiple premium avec recherche et retrait, sauvegarde AJAX sécurisée ; vérifier les anciennes affectations et le responsive sur présentation avant diffusion.
+- 2026-10-17 · #1622 · Planning LMD : noms des professeurs ECUE et responsable UE visibles, sélection multiple premium avec recherche et retrait, sauvegarde AJAX sécurisée ; vérifier les anciennes affectations et le responsive sur présentation avant diffusion.
 - 2026-10-17 · #1621 · Évaluations : activations et publications AJAX sans double requête, traitement en lot stoppé sur erreur avec bilan des succès partiels, actualisation finale unique et permissions de modification vérifiées ; tester mobile, filtres et erreurs 429 sur présentation avant propagation aux établissements.
 - 2026-10-17 · #1620 · Bulletins LMD : sélectionner des bulletins ou tous les filtrés, puis prévisualiser/télécharger un seul PDF avec progression AJAX sans rechargement ; contrôle du rôle et des autorisations d'impression, limite de 400. Recette des PDF, du scroll infini, du responsive et des permissions sur presentation avant annonce et propagation aux écoles.
 - 2026-10-16 · #1618 · Rapport des effectifs par classe : année, seuil, nombre de classes, tri, filière/niveau, mise à jour AJAX et export PDF à l'identité visuelle de l'établissement ; recette permissions, dédoublonnage, impression et mobile nécessaire sur présentation avant propagation aux écoles.
