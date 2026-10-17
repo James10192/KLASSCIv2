@@ -15,7 +15,7 @@ use App\Services\LMD\LmdCreditWalletService;
 use App\Services\LMDBulletinService;
 use App\Support\ListeInfinie;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Barryvdh\DomPDF\PDF;
+use Barryvdh\DomPDF\PDF as DomPdfDocument;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
@@ -579,7 +579,7 @@ class ESBTPLMDBulletinController extends Controller
     }
 
     /** Rendu officiel unitaire réutilisé par les tranches LMD, sans écriture métier. */
-    public function rendrePdfPourExport(ESBTPLMDBulletin $bulletin): PDF
+    public function rendrePdfPourExport(ESBTPLMDBulletin $bulletin): DomPdfDocument
     {
         return $this->buildBulletinPdf($bulletin)[0];
     }
