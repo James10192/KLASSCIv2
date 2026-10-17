@@ -419,6 +419,9 @@ jobs:
       - name: "Rapport des effectifs - années, distincts, permissions, AJAX et PDF"
         run: php vendor/bin/phpunit tests/Feature/Reports/ClasseEffectifsReportTest.php --no-coverage
 
+      - name: "Évaluations - activations idempotentes et permissions AJAX"
+        run: php vendor/bin/phpunit tests/Feature/Evaluations/EvaluationPublicationActionsTest.php --no-coverage
+
       # La moyenne S2 ne peut plus admettre un BTS1 si la règle choisie
       # exige aussi la moyenne annuelle. Même règle au bulletin et à la réinscription.
       - name: Conseil BTS - deux moyennes, configuration et réinscription

@@ -174,7 +174,7 @@ jobs:
 
       - name: Test cohérence des maquettes et filtres pédagogiques AJAX
         if: github.event_name == 'pull_request'
-        run: php artisan test tests/Unit/Views/AcademicPlanningUxContractTest.php --stop-on-failure
+        run: php artisan test tests/Unit/Views/AcademicPlanningUxContractTest.php tests/Unit/Views/EvaluationIndexAjaxContractTest.php --stop-on-failure
 
       - name: Test outbox persistante MailPulse et récupération cron
         if: github.event_name == 'pull_request'
