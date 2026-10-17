@@ -89,12 +89,14 @@ class EnseignantPlanificationEvaluationTest extends TestCase
         $this->autreEnseignant = $this->user('autre');
         $this->autreEnseignant->assignRole('enseignant');
 
-        ESBTPPlanificationAcademique::create([
+        // L'import de maquette a déjà créé cette ligne de planification.
+        ESBTPPlanificationAcademique::updateOrCreate([
             'annee_universitaire_id' => $this->annee->id,
             'filiere_id' => $this->classe->filiere_id,
             'niveau_etude_id' => $this->classe->niveau_etude_id,
             'matiere_id' => $this->ecue->id,
             'semestre' => 1,
+        ], [
             'volume_horaire_total' => 30,
             'coefficient' => 1,
             'credits_ects' => 4,
