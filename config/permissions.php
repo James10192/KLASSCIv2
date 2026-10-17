@@ -1763,6 +1763,12 @@ return [
             'group' => 'LMD',
             'icon' => 'fa-gears',
         ],
+        'lmd.bulletins.export.bulk' => [
+            'label' => 'Exporter plusieurs bulletins LMD dans un seul PDF',
+            'description' => 'Lancer un export filtré ou sélectionné avec contrôle des autorisations d’impression.',
+            'group' => 'LMD',
+            'icon' => 'fa-file-pdf',
+        ],
         'lmd.bulletins.publish' => [
             'label' => 'Publier ou dépublier un bulletin semestriel',
             'description' => 'La publication rend le bulletin visible de l\'étudiant. À réserver au profil qui arrête les résultats.',
@@ -2350,7 +2356,7 @@ return [
             'lmd.structure.view',
             'lmd.notes.view',
             'lmd.resultats.view',
-            'lmd.bulletins.view', 'lmd.bulletins.generate',
+            'lmd.bulletins.view', 'lmd.bulletins.generate', 'lmd.bulletins.export.bulk',
             'lmd.releve.view',
             // TPE — admin observe toutes les déclarations (dormant tant que module désactivé)
             'tpe.view_all',
@@ -2455,7 +2461,7 @@ return [
             'lmd.structure.view', 'lmd.structure.manage', 'lmd.structure.delete',
             'lmd.notes.view', 'lmd.notes.manage',
             'lmd.resultats.view',
-            'lmd.bulletins.view', 'lmd.bulletins.generate',
+            'lmd.bulletins.view', 'lmd.bulletins.generate', 'lmd.bulletins.export.bulk',
             'lmd.bulletins.publish', 'lmd.bulletins.delete',
             'lmd.releve.view', 'lmd.releve.issue',
             'timetables.view', 'timetables.view_all', 'timetables.create', 'timetables.edit', 'timetables.delete',
@@ -2521,7 +2527,7 @@ return [
             'lmd.structure.view', 'lmd.structure.manage',
             'lmd.notes.view',
             'lmd.resultats.view',
-            'lmd.bulletins.view', 'lmd.bulletins.generate',
+            'lmd.bulletins.view', 'lmd.bulletins.generate', 'lmd.bulletins.export.bulk',
             'lmd.releve.view',
             'timetables.view', 'timetables.view_all', 'timetables.create', 'timetables.edit', 'timetables.delete',
             'schedules.view', 'schedules.create', 'schedules.edit',
@@ -2608,7 +2614,7 @@ return [
             'lmd.structure.view',
             'lmd.notes.view',
             'lmd.resultats.view',
-            'lmd.bulletins.view', 'lmd.bulletins.generate',
+            'lmd.bulletins.view', 'lmd.bulletins.generate', 'lmd.bulletins.export.bulk',
             'lmd.releve.view',
         ],
 

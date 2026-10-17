@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **[ESBTP uniquement] Bulletins LMD — PDF groupé (#1620) :** sélection manuelle ou par filtres, aperçu et téléchargement dans un document unique (400 maximum), progression AJAX sans rechargement et rendu officiel LMD ; permission dédiée, contrôle des dettes/autorisations avant et après traitement, aucun PDF partiel et moteur BTS inchangé.
 - **Rapport des effectifs par classe :** nouveau pilotage par année universitaire, seuil minimal (15 par défaut), nombre de classes ou toutes, tri, filière/mention et niveau. Totaux calculés sur les inscriptions actives validées de l'année, élèves dédoublonnés ; filtres et pagination AJAX sans rechargement, PDF A4 aux couleurs de l'établissement, accès contrôlé par permissions.
 - **Fiche étudiant — fermeture après recalcul AJAX :** après une régénération réussie et le rafraîchissement du bilan, la fenêtre se ferme sans recharger la page ; une notification confirme le résultat et conserve le lien vers le bulletin. Si la lecture AJAX échoue, la fenêtre reste ouverte pour réessayer sans relancer le calcul.
 - **Fiche étudiant — bulletin sans rechargement :** la modale de génération est recentrée sur desktop et mobile, et la réussite d'un recalcul met à jour les moyennes, rangs et bilans (y compris les archives) via une lecture AJAX de la fiche ; l'onglet, les sections ouvertes et le module de notes sont conservés, sans recharge de page.

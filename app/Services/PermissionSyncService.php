@@ -249,6 +249,7 @@ class PermissionSyncService
             'lmd.resultats.view',
             'lmd.bulletins.view',
             'lmd.bulletins.generate',
+            'lmd.bulletins.export.bulk',
             'lmd.bulletins.publish',
             'lmd.bulletins.delete',
             'lmd.releve.view',

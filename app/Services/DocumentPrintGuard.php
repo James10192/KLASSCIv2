@@ -19,9 +19,9 @@ class DocumentPrintGuard
         return $this->settings->printRequiresApproval();
     }
 
-    public function decide(User $user, string $documentType, int $etudiantId, ?int $documentId = null): PrintDecision
+    public function decide(User $user, string $documentType, int $etudiantId, ?int $documentId = null, bool $lmd = false): PrintDecision
     {
-        if (! $user->can('documents.print') && ! $user->can('students.view') && ! $user->can('bulletins.view')) {
+        if (! $this->aDroitImpression($user, $lmd)) {
             return PrintDecision::denied(PrintDecision::PERMISSION, 0.0, false);
         }
 
@@ -42,9 +42,9 @@ class DocumentPrintGuard
         return PrintDecision::approved($approval, $solde);
     }
 
-    public function assertPrintable(User $user, string $documentType, int $etudiantId, ?int $documentId = null): PrintDecision
+    public function assertPrintable(User $user, string $documentType, int $etudiantId, ?int $documentId = null, bool $lmd = false): PrintDecision
     {
-        $decision = $this->decide($user, $documentType, $etudiantId, $documentId);
+        $decision = $this->decide($user, $documentType, $etudiantId, $documentId, $lmd);
         if (! $decision->allowed) {
             throw new ImpressionBloquee($decision);
         }
@@ -56,16 +56,22 @@ class DocumentPrintGuard
      * @param  iterable<int, object>  $documents  objets avec id + etudiant_id
      * @return array{allowed_ids: array<int, int>, bloques_solde: int, bloques_approbation: int}
      */
-    public function filtrerExport(User $user, string $documentType, iterable $documents): array
+    public function filtrerExport(User $user, string $documentType, iterable $documents, bool $lmd = false): array
     {
         $docs = collect($documents);
         $ids = $docs->map(fn ($d) => (int) $d->id)->all();
+
+        // L'export LMD porte son droit métier propre, y compris quand l'école
+        // a désactivé la validation préalable des impressions.
+        if ($lmd && ! $this->aDroitImpression($user, true)) {
+            return ['allowed_ids' => [], 'bloques_solde' => 0, 'bloques_approbation' => count($ids)];
+        }
 
         if ($docs->isEmpty() || ! $this->requiresApproval()) {
             return ['allowed_ids' => $ids, 'bloques_solde' => 0, 'bloques_approbation' => 0];
         }
 
-        if (! $user->can('documents.print') && ! $user->can('students.view') && ! $user->can('bulletins.view')) {
+        if (! $this->aDroitImpression($user, $lmd)) {
             return ['allowed_ids' => [], 'bloques_solde' => 0, 'bloques_approbation' => 0];
         }
 
@@ -99,6 +105,14 @@ class DocumentPrintGuard
             'bloques_solde' => $solde,
             'bloques_approbation' => $approbation,
         ];
+    }
+
+    private function aDroitImpression(User $user, bool $lmd): bool
+    {
+        return $user->can('documents.print')
+            || $user->can('students.view')
+            || $user->can('bulletins.view')
+            || ($lmd && $user->can('lmd.bulletins.export.bulk'));
     }
 
     public function latestApproved(string $documentType, int $etudiantId, ?int $documentId = null): ?ESBTPDocumentApproval

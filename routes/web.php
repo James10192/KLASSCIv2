@@ -3474,6 +3474,9 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
         ->middleware('permission:lmd.bulletins.generate')->name('bulletins.generer');
     Route::post('bulletins/generer-classe', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'genererClasse'])
         ->middleware('permission:lmd.bulletins.generate')->name('bulletins.generer-classe');
+    Route::post('bulletins/export-pdf/lancer', [\App\Http\Controllers\ESBTPLMDBulletinExportController::class, 'lancer'])
+        ->middleware(['permission:lmd.bulletins.view', 'permission:lmd.bulletins.export.bulk', 'throttle:10,1'])
+        ->name('bulletins.export.lancer');
     Route::get('bulletins/{bulletin}', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'show'])
         ->middleware('permission:lmd.bulletins.view')->name('bulletins.show');
     Route::get('bulletins/{bulletin}/pdf', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'pdf'])

@@ -7,9 +7,12 @@ use App\Domain\Exploitation\TracesLentes\Mesure;
 use App\Domain\AcademicPilotage\DTO\BulkBulletinGenerationResult;
 use App\Domain\AcademicPilotage\Services\BtsBulkBulletinGenerationService;
 use App\Http\Controllers\ESBTPBulletinController;
+use App\Http\Controllers\ESBTPLMDBulletinController;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPLMDBulletin;
 use App\Services\BulletinBulkPdfExporter;
+use App\Services\DocumentPrintGuard;
 use Barryvdh\DomPDF\PDF;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -348,17 +351,36 @@ class ExecuteurTachesBulletins
     /** @param array<int, int> $ids */
     private function rendreUneTranche(BulletinTache $tache, array $ids): void
     {
+        $lmd = $tache->parametre('domaine', 'bts') === BulletinTache::DOMAINE_LMD;
         // whereIn ne garantit pas l'ordre : on le rétablit sur la liste figée.
-        $bulletins = ESBTPBulletin::whereIn('id', $ids)->get()
-            ->sortBy(fn (ESBTPBulletin $b) => array_search($b->id, $ids, true))
-            ->values();
+        if ($lmd) {
+            if (! $tache->user?->can('module.lmd.access')
+                || ! $tache->user->can('lmd.bulletins.view')
+                || ! $tache->user->can('lmd.bulletins.export.bulk')) {
+                throw new TacheBulletinsImpossible('Le droit d’export LMD du demandeur a été retiré.');
+            }
+            $bulletins = ESBTPLMDBulletin::whereIn('id', $ids)->get()
+                ->sortBy(fn (ESBTPLMDBulletin $b) => array_search($b->id, $ids, true))->values();
+            if ($bulletins->count() !== count($ids)) {
+                throw new TacheBulletinsImpossible('Un bulletin LMD a été supprimé depuis le lancement. Relancez l’export.');
+            }
+            $droits = app(DocumentPrintGuard::class)->filtrerExport($tache->user, 'bulletin', $bulletins, true);
+            if (count($droits['allowed_ids']) !== count($ids)) {
+                throw new TacheBulletinsImpossible('Une autorisation d’impression LMD a changé depuis le lancement. Relancez l’export.');
+            }
+        } else {
+            $bulletins = ESBTPBulletin::whereIn('id', $ids)->get()
+                ->sortBy(fn (ESBTPBulletin $b) => array_search($b->id, $ids, true))->values();
+        }
 
         $dossier = $this->dossier($tache);
         $this->exporter->oublierLesRangs($dossier, $tache->position, count($ids));
 
         $rendu = $this->exporter->rendreTranche(
             $bulletins,
-            fn (ESBTPBulletin $b) => $this->rendreUnBulletin($b),
+            $lmd
+                ? fn (ESBTPLMDBulletin $b) => $this->rendreUnBulletinLmd($b)
+                : fn (ESBTPBulletin $b) => $this->rendreUnBulletin($b),
             $dossier,
             $tache->position
         );
@@ -410,6 +432,7 @@ class ExecuteurTachesBulletins
     {
         $dossier = $this->dossier($tache);
         $cumul = $tache->resultat ?? [];
+        $lmd = $tache->parametre('domaine', 'bts') === BulletinTache::DOMAINE_LMD;
 
         // Le dossier de travail a pu être balayé (purge des exports au bout
         // d'une heure) si la planification s'est arrêtée longtemps. On ne sert
@@ -434,15 +457,23 @@ class ExecuteurTachesBulletins
             return;
         }
 
-        $absents = ESBTPBulletin::whereIn('id', $tache->parametre('ungenerated_ids', []))
-            ->with(['etudiant:id,matricule,nom,prenoms', 'classe:id,name'])
-            ->get();
-        $garde = fn (array $echecs): ?\Barryvdh\DomPDF\PDF => $this->pageDeGarde(
-            $absents,
-            $echecs,
-            $tache->parametre('entete', []),
-            (int) ($cumul['rendus'] ?? 0)
-        );
+        if ($lmd && ((int) ($cumul['rendus'] ?? 0) !== (int) $tache->total || ! empty($cumul['echecs']))) {
+            throw new TacheBulletinsImpossible('Export LMD incomplet : un ou plusieurs bulletins n’ont pas été rendus. Aucun document partiel ne sera diffusé.');
+        }
+
+        // La page de garde BTS ne doit jamais être injectée dans un document LMD.
+        $garde = null;
+        if (! $lmd) {
+            $absents = ESBTPBulletin::whereIn('id', $tache->parametre('ungenerated_ids', []))
+                ->with(['etudiant:id,matricule,nom,prenoms', 'classe:id,name'])
+                ->get();
+            $garde = fn (array $echecs): ?\Barryvdh\DomPDF\PDF => $this->pageDeGarde(
+                $absents,
+                $echecs,
+                $tache->parametre('entete', []),
+                (int) ($cumul['rendus'] ?? 0)
+            );
+        }
 
         try {
             $assemble = $this->exporter->assembler($dossier, $garde, $cumul['echecs'] ?? []);
@@ -561,6 +592,11 @@ class ExecuteurTachesBulletins
     protected function rendreUnBulletin(ESBTPBulletin $bulletin): PDF
     {
         return app(ESBTPBulletinController::class)->buildBulletinPdf($bulletin, false);
+    }
+
+    protected function rendreUnBulletinLmd(ESBTPLMDBulletin $bulletin): PDF
+    {
+        return app(ESBTPLMDBulletinController::class)->rendrePdfPourExport($bulletin);
     }
 
     /** @param array<string, mixed> $entete */

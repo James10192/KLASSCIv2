@@ -23,6 +23,7 @@
         'vue' => route('esbtp.bulletins.taches.vue', ['tache' => '__ID__'], false),
         'bulletins' => route('esbtp.bulletins.select', [], false),
         'liste' => route('esbtp.bulletins.index', [], false),
+        'listeLmd' => route('esbtp.lmd.bulletins.index', [], false),
     ];
 @endphp
 @auth
@@ -171,10 +172,11 @@ window.tachesArrierePlan = function () {
         // L'écran d'où la tâche est partie, sur son périmètre.
         lienEcran(t) {
             const p = new URLSearchParams();
+            const lmd = t.domaine === 'lmd';
             if (t.classe_id) p.set('classe_id', t.classe_id);
             if (t.annee_universitaire_id) p.set('annee_universitaire_id', t.annee_universitaire_id);
-            if (t.periode) p.set(t.type === 'export' ? 'periode_id' : 'periode', t.periode);
-            const base = t.type === 'export' ? this.urls.liste : this.urls.bulletins;
+            if (t.periode) p.set(lmd ? 'semestre' : (t.type === 'export' ? 'periode_id' : 'periode'), t.periode);
+            const base = lmd ? this.urls.listeLmd : (t.type === 'export' ? this.urls.liste : this.urls.bulletins);
             return base + (p.toString() ? '?' + p.toString() : '');
         },
 

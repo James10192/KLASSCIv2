@@ -12,6 +12,9 @@
     $credFillClass = $credPct >= 100 ? 'lb-credits-fill--full' : ($credPct >= 50 ? 'lb-credits-fill--mid' : 'lb-credits-fill--low');
 @endphp
 <tr data-li-cle="{{ $b->id }}">
+    @can('lmd.bulletins.export.bulk')
+    <td class="lb-export-cell"><input class="lb-export-checkbox" type="checkbox" value="{{ $b->id }}" aria-label="Sélectionner le bulletin de {{ $b->etudiant->nom ?? '' }} {{ $b->etudiant->prenoms ?? '' }}"></td>
+    @endcan
     <td><span class="lb-matricule">{{ $b->etudiant->matricule ?? '—' }}</span></td>
     <td>
         <div class="lb-student-name">
