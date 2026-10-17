@@ -11,11 +11,14 @@ use App\Domain\Bulletins\Taches\LancementTachesBulletins;
 use App\Domain\Bulletins\Taches\NotificationTachesBulletins;
 use App\Domain\Bulletins\Taches\SuiviTachesBulletins;
 use App\Http\Controllers\ESBTPBulletinTacheController;
+use App\Http\Controllers\ESBTPLMDBulletinExportController;
 use App\Mail\TacheBulletinsTermineeMail;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPLMDBulletin;
 use App\Models\User;
 use App\Services\BulletinBulkPdfExporter;
+use App\Services\DocumentPrintGuard;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -23,8 +26,10 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
+use Mockery;
 use setasign\Fpdi\Fpdi;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\TestCase;
@@ -47,6 +52,8 @@ class TachesBulletinsArrierePlanTest extends TestCase
     public ?BulkBulletinGenerationResult $resultatImpose = null;
 
     public bool $renduEchoue = false;
+
+    public bool $renduLmdEchoue = false;
 
     /** @var array<int, int> tâches reclassées, une entrée par reclassement */
     public array $reclassements = [];
@@ -112,6 +119,15 @@ class TachesBulletinsArrierePlanTest extends TestCase
             $t->softDeletes();
             $t->timestamps();
         });
+        Schema::create('esbtp_lmd_bulletins', function (Blueprint $t) {
+            $t->id();
+            $t->unsignedBigInteger('etudiant_id');
+            $t->unsignedBigInteger('classe_id');
+            $t->unsignedBigInteger('annee_universitaire_id');
+            $t->unsignedInteger('semestre');
+            $t->softDeletes();
+            $t->timestamps();
+        });
 
         (require database_path('migrations/2026_10_01_140000_create_esbtp_bulletin_taches_table.php'))->up();
 
@@ -170,6 +186,15 @@ class TachesBulletinsArrierePlanTest extends TestCase
                 }
 
                 return \PDF::loadHTML('<p>Bulletin '.$bulletin->id.'</p>');
+            }
+
+            protected function rendreUnBulletinLmd(ESBTPLMDBulletin $bulletin): \Barryvdh\DomPDF\PDF
+            {
+                if ($this->test->renduLmdEchoue) {
+                    throw new \RuntimeException('PDF LMD indisponible');
+                }
+
+                return \PDF::loadHTML('<p>Bulletin LMD '.$bulletin->id.'</p>');
             }
 
             protected function pageDeGarde(Collection $absents, array $echecs, array $entete, int $inclus): ?\Barryvdh\DomPDF\PDF
@@ -512,6 +537,169 @@ class TachesBulletinsArrierePlanTest extends TestCase
 
         $this->expectException(NotFoundHttpException::class);
         $controleur->fichier($this->requetePour(2), $tache);
+    }
+
+    public function test_export_lmd_et_bts_ne_partagent_jamais_leur_tache_ni_leur_lien_de_retour(): void
+    {
+        $demandeur = User::findOrFail(1);
+        $lancement = app(LancementTachesBulletins::class);
+        $bts = $lancement->export($demandeur, 'apercu', [501], [
+            'filtres' => ['classe_id' => 2, 'annee_universitaire_id' => 1, 'periode_id' => '1'],
+        ]);
+        $lmd = $lancement->export($demandeur, 'apercu', [501], [
+            'filtres' => ['classe_id' => 2, 'annee_universitaire_id' => 1, 'semestre' => 1],
+        ], 'lmd');
+
+        $this->assertNotSame($bts->id, $lmd->id);
+        $this->assertSame('lmd', $lmd->parametre('domaine'));
+        $this->assertSame('1', $lmd->periode);
+        $this->assertSame('lmd', SuiviTachesBulletins::etat($lmd, $demandeur)['domaine']);
+        $this->assertStringContainsString('LMD', $lmd->libelle());
+
+        $lmd->forceFill(['statut' => BulletinTache::ECHOUEE])->save();
+        $this->assertStringContainsString('/lmd/bulletins', SuiviTachesBulletins::lienResultat($lmd));
+        $this->assertStringContainsString('semestre=1', SuiviTachesBulletins::lienResultat($lmd));
+        $this->assertStringNotContainsString('/lmd/', SuiviTachesBulletins::lienResultat($bts) ?? '');
+    }
+
+    public function test_lmd_selectionne_uniquement_les_bulletins_de_ses_filtres_et_repond_en_json(): void
+    {
+        $this->autoriserExportLmd();
+        $this->insererBulletinsLmd([
+            [801, 2, 1, 1, 11],
+            [802, 2, 1, 1, 12],
+            [803, 2, 1, 2, 13],
+            [804, 1, 1, 1, 14], // Classe BTS, même table : exclue du périmètre.
+        ]);
+
+        $reponse = $this->lancerExportLmd([
+            'mode' => 'apercu', 'portee' => 'filtres', 'classe_id' => 2,
+            'annee_universitaire_id' => 1, 'semestre' => 1,
+        ]);
+
+        $this->assertSame(201, $reponse->getStatusCode());
+        $json = $reponse->getData(true);
+        $this->assertTrue($json['success']);
+        $this->assertSame('lmd', $json['tache']['domaine']);
+        $this->assertSame(2, $json['tache']['total']);
+        $this->assertSame([801, 802], BulletinTache::findOrFail($json['tache']['id'])->elements);
+
+        // Identifiant LMD forgé hors filtres : rejet complet (jamais silencieux).
+        $rejet = $this->lancerExportLmd([
+            'mode' => 'telechargement', 'portee' => 'selection', 'ids' => [801, 803],
+            'classe_id' => 2, 'semestre' => 1,
+        ]);
+        $this->assertSame(422, $rejet->getStatusCode());
+        $this->assertSame(1, BulletinTache::count());
+    }
+
+    public function test_lmd_refuse_un_export_partiel_lorsque_l_impression_est_bloquee(): void
+    {
+        $this->autoriserExportLmd(autorises: [901]);
+        $this->insererBulletinsLmd([[901, 2, 1, 1, 21], [902, 2, 1, 1, 22]]);
+
+        $reponse = $this->lancerExportLmd([
+            'mode' => 'telechargement', 'portee' => 'selection', 'ids' => [901, 902],
+        ]);
+
+        $this->assertSame(422, $reponse->getStatusCode());
+        $this->assertStringContainsString('autorisation', $reponse->getData(true)['message']);
+        $this->assertSame(0, BulletinTache::count());
+    }
+
+    public function test_lmd_refuse_un_lot_superieur_au_plafond_de_quatre_cents(): void
+    {
+        $this->autoriserExportLmd();
+        $lignes = [];
+        for ($id = 1001; $id <= 1401; $id++) {
+            $lignes[] = [$id, 2, 1, 1, $id];
+        }
+        $this->insererBulletinsLmd($lignes);
+
+        $reponse = $this->lancerExportLmd(['mode' => 'apercu', 'portee' => 'filtres']);
+
+        $this->assertSame(422, $reponse->getStatusCode());
+        $this->assertStringContainsString('400', $reponse->getData(true)['message']);
+        $this->assertSame(0, BulletinTache::count());
+    }
+
+    public function test_lmd_assemble_un_pdf_unique_avec_ses_rendus_sans_page_de_garde_bts(): void
+    {
+        $this->autoriserExportLmd();
+        $this->insererBulletinsLmd([[1101, 2, 1, 1, 31], [1102, 2, 1, 1, 32]]);
+        $depart = $this->lancerExportLmd([
+            'mode' => 'telechargement', 'portee' => 'selection', 'ids' => [1102, 1101],
+        ])->getData(true);
+        $tache = BulletinTache::findOrFail($depart['tache']['id']);
+
+        app(ExecuteurTachesBulletins::class)->avancer($tache, 50);
+        $tache->refresh();
+
+        $this->assertSame(BulletinTache::TERMINEE, $tache->statut);
+        $this->assertSame(2, $tache->resultat['rendus']);
+        $this->assertSame(2, (new Fpdi)->setSourceFile($tache->fichier));
+        $this->assertFileExists($tache->fichier);
+
+        $response = app(ESBTPBulletinTacheController::class)->fichier($this->requetePour(1), $tache);
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertStringContainsString('bulletins_lmd_', $response->headers->get('content-disposition'));
+    }
+
+    public function test_lmd_ne_diffuse_pas_de_pdf_partiel_si_un_rendu_echoue(): void
+    {
+        $this->autoriserExportLmd();
+        $this->insererBulletinsLmd([[1201, 2, 1, 1, 41], [1202, 2, 1, 1, 42]]);
+        $this->renduLmdEchoue = true;
+        $tache = BulletinTache::findOrFail($this->lancerExportLmd([
+            'mode' => 'apercu', 'portee' => 'filtres',
+        ])->getData(true)['tache']['id']);
+
+        app(ExecuteurTachesBulletins::class)->avancer($tache, 50);
+        $tache->refresh();
+
+        $this->assertSame(BulletinTache::ECHOUEE, $tache->statut);
+        $this->assertNull($tache->fichier);
+        $this->assertStringContainsString('incomplet', (string) $tache->message);
+    }
+
+    /** @param array<int, array{int, int, int, int, int}> $donnees */
+    private function insererBulletinsLmd(array $donnees): void
+    {
+        $maintenant = now();
+        DB::table('esbtp_lmd_bulletins')->insert(array_map(fn (array $ligne) => [
+            'id' => $ligne[0], 'classe_id' => $ligne[1],
+            'annee_universitaire_id' => $ligne[2], 'semestre' => $ligne[3],
+            'etudiant_id' => $ligne[4], 'created_at' => $maintenant, 'updated_at' => $maintenant,
+        ], $donnees));
+    }
+
+    /** @param array<int, int>|null $autorises */
+    private function autoriserExportLmd(?array $autorises = null): void
+    {
+        Gate::before(fn (User $user, string $ability) => in_array($ability, [
+            'module.lmd.access', 'lmd.bulletins.view', 'lmd.bulletins.export.bulk',
+        ], true) ? true : null);
+
+        $garde = Mockery::mock(DocumentPrintGuard::class);
+        $garde->shouldReceive('filtrerExport')->withAnyArgs()->andReturnUsing(function ($user, $type, $docs) use ($autorises) {
+            $ids = collect($docs)->pluck('id')->map(fn ($id) => (int) $id)->all();
+            $valides = $autorises === null ? $ids : array_values(array_intersect($ids, $autorises));
+
+            return ['allowed_ids' => $valides, 'bloques_solde' => 0,
+                'bloques_approbation' => count($ids) - count($valides)];
+        });
+        $this->app->instance(DocumentPrintGuard::class, $garde);
+    }
+
+    /** @param array<string, mixed> $donnees */
+    private function lancerExportLmd(array $donnees): \Illuminate\Http\JsonResponse
+    {
+        $requete = Request::create('/esbtp/lmd/bulletins/export-pdf/lancer', 'POST', $donnees);
+        $requete->setUserResolver(fn () => User::findOrFail(1));
+
+        return app(ESBTPLMDBulletinExportController::class)->lancer(
+            $requete, app(LancementTachesBulletins::class), app(DocumentPrintGuard::class)
+        );
     }
 
     public function test_un_export_dont_aucun_bulletin_ne_se_rend_echoue_au_lieu_de_servir_un_document_vide(): void

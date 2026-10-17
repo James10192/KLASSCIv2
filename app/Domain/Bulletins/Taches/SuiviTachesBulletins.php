@@ -37,6 +37,7 @@ class SuiviTachesBulletins
         return [
             'id' => $tache->id,
             'type' => $tache->type,
+            'domaine' => $tache->parametre('domaine', 'bts'),
             'mode' => $tache->parametre('mode'),
             'libelle' => $tache->libelle(),
             'statut' => $tache->statut,
@@ -107,6 +108,7 @@ class SuiviTachesBulletins
     public static function lienResultat(BulletinTache $tache): ?string
     {
         if ($tache->type === BulletinTache::TYPE_EXPORT) {
+            $lmd = $tache->parametre('domaine', 'bts') === BulletinTache::DOMAINE_LMD;
             if ($tache->statut === BulletinTache::TERMINEE) {
                 return route('esbtp.bulletins.taches.fichier', [
                     'tache' => $tache->id,
@@ -115,7 +117,7 @@ class SuiviTachesBulletins
             }
 
             return $tache->estFinale()
-                ? route('esbtp.bulletins.index', $tache->parametre('filtres', []), false)
+                ? route($lmd ? 'esbtp.lmd.bulletins.index' : 'esbtp.bulletins.index', $tache->parametre('filtres', []), false)
                 : null;
         }
 
@@ -171,6 +173,8 @@ class SuiviTachesBulletins
             ->orderBy('id')
             ->limit(10)
             ->get()
+            ->filter(fn (BulletinTache $t) => $t->parametre('domaine', 'bts') !== BulletinTache::DOMAINE_LMD
+                || ($user->can('module.lmd.access') && $user->can('lmd.bulletins.view') && $user->can('lmd.bulletins.export.bulk')))
             ->map(fn (BulletinTache $t) => self::etat($t, $user))
             ->all();
     }

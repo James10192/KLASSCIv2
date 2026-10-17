@@ -15,6 +15,8 @@ use App\Services\LMD\LmdCreditWalletService;
 use App\Services\LMDBulletinService;
 use App\Support\ListeInfinie;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Barryvdh\DomPDF\PDF;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
 class ESBTPLMDBulletinController extends Controller
@@ -36,7 +38,37 @@ class ESBTPLMDBulletinController extends Controller
      */
     public function index(Request $request)
     {
-        $query = ESBTPLMDBulletin::with(['etudiant', 'classe', 'anneeUniversitaire']);
+        $query = self::bulletinsFiltres($request)->with(['etudiant', 'classe', 'anneeUniversitaire']);
+
+        // Base des indicateurs, prise AVANT la pagination : paginate() pose sa
+        // limite et son decalage sur la requete elle-meme.
+        $base = clone $query;
+
+        $bulletins = $query->orderByDesc('created_at')->orderByDesc('id')->paginate(20)->withQueryString();
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($bulletins, fn ($b) => view('esbtp.lmd.bulletins._ligne', compact('b'))->render());
+        }
+
+        $classes = ESBTPClasse::where('systeme_academique', 'LMD')
+            ->orderBy('name')
+            ->get();
+
+        $annees = ESBTPAnneeUniversitaire::orderByDesc('annee_debut')->get();
+
+        $kpis = [
+            'publies' => (clone $base)->where('is_published', true)->count(),
+            'moyenne' => (clone $base)->avg('moyenne_generale'),
+        ];
+
+        return view('esbtp.lmd.bulletins.index', compact('bulletins', 'classes', 'annees', 'kpis'));
+    }
+
+    /** Requête canonique commune à la liste AJAX et à l'export groupé LMD. */
+    public static function bulletinsFiltres(Request $request): Builder
+    {
+        $query = ESBTPLMDBulletin::query()
+            ->whereHas('classe', fn ($q) => $q->where('systeme_academique', 'LMD'));
 
         if ($request->filled('classe_id')) {
             $query->where('classe_id', $request->classe_id);
@@ -59,32 +91,7 @@ class ESBTPLMDBulletinController extends Controller
             });
         }
 
-        // Base des indicateurs, prise AVANT la pagination : paginate() pose sa
-        // limite et son decalage sur la requete elle-meme, et une page 2 aurait
-        // compte les publies de zero ligne.
-        $base = clone $query;
-
-        // Departage stable : la liste se charge par tranches.
-        $bulletins = $query->orderByDesc('created_at')->orderByDesc('id')->paginate(20)->withQueryString();
-
-        if (ListeInfinie::demandee($request)) {
-            return ListeInfinie::reponse($bulletins, fn ($b) => view('esbtp.lmd.bulletins._ligne', compact('b'))->render());
-        }
-
-        $classes = ESBTPClasse::where('systeme_academique', 'LMD')
-            ->orderBy('name')
-            ->get();
-
-        $annees = ESBTPAnneeUniversitaire::orderByDesc('annee_debut')->get();
-
-        // Sur tous les bulletins filtres, pas sur la premiere tranche : la
-        // liste se lit d'un seul tenant au defilement.
-        $kpis = [
-            'publies' => (clone $base)->where('is_published', true)->count(),
-            'moyenne' => (clone $base)->avg('moyenne_generale'),
-        ];
-
-        return view('esbtp.lmd.bulletins.index', compact('bulletins', 'classes', 'annees', 'kpis'));
+        return $query;
     }
 
     /**
@@ -569,6 +576,12 @@ class ESBTPLMDBulletinController extends Controller
         $filename = "bulletin_lmd_{$matricule}_S{$semestre}.pdf";
 
         return [$pdf, $filename];
+    }
+
+    /** Rendu officiel unitaire réutilisé par les tranches LMD, sans écriture métier. */
+    public function rendrePdfPourExport(ESBTPLMDBulletin $bulletin): PDF
+    {
+        return $this->buildBulletinPdf($bulletin)[0];
     }
 
     private function prepareLogoBase64(?string $logoPath): ?string

@@ -54,17 +54,24 @@ class LancementTachesBulletins
      * @param  array<int, int>  $bulletinIds
      * @param  array<string, mixed>  $contexte  entête, absents et filtres de la liste
      */
-    public function export(User $demandeur, string $mode, array $bulletinIds, array $contexte): BulletinTache
+    public function export(User $demandeur, string $mode, array $bulletinIds, array $contexte, string $domaine = 'bts'): BulletinTache
     {
+        if (! in_array($domaine, ['bts', BulletinTache::DOMAINE_LMD], true)) {
+            throw new \InvalidArgumentException('Domaine de bulletin non pris en charge.');
+        }
         $filtres = $contexte['filtres'] ?? [];
         $classeId = isset($filtres['classe_id']) ? (int) $filtres['classe_id'] : null;
         $anneeId = isset($filtres['annee_universitaire_id']) ? (int) $filtres['annee_universitaire_id'] : null;
-        $periode = $filtres['periode_id'] ?? null;
+        $periode = $domaine === BulletinTache::DOMAINE_LMD
+            ? (isset($filtres['semestre']) ? (string) $filtres['semestre'] : null)
+            : ($filtres['periode_id'] ?? null);
 
         // Deux exports de listes différentes ne se gênent pas (dossiers
         // séparés) : seul le même document est partagé.
         $existante = $this->enCours(BulletinTache::TYPE_EXPORT, $classeId, $anneeId, $periode);
-        if ($existante !== null && $existante->parametre('mode') === $mode
+        if ($existante !== null && $existante->parametre('domaine', 'bts') === $domaine
+            && ($domaine !== BulletinTache::DOMAINE_LMD || (int) $existante->user_id === (int) $demandeur->id)
+            && $existante->parametre('mode') === $mode
             && $existante->elements === array_values(array_map('intval', $bulletinIds))) {
             $existante->abonner($demandeur->id);
 
@@ -80,6 +87,7 @@ class LancementTachesBulletins
             'statut' => BulletinTache::EN_ATTENTE,
             'parametres' => [
                 'mode' => $mode,
+                'domaine' => $domaine,
                 'classe_nom' => $contexte['entete']['classe'] ?? null,
                 'entete' => $contexte['entete'] ?? [],
                 'ungenerated_ids' => $contexte['ungenerated_ids'] ?? [],

@@ -9,6 +9,8 @@ use App\Domain\Bulletins\Taches\LancementTachesBulletins;
 use App\Domain\Bulletins\Taches\SuiviTachesBulletins;
 use App\Http\Requests\Bulletin\GenerateClasseBulletinsRequest;
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPLMDBulletin;
+use App\Services\DocumentPrintGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -140,6 +142,13 @@ class ESBTPBulletinTacheController extends Controller
     {
         $this->assurerProprietaire($request, $tache);
 
+        if ($tache->parametre('domaine', 'bts') === BulletinTache::DOMAINE_LMD) {
+            $documents = ESBTPLMDBulletin::whereIn('id', $tache->elements)->get(['id', 'etudiant_id']);
+            abort_unless($documents->count() === (int) $tache->total, 403, 'La sélection LMD a changé. Relancez l’export.');
+            $autorises = app(DocumentPrintGuard::class)->filtrerExport($request->user(), 'bulletin', $documents, true);
+            abort_unless(count($autorises['allowed_ids']) === (int) $tache->total, 403, 'Une autorisation d’impression a changé.');
+        }
+
         $chemin = $tache->fichier;
         if (! is_string($chemin) || ! is_file($chemin)) {
             return response(
@@ -148,7 +157,8 @@ class ESBTPBulletinTacheController extends Controller
             )->header('Content-Type', 'text/plain; charset=UTF-8');
         }
 
-        $nom = 'bulletins_'.$tache->terminee_at?->format('Ymd_His').'.pdf';
+        $nom = ($tache->parametre('domaine', 'bts') === BulletinTache::DOMAINE_LMD ? 'bulletins_lmd_' : 'bulletins_')
+            .$tache->terminee_at?->format('Ymd_His').'.pdf';
 
         return $request->input('mode', $tache->parametre('mode')) === 'apercu'
             ? response()->file($chemin, [
@@ -166,5 +176,10 @@ class ESBTPBulletinTacheController extends Controller
     private function assurerProprietaire(Request $request, BulletinTache $tache): void
     {
         abort_unless($tache->concerne((int) $request->user()->id), 404);
+        if ($tache->parametre('domaine', 'bts') === BulletinTache::DOMAINE_LMD) {
+            abort_unless($request->user()->can('module.lmd.access')
+                && $request->user()->can('lmd.bulletins.view')
+                && $request->user()->can('lmd.bulletins.export.bulk'), 403);
+        }
     }
 }

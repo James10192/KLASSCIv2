@@ -144,6 +144,10 @@ jobs:
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Views/AcademicDocumentsNavigationTest.php --stop-on-failure
 
+      - name: Test PDF groupé LMD, garde impression et isolation BTS
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Feature/Bulletins/TachesBulletinsArrierePlanTest.php tests/Unit/Services/DocumentPrintGuardTest.php --stop-on-failure
+
       - name: Test menu de reçu au-dessus des cartes paiement
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Views/PaymentReceiptDropdownLayerTest.php --stop-on-failure

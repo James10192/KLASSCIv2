@@ -67,6 +67,30 @@ class DocumentPrintGuardTest extends TestCase
         $this->assertSame(0, $filtre['bloques_approbation']);
     }
 
+    public function test_droit_export_lmd_permet_impression_quand_la_validation_est_desactivee(): void
+    {
+        $user = Mockery::mock(User::class);
+        $user->shouldReceive('can')->andReturnUsing(fn (string $permission) => $permission === 'lmd.bulletins.export.bulk');
+
+        $documents = [(object) ['id' => 17, 'etudiant_id' => 99]];
+        $filtre = $this->guard(solde: 12000, settingOn: false)->filtrerExport($user, 'bulletin', $documents, true);
+
+        $this->assertSame([17], $filtre['allowed_ids']);
+        $this->assertSame(0, $filtre['bloques_approbation']);
+    }
+
+    public function test_export_lmd_refuse_un_utilisateur_sans_droit_d_impression_meme_sans_validation(): void
+    {
+        $user = Mockery::mock(User::class);
+        $user->shouldReceive('can')->andReturn(false);
+
+        $documents = [(object) ['id' => 18, 'etudiant_id' => 99]];
+        $filtre = $this->guard(solde: 0, settingOn: false)->filtrerExport($user, 'bulletin', $documents, true);
+
+        $this->assertSame([], $filtre['allowed_ids']);
+        $this->assertSame(1, $filtre['bloques_approbation']);
+    }
+
     private function printer(): User
     {
         $user = Mockery::mock(User::class);

@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-17 · #1620 · Bulletins LMD : sélectionner des bulletins ou tous les filtrés, puis prévisualiser/télécharger un seul PDF avec progression AJAX sans rechargement ; contrôle du rôle et des autorisations d'impression, limite de 400. Recette des PDF, du scroll infini, du responsive et des permissions sur presentation avant annonce et propagation aux écoles.
 - 2026-10-16 · #1618 · Rapport des effectifs par classe : année, seuil, nombre de classes, tri, filière/niveau, mise à jour AJAX et export PDF à l'identité visuelle de l'établissement ; recette permissions, dédoublonnage, impression et mobile nécessaire sur présentation avant propagation aux écoles.
 - 2026-10-16 · correctif fermeture modale bulletin · Après recalcul et actualisation AJAX du bilan, la fenêtre de régénération se referme automatiquement sans rechargement ; confirmation affichée avec lien vers le bulletin si disponible. En cas d’échec de la lecture AJAX, possibilité de réessayer sans recalculer.
 - 2026-10-16 · correctif bulletin AJAX · Sur la fiche étudiant, fenêtre de régénération centrée ; moyenne, rang et bilan académique se mettent à jour automatiquement après le recalcul, y compris pour une ancienne inscription, sans rechargement de la page.

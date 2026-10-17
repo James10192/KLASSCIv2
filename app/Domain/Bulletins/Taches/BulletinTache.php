@@ -35,6 +35,9 @@ class BulletinTache extends Model
 
     public const TYPE_EXPORT = 'export';
 
+    /** Variante LMD : le traitement PDF reste séparé du moteur BTS. */
+    public const DOMAINE_LMD = 'lmd';
+
     public const EN_ATTENTE = 'en_attente';
 
     public const EN_COURS = 'en_cours';
@@ -177,6 +180,10 @@ class BulletinTache extends Model
             $this->parametre('mode') === 'apercu' => 'Aperçu groupé des bulletins',
             default => 'PDF groupé des bulletins',
         };
+
+        if ($this->parametre('domaine') === self::DOMAINE_LMD) {
+            $quoi .= ' LMD';
+        }
 
         return $classe ? $quoi.' · '.$classe : $quoi;
     }
