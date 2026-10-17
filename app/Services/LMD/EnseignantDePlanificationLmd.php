@@ -251,23 +251,16 @@ final class EnseignantDePlanificationLmd
             return collect();
         }
 
-        $users = collect();
-        if ($planification->enseignantPrincipal) {
-            $users->push($planification->enseignantPrincipal);
+        // Même pool que le planning et son API : une ancienne liaison pivot
+        // ne doit pas réintroduire un professeur retiré explicitement.
+        $ids = $planification->poolUserIds();
+        if ($ids->isEmpty()) {
+            return collect();
         }
 
-        $secondaires = collect($planification->enseignants_secondaires ?? [])->filter()->map(fn ($id) => (int) $id);
-        if ($secondaires->isNotEmpty()) {
-            $users = $users->merge(User::whereIn('id', $secondaires)->get(['id', 'name']));
-        }
+        $users = User::whereIn('id', $ids)->get(['id', 'name'])->keyBy('id');
 
-        foreach ($planification->teachers as $teacher) {
-            if ($teacher->user) {
-                $users->push($teacher->user);
-            }
-        }
-
-        return $users->filter()->unique('id')->values();
+        return $ids->map(fn ($id) => $users->get($id))->filter()->values();
     }
 
     /** @return array{enseignants: Collection<int, User>, enseignant_id: int|null, noms: string} */

@@ -16,6 +16,7 @@ use App\Models\ESBTPLMDResultatUE;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPPlanificationAcademique;
+use App\Models\ESBTPTeacher;
 use App\Models\ESBTPUniteEnseignement;
 use App\Models\User;
 use App\Services\LMD\EnseignantDeClasseLmd;
@@ -259,6 +260,205 @@ class EnseignantPlanificationEvaluationTest extends TestCase
         $this->assertSame('maquette_lmd', $resultat['source']);
         $this->assertSame([$this->ecue->id], collect($resultat['matieres'])->pluck('id')->all());
         $this->assertFalse($resultat['matieres'][0]['hors_maquette']);
+    }
+
+    public function test_le_pool_est_visible_dans_le_patch_et_apres_un_refresh_ajax(): void
+    {
+        $this->actingAs($this->admin);
+        $response = $this->patchJson(route('esbtp.lmd.planifications.update', ['ecueId' => $this->ecue->id]), [
+            'filiere_id' => $this->classe->filiere_id,
+            'niveau_id' => $this->classe->niveau_etude_id,
+            'semestre' => 1,
+            'annee_universitaire_id' => $this->annee->id,
+            'enseignant_principal_id' => $this->enseignantPlanning->id,
+            'enseignants_secondaires' => [$this->autreEnseignant->id],
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('planification.enseignant_ids.0', $this->enseignantPlanning->id)
+            ->assertJsonPath('planification.enseignant_ids.1', $this->autreEnseignant->id)
+            ->assertJsonPath('planification.enseignants.1.name', $this->autreEnseignant->name);
+
+        $this->getJson(route('esbtp.lmd.planning.teacher-pool', $this->poolQuery()))
+            ->assertOk()
+            ->assertJsonPath('ids.1', $this->autreEnseignant->id);
+
+        $partial = $this->getJson(route('esbtp.lmd.planning.partial', [
+            'parcours_id' => $this->classe->parcours_id,
+            'niveau_id' => $this->classe->niveau_etude_id,
+            'semestre' => 1,
+        ]));
+        $partial->assertOk();
+        $this->assertStringContainsString($this->enseignantPlanning->name, $partial->json('listing'));
+        $this->assertStringContainsString($this->autreEnseignant->name, $partial->json('listing'));
+    }
+
+    public function test_trois_enseignants_affichent_un_resume_plus_deux_apres_refresh(): void
+    {
+        $troisieme = $this->user('troisieme');
+        $troisieme->assignRole('enseignant');
+        $this->actingAs($this->admin);
+        $this->patchJson(route('esbtp.lmd.planifications.update', ['ecueId' => $this->ecue->id]), [
+            'filiere_id' => $this->classe->filiere_id,
+            'niveau_id' => $this->classe->niveau_etude_id,
+            'semestre' => 1,
+            'annee_universitaire_id' => $this->annee->id,
+            'enseignant_principal_id' => $this->enseignantPlanning->id,
+            'enseignants_secondaires' => [$this->autreEnseignant->id, $troisieme->id],
+        ])->assertOk()->assertJsonCount(3, 'planification.enseignants');
+
+        $partial = $this->getJson(route('esbtp.lmd.planning.partial', [
+            'parcours_id' => $this->classe->parcours_id,
+            'niveau_id' => $this->classe->niveau_etude_id,
+            'semestre' => 1,
+        ]));
+        $partial->assertOk();
+        $this->assertStringContainsString($this->enseignantPlanning->name.' +2', $partial->json('listing'));
+        $this->assertStringContainsString($troisieme->name, $partial->json('listing'));
+    }
+
+    public function test_pool_et_annee_sont_isoles_par_contexte(): void
+    {
+        $autreAnnee = ESBTPAnneeUniversitaire::factory()->create([
+            'name' => '2024-2025',
+            'is_current' => false,
+        ]);
+        $this->actingAs($this->admin);
+        $this->getJson(route('esbtp.lmd.planning.teacher-pool', [
+            ...$this->poolQuery(),
+            'annee_universitaire_id' => $autreAnnee->id,
+        ]))->assertOk()->assertJsonPath('ids', []);
+        $this->getJson(route('esbtp.lmd.planning.teacher-pool', [
+            ...$this->poolQuery(),
+            'semestre' => 2,
+        ]))->assertOk()->assertJsonPath('ids', []);
+        $this->getJson(route('esbtp.lmd.planning.teacher-pool', $this->poolQuery()))
+            ->assertOk()->assertJsonPath('ids.0', $this->enseignantPlanning->id);
+    }
+
+    public function test_le_pivot_historique_est_lu_puis_nettoye_apres_une_desaffectation_explicite(): void
+    {
+        $planning = ESBTPPlanificationAcademique::where('matiere_id', $this->ecue->id)->firstOrFail();
+        $planning->enseignant_principal_id = null;
+        $planning->enseignants_secondaires = null;
+        $planning->save();
+
+        $profil = ESBTPTeacher::create([
+            'user_id' => $this->autreEnseignant->id,
+            'matricule' => 'LMD-LEGACY-1',
+            'status' => 'active',
+            'is_active' => true,
+        ]);
+        $planning->teachers()->attach($profil->id);
+
+        $this->actingAs($this->admin);
+        $this->getJson(route('esbtp.lmd.planning.teacher-pool', $this->poolQuery()))
+            ->assertOk()->assertJsonPath('ids.0', $this->autreEnseignant->id);
+
+        $this->patchJson(route('esbtp.lmd.planifications.update', ['ecueId' => $this->ecue->id]), [
+            'filiere_id' => $this->classe->filiere_id,
+            'niveau_id' => $this->classe->niveau_etude_id,
+            'semestre' => 1,
+            'annee_universitaire_id' => $this->annee->id,
+            'enseignant_principal_id' => null,
+            'enseignants_secondaires' => [],
+        ])->assertOk()->assertJsonPath('planification.enseignant_ids', []);
+
+        $this->getJson(route('esbtp.lmd.planning.teacher-pool', $this->poolQuery()))
+            ->assertOk()->assertJsonPath('ids', []);
+        $this->assertDatabaseMissing('esbtp_planification_teachers', [
+            'planification_id' => $planning->id,
+            'teacher_id' => $profil->id,
+        ]);
+    }
+
+    public function test_un_patch_identique_nettoie_un_ancien_lien_pivot_obsolete(): void
+    {
+        $planning = ESBTPPlanificationAcademique::where('matiere_id', $this->ecue->id)->firstOrFail();
+        $planning->enseignants_secondaires = [];
+        $planning->save();
+
+        $profil = ESBTPTeacher::create([
+            'user_id' => $this->autreEnseignant->id,
+            'matricule' => 'LMD-GHOST-2',
+            'status' => 'active',
+            'is_active' => true,
+        ]);
+        $planning->teachers()->attach($profil->id);
+
+        $this->actingAs($this->admin);
+        $this->patchJson(route('esbtp.lmd.planifications.update', ['ecueId' => $this->ecue->id]), [
+            'filiere_id' => $this->classe->filiere_id,
+            'niveau_id' => $this->classe->niveau_etude_id,
+            'semestre' => 1,
+            'annee_universitaire_id' => $this->annee->id,
+            'enseignant_principal_id' => $this->enseignantPlanning->id,
+            'enseignants_secondaires' => [],
+        ])->assertOk();
+
+        $this->assertDatabaseMissing('esbtp_planification_teachers', [
+            'planification_id' => $planning->id,
+            'teacher_id' => $profil->id,
+        ]);
+        $this->getJson(route('esbtp.lmd.planning.teacher-pool', $this->poolQuery()))
+            ->assertOk()->assertJsonPath('ids', [$this->enseignantPlanning->id]);
+    }
+
+    public function test_la_lecture_est_permise_mais_l_edition_exige_lmd_planning_edit(): void
+    {
+        $reader = $this->user('lecteur');
+        $reader->givePermissionTo(['module.lmd.access', 'lmd.planning.view']);
+        $this->actingAs($reader);
+
+        $this->getJson(route('esbtp.lmd.planning.teacher-pool', $this->poolQuery()))->assertOk();
+        $this->patchJson(route('esbtp.lmd.planifications.update', ['ecueId' => $this->ecue->id]), [
+            'filiere_id' => $this->classe->filiere_id,
+            'niveau_id' => $this->classe->niveau_etude_id,
+            'semestre' => 1,
+            'annee_universitaire_id' => $this->annee->id,
+            'enseignant_principal_id' => $this->autreEnseignant->id,
+            'enseignants_secondaires' => [],
+        ])->assertForbidden();
+        $this->patchJson(route('esbtp.lmd.ues.update-responsable', ['ueId' => $this->ue->id]), [
+            'responsable_ue_id' => $this->autreEnseignant->id,
+        ])->assertForbidden();
+    }
+
+    public function test_un_non_enseignant_est_refuse_et_le_responsable_ue_reapparait_dans_le_partial(): void
+    {
+        $nonEnseignant = $this->user('nonprof');
+        $this->actingAs($this->admin);
+        $this->patchJson(route('esbtp.lmd.planifications.update', ['ecueId' => $this->ecue->id]), [
+            'filiere_id' => $this->classe->filiere_id,
+            'niveau_id' => $this->classe->niveau_etude_id,
+            'semestre' => 1,
+            'annee_universitaire_id' => $this->annee->id,
+            'enseignant_principal_id' => $nonEnseignant->id,
+            'enseignants_secondaires' => [],
+        ])->assertUnprocessable();
+
+        $this->patchJson(route('esbtp.lmd.ues.update-responsable', ['ueId' => $this->ue->id]), [
+            'responsable_ue_id' => $this->autreEnseignant->id,
+        ])->assertOk()->assertJsonPath('ue.responsable_name', $this->autreEnseignant->name);
+
+        $partial = $this->getJson(route('esbtp.lmd.planning.partial', [
+            'parcours_id' => $this->classe->parcours_id,
+            'niveau_id' => $this->classe->niveau_etude_id,
+            'semestre' => 1,
+        ]));
+        $partial->assertOk();
+        $this->assertStringContainsString($this->autreEnseignant->name, $partial->json('listing'));
+    }
+
+    private function poolQuery(): array
+    {
+        return [
+            'matiere_id' => $this->ecue->id,
+            'filiere_id' => $this->classe->filiere_id,
+            'niveau_id' => $this->classe->niveau_etude_id,
+            'semestre' => 1,
+            'annee_universitaire_id' => $this->annee->id,
+        ];
     }
 
     private function evaluationData(array $override = []): array

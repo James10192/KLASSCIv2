@@ -29,18 +29,16 @@ final class ESBTPLMDTeacherPoolController extends Controller
             ->where('semestre', $data['semestre'])
             ->where('annee_universitaire_id', $data['annee_universitaire_id'])
             ->where('is_active', true)
-            ->with(['enseignantPrincipal:id,name,email', 'teachers.user:id,name,email'])
+            ->with('teachers:id,user_id')
             ->first();
 
         if (! $planif) {
             return response()->json(['exists' => false, 'ids' => [], 'teachers' => []]);
         }
 
-        $ids = collect([$planif->enseignant_principal_id])
-            ->merge($planif->enseignants_secondaires ?? [])
-            ->merge($planif->teachers->pluck('user_id'))
-            ->filter()->map(fn ($id) => (int) $id)->unique()->values();
-        $users = User::whereIn('id', $ids)->get(['id', 'name', 'email'])->sortBy('name')->values();
+        $ids = $planif->poolUserIds();
+        $usersById = User::whereIn('id', $ids)->get(['id', 'name', 'email'])->keyBy('id');
+        $users = $ids->map(fn ($id) => $usersById->get($id))->filter()->values();
 
         return response()->json([
             'exists' => true,

@@ -18,10 +18,17 @@ final class ESBTPPlanificationTeacherPoolObserver
 {
     public function saved(ESBTPPlanificationAcademique $planification): void
     {
-        if (! $planification->wasChanged(['enseignant_principal_id', 'enseignants_secondaires'])) {
-            return;
+        if ($planification->wasChanged(['enseignant_principal_id', 'enseignants_secondaires'])) {
+            $this->synchroniser($planification);
         }
+    }
 
+    /**
+     * À appeler également pour une édition explicite sans dirty fields :
+     * une ancienne ligne pivot peut être obsolète même si le JSON est identique.
+     */
+    public function synchroniser(ESBTPPlanificationAcademique $planification): void
+    {
         $userIds = collect([$planification->enseignant_principal_id])
             ->merge($planification->enseignants_secondaires ?? [])
             ->filter()

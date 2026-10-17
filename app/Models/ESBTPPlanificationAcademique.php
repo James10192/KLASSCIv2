@@ -182,6 +182,30 @@ class ESBTPPlanificationAcademique extends Model implements Auditable
     }
 
     /**
+     * Identifiants effectifs du pool. Le JSON, lorsqu'il est renseigné (y
+     * compris []), devient la sélection explicite. Les anciens liens pivot
+     * ne servent que de repli pour une ligne dont le JSON n'a jamais été édité.
+     *
+     * Précharger "teachers" lors d'un traitement de plusieurs planifications.
+     *
+     * @return \Illuminate\Support\Collection<int,int>
+     */
+    public function poolUserIds(): \Illuminate\Support\Collection
+    {
+        $ids = collect([$this->enseignant_principal_id])
+            ->merge($this->enseignants_secondaires ?? []);
+
+        if ($this->enseignants_secondaires === null) {
+            $ids = $ids->merge($this->teachers->pluck('user_id'));
+        }
+
+        return $ids->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+    }
+
+    /**
      * Relation avec l'utilisateur qui a créé la planification
      */
     public function createdBy()
