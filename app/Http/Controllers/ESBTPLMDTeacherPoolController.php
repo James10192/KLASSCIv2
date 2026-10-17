@@ -33,18 +33,20 @@ final class ESBTPLMDTeacherPoolController extends Controller
             ->first();
 
         if (! $planif) {
-            return response()->json(['exists' => false, 'ids' => [], 'teachers' => []]);
+            return response()->json(['exists' => false, 'ids' => [], 'teachers' => [], 'unavailable_count' => 0]);
         }
 
         $ids = $planif->poolUserIds();
-        $usersById = User::whereIn('id', $ids)->get(['id', 'name', 'email'])->keyBy('id');
-        $users = $ids->map(fn ($id) => $usersById->get($id))->filter()->values();
+        $usersById = User::role('enseignant')->whereIn('id', $ids)->get(['id', 'name', 'email'])->keyBy('id');
+        $availableIds = $ids->filter(fn ($id) => $usersById->has($id))->values();
+        $users = $availableIds->map(fn ($id) => $usersById->get($id))->values();
 
         return response()->json([
             'exists' => true,
             'planification_id' => $planif->id,
-            'ids' => $ids,
+            'ids' => $availableIds,
             'teachers' => $users,
+            'unavailable_count' => $ids->count() - $availableIds->count(),
         ]);
     }
 }
