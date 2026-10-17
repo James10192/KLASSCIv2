@@ -84,6 +84,10 @@ class TachesBulletinsArrierePlanTest extends TestCase
             $t->softDeletes();
             $t->timestamps();
         });
+        // Les nouvelles requêtes LMD exercent les vraies Gate/Spatie. Leur
+        // résolution consulte ces tables même sans rôle attribué aux fixtures.
+        require_once database_path('migrations/2023_01_01_000000_create_permission_tables.php');
+        (new \CreatePermissionTables)->up();
         Schema::create('custom_notifications', function (Blueprint $t) {
             $t->id();
             $t->unsignedBigInteger('user_id');
