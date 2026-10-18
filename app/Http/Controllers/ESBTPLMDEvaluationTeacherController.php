@@ -6,6 +6,7 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPLMDResultatECUE;
 use App\Models\User;
+use App\Observers\ESBTPPlanificationTeacherPoolObserver;
 use App\Services\LMD\EnseignantDeClasseLmd;
 use App\Services\LMD\EnseignantDePlanificationLmd;
 use Illuminate\Http\JsonResponse;
@@ -131,9 +132,13 @@ class ESBTPLMDEvaluationTeacherController extends Controller
         abort_if($invalides->isNotEmpty(), 422, 'Le pool ne peut contenir que des utilisateurs ayant le rôle enseignant.');
 
         $planif->enseignant_principal_id = $ids->first();
-        $planif->enseignants_secondaires = $ids->slice(1)->values()->all() ?: null;
+        // [] signifie « pool vidé volontairement » ; null réactiverait le
+        // repli historique sur le pivot et ferait réapparaître d'anciens profs.
+        $planif->enseignants_secondaires = $ids->slice(1)->values()->all();
         $planif->updated_by = $request->user()->id;
         $planif->save();
+        // Même lorsque les attributs sont inchangés, nettoyer un vieux pivot.
+        app(ESBTPPlanificationTeacherPoolObserver::class)->synchroniser($planif);
 
         return response()->json([
             'success' => true,

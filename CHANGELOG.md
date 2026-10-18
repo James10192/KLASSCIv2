@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Pool d'enseignants LMD :** vider la sélection d'enseignants d'un ECUE demeure un choix explicite ; les anciens liens de planification sont synchronisés pour empêcher la réapparition d'un professeur retiré.
 - **Confidentialité des notes d'évaluation :** l'ancienne URL PDF bénéficie des mêmes permissions académiques que la route principale, avec une limitation de débit ; une simple connexion ne donne plus accès aux notes de classe.
 - **Planning LMD — affectations d'enseignants lisibles et modifiables :** les enseignants prévus pour chaque ECUE et le responsable d'UE restent visibles après mise à jour AJAX et changement de filtres. Le sélecteur premium distingue les affectations existantes des autres enseignants ; le retrait synchronise l'ancien pivot sans toucher aux professeurs confirmés par classe.
 - **Évaluations — actions AJAX fiabilisées :** les clics restent uniques après actualisation des lignes, les activations et publications de lots utilisent un état cible idempotent et un verrou anti-double-clic, avec une seule actualisation finale des résultats et compteurs. Les traitements s'arrêtent et signalent les succès partiels en cas d'erreur HTTP 429/400/500. Les routes de modification requièrent les droits d'édition ; les anciens formulaires de publication restent compatibles.
