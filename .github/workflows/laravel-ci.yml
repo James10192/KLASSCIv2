@@ -136,6 +136,10 @@ jobs:
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Services/Notes/EvaluationsDeLaFicheTest.php tests/Unit/Services/Notes/FicheNotesIntegrationUxTest.php --stop-on-failure
 
+      - name: Test fiche étudiant sans calcul de dossier inutilisé
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Controllers/StudentShowDossierWorkloadTest.php --stop-on-failure
+
       - name: Test ergonomie des fiches et modales AJAX
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Views/AcademicFicheUxContractTest.php --stop-on-failure
