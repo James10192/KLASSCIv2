@@ -57,15 +57,17 @@ class FamilyWorkflowMailerTest extends TestCase
 
     private function student(): ESBTPEtudiant
     {
+        // example.com est justement interdit par AnalyseurEmail ; ces adresses
+        // de fixture restent fictives et Mail::fake() empeche tout envoi.
         DB::table('esbtp_etudiants')->insert([
             'id' => 31,
             'user_id' => 72,
-            'email_personnel' => 'eleve@example.com',
-            'email' => 'eleve@example.com',
+            'email_personnel' => 'eleve@famille-exemple.ci',
+            'email' => 'eleve@famille-exemple.ci',
         ]);
         DB::table('esbtp_parents')->insert([
-            ['id' => 50, 'email' => 'parent@example.com'],
-            ['id' => 51, 'email' => 'autre-parent@example.com'],
+            ['id' => 50, 'email' => 'parent@famille-exemple.ci'],
+            ['id' => 51, 'email' => 'autre-parent@famille-exemple.ci'],
         ]);
         DB::table('esbtp_etudiant_parent')->insert([
             ['etudiant_id' => 31, 'parent_id' => 50, 'is_tuteur' => true],
@@ -75,7 +77,7 @@ class FamilyWorkflowMailerTest extends TestCase
         $student = ESBTPEtudiant::findOrFail(31);
         $user = new User();
         $user->id = 72;
-        $user->email = 'parent@example.com'; // same account, same address as the tutor
+        $user->email = 'parent@famille-exemple.ci'; // same account, same address as the tutor
         $student->setRelation('user', $user);
 
         return $student;
@@ -98,8 +100,8 @@ class FamilyWorkflowMailerTest extends TestCase
 
         $this->assertSame(3, $accepted);
         $this->assertSame(3, $created);
-        Mail::assertSentCount(3);
-        foreach (['parent@example.com', 'eleve@example.com', 'autre-parent@example.com'] as $address) {
+        Mail::assertSent(Mailable::class, 3);
+        foreach (['parent@famille-exemple.ci', 'eleve@famille-exemple.ci', 'autre-parent@famille-exemple.ci'] as $address) {
             Mail::assertSent(Mailable::class, fn (Mailable $message): bool => $message->hasTo($address));
         }
     }
@@ -114,11 +116,11 @@ class FamilyWorkflowMailerTest extends TestCase
         DB::table('esbtp_etudiants')->insert([
             'id' => 32,
             'user_id' => 72,
-            'email_personnel' => 'autre-eleve@example.com',
-            'email' => 'autre-eleve@example.com',
+            'email_personnel' => 'autre-eleve@famille-exemple.ci',
+            'email' => 'autre-eleve@famille-exemple.ci',
         ]);
         DB::table('esbtp_parents')->insert([
-            'id' => 52, 'email' => 'parent-non-lie@example.com',
+            'id' => 52, 'email' => 'parent-non-lie@famille-exemple.ci',
         ]);
         DB::table('esbtp_etudiant_parent')->insert([
             'etudiant_id' => 32, 'parent_id' => 52, 'is_tuteur' => true,
@@ -129,10 +131,10 @@ class FamilyWorkflowMailerTest extends TestCase
         );
 
         $this->assertSame(3, $accepted);
-        Mail::assertSentCount(3);
+        Mail::assertSent(Mailable::class, 3);
         Mail::assertNotSent(Mailable::class, fn (Mailable $message): bool =>
-            $message->hasTo('parent-non-lie@example.com')
-            || $message->hasTo('autre-eleve@example.com')
+            $message->hasTo('parent-non-lie@famille-exemple.ci')
+            || $message->hasTo('autre-eleve@famille-exemple.ci')
         );
     }
 
