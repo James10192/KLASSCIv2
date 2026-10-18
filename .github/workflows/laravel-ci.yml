@@ -118,6 +118,10 @@ jobs:
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/InscriptionEditFormScriptsTest.php --stop-on-failure
 
+      - name: Test accès protégé au PDF historique des évaluations
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Feature/Security/EvaluationPdfRouteAccessTest.php --stop-on-failure
+
       - name: Test auth étudiant-parent (routes et compatibilité)
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Feature/Auth/SharedStudentAccountRoutesTest.php --stop-on-failure
