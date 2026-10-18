@@ -483,7 +483,8 @@ class ESBTPLMDBulletinController extends Controller
             auth()->user(),
             'bulletin',
             (int) $bulletin->etudiant_id,
-            (int) $bulletin->id
+            (int) $bulletin->id,
+            true
         );
 
         [$pdf, $filename] = $this->buildBulletinPdf($bulletin);
@@ -501,7 +502,8 @@ class ESBTPLMDBulletinController extends Controller
             auth()->user(),
             'bulletin',
             (int) $bulletin->etudiant_id,
-            (int) $bulletin->id
+            (int) $bulletin->id,
+            true
         );
 
         [$pdf, $filename] = $this->buildBulletinPdf($bulletin);

@@ -8,6 +8,7 @@ use App\Domain\Bulletins\Taches\ExecuteurTachesBulletins;
 use App\Domain\Bulletins\Taches\LancementTachesBulletins;
 use App\Domain\Bulletins\Taches\SuiviTachesBulletins;
 use App\Http\Requests\Bulletin\GenerateClasseBulletinsRequest;
+use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPLMDBulletin;
 use App\Services\DocumentPrintGuard;
@@ -142,12 +143,20 @@ class ESBTPBulletinTacheController extends Controller
     {
         $this->assurerProprietaire($request, $tache);
 
-        if ($tache->parametre('domaine', 'bts') === BulletinTache::DOMAINE_LMD) {
-            $documents = ESBTPLMDBulletin::whereIn('id', $tache->elements)->get(['id', 'etudiant_id']);
-            abort_unless($documents->count() === (int) $tache->total, 403, 'La sélection LMD a changé. Relancez l’export.');
-            $autorises = app(DocumentPrintGuard::class)->filtrerExport($request->user(), 'bulletin', $documents, true);
-            abort_unless(count($autorises['allowed_ids']) === (int) $tache->total, 403, 'Une autorisation d’impression a changé.');
-        }
+        abort_unless($tache->type === BulletinTache::TYPE_EXPORT, 404);
+
+        // Les droits et accords peuvent changer entre la génération du PDF et
+        // son téléchargement : recontrôler la sélection BTS et LMD à chaque accès.
+        $estLmd = $tache->parametre('domaine', 'bts') === BulletinTache::DOMAINE_LMD;
+        // L'export BTS exige toujours le droit de lot possédé au lancement.
+        abort_unless($estLmd || $request->user()->can('bulletins.export.bulk'), 403);
+        $documents = $estLmd
+            ? ESBTPLMDBulletin::whereIn('id', $tache->elements)->get(['id', 'etudiant_id'])
+            : ESBTPBulletin::whereIn('id', $tache->elements)->get(['id', 'etudiant_id']);
+
+        abort_unless($documents->count() === (int) $tache->total, 403, 'La sélection de bulletins a changé. Relancez l’export.');
+        $autorises = app(DocumentPrintGuard::class)->filtrerExport($request->user(), 'bulletin', $documents, $estLmd);
+        abort_unless(count($autorises['allowed_ids']) === (int) $tache->total, 403, 'Une autorisation d’impression a changé.');
 
         $chemin = $tache->fichier;
         if (! is_string($chemin) || ! is_file($chemin)) {

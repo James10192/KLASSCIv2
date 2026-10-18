@@ -164,6 +164,12 @@ jobs:
           php artisan test tests/Feature/Bulletins/TachesBulletinsArrierePlanTest.php --stop-on-failure
           php artisan test tests/Unit/Services/DocumentPrintGuardTest.php --stop-on-failure
 
+      - name: Test garde d'impression BTS et LMD au téléchargement
+        if: github.event_name == 'pull_request'
+        run: |
+          php artisan test tests/Unit/Services/DocumentPrintGuardTest.php --stop-on-failure
+          php artisan test tests/Unit/Controllers/BulletinPrintDownloadGuardTest.php --stop-on-failure
+
       - name: Test menu de reçu au-dessus des cartes paiement
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Views/PaymentReceiptDropdownLayerTest.php --stop-on-failure
