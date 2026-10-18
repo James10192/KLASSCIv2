@@ -18,6 +18,7 @@ class BulletinPrintDownloadGuardTest extends TestCase
         $download = substr($source, $start, $end - $start);
 
         $this->assertStringContainsString('BulletinTache::TYPE_EXPORT', $download);
+        $this->assertStringContainsString("can('bulletins.export.bulk')", $download);
         $this->assertStringContainsString('ESBTPBulletin::whereIn', $download);
         $this->assertStringContainsString('ESBTPLMDBulletin::whereIn', $download);
         $this->assertStringContainsString('filtrerExport(', $download);

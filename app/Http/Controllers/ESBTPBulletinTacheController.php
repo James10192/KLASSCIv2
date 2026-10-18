@@ -148,6 +148,8 @@ class ESBTPBulletinTacheController extends Controller
         // Les droits et accords peuvent changer entre la génération du PDF et
         // son téléchargement : recontrôler la sélection BTS et LMD à chaque accès.
         $estLmd = $tache->parametre('domaine', 'bts') === BulletinTache::DOMAINE_LMD;
+        // L'export BTS exige toujours le droit de lot possédé au lancement.
+        abort_unless($estLmd || $request->user()->can('bulletins.export.bulk'), 403);
         $documents = $estLmd
             ? ESBTPLMDBulletin::whereIn('id', $tache->elements)->get(['id', 'etudiant_id'])
             : ESBTPBulletin::whereIn('id', $tache->elements)->get(['id', 'etudiant_id']);
