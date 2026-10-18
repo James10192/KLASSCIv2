@@ -2254,9 +2254,17 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:etudiant'])->g
 });
 
 // Ajouter la route pour gÃ©nÃ©rer le PDF d'une Ã©valuation
+// L'alias historique expose les memes notes nominatives que la route ESBTP :
+// proteger les deux URLs de facon identique, meme si aucun lien ne pointe ici.
 Route::get('/evaluations/{evaluation}/pdf', [ESBTPEvaluationController::class, 'generatePdf'])
+    ->whereNumber('evaluation')
     ->name('evaluations.pdf')
-    ->middleware(['auth']);
+    ->middleware([
+        'auth',
+        'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk',
+        'permission:evaluations.view|evaluations.create|evaluations.edit|view_evaluations|create_evaluations|edit_evaluations',
+        'throttle:10,1',
+    ]);
 
 // Route pour l'index des bulletins ESBTP
 Route::get('/esbtp/bulletins', [ESBTPBulletinController::class, 'index'])->name('esbtp.bulletins.index')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk']);
