@@ -3,7 +3,7 @@
 namespace Tests\Unit\Services\LMD;
 
 use App\Models\ESBTPPlanificationAcademique;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class TeacherPoolEmptySelectionTest extends TestCase
 {
