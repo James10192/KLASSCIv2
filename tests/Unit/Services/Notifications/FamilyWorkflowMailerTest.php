@@ -100,7 +100,7 @@ class FamilyWorkflowMailerTest extends TestCase
 
         $this->assertSame(3, $accepted);
         $this->assertSame(3, $created);
-        Mail::assertSentCount(3);
+        Mail::assertSent(Mailable::class, 3);
         foreach (['parent@famille-exemple.ci', 'eleve@famille-exemple.ci', 'autre-parent@famille-exemple.ci'] as $address) {
             Mail::assertSent(Mailable::class, fn (Mailable $message): bool => $message->hasTo($address));
         }
@@ -131,7 +131,7 @@ class FamilyWorkflowMailerTest extends TestCase
         );
 
         $this->assertSame(3, $accepted);
-        Mail::assertSentCount(3);
+        Mail::assertSent(Mailable::class, 3);
         Mail::assertNotSent(Mailable::class, fn (Mailable $message): bool =>
             $message->hasTo('parent-non-lie@famille-exemple.ci')
             || $message->hasTo('autre-eleve@famille-exemple.ci')
