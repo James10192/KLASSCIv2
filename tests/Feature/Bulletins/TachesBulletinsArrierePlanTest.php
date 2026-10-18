@@ -535,12 +535,37 @@ class TachesBulletinsArrierePlanTest extends TestCase
         $etat = SuiviTachesBulletins::etat($tache);
         $this->assertStringContainsString('/bulletins-taches/'.$tache->id.'/fichier', (string) $etat['url']);
 
+        // La route de lancement vérifie ces droits ; la récupération les
+        // vérifie à nouveau, sans dépendre des tables d'autorisation du test.
+        Gate::before(fn (User $user, string $ability) =>
+            $user->id === 1 && $ability === 'bulletins.export.bulk' ? true : null
+        );
+        $garde = Mockery::mock(DocumentPrintGuard::class);
+        $garde->shouldReceive('filtrerExport')->once()->andReturn([
+            'allowed_ids' => [502, 501], 'bloques_solde' => 0, 'bloques_approbation' => 0,
+        ]);
+        $this->app->instance(DocumentPrintGuard::class, $garde);
+
         $controleur = app(ESBTPBulletinTacheController::class);
         $reponse = $controleur->fichier($this->requetePour(1), $tache);
         $this->assertSame(200, $reponse->getStatusCode());
 
         $this->expectException(NotFoundHttpException::class);
         $controleur->fichier($this->requetePour(2), $tache);
+    }
+
+    public function test_ancien_lien_pdf_bts_est_refuse_apres_retrait_du_droit_export(): void
+    {
+        $tache = app(LancementTachesBulletins::class)->export(User::findOrFail(1), 'apercu', [501], [
+            'entete' => [], 'ungenerated_ids' => [], 'filtres' => [],
+        ]);
+
+        try {
+            app(ESBTPBulletinTacheController::class)->fichier($this->requetePour(1), $tache);
+            $this->fail('Un export sans droit bulletins.export.bulk doit être refusé.');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            $this->assertSame(403, $e->getStatusCode());
+        }
     }
 
     public function test_export_lmd_et_bts_ne_partagent_jamais_leur_tache_ni_leur_lien_de_retour(): void

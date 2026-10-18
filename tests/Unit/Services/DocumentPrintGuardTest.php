@@ -91,6 +91,33 @@ class DocumentPrintGuardTest extends TestCase
         $this->assertSame(1, $filtre['bloques_approbation']);
     }
 
+    public function test_export_bts_refuses_revoked_print_permission_even_when_setting_is_off(): void
+    {
+        $user = Mockery::mock(User::class);
+        $user->shouldReceive('can')->andReturn(false);
+
+        $filtre = $this->guard(solde: 0, settingOn: false)->filtrerExport($user, 'bulletin', [
+            (object) ['id' => 19, 'etudiant_id' => 99],
+        ]);
+
+        $this->assertSame([], $filtre['allowed_ids']);
+    }
+
+    public function test_individual_lmd_document_accepts_its_dedicated_print_permission(): void
+    {
+        $user = Mockery::mock(User::class);
+        $user->shouldReceive('can')->andReturnUsing(
+            fn (string $permission) => $permission === 'lmd.bulletins.export.bulk'
+        );
+
+        $withLmd = $this->guard(solde: 0, settingOn: false)->decide($user, 'bulletin', 99, 19, true);
+        $withoutLmd = $this->guard(solde: 0, settingOn: false)->decide($user, 'bulletin', 99, 19);
+
+        $this->assertTrue($withLmd->allowed);
+        $this->assertFalse($withoutLmd->allowed);
+        $this->assertSame(PrintDecision::PERMISSION, $withoutLmd->reason);
+    }
+
     private function printer(): User
     {
         $user = Mockery::mock(User::class);

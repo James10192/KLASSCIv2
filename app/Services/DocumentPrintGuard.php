@@ -61,18 +61,14 @@ class DocumentPrintGuard
         $docs = collect($documents);
         $ids = $docs->map(fn ($d) => (int) $d->id)->all();
 
-        // L'export LMD porte son droit métier propre, y compris quand l'école
-        // a désactivé la validation préalable des impressions.
-        if ($lmd && ! $this->aDroitImpression($user, true)) {
-            return ['allowed_ids' => [], 'bloques_solde' => 0, 'bloques_approbation' => count($ids)];
+        // Le droit d'impression est toujours requis, BTS comme LMD,
+        // même si la vérification des soldes et accords est désactivée.
+        if (! $this->aDroitImpression($user, $lmd)) {
+            return ['allowed_ids' => [], 'bloques_solde' => 0, 'bloques_approbation' => $lmd ? count($ids) : 0];
         }
 
         if ($docs->isEmpty() || ! $this->requiresApproval()) {
             return ['allowed_ids' => $ids, 'bloques_solde' => 0, 'bloques_approbation' => 0];
-        }
-
-        if (! $this->aDroitImpression($user, $lmd)) {
-            return ['allowed_ids' => [], 'bloques_solde' => 0, 'bloques_approbation' => 0];
         }
 
         $etudiantIds = $docs->map(fn ($d) => (int) $d->etudiant_id)->unique()->values()->all();
