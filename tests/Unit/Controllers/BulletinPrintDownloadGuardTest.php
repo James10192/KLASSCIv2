@@ -21,7 +21,7 @@ class BulletinPrintDownloadGuardTest extends TestCase
         $this->assertStringContainsString('ESBTPBulletin::whereIn', $download);
         $this->assertStringContainsString('ESBTPLMDBulletin::whereIn', $download);
         $this->assertStringContainsString('filtrerExport(', $download);
-        $this->assertStringContainsString("count($autorises['allowed_ids']) === (int) $tache->total", $download);
+        $this->assertStringContainsString('count($autorises[\'allowed_ids\']) === (int) $tache->total', $download);
     }
 
     public function test_individual_lmd_pdf_and_preview_use_lmd_print_right(): void
