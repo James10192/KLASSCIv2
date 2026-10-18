@@ -154,6 +154,10 @@ jobs:
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Views/AcademicDocumentsNavigationTest.php --stop-on-failure
 
+      - name: Test pool LMD vidé sans retour des anciens professeurs
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Services/LMD/TeacherPoolEmptySelectionTest.php --stop-on-failure
+
       - name: Test PDF groupé LMD, garde impression et isolation BTS
         if: github.event_name == 'pull_request'
         run: |
