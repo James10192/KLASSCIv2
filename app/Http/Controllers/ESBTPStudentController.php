@@ -24,7 +24,6 @@ use App\Services\LMD\AgregatDeLaPeriode;
 use App\Services\Reinscription\EligibiliteReinscription;
 use App\Services\ESBTP\BtsCurrentResultSnapshotService;
 use App\Services\EtudiantAcademicJourneyPresenter;
-use App\Services\EtudiantDossierService;
 use App\Exports\EtudiantsExport;
 use App\Helpers\SettingsHelper;
 use Maatwebsite\Excel\Facades\Excel;
@@ -571,7 +570,6 @@ class ESBTPStudentController extends Controller
 
     public function show(
         ESBTPEtudiant $etudiant,
-        EtudiantDossierService $dossierService,
         EligibiliteReinscription $eligibiliteReinscription
     ) {
         $etudiant->load([
@@ -601,7 +599,6 @@ class ESBTPStudentController extends Controller
             })
         );
 
-        $dossier       = $dossierService->buildDossier($etudiant);
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         // ── Réinscription à proposer sur la fiche ──
@@ -756,7 +753,7 @@ class ESBTPStudentController extends Controller
             : null;
 
         return view('esbtp.etudiants.show', compact(
-            'etudiant', 'dossier', 'anneeCourante', 'voirFinances', 'situationFinanciere',
+            'etudiant', 'anneeCourante', 'voirFinances', 'situationFinanciere',
             'isLMD', 'bulletinLMD', 'bulletinsLMD', 'lmdMoyenneAnnuelle', 'parcours', 'lmdCredits',
             'statistiques', 'reliquatsEntrants', 'reliquatsSortants', 'categoriesfrais',
             'tpeAttendu', 'tpeParSemestre', 'btsJourney', 'academicJourney', 'btsAnnualSnapshot', 'inscriptionRepairClasses',
