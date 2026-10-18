@@ -138,7 +138,9 @@ jobs:
 
       - name: Test périmètre des notes dans les fiches
         if: github.event_name == 'pull_request'
-        run: php artisan test tests/Unit/Services/Notes/EvaluationsDeLaFicheTest.php tests/Unit/Services/Notes/FicheNotesIntegrationUxTest.php --stop-on-failure
+        run: |
+          php artisan test tests/Unit/Services/Notes/EvaluationsDeLaFicheTest.php --stop-on-failure
+          php artisan test tests/Unit/Services/Notes/FicheNotesIntegrationUxTest.php --stop-on-failure
 
       - name: Test fiche étudiant sans calcul de dossier inutilisé
         if: github.event_name == 'pull_request'
@@ -154,7 +156,9 @@ jobs:
 
       - name: Test PDF groupé LMD, garde impression et isolation BTS
         if: github.event_name == 'pull_request'
-        run: php artisan test tests/Feature/Bulletins/TachesBulletinsArrierePlanTest.php tests/Unit/Services/DocumentPrintGuardTest.php --stop-on-failure
+        run: |
+          php artisan test tests/Feature/Bulletins/TachesBulletinsArrierePlanTest.php --stop-on-failure
+          php artisan test tests/Unit/Services/DocumentPrintGuardTest.php --stop-on-failure
 
       - name: Test menu de reçu au-dessus des cartes paiement
         if: github.event_name == 'pull_request'
@@ -182,7 +186,9 @@ jobs:
 
       - name: Test cohérence des maquettes et filtres pédagogiques AJAX
         if: github.event_name == 'pull_request'
-        run: php artisan test tests/Unit/Views/AcademicPlanningUxContractTest.php tests/Unit/Views/EvaluationIndexAjaxContractTest.php --stop-on-failure
+        run: |
+          php artisan test tests/Unit/Views/AcademicPlanningUxContractTest.php --stop-on-failure
+          php artisan test tests/Unit/Views/EvaluationIndexAjaxContractTest.php --stop-on-failure
 
       - name: Test outbox persistante MailPulse et récupération cron
         if: github.event_name == 'pull_request'
@@ -194,15 +200,24 @@ jobs:
 
       - name: Test emails familiaux sans doublons
         if: github.event_name == 'pull_request'
-        run: php artisan test tests/Unit/Services/Notifications/WorkflowEmailAuthorityTest.php tests/Unit/Services/Notifications/FamilyWorkflowMailerTest.php tests/Unit/Services/MailPulse/MailPulseWorkflowPolicyTest.php --stop-on-failure
+        run: |
+          php artisan test tests/Unit/Services/Notifications/WorkflowEmailAuthorityTest.php --stop-on-failure
+          php artisan test tests/Unit/Services/Notifications/FamilyWorkflowMailerTest.php --stop-on-failure
+          php artisan test tests/Unit/Services/MailPulse/MailPulseWorkflowPolicyTest.php --stop-on-failure
 
       - name: Test confidentialité des alertes MailPulse
         if: github.event_name == 'pull_request'
-        run: php artisan test tests/Unit/Services/MailPulse/MailPulseWorkflowDisclosureTest.php tests/Unit/Services/MailPulse/MailPulseParentNotificationLogTest.php --stop-on-failure
+        run: |
+          php artisan test tests/Unit/Services/MailPulse/MailPulseWorkflowDisclosureTest.php --stop-on-failure
+          php artisan test tests/Unit/Services/MailPulse/MailPulseParentNotificationLogTest.php --stop-on-failure
 
       - name: Test changements d'état des paiements notifiés
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Services/MailPulse/MailPulseStalePaymentTest.php --stop-on-failure
+
+      - name: Test chaque chemin de test CI est exécute explicitement
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Workflows/LaravelCIPathCoverageTest.php --stop-on-failure
 
       - name: Check unresolved class names (changed files)
         # Compare la branche a sa cible : sans pull request, il n'y a pas de
