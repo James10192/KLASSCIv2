@@ -135,7 +135,7 @@ final class IndexDesPages
         ['route' => 'esbtp.personnel.unified.index', 'titre' => 'Gestion du personnel', 'groupe' => 'Personnel', 'icone' => 'fa-people-group', 'mots' => ['personnel', 'secrétaires', 'comptables', 'caissiers', 'utilisateurs', 'comptes'], 'can' => ['personnel.manage']],
         ['route' => 'esbtp.enseignants.index', 'titre' => 'Enseignants', 'groupe' => 'Personnel', 'icone' => 'fa-chalkboard-user', 'mots' => ['professeurs', 'vacataires', 'formateurs'], 'can' => ['personnel.manage']],
         ['route' => 'esbtp.enseignants.create', 'titre' => 'Nouvel enseignant', 'groupe' => 'Personnel', 'icone' => 'fa-user-plus', 'mots' => ['ajouter un professeur', 'recruter', 'vacataire'], 'can' => ['personnel.manage']],
-        ['route' => 'esbtp.acces-temporaires.index', 'titre' => 'Accès temporaires', 'groupe' => 'Personnel', 'icone' => 'fa-user-lock', 'mots' => ['délégation', 'permissions temporaires', 'intérim'], 'can' => ['personnel.manage', 'permissions.temporaires.manage']],
+        ['route' => 'esbtp.acces-individuels.index', 'titre' => 'Accès individuels', 'groupe' => 'Personnel', 'icone' => 'fa-user-shield', 'mots' => ['délégation', 'permissions temporaires', 'permission définitive', 'autorisation individuelle', 'intérim'], 'can' => ['personnel.manage', 'permissions.temporaires.manage']],
         ['route' => 'esbtp.partnerships.index', 'titre' => 'Partenariats', 'groupe' => 'Personnel', 'icone' => 'fa-handshake', 'mots' => ['entreprises', 'stages', 'conventions'], 'can' => ['personnel.manage']],
 
         // Communication

@@ -3127,10 +3127,11 @@ Route::middleware(['auth', 'paywall'])->prefix('esbtp/personnel/performance')->n
         ->middleware('permission:performance.view|performance.view_all')->name('show');
 });
 
-// Acces temporaires : une permission ouverte a une personne jusqu'a une date.
+// Acces individuels : permissions nominatives, temporaires ou definitives.
 // Les deux gardes, comme l'entree de menu, rangee sous Personnel : sans
 // personnel.manage, la page existerait sans lien pour y aller.
 Route::middleware(['auth', 'permission:personnel.manage', 'permission:permissions.temporaires.manage', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
+    Route::get('/acces-individuels', [\App\Http\Controllers\AccesTemporairesController::class, 'index'])->name('acces-individuels.index');
     Route::get('/acces-temporaires', [\App\Http\Controllers\AccesTemporairesController::class, 'index'])->name('acces-temporaires.index');
     Route::get('/acces-temporaires/data', [\App\Http\Controllers\AccesTemporairesController::class, 'data'])->name('acces-temporaires.data');
     Route::post('/acces-temporaires', [\App\Http\Controllers\AccesTemporairesController::class, 'store'])

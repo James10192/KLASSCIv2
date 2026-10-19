@@ -9,11 +9,12 @@ use App\Services\PermissionRegistry;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 /**
- * Permissions ouvertes a une personne pour un temps limite.
+ * Permissions individuelles temporaires ou definitives, sans modifier les roles.
  *
  * Lu depuis le Gate::after d'AuthServiceProvider, donc a chaque `can()` qui n'a
  * pas deja repondu oui. L'acces cesse a l'heure dite sans aucune tache planifiee :
@@ -34,6 +35,10 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
  */
 class AccesTemporaires
 {
+    public const MODE_TEMPORAIRE = 'temporaire';
+    public const MODE_DEFINITIF = 'definitif';
+    public const MODES = [self::MODE_TEMPORAIRE, self::MODE_DEFINITIF];
+
     /** Prefixes et noms qu'on n'ouvre jamais pour un temps limite. */
     public const NON_ACCORDABLES_PREFIXES = [
         'identity.',   // lues par hasAnyPermission
@@ -66,6 +71,11 @@ class AccesTemporaires
         'admin.system.security',
         'security.users.monitor',
         'permissions.temporaires.manage',
+        'permissions.individuels.permanents.manage',
+        'sod.bypass',
+        'paiements.validate.self_override',
+        'comptabilite.period.bypass_lock',
+        'comptabilite.reconciliation.bypass_lock',
         'users.manage',        // comptes et roles
         'personnel.manage',    // ouvre les roles personnalises
         'settings.edit',       // reglages de l'instance, dont la duree maximale ici
@@ -113,6 +123,11 @@ class AccesTemporaires
     {
         if (array_key_exists($user->id, $this->memo)) {
             return $this->memo[$user->id];
+        }
+
+        // Une personne devenue etudiante perd ses derogations de personnel.
+        if ($user->hasRole('etudiant') || $this->detientDeFaconPermanente($user, 'identity.student')) {
+            return $this->memo[$user->id] = [];
         }
 
         try {
@@ -169,9 +184,10 @@ class AccesTemporaires
         User $beneficiaire,
         string $permission,
         CarbonInterface $debut,
-        CarbonInterface $fin,
+        ?CarbonInterface $fin,
         string $motif,
         User $auteur,
+        bool $permanent = false,
     ): TemporaryPermissionGrant {
         $permission = $this->registry->canonicalize($permission);
         // Les heures s'ecrivent dans le fuseau de l'application : une date
@@ -179,22 +195,33 @@ class AccesTemporaires
         // une heure a cote sur une instance a UTC.
         $fuseau = config('app.timezone');
         $debut = Carbon::instance($debut)->setTimezone($fuseau);
-        $fin = Carbon::instance($fin)->setTimezone($fuseau);
+        $fin = $fin === null ? null : Carbon::instance($fin)->setTimezone($fuseau);
 
         if (! $this->estAccordable($permission)) {
-            throw new AccesTemporaireRefuse("La permission « {$permission} » ne peut pas être accordée pour un temps limité.");
-        }
-        if ($fin->lte($debut) || $fin->isPast()) {
-            throw new AccesTemporaireRefuse('La fin de l\'accès doit être postérieure à son début et dans le futur.');
+            throw new AccesTemporaireRefuse("La permission « {$permission} » ne peut pas être accordée individuellement.");
         }
         $max = $this->dureeMaxJours();
-        if ($debut->diffInMinutes($fin) > $max * 24 * 60) {
-            throw new AccesTemporaireRefuse("Un accès temporaire ne dépasse pas {$max} jours sur cette instance.");
+        if ($permanent) {
+            if ($fin !== null || $debut->isFuture()) {
+                throw new AccesTemporaireRefuse('Un accès définitif commence maintenant et ne comporte aucune date de fin.');
+            }
+            if (! $this->peutGererPermanents($auteur)) {
+                throw new AccesTemporaireRefuse('Vous ne disposez pas du droit d’accorder des accès définitifs.');
+            }
+        } else {
+            if ($fin === null || $fin->lte($debut) || $fin->isPast()) {
+                throw new AccesTemporaireRefuse('La fin de l\'accès doit être postérieure à son début et dans le futur.');
+            }
+            if ($debut->diffInMinutes($fin) > $max * 24 * 60) {
+                throw new AccesTemporaireRefuse("Un accès temporaire ne dépasse pas {$max} jours sur cette instance.");
+            }
+            // Une programmation lointaine survivrait a la perte du droit de l'auteur.
+            if ($debut->gt(now()->addDays($max))) {
+                throw new AccesTemporaireRefuse("Un accès temporaire commence dans les {$max} prochains jours.");
+            }
         }
-        // Le droit de l'auteur ne se verifie qu'aujourd'hui : un acces programme
-        // loin dans le futur s'ouvrirait meme s'il l'avait perdu entre-temps.
-        if ($debut->gt(now()->addDays($max))) {
-            throw new AccesTemporaireRefuse("Un accès temporaire commence dans les {$max} prochains jours.");
+        if ($beneficiaire->is($auteur)) {
+            throw new AccesTemporaireRefuse('Vous ne pouvez pas vous accorder un accès individuel.');
         }
         // On ne donne pas ce qu'on n'a pas : sans cette garde, un acces
         // temporaire servirait a s'elever soi-meme par personne interposee.
@@ -205,41 +232,53 @@ class AccesTemporaires
         }
         // Le compte etudiant est partage avec les parents : on n'y ouvre rien.
         if ($beneficiaire->hasRole('etudiant') || $this->detientDeFaconPermanente($beneficiaire, 'identity.student')) {
-            throw new AccesTemporaireRefuse('Les accès temporaires sont réservés au personnel, pas aux comptes étudiants.');
+            throw new AccesTemporaireRefuse('Les accès individuels sont réservés au personnel, pas aux comptes étudiants.');
         }
         if ($this->detientDeFaconPermanente($beneficiaire, $permission)) {
             throw new AccesTemporaireRefuse("{$beneficiaire->name} détient déjà cette permission par son rôle.");
         }
 
-        $chevauchement = TemporaryPermissionGrant::query()
-            ->where('user_id', $beneficiaire->id)
-            ->where('permission', $permission)
-            ->whereNull('revoked_at')
-            ->where('expires_at', '>', $debut)
-            ->where('starts_at', '<', $fin)
-            ->first();
-        if ($chevauchement) {
-            throw new AccesTemporaireRefuse(sprintf(
-                'Un accès à cette permission couvre déjà cette période (jusqu\'au %s). Retirez-le d\'abord.',
-                $chevauchement->expires_at->format('d/m/Y H:i')
-            ));
-        }
+        $acces = DB::transaction(function () use ($beneficiaire, $permission, $debut, $fin, $motif, $auteur, $permanent) {
+            // Un verrou sur le beneficiaire serialise les octrois concurrents.
+            User::query()->whereKey($beneficiaire->id)->lockForUpdate()->firstOrFail();
 
-        $acces = TemporaryPermissionGrant::create([
-            'user_id' => $beneficiaire->id,
-            'permission' => $permission,
-            'starts_at' => $debut,
-            'expires_at' => $fin,
-            'motif' => $motif,
-            'granted_by' => $auteur->id,
-        ]);
+            $chevauchement = TemporaryPermissionGrant::query()
+                ->where('user_id', $beneficiaire->id)
+                ->where('permission', $permission)
+                ->whereNull('revoked_at')
+                ->where(function ($q) use ($debut) {
+                    $q->where(function ($p) {
+                        $p->where('is_permanent', true)->whereNull('expires_at');
+                    })->orWhere('expires_at', '>', $debut);
+                })
+                ->when(! $permanent, fn ($q) => $q->where('starts_at', '<', $fin))
+                ->first();
+
+            if ($chevauchement) {
+                $jusqua = $chevauchement->is_permanent
+                    ? 'sans date de fin'
+                    : 'jusqu’au '.$chevauchement->expires_at?->format('d/m/Y H:i');
+                throw new AccesTemporaireRefuse("Un accès à cette permission couvre déjà cette période ({$jusqua}). Retirez-le d'abord.");
+            }
+
+            return TemporaryPermissionGrant::create([
+                'user_id' => $beneficiaire->id,
+                'permission' => $permission,
+                'starts_at' => $debut,
+                'expires_at' => $fin,
+                'is_permanent' => $permanent,
+                'motif' => $motif,
+                'granted_by' => $auteur->id,
+            ]);
+        }, 3);
 
         unset($this->memo[$beneficiaire->id]);
-        Log::info('Acces temporaire accorde', [
+        Log::info('Acces individuel accorde', [
             'grant_id' => $acces->id,
             'user_id' => $beneficiaire->id,
             'permission' => $permission,
-            'expires_at' => $acces->expires_at->toIso8601String(),
+            'expires_at' => $acces->expires_at?->toIso8601String(),
+            'is_permanent' => $acces->is_permanent,
             'granted_by' => $auteur->id,
         ]);
 
@@ -248,13 +287,28 @@ class AccesTemporaires
 
     public function retirer(TemporaryPermissionGrant $acces, User $auteur): TemporaryPermissionGrant
     {
-        if ($acces->revoked_at === null) {
-            $acces->forceFill(['revoked_at' => now(), 'revoked_by' => $auteur->id])->save();
-            Log::info('Acces temporaire retire', ['grant_id' => $acces->id, 'revoked_by' => $auteur->id]);
+        if ($acces->is_permanent && ! $this->peutGererPermanents($auteur)) {
+            throw new AccesTemporaireRefuse('Vous ne disposez pas du droit de retirer un accès définitif.');
         }
+        $retire = TemporaryPermissionGrant::whereKey($acces->id)
+            ->whereNull('revoked_at')
+            ->update(['revoked_at' => now(), 'revoked_by' => $auteur->id]);
+        if ($retire) {
+            Log::info('Acces individuel retire', ['grant_id' => $acces->id, 'revoked_by' => $auteur->id]);
+        }
+        $acces->refresh();
         unset($this->memo[$acces->user_id]);
 
         return $acces;
+    }
+
+    public function peutGererPermanents(User $auteur): bool
+    {
+        // Une delegation individuelle ne peut pas en engendrer une autre.
+        return $auteur->hasRole('superAdmin')
+            || ($this->detientDeFaconPermanente($auteur, 'permissions.individuels.permanents.manage')
+                && $this->detientDeFaconPermanente($auteur, 'permissions.temporaires.manage')
+                && $this->detientDeFaconPermanente($auteur, 'personnel.manage'));
     }
 
     private function detientDeFaconPermanente(User $user, string $permission): bool

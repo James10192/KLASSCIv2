@@ -163,10 +163,16 @@ return [
             'aliases' => ['manage-users', 'manage_users'],
         ],
         'permissions.temporaires.manage' => [
-            'label' => 'Accorder des accès temporaires (une permission pour une durée limitée)',
-            'description' => 'Ouvre /esbtp/acces-temporaires : donner à une personne une permission précise jusqu\'à une date, puis la retirer. On ne peut accorder que ce qu\'on détient soi-même. Se combine avec « Gérer le personnel », sous lequel l\'écran est rangé.',
+            'label' => 'Gérer les accès individuels temporaires',
+            'description' => 'Ouvre les accès individuels du personnel : accorder une permission précise pour une durée limitée et la retirer. Ne permet pas d\'accorder un accès définitif, qui exige un droit distinct.',
             'group' => 'Administration',
             'icon' => 'fa-hourglass-half',
+        ],
+        'permissions.individuels.permanents.manage' => [
+            'label' => 'Accorder et retirer les accès individuels définitifs',
+            'description' => 'Autorisation sensible supplémentaire pour les permissions individuelles sans expiration. Le gestionnaire doit aussi détenir le droit de gestion des accès temporaires et celui de gérer le personnel.',
+            'group' => 'Administration',
+            'icon' => 'fa-user-shield',
         ],
         'system.manage' => [
             'label' => 'Gérer la configuration système',
