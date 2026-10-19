@@ -277,6 +277,10 @@ class CLIStudentController extends BaseApiController
             return $this->errorResponse('Token missing cli:write ability', [], 403);
         }
 
+        if (! $request->user()->can('inscriptions.validate')) {
+            return $this->errorResponse('Missing inscriptions.validate permission', [], 403);
+        }
+
         $inscription = ESBTPInscription::find($id);
         if (!$inscription) {
             return $this->errorResponse('Inscription not found', [], 404);
@@ -441,6 +445,10 @@ class CLIStudentController extends BaseApiController
     {
         if (!$request->user()->tokenCan('cli:write')) {
             return $this->errorResponse('Token missing cli:write ability', [], 403);
+        }
+
+        if (! $request->user()->can('inscriptions.validate')) {
+            return $this->errorResponse('Missing inscriptions.validate permission', [], 403);
         }
 
         $annee = $this->getAnneeCouraante();

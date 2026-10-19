@@ -344,10 +344,12 @@
                                                     @endif
                                                     @endcan
 
-                                                    @if($inscription->status == 'pending')
+                                                    @if(in_array($inscription->status, ['pending', 'en_attente']))
                                                         @can('inscriptions.validate')
                                                         <button type="button" class="btn btn-success btn-sm valider-btn"
-                                                                data-id="{{ $inscription->id }}" title="Valider l'inscription">
+                                                                data-id="{{ $inscription->id }}"
+                                                                 data-preview-url="{{ route('esbtp.inscriptions.validation-preview', $inscription->id) }}"
+                                                                 title="Valider l'inscription">
                                                             <i class="fas fa-check"></i>
                                                         </button>
                                                         <form id="valider-form-{{ $inscription->id }}" action="{{ route('esbtp.inscriptions.valider', $inscription->id) }}" method="POST" style="display: none;">
@@ -449,6 +451,7 @@
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Gestion des onglets avec l'URL
@@ -465,10 +468,23 @@
         // Gestion des boutons de validation d'inscription
         const validerBtns = document.querySelectorAll('.valider-btn');
         validerBtns.forEach(btn => {
-            btn.addEventListener('click', function() {
-                const id = this.getAttribute('data-id');
-                if (confirm('Êtes-vous sûr de vouloir valider cette inscription ?')) {
-                    document.getElementById('valider-form-' + id).submit();
+            btn.addEventListener('click', async function() {
+                if (btn.disabled) return;
+                const id = btn.getAttribute('data-id');
+                btn.disabled = true;
+                try {
+                    await window.iiSoumettreValidationInscription(
+                        document.getElementById('valider-form-' + id),
+                        btn.dataset.previewUrl,
+                        function () {
+                            const row = btn.closest('tr');
+                            const status = row?.cells?.[6];
+                            if (status) status.innerHTML = '<span class="badge bg-success">Validée</span>';
+                            btn.remove();
+                        }
+                    );
+                } finally {
+                    btn.disabled = false;
                 }
             });
         });

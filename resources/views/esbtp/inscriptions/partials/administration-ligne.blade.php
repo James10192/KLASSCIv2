@@ -109,12 +109,14 @@
         <div class="ii-actions inscription-actions-wrapper" data-inscription-actions="{{ $inscription->id }}" style="justify-content:flex-end;">
             <div class="inscription-actions-buttons" style="display:inline-flex; gap:.35rem;">
                 @if($inscription->workflow_step !== 'etudiant_cree')
+                    @can('inscriptions.validate')
                     <button type="button" class="ii-action-btn ii-action-btn--primary validate-inscription-btn"
                             data-inscription-id="{{ $inscription->id }}"
                             data-has-payment="{{ $hasPayment ? 1 : 0 }}"
                             title="Valider l'inscription">
                         <i class="fas fa-check-double"></i>
                     </button>
+                    @endcan
                 @endif
                 @if($pendingPayment && auth()->user()->can('paiements.validate'))
                     <button class="ii-action-btn ii-action-btn--primary"

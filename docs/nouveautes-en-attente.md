@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-19 · #1632 · Inscriptions gratuites après exonération explicite : frais à 0 FCFA justifiés et audités, validation sans faux paiement, modales centrées, confirmations AJAX sans rechargement dans les listes et fiches ; recette 0/partiel/en attente, droits, lot, BTS/LMD, mobile et historique des exonérations requise sur présentation avant toute diffusion.
 - 2026-10-17 · #1622 · Planning LMD : noms des professeurs ECUE et responsable UE visibles, sélection multiple premium avec recherche et retrait, sauvegarde AJAX sécurisée ; vérifier les anciennes affectations et le responsive sur présentation avant diffusion.
 - 2026-10-17 · #1621 · Évaluations : activations et publications AJAX sans double requête, traitement en lot stoppé sur erreur avec bilan des succès partiels, actualisation finale unique et permissions de modification vérifiées ; tester mobile, filtres et erreurs 429 sur présentation avant propagation aux établissements.
 - 2026-10-17 · #1620 · Bulletins LMD : sélectionner des bulletins ou tous les filtrés, puis prévisualiser/télécharger un seul PDF avec progression AJAX sans rechargement ; contrôle du rôle et des autorisations d'impression, limite de 400. Recette des PDF, du scroll infini, du responsive et des permissions sur presentation avant annonce et propagation aux écoles.

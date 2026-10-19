@@ -122,11 +122,12 @@ final class AjustementMontantSouscription
                 number_format($dejaPaye, 0, ',', ' ')
             );
         }
-        if (round($nouveauMontant, 2) === round((float) $souscription->amount, 2)) {
+        if (round($nouveauMontant, 2) === round((float) $souscription->amount, 2)
+            && $nouveauMontant != 0.0) {
             $examen['refus'][] = 'Le montant est déjà celui-ci.';
         }
         if ($nouveauMontant == 0.0) {
-            $examen['avertissements'][] = "Un frais à 0 s'affiche « Montant non défini » sur l'état financier : il n'est plus réclamé.";
+            $examen['avertissements'][] = "Une dispense à 0 FCFA, motivée et auditée, autorise une validation sans paiement seulement si tous les autres frais sont également couverts.";
         }
 
         return $examen;
@@ -168,9 +169,13 @@ final class AjustementMontantSouscription
                 $auteurId,
                 $motif
             );
+            $souscription->exonerationExplicite = (float) $examen['apres'] === 0.0;
             $souscription->update([
                 'amount' => $examen['apres'],
-                'notes' => trim(($souscription->notes ? $souscription->notes."\n" : '').$trace),
+                'notes' => trim(($souscription->notes ? $souscription->notes."\n" : '')
+                    . ($souscription->exonerationExplicite
+                        ? \App\Domain\Inscriptions\ExonerationInscription::TRACE.' ' : '')
+                    . $trace),
             ]);
 
             return ['souscription_id' => (int) $souscription->id, 'avant' => (float) $examen['avant'], 'apres' => (float) $examen['apres']];

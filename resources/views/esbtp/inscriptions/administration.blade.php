@@ -599,7 +599,7 @@
     </div>
 </div>
 <div class="modal fade" id="bulkValidationModal" tabindex="-1" aria-labelledby="bulkValidationModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content klassci-payment-modal">
             <div class="modal-header">
                 <h5 class="modal-title" id="bulkValidationModalLabel">
@@ -612,11 +612,12 @@
                     <strong>Résumé de la sélection :</strong>
                     <div class="mt-2">Total sélectionné : <strong id="bulk-total-count">0</strong></div>
                     <div class="mt-1">Prêtes à valider : <strong id="bulk-ready-count">0</strong></div>
+                    <div class="mt-1">Dont exonérées à 0 FCFA : <strong id="bulk-waived-count">0</strong></div>
                 </div>
 
                 <div id="bulk-no-payment-section" class="mb-3 d-none">
                     <div class="alert alert-warning">
-                        <strong>Sans paiement :</strong> ces inscriptions seront ignorées.
+                        <strong>Sans paiement validé ni exonération approuvée :</strong> ces inscriptions seront ignorées.
                     </div>
                     <ul id="bulk-no-payment-list" class="list-group"></ul>
                 </div>
@@ -842,7 +843,7 @@
 
 <!-- Modal pour validation définitive -->
 <div class="modal fade klassci-payment-modal" id="validationModal" tabindex="-1" aria-labelledby="validationModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="validationModalLabel">
@@ -1236,11 +1237,36 @@
             });
     }
 
-    function handleInscriptionValidation(inscriptionId, hasPayment, forceValidation = false) {
-        if (!hasPayment && !forceValidation) {
-            openPaymentModal(inscriptionId, { autoValidate: true });
-            return;
-        }
+    async function handleInscriptionValidation(inscriptionId, hasPayment, forceValidation = false) {
+        // Un attribut HTML hasPayment peut être périmé : le serveur fait foi.
+        const previewUrl = `/esbtp/inscriptions/${encodeURIComponent(inscriptionId)}/validation-preview`;
+        if (forceValidation) {
+            // La dérogation de capacité ne contourne ni les frais ni les autres
+            // obstacles. Le serveur vérifiera à nouveau la permission et le dossier.
+            let verdict;
+            try {
+                const response = await fetch(previewUrl, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin',
+                });
+                verdict = await response.json();
+                if (!response.ok) throw new Error(verdict.message || 'Aperçu indisponible');
+            } catch (error) {
+                window.showToast?.(error.message || 'Vérification impossible.', 'error');
+                return;
+            }
+            if (verdict.eligible || !/classe pleine/i.test(verdict.message || '')) {
+                window.showToast?.(verdict.message || 'Dérogation non applicable à ce dossier.', 'warning');
+                return;
+            }
+            if (!await window.iiConfirm({
+                variant: 'validation',
+                title: 'Dérogation de capacité',
+                message: 'Ce dossier satisfait les contrôles financiers, mais la classe est pleine. Confirmer la validation avec dérogation autorisée ?',
+                confirmLabel: 'Valider avec dérogation',
+                danger: true,
+            })) return;
+        } else if (!await window.iiConfirmerValidationInscription(previewUrl)) return;
 
         const formData = new FormData();
         formData.append('_token', '{{ csrf_token() }}');
@@ -1271,7 +1297,7 @@
             }
 
             if (data.message) {
-                alert(data.message);
+                window.showToast?.(data.message, 'success');
             }
 
             const problems = data.inscriptions_problemes || {};
@@ -1280,7 +1306,7 @@
         })
         .catch(error => {
             highlightInscriptionRow(inscriptionId, 'reject');
-            alert(error.message || 'Erreur lors de la validation.');
+            window.showToast?.(error.message || 'Erreur lors de la validation.', 'error');
         })
         .finally(() => setInscriptionRowLoadingState(inscriptionId, false));
     }
@@ -1381,7 +1407,7 @@
 
     let bulkSelectedIds = [];
 
-    function openBulkValidationModal() {
+    async function openBulkValidationModal() {
         const checkboxes = document.querySelectorAll('.inscription-checkbox:checked');
         const rows = Array.from(checkboxes).map(cb => cb.closest('tr')).filter(Boolean);
 
@@ -1391,6 +1417,25 @@
         }
 
         bulkSelectedIds = rows.map(row => row.dataset.inscriptionId);
+
+        const previewPayload = new FormData();
+        previewPayload.append('_token', '{{ csrf_token() }}');
+        bulkSelectedIds.forEach(id => previewPayload.append('inscription_ids[]', id));
+        let verdicts;
+        try {
+            const response = await fetch("{{ route('esbtp.inscriptions.bulk-validation-preview') }}", {
+                method: 'POST',
+                body: previewPayload,
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const json = await response.json();
+            if (!response.ok) throw new Error(json.message || 'Aperçu indisponible');
+            verdicts = new Map((json.items || []).map(item => [String(item.id), item]));
+            document.getElementById('bulk-waived-count').textContent = json.waived || 0;
+        } catch (error) {
+            window.showToast?.(error.message || 'Impossible de vérifier les inscriptions sélectionnées.', 'error');
+            return;
+        }
 
         const noPaymentList = document.getElementById('bulk-no-payment-list');
         const pendingPaymentList = document.getElementById('bulk-pending-payment-list');
@@ -1405,25 +1450,29 @@
         let ready = 0;
 
         rows.forEach(row => {
-            const hasPayment = row.dataset.hasPayment === '1';
+            const verdict = verdicts.get(String(row.dataset.inscriptionId))
+                || { eligible: false, mode: 'blocked', message: 'Aperçu indisponible' };
             const paymentStatus = row.dataset.paymentStatus || 'aucun';
             const label = row.dataset.studentLabel || 'Étudiant';
             const matricule = row.dataset.matricule ? `(${row.dataset.matricule})` : '';
             const display = `${label} ${matricule}`.trim();
-            const hasClassePleineProbleme = row.querySelector('.badge')?.textContent?.includes('Classe pleine') || false;
+            const hasClassePleineProbleme = verdict.message?.toLowerCase().includes('classe pleine') || false;
 
-            if (hasClassePleineProbleme) {
+            if (verdict.eligible) {
+                ready += 1;
+            } else if (hasClassePleineProbleme) {
                 classePleineItems.push({
                     id: row.dataset.inscriptionId,
                     label: display,
                     action: 'classe_pleine',
                     classeLabel: row.dataset.classeLabel || 'N/A'
                 });
-            } else if (!hasPayment || paymentStatus === 'aucun') {
+            } else if (verdict.mode === 'blocked' && paymentStatus !== 'en_attente') {
                 noPaymentItems.push({
                     id: row.dataset.inscriptionId,
                     label: display,
-                    action: 'payment'
+                    action: /paiement|versement|souscription|frais|dispense|exonération/i.test(verdict.message || '') ? 'payment' : 'show',
+                    raison: verdict.message,
                 });
             } else if (paymentStatus === 'en_attente') {
                 pendingPaymentItems.push({
@@ -1431,8 +1480,6 @@
                     label: display,
                     action: 'pending'
                 });
-            } else {
-                ready += 1;
             }
         });
 
@@ -1444,12 +1491,14 @@
             items.forEach(item => {
                 const li = document.createElement('li');
                 li.className = 'list-group-item d-flex align-items-center justify-content-between gap-2';
-                li.innerHTML = `
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="fas fa-user text-muted"></i>
-                        <span>${item.label}</span>
-                    </div>
-                `;
+                const identity = document.createElement('div');
+                identity.className = 'd-flex align-items-center gap-2';
+                const icon = document.createElement('i');
+                icon.className = 'fas fa-user text-muted';
+                const label = document.createElement('span');
+                label.textContent = item.label + (item.raison ? ' — ' + item.raison : '');
+                identity.append(icon, label);
+                li.appendChild(identity);
 
                 if (item.action === 'payment') {
                     const button = document.createElement('button');
@@ -1458,6 +1507,16 @@
                     button.textContent = 'Créer paiement';
                     button.dataset.inscriptionId = item.id;
                     button.dataset.action = 'payment';
+                    li.appendChild(button);
+                }
+
+                if (item.action === 'show') {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'btn btn-sm btn-outline-secondary bulk-action-button';
+                    button.textContent = 'Voir dossier';
+                    button.dataset.inscriptionId = item.id;
+                    button.dataset.action = 'show';
                     li.appendChild(button);
                 }
 
@@ -1488,13 +1547,15 @@
                     changeButton.dataset.action = 'change-class';
                     li.appendChild(changeButton);
 
+                    @can('inscriptions.override_capacity')
                     const forceButton = document.createElement('button');
                     forceButton.type = 'button';
                     forceButton.className = 'btn btn-sm btn-outline-danger bulk-action-button';
-                    forceButton.innerHTML = '<i class="fas fa-bolt me-1"></i>Forcer';
+                    forceButton.innerHTML = '<i class="fas fa-bolt me-1"></i>Dérogation capacité';
                     forceButton.dataset.inscriptionId = item.id;
                     forceButton.dataset.action = 'force-validate';
                     li.appendChild(forceButton);
+                    @endcan
                 }
 
                 element.appendChild(li);
@@ -1553,9 +1614,9 @@
                     const bulkModal = bootstrap.Modal.getInstance(document.getElementById('bulkValidationModal'));
                     if (bulkModal) bulkModal.hide();
                     // Forcer la validation
-                    if (confirm('Êtes-vous sûr de vouloir forcer la validation malgré la classe pleine ?')) {
-                        handleInscriptionValidation(inscriptionId, true);
-                    }
+                    @can('inscriptions.override_capacity')
+                    handleInscriptionValidation(inscriptionId, true, true);
+                    @endcan
                 }
             });
         });
@@ -1571,7 +1632,7 @@
         const ids = inscriptionIds && inscriptionIds.length ? inscriptionIds : bulkSelectedIds;
 
         if (!ids.length) {
-            alert('Veuillez sélectionner au moins une inscription à valider.');
+            window.showToast?.('Veuillez sélectionner au moins une inscription à valider.', 'warning');
             return;
         }
 
@@ -1583,15 +1644,16 @@
             method: 'POST',
             body: formData,
             headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
             }
         })
-        .then(response => response.json())
+        .then(async response => {
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.message || 'Validation refusée');
+            return data;
+        })
         .then(data => {
-            if (!data.success) {
-                alert(data.message || 'Erreur lors de la validation groupée.');
-                return;
-            }
 
             if (data.message) {
                 let fullMessage = data.message;
@@ -1602,7 +1664,7 @@
                         fullMessage += `- ${item.etudiant} : ${item.raison}\n`;
                     });
                 }
-                alert(fullMessage);
+                window.showToast?.(fullMessage, 'success');
             }
 
             const problems = data.inscriptions_problemes || {};
@@ -1617,7 +1679,7 @@
         })
         .catch(error => {
             debugError(error);
-            alert('Erreur lors de la validation groupée.');
+            window.showToast?.(error.message || 'Erreur lors de la validation groupée.', 'error');
         });
     }
 

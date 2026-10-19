@@ -338,6 +338,14 @@ class ESBTPInscriptionPaiementController extends Controller
                 $request->input("observations"),
             );
 
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => (bool) $result['success'],
+                    'message' => $result['message'],
+                    'inscription_id' => $inscription->id,
+                ], $result['success'] ? 200 : 422);
+            }
+
             if ($result["success"]) {
                 return redirect()
                     ->route("esbtp.inscriptions.show", $inscription->id)
@@ -349,6 +357,10 @@ class ESBTPInscriptionPaiementController extends Controller
             Log::error(
                 "Erreur lors de la validation finale: " . $e->getMessage(),
             );
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Erreur lors de la validation.'], 500);
+            }
 
             return redirect()
                 ->back()
@@ -661,6 +673,10 @@ class ESBTPInscriptionPaiementController extends Controller
                 (int) $subscription->frais_category_id,
                 true
             );
+            if ($subscription->inscription_id !== $inscription->id || ! $subscription->is_active) {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'Souscription invalide ou inactive.'], 422);
+            }
             if ((float) $validated['amount'] < $paid) {
                 DB::rollBack();
                 return response()->json([
@@ -672,10 +688,23 @@ class ESBTPInscriptionPaiementController extends Controller
             $oldAmount = $subscription->amount;
             $newAmount = $validated['amount'];
 
-            // Mettre à jour la souscription
+            // Motif pérenne et audit immuable : seul un ajustement autorisé
+            // permet d'exonérer explicitement une souscription à 0 FCFA.
+            $trace = sprintf(
+                '[%s] Montant dû %s → %s FCFA (utilisateur #%d) : %s',
+                now()->format('Y-m-d H:i'),
+                number_format((float) $oldAmount, 0, ',', ' '),
+                number_format((float) $newAmount, 0, ',', ' '),
+                (int) auth()->id(),
+                $validated['reason']
+            );
+            $subscription->exonerationExplicite = (float) $newAmount === 0.0;
             $subscription->update([
-                "amount" => $newAmount,
-                "updated_at" => now(),
+                'amount' => $newAmount,
+                'notes' => trim(($subscription->notes ? $subscription->notes."\n" : '')
+                    . ($subscription->exonerationExplicite
+                        ? \App\Domain\Inscriptions\ExonerationInscription::TRACE.' ' : '')
+                    . $trace),
             ]);
 
             // Créer un log de l'activité pour audit

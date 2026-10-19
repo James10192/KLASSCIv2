@@ -10,6 +10,37 @@
  * ce fichier. Script classique, chargé au même endroit que l'ancien bloc : les
  * fonctions de haut niveau (exportModal, clearAllFilters…) restent globales.
  */
+    // Validation : gestion déléguée compatible résultats AJAX et mobile.
+    document.addEventListener('click', async function (event) {
+        const button = event.target.closest('.js-validate-enrollment');
+        if (!button) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (button.disabled) return;
+        button.disabled = true;
+        try {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = button.dataset.actionUrl;
+            const csrf = document.createElement('input');
+            csrf.name = '_token';
+            csrf.value = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            const method = document.createElement('input');
+            method.name = '_method';
+            method.value = 'PUT';
+            form.append(csrf, method);
+            await window.iiSoumettreValidationInscription(form, button.dataset.previewUrl, function () {
+                if (typeof window.fetchResultsGlobal === 'function') {
+                    window.fetchResultsGlobal(window.location.href, { pushState: false });
+                } else {
+                    button.remove();
+                }
+            });
+        } finally {
+            button.disabled = false;
+        }
+    });
+
     // ========================================
     // MOBILE FILTER DRAWER - JavaScript
     // ========================================

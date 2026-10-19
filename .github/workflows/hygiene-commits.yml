@@ -384,6 +384,15 @@ jobs:
           cp .env.example .env
           php artisan key:generate --force
 
+      # Exonération explicite : nécessite le vrai SQL et l'audit OwenIt,
+      # donc MariaDB, jamais le job de lint sans service de base.
+      - name: Validation 0 FCFA, audits et permissions de la CLI
+        run: |
+          echec=0
+          php vendor/bin/phpunit tests/Feature/Inscriptions/ValidationGratuiteTest.php --no-coverage || echec=1
+          php vendor/bin/phpunit tests/Feature/Assistant/NananLotATest.php --no-coverage || echec=1
+          exit $echec
+
       # Régression réelle SQLSTATE 22007 : la colonne semestre est VARCHAR,
       # une note legacy 'semestre2' ne doit jamais être comparée à l'entier 2.
       - name: Notes BTS - semestre legacy sur MariaDB strict

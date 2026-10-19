@@ -1605,6 +1605,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // â”€â”€ VALIDATE (workflow validation â€” la plus sensible)
             Route::middleware('permission:inscriptions.validate')->group(function () {
+                Route::get('/inscriptions/{inscription}/validation-preview', [ESBTPInscriptionController::class, 'validationPreview'])->name('inscriptions.validation-preview');
+                Route::post('/inscriptions/bulk-validation-preview', [ESBTPInscriptionController::class, 'bulkValidationPreview'])->name('inscriptions.bulk-validation-preview')->middleware('throttle:30,1');
                 Route::put('/inscriptions/{inscription}/valider', [ESBTPInscriptionController::class, 'valider'])->name('inscriptions.valider');
                 Route::post('/inscriptions/bulk-valider', [ESBTPInscriptionController::class, 'bulkValider'])->name('inscriptions.bulk-valider');
                 Route::post('/inscriptions/{inscription}/valider-definitivement', [ESBTPInscriptionPaiementController::class, 'validerDefinitivement'])->name('inscriptions.valider-definitivement');

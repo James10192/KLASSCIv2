@@ -78,7 +78,9 @@ class InscriptionWorkflowService
             }
 
             // Vérifier qu'au moins un paiement validé existe sur cette inscription
-            $paiement = ESBTPPaiement::find($inscription->paiement_validation_id);
+            $paiement = $inscription->paiement_validation_id
+                ? $inscription->paiements()->whereKey($inscription->paiement_validation_id)->first()
+                : null;
             if (!$paiement || $paiement->status !== 'validé') {
                 // Chercher un autre paiement validé sur cette inscription
                 $autrePaiementValide = $inscription->paiements()->where('status', 'validé')->first();
@@ -86,10 +88,14 @@ class InscriptionWorkflowService
                     $inscription->update(['paiement_validation_id' => $autrePaiementValide->id]);
                     $paiement = $autrePaiementValide;
                 } else {
-                    return [
-                        'success' => false,
-                        'message' => 'Aucun paiement validé trouvé sur cette inscription.'
-                    ];
+                    $dispense = app(\App\Domain\Inscriptions\ExonerationInscription::class)->examiner($inscription);
+                    if (! $dispense['eligible']) {
+                        return [
+                            'success' => false,
+                            'message' => $dispense['message'].' Aucun paiement validé trouvé sur cette inscription.',
+                        ];
+                    }
+                    $inscription->paiement_validation_id = null;
                 }
             }
 
@@ -279,6 +285,7 @@ class InscriptionWorkflowService
     {
         try {
             DB::beginTransaction();
+            $inscription = ESBTPInscription::query()->lockForUpdate()->findOrFail($inscription->id);
 
             // Valider l'inscription d'abord
             $validation = $this->validateInscription($inscription);
@@ -322,6 +329,9 @@ class InscriptionWorkflowService
                     'validation_date' => now(),
                     'validated_by' => Auth::id(),
                     'paiement_id' => $inscription->paiement_validation_id,
+                    'mode_validation' => $inscription->paiement_validation_id
+                        ? 'paiement_valide'
+                        : 'exoneration_sans_paiement',
                 ]
             );
 

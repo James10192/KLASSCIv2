@@ -5,7 +5,7 @@
 @endphp
 
 @if(($alert['show_banner'] ?? false) === true)
-<div style="
+<div class="js-inscription-workflow-banner" style="
     background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
     border: 1.5px solid #f59e0b;
     border-left: 5px solid #d97706;
@@ -35,7 +35,10 @@
             </span>
         </div>
         @if(($alert['can_validate'] ?? false) && !empty($alert['validation_url']) && !empty($alert['inscription_id']))
-            <form action="{{ $alert['validation_url'] }}" method="POST" style="display:inline-flex;">
+            <form action="{{ $alert['validation_url'] }}" method="POST"
+                  class="js-inscription-workflow-validation"
+                  data-preview-url="{{ route('esbtp.inscriptions.validation-preview', $alert['inscription_id']) }}"
+                  style="display:inline-flex;">
                 @csrf
                 @method('PUT')
                 <input type="hidden" name="redirect_to" value="{{ $redirectTo }}">

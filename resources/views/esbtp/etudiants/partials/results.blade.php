@@ -242,10 +242,13 @@
                             @endcan
                             @if($pendingInscription)
                                 @can('inscriptions.validate')
-                                <button type="button" class="eu-action-btn eu-action-btn--validate" data-bs-toggle="modal" data-bs-target="#validationModal{{ $pendingInscription->id }}" title="Valider l'inscription" data-stop-propagation>
+                                <button type="button" class="eu-action-btn eu-action-btn--validate js-validate-enrollment"
+                                        data-inscription-id="{{ $pendingInscription->id }}"
+                                        data-action-url="{{ route('esbtp.inscriptions.valider', $pendingInscription->id) }}"
+                                        data-preview-url="{{ route('esbtp.inscriptions.validation-preview', $pendingInscription->id) }}" title="Valider l'inscription" data-stop-propagation>
                                     <i class="fas fa-check"></i>
                                 </button>
-                                @includeIf('esbtp.etudiants._validation_modal', ['pendingInscription' => $pendingInscription, 'etudiant' => $etudiant])
+                                
                                 @endcan
                             @endif
                         </div>
@@ -476,10 +479,13 @@
                     @endcan
                     @if($pendingInscription)
                         @can('inscriptions.validate')
-                        <button type="button" class="etm-btn etm-btn--valider" data-bs-toggle="modal" data-bs-target="#validationModal{{ $pendingInscription->id }}">
+                        <button type="button" class="etm-btn etm-btn--valider js-validate-enrollment"
+                                data-inscription-id="{{ $pendingInscription->id }}"
+                                data-action-url="{{ route('esbtp.inscriptions.valider', $pendingInscription->id) }}"
+                                data-preview-url="{{ route('esbtp.inscriptions.validation-preview', $pendingInscription->id) }}">
                             <i class="fas fa-check"></i> Valider
                         </button>
-                        @includeIf('esbtp.etudiants._validation_modal', ['pendingInscription' => $pendingInscription, 'etudiant' => $etudiant])
+                        
                         @endcan
                     @endif
                 </footer>
