@@ -211,6 +211,25 @@ class PoserBareme extends ActionAgent
                 $categoryModel = ESBTPFraisCategory::where('code', $code)->first();
             }
 
+            // Une demande incomplète se clarifie avant la résolution de la portée :
+            // même si la filière est inconnue, il manque d'abord la décision
+            // financière. Ne pas masquer ce manque par une erreur de référence.
+            $hasMontant = array_key_exists('montant', $l);
+            $hasAudience = array_key_exists('audience', $l);
+            $hasDeadline = array_key_exists('echeance_jours', $l);
+            $hasStatusAmount = collect(['affecte', 'reaffecte', 'non_affecte'])
+                ->contains(fn (string $statut) => array_key_exists('montant_'.$statut, $l));
+
+            if (! $hasMontant && ! $hasAudience && ! $hasDeadline && ! $hasStatusAmount) {
+                $manques[] = "Quel montant pour {$code} ? Ou précisez l'audience ou l'échéance à modifier.";
+                continue;
+            }
+
+            if ($hasMontant && (! is_numeric($l['montant']) || (float) $l['montant'] < 0)) {
+                $manques[] = "Quel montant valide pour {$code} ?";
+                continue;
+            }
+
             [$portee, $libelle, $manque] = $this->portee($l);
             if ($manque) {
                 $manques[] = $manque;
@@ -219,21 +238,6 @@ class PoserBareme extends ActionAgent
 
             $categoryId = $categoryModel?->id ?? ESBTPFraisCategory::where('code', $code)->value('id');
             $avant = $categoryId ? PoseDeBareme::etatActuel((int) $categoryId, $portee) : null;
-            $hasMontant = array_key_exists('montant', $l);
-            $hasAudience = array_key_exists('audience', $l);
-            $hasDeadline = array_key_exists('echeance_jours', $l);
-            $hasStatusAmount = collect(['affecte', 'reaffecte', 'non_affecte'])
-                ->contains(fn (string $statut) => array_key_exists('montant_'.$statut, $l));
-
-            if (! $hasMontant && ! $hasAudience && ! $hasDeadline && ! $hasStatusAmount) {
-                $manques[] = "Que faut-il modifier pour {$code} : montant, audience ou échéance ?";
-                continue;
-            }
-
-            if ($hasMontant && (! is_numeric($l['montant']) || (float) $l['montant'] < 0)) {
-                $manques[] = "Quel montant valide pour {$code} ?";
-                continue;
-            }
             if (! $hasMontant && $avant === null) {
                 $manques[] = "Quel montant pour {$code} ? Cette combinaison n'est pas encore configurée.";
                 continue;
