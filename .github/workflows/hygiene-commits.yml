@@ -390,7 +390,9 @@ jobs:
         run: |
           echec=0
           php vendor/bin/phpunit tests/Feature/Inscriptions/ValidationGratuiteTest.php --no-coverage || echec=1
-          php vendor/bin/phpunit tests/Feature/Assistant/NananLotATest.php --no-coverage || echec=1
+          # Les deux scénarios Nanan/CLI impactés. Le reste du lot couvre
+          # le barème et d'autres contrats sans lien avec les exonérations.
+          php vendor/bin/phpunit tests/Feature/Assistant/NananLotATest.php --filter 'test_la_cli_valide_par_le_meme_predicat|test_une_inscription_annulee_avec_versement_valide_est_laissee' --no-coverage || echec=1
           exit $echec
 
       # Régression réelle SQLSTATE 22007 : la colonne semestre est VARCHAR,
