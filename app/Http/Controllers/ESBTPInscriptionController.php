@@ -1488,6 +1488,67 @@ class ESBTPInscriptionController extends Controller
     }
 
     /**
+     * Aperçu non-mutant de la validation : l'écriture refait tous les contrôles
+     * sous verrou. Aucun montant privé n'est exposé dans cette réponse.
+     */
+    public function validationPreview(Request $request, ESBTPInscription $inscription)
+    {
+        $obstacle = app(\App\Domain\Inscriptions\ObstacleALaValidation::class)->pour($inscription);
+        if ($obstacle !== null) {
+            return response()->json([
+                'eligible' => false,
+                'mode' => 'blocked',
+                'message' => $obstacle === \App\Domain\Inscriptions\ObstacleALaValidation::SANS_PAIEMENT
+                    ? app(\App\Domain\Inscriptions\ExonerationInscription::class)->examiner($inscription)['message']
+                    : \App\Domain\Inscriptions\ObstacleALaValidation::libelle($obstacle),
+            ]);
+        }
+
+        $paiement = $inscription->paiements()->where('status', 'validé')->exists();
+        $dispense = $paiement
+            ? null
+            : app(\App\Domain\Inscriptions\ExonerationInscription::class)->examiner($inscription);
+
+        return response()->json([
+            'eligible' => $paiement || ($dispense['eligible'] ?? false),
+            'mode' => $paiement ? 'validated_payment' : ($dispense['mode'] ?? 'blocked'),
+            'message' => $paiement
+                ? 'Un paiement validé est lié à cette inscription.'
+                : ($dispense['message'] ?? 'Aucun paiement validé.'),
+        ]);
+    }
+
+    /**
+     * Le lot ne se classe jamais d'après les attributs HTML : seule la base
+     * fait foi, puis le POST final réévalue chaque inscription.
+     */
+    public function bulkValidationPreview(Request $request)
+    {
+        $data = $request->validate([
+            'inscription_ids' => ['required', 'array', 'min:1', 'max:200'],
+            'inscription_ids.*' => ['required', 'integer', 'distinct'],
+        ]);
+
+        $items = [];
+        foreach ($data['inscription_ids'] as $id) {
+            $inscription = ESBTPInscription::find($id);
+            if (! $inscription) {
+                $items[] = ['id' => $id, 'eligible' => false, 'mode' => 'blocked', 'message' => 'Inscription introuvable.'];
+                continue;
+            }
+            $response = $this->validationPreview($request, $inscription)->getData(true);
+            $items[] = ['id' => (int) $id] + $response;
+        }
+
+        return response()->json([
+            'total' => count($items),
+            'ready' => collect($items)->where('eligible', true)->count(),
+            'waived' => collect($items)->where('mode', 'explicit_waiver')->count(),
+            'items' => $items,
+        ]);
+    }
+
+    /**
      * Valider une inscription.
      */
     public function valider(ValiderInscriptionRequest $request, ESBTPInscription $inscription)
@@ -1885,7 +1946,11 @@ class ESBTPInscriptionController extends Controller
     public function bulkValider(BulkValiderRequest $request)
     {
         $inscriptionIds = app(SelectionDInscriptions::class)->identifiants($request);
-        $forceValidation = $request->input("force", false);
+        if ($request->boolean('force') && ! $request->user()->can('inscriptions.override_capacity')) {
+            abort(403, 'Dérogation de capacité non autorisée.');
+        }
+        $forceValidation = $request->boolean('force')
+            && $request->user()->can('inscriptions.override_capacity');
 
         try {
             DB::beginTransaction();
@@ -1902,7 +1967,7 @@ class ESBTPInscriptionController extends Controller
             $message = $this->inscriptionService->buildBulkValidationMessage($stats);
             $inscriptionsAvecProblemes = $this->inscriptionService->extractBulkProblems($stats);
 
-            if ($request->ajax()) {
+            if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     "success" => true,
                     "message" => $message ?: 'Aucune inscription n\'a été traitée.',
@@ -1919,7 +1984,7 @@ class ESBTPInscriptionController extends Controller
             DB::rollBack();
             Log::error("Erreur validation groupée inscriptions: " . $e->getMessage());
 
-            if ($request->ajax()) {
+            if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(
                     [
                         "success" => false,

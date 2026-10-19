@@ -51,7 +51,18 @@
                 document.body.appendChild(modal);
             }
 
-            modal.querySelector('[data-role="title"]').textContent = opts.title;
+            const validationStyle = opts.variant === 'validation';
+            const dialog = modal.querySelector('.modal-dialog');
+            const header = modal.querySelector('.modal-header');
+            const title = modal.querySelector('[data-role="title"]');
+            const close = modal.querySelector('.btn-close');
+            dialog.classList.toggle('modal-sm', !validationStyle);
+            dialog.style.maxWidth = validationStyle ? 'min(520px, calc(100vw - 24px))' : '';
+            header.style.cssText = validationStyle
+                ? 'background:#fff; color:#0f172a; border-bottom:1px solid #dce3ef; padding:16px 20px;'
+                : 'background:linear-gradient(135deg,#0453cb 0%,#3b7ddb 100%); color:#fff; border:none; padding:16px 20px;';
+            close.classList.toggle('btn-close-white', !validationStyle);
+            title.textContent = opts.title;
             modal.querySelector('[data-role="message"]').textContent = opts.message;
             const cancelBtn = modal.querySelector('[data-role="cancel"]');
             const confirmBtn = modal.querySelector('[data-role="confirm"]');
@@ -121,6 +132,91 @@
             bsModal.show();
         });
     };
+
+    /**
+     * Confirmation contextuelle : l'aperçu vient du serveur mais la mutation
+     * refait nécessairement ses contrôles en transaction.
+     */
+    window.iiConfirmerValidationInscription = async function (previewUrl) {
+        if (!previewUrl) {
+            window.showToast?.('Aperçu de validation indisponible.', 'error');
+            return false;
+        }
+        try {
+            const response = await fetch(previewUrl, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.eligible) {
+                window.showToast?.(data.message || 'Cette inscription ne peut pas être validée.', 'warning');
+                return false;
+            }
+            const waiver = data.mode === 'explicit_waiver';
+            return window.iiConfirm({
+                variant: 'validation',
+                title: 'Confirmer la validation',
+                message: waiver
+                    ? 'Exonération vérifiée : toutes les souscriptions concernées sont à 0 FCFA. Aucun paiement ni reçu fictif ne sera créé. Valider définitivement cette inscription ?'
+                    : 'Paiement validé vérifié. Valider définitivement cette inscription et activer le dossier étudiant ?',
+                confirmLabel: 'Valider l’inscription',
+            });
+        } catch (error) {
+            window.showToast?.('Impossible de vérifier les conditions de validation. Réessayez.', 'error');
+            return false;
+        }
+    };
+
+    /**
+     * Formulaire POST ou POST + _method=PUT. Protection anti-double clic et
+     * remontée d'un événement pour actualiser les listes sans rechargement.
+     */
+    window.iiSoumettreValidationInscription = async function (form, previewUrl, onSuccess) {
+        if (!form || form.dataset.validationBusy === '1') return false;
+        form.dataset.validationBusy = '1';
+        try {
+            if (!await window.iiConfirmerValidationInscription(previewUrl)) return false;
+            const response = await fetch(form.action, {
+                method: form.method || 'POST',
+                body: new FormData(form),
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Validation refusée par le serveur.');
+            }
+            window.showToast?.(data.message || 'Inscription validée.', 'success');
+            window.dispatchEvent(new CustomEvent('inscription:validated', {
+                detail: { inscriptionId: data.inscription_id }
+            }));
+            if (typeof onSuccess === 'function') onSuccess(data);
+            return true;
+        } catch (error) {
+            window.showToast?.(error.message || 'Erreur de validation.', 'error');
+            return false;
+        } finally {
+            delete form.dataset.validationBusy;
+        }
+    };
+
+    // Alerte de workflow partagée entre fiche étudiant et autres contextes.
+    if (!window.iiWorkflowValidationBound) {
+        window.iiWorkflowValidationBound = true;
+        document.addEventListener('submit', async function (event) {
+            const form = event.target.closest('.js-inscription-workflow-validation');
+            if (!form) return;
+            event.preventDefault();
+            await window.iiSoumettreValidationInscription(form, form.dataset.previewUrl, function () {
+                const banner = form.closest('.js-inscription-workflow-banner');
+                if (banner) {
+                    banner.replaceChildren();
+                    banner.classList.add('alert', 'alert-success');
+                    banner.textContent = 'L’inscription vient d’être validée.';
+                }
+            });
+        });
+    }
 
     // =========================================================================
     // showToast — toast inline 5s auto-dismiss, 4 types

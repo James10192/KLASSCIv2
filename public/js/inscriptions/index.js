@@ -531,7 +531,7 @@
         // Une phrase, pas de HTML : `iiConfirm` rend son message en `textContent`.
         const ok = await window.iiConfirm({
             title: sel.filtre ? 'Valider tout le filtre' : 'Valider la sélection',
-            message: `Valider ${sel.n.toLocaleString('fr-FR')} inscription(s) ? Seules celles qui ont un paiement validé le seront, et leurs étudiants seront notifiés. Celles sans paiement ou dont le paiement est encore en attente seront ignorées.`,
+            message: `Valider ${sel.n.toLocaleString('fr-FR')} inscription(s) ? Seules celles qui ont un paiement validé ou une exonération explicite à 0 FCFA seront traitées ; les autres seront ignorées. Aucun paiement fictif ne sera créé.`,
             confirmLabel: 'Valider',
         });
         if (!ok) return;
@@ -1112,37 +1112,16 @@
         e.preventDefault();
         const id = btn.dataset.id;
         if (!id) return;
-        const ok = await window.iiConfirm({
-            title: 'Valider l\'inscription',
-            message: 'Confirmer la validation de cette inscription ?',
-            confirmLabel: 'Valider',
-        });
-        if (!ok) return;
         const form = document.getElementById(`valider-form-${id}`);
-        if (!form) return;
-        setRowLoading(id, true);
-        const formData = new FormData(form);
-        fetch(form.action, {
-            method: 'POST',
-            body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        })
-            .then((r) => r.json())
-            .then((data) => {
-                if (data.success) {
-                    refreshLigne(id, 'validate');
-                    if (data.message) showToast(data.message, 'success');
-                } else {
-                    showToast(data.message || 'Erreur validation.', 'error');
-                    // Refresh la ligne pour afficher le chip probleme + bouton d'action rapide
-                    // (Creer paiement / Valider paiement / Changer classe) + flash rouge
-                    refreshLigne(id, 'reject');
-                }
-            })
-            .catch(() => {
-                showToast('Erreur validation.', 'error');
-                refreshLigne(id, 'reject');
-            });
+        if (!form || btn.disabled) return;
+        btn.disabled = true;
+        const success = await window.iiSoumettreValidationInscription(
+            form,
+            btn.dataset.previewUrl,
+            () => refreshLigne(id, 'validate')
+        );
+        if (!success) refreshLigne(id, 'reject');
+        btn.disabled = false;
     });
 
     // ====================================================================

@@ -3122,116 +3122,45 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
     </div>
 </div>
 
-<!-- Modal pour validation définitive - Structure Bootstrap simple -->
+<!-- Validation définitive — modale premium compacte et centrée -->
 <div class="modal fade" id="validationModal" tabindex="-1" aria-labelledby="validationModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content" style="border-radius: 15px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
-            <div class="modal-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border-radius: 15px 15px 0 0; padding: 1.5rem; border: none;">
-                <h5 class="modal-title fw-bold" id="validationModalLabel">
-                    <i class="fas fa-check-circle me-2"></i>Validation définitive de l'inscription
+    <div class="modal-dialog modal-dialog-centered" style="max-width:min(560px, calc(100vw - 24px));">
+        <div class="modal-content" style="border:0; border-radius:16px; overflow:hidden; box-shadow:0 12px 44px rgba(15,23,42,.18);">
+            <div class="modal-header" style="background:#fff; border-bottom:1px solid #dce3ef; padding:16px 20px;">
+                <h5 class="modal-title fw-bold" id="validationModalLabel" style="color:#0f172a; font-size:1rem;">
+                    <i class="fas fa-check-circle me-2" style="color:#0453cb;"></i>Valider l'inscription
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
-            <form id="validationForm" method="POST" action="{{ route('esbtp.inscriptions.valider-definitivement', $inscription) }}">
+            <form id="validationForm" method="POST" action="{{ route('esbtp.inscriptions.valider-definitivement', $inscription) }}"
+                  data-preview-url="{{ route('esbtp.inscriptions.validation-preview', $inscription) }}">
                 @csrf
                 <input type="hidden" name="_action" value="valider-definitivement">
-                <div class="modal-body" style="padding: 2rem;">
-                    <!-- Alert info moderne -->
-                    <div style="
-                        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-                        border-left: 4px solid #3b82f6;
-                        border-radius: 10px;
-                        padding: 1rem 1.25rem;
-                        margin-bottom: 1.5rem;
-                    ">
-                        <div class="d-flex align-items-start gap-3">
-                            <div style="
-                                width: 40px;
-                                height: 40px;
-                                border-radius: 50%;
-                                background: linear-gradient(135deg, #3b82f6, #2563eb);
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                color: white;
-                                flex-shrink: 0;
-                            ">
-                                <i class="fas fa-info-circle"></i>
-                            </div>
-                            <div style="flex-grow: 1; padding-top: 0.5rem;">
-                                <div style="color: #1e40af; font-size: 0.9rem;">
-                                    Cette action va convertir le prospect en étudiant et activer son compte utilisateur.
-                                </div>
-                            </div>
-                        </div>
+                <div class="modal-body" style="padding:20px; max-height:calc(100dvh - 180px); overflow-y:auto;">
+                    <p style="font-size:.86rem; color:#475569; margin:0 0 12px;">
+                        La validation active le dossier étudiant. Le paiement validé ou l'exonération à 0 FCFA sera vérifié côté serveur.
+                    </p>
+                    <div id="validationPreviewMessage" class="alert alert-info py-2 mb-3" role="status"
+                         style="font-size:.84rem; border-color:#dce3ef; background:#f8fafc; color:#334155;">
+                        Vérification des conditions en cours…
                     </div>
-
-                    <!-- Alert warning moderne -->
-                    <div style="
-                        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-                        border-left: 4px solid #f59e0b;
-                        border-radius: 10px;
-                        padding: 1rem 1.25rem;
-                        margin-bottom: 1.5rem;
-                    ">
-                        <div class="d-flex align-items-start gap-3">
-                            <div style="
-                                width: 40px;
-                                height: 40px;
-                                border-radius: 50%;
-                                background: linear-gradient(135deg, #f59e0b, #d97706);
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                color: white;
-                                flex-shrink: 0;
-                            ">
-                                <i class="fas fa-exclamation-triangle"></i>
-                            </div>
-                            <div style="flex-grow: 1;">
-                                <div style="color: #92400e; font-weight: 600; margin-bottom: 0.5rem;">Important : Éléments qui ne pourront plus être modifiés</div>
-                                <div style="color: #78350f; font-size: 0.9rem; margin-bottom: 0.75rem;">
-                                    Une fois l'inscription validée définitivement (statut 'active'), les éléments suivants ne pourront plus être modifiés :
-                                </div>
-                                <ul style="color: #78350f; font-size: 0.9rem; margin-bottom: 0.75rem;">
-                                    <li><strong>Filière</strong> : {{ $inscription->filiere->name ?? 'Non définie' }}</li>
-                                    <li><strong>Niveau d'études</strong> : {{ $inscription->niveau->name ?? 'Non défini' }}</li>
-                                    <li><strong>Classe</strong> : {{ $inscription->classe?->name ?? 'Non définie' }}</li>
-                                </ul>
-                                <small style="color: #92400e;">Assurez-vous que ces informations sont correctes avant de procéder à la validation.</small>
-                            </div>
-                        </div>
+                    <div style="font-size:.82rem; color:#475569; padding:10px 12px; border:1px solid #dce3ef; border-radius:10px; margin-bottom:16px;">
+                        <div class="fw-semibold mb-1" style="color:#0f172a;">À vérifier avant confirmation</div>
+                        Les informations ci-dessous seront verrouillées après validation :
+                        <ul style="margin:8px 0 0; padding-left:20px;">
+                            <li>Filière : {{ $inscription->filiere->name ?? 'Non définie' }}</li>
+                            <li>Niveau : {{ $inscription->niveau->name ?? 'Non défini' }}</li>
+                            <li>Classe : {{ $inscription->classe?->name ?? 'Non définie' }}</li>
+                        </ul>
                     </div>
-
-                    <div class="mb-3">
-                        <label for="validation_observations" class="form-label fw-semibold" style="color: #2d3748; font-size: 0.9rem;">
-                            <i class="fas fa-comment-dots me-1" style="color: #10b981;"></i>
-                            Observations
-                        </label>
-                        <textarea class="form-control" id="validation_observations" name="observations" rows="3"
-                                  placeholder="Commentaires sur la validation..."
-                                  style="border: 2px solid #dee2e6; border-radius: 8px; resize: none;"></textarea>
-                    </div>
+                    <label for="validation_observations" class="form-label fw-semibold" style="font-size:.84rem;">Observations (facultatif)</label>
+                    <textarea class="form-control" id="validation_observations" name="observations" rows="2"
+                              placeholder="Commentaires sur la validation…" style="border-radius:9px; border-color:#dce3ef;"></textarea>
                 </div>
-                <div class="modal-footer" style="background: #f8f9fa; border-radius: 0 0 15px 15px; padding: 1.25rem 2rem; border: none;">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="
-                        padding: 0.65rem 1.5rem;
-                        border-radius: 8px;
-                        font-weight: 500;
-                        transition: all 0.2s;
-                    ">
-                        <i class="fas fa-times me-1"></i>Annuler
-                    </button>
-                    <button type="submit" class="btn btn-success" style="
-                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-                        border: none;
-                        padding: 0.65rem 1.5rem;
-                        border-radius: 8px;
-                        font-weight: 600;
-                        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-                        transition: all 0.2s;
-                    ">
-                        <i class="fas fa-check-double me-1"></i>Valider définitivement
+                <div class="modal-footer" style="border-top:1px solid #e2e8f0; background:#fff; padding:12px 20px;">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary" disabled style="border-radius:9px; background:#0453cb;">
+                        <i class="fas fa-check me-1"></i>Valider définitivement
                     </button>
                 </div>
             </form>
@@ -3671,6 +3600,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 @endif
 
 @push('scripts')
+<script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}"></script>
 <script src="{{ asset('js/paiements/inscription-show-inline.js') }}?v={{ @filemtime(public_path('js/paiements/inscription-show-inline.js')) ?: '1' }}" defer></script>
 <script>
     // ========================================
@@ -3809,15 +3739,72 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
         debugLog('✅ Formulaire de paiement préparé, action:', form.action);
     }
 
-    function openValidationModal(inscriptionId) {
-        debugLog('🎯 openValidationModal appelé avec ID:', inscriptionId);
-
+    async function openValidationModal(inscriptionId) {
         const form = document.getElementById('validationForm');
+        if (!form) return;
         form.reset();
         form.action = @json(route('esbtp.inscriptions.valider-definitivement', $inscription));
-
-        debugLog('✅ Formulaire de validation préparé, action:', form.action);
+        const status = document.getElementById('validationPreviewMessage');
+        const submit = form.querySelector('button[type="submit"]');
+        submit.disabled = true;
+        status.textContent = 'Vérification des conditions en cours…';
+        status.className = 'alert alert-info py-2 mb-3';
+        try {
+            const response = await fetch(form.dataset.previewUrl, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const preview = await response.json();
+            if (!response.ok || !preview.eligible) {
+                status.textContent = preview.message || 'Cette inscription n’est pas prête pour validation.';
+                status.className = 'alert alert-warning py-2 mb-3';
+                return;
+            }
+            status.textContent = preview.mode === 'explicit_waiver'
+                ? 'Exonération à 0 FCFA approuvée : aucun versement ni reçu fictif ne sera créé.'
+                : 'Paiement validé identifié : vous pouvez confirmer.';
+            submit.disabled = false;
+        } catch (error) {
+            status.textContent = 'Vérification impossible. Réessayez avant de valider.';
+            status.className = 'alert alert-danger py-2 mb-3';
+        }
     }
+
+    // Capture avant les anciens handlers de soumission : sauvegarde AJAX sans reload.
+    document.addEventListener('submit', async function (event) {
+        if (event.target?.id !== 'validationForm') return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const form = event.target;
+        const submit = form.querySelector('button[type="submit"]');
+        if (submit.disabled || form.dataset.submitting === '1') return;
+        form.dataset.submitting = '1';
+        submit.disabled = true;
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) throw new Error(data.message || 'Validation refusée.');
+            bootstrap.Modal.getInstance(document.getElementById('validationModal'))?.hide();
+            window.showToast?.(data.message || 'Inscription validée.', 'success');
+            document.querySelectorAll('[data-bs-target="#validationModal"]').forEach(button => {
+                button.disabled = true;
+                button.textContent = 'Inscription validée';
+            });
+            window.dispatchEvent(new CustomEvent('inscription:validated', {
+                detail: { inscriptionId: data.inscription_id }
+            }));
+        } catch (error) {
+            document.getElementById('validationPreviewMessage').textContent = error.message;
+            document.getElementById('validationPreviewMessage').className = 'alert alert-danger py-2 mb-3';
+            submit.disabled = false;
+            window.showToast?.(error.message, 'error');
+        } finally {
+            delete form.dataset.submitting;
+        }
+    }, true);
 
     // ========================================
     // VALIDATION MONTANT PAIEMENT - Fonction Globale

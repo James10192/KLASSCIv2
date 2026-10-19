@@ -415,7 +415,7 @@ class ESBTPInscriptionService
         try {
             DB::beginTransaction();
 
-            $inscription = ESBTPInscription::findOrFail($inscriptionId);
+            $inscription = ESBTPInscription::query()->lockForUpdate()->findOrFail($inscriptionId);
 
             // Une inscription annulée ne se revalide jamais, même avec un versement
             // validé (cas courant après un avoir) : elle réactiverait l'élève et son compte.
@@ -439,7 +439,7 @@ class ESBTPInscriptionService
             }
 
             $paiement = $inscription->paiement_validation_id
-                ? ESBTPPaiement::find($inscription->paiement_validation_id)
+                ? $inscription->paiements()->whereKey($inscription->paiement_validation_id)->first()
                 : null;
 
             if (! $paiement || $paiement->status !== 'validé') {
@@ -456,13 +456,29 @@ class ESBTPInscriptionService
             }
 
             if (! $paiement || $paiement->status !== 'validé') {
+                $dispense = app(\App\Domain\Inscriptions\ExonerationInscription::class)->examiner($inscription);
+                if (! $dispense['eligible']) {
+                    DB::rollBack();
+
+                    return [
+                        'success' => false,
+                        'message' => $dispense['message'].' Aucun paiement validé trouvé sur cette inscription.',
+                    ];
+                }
+                $inscription->paiement_validation_id = null;
+            }
+
+            // Identiques pour paiement réel et exonération : annulation, doublon, capacité.
+            $obstacle = app(\App\Domain\Inscriptions\ObstacleALaValidation::class)->pour($inscription);
+            if ($obstacle !== null) {
                 DB::rollBack();
 
                 return [
                     'success' => false,
-                    'message' => 'Aucun paiement validé trouvé sur cette inscription.'
+                    'message' => \App\Domain\Inscriptions\ObstacleALaValidation::libelle($obstacle),
                 ];
             }
+
             $inscription->status = 'active';
             $inscription->workflow_step = 'etudiant_cree';
             $inscription->date_validation = now();
@@ -1076,12 +1092,43 @@ class ESBTPInscriptionService
                     continue;
                 }
 
-                // Cas 4: Aucun paiement
+                // Cas 4 : aucune entrée en caisse, mais exonération explicite contrôlée.
+                // Le même service final effectue à nouveau tous les contrôles
+                // sous transaction, même si l'aperçu/bulk a été établi avant.
+                $dispense = app(\App\Domain\Inscriptions\ExonerationInscription::class)->examiner($inscription);
+                if ($dispense['eligible']) {
+                    $blockReason = $this->checkBulkValidationPrerequisites($inscription, $etudiantNom, $forceValidation, $workflowService);
+                    if ($blockReason) {
+                        $stats['ignorees'][] = $blockReason;
+                        if (str_contains($blockReason['raison'], 'Classe pleine')) {
+                            $stats['raisons_ignorees']['classe_pleine']++;
+                        } else {
+                            $stats['raisons_ignorees']['inscription_existante']++;
+                        }
+                        continue;
+                    }
+
+                    $result = $this->validerInscription($inscription->id, $userId);
+                    if ($result['success']) {
+                        $stats['validees_direct']++;
+                        $this->sendBulkValidationNotification($inscription, $userId);
+                        $this->desactiverRappelsInscription($inscription->id);
+                    } else {
+                        $stats['ignorees'][] = [
+                            'id' => $inscription->id,
+                            'etudiant' => $etudiantNom,
+                            'raison' => $result['message'],
+                        ];
+                    }
+                    continue;
+                }
+
+                // Cas 5: Aucun paiement
                 if ($inscription->paiements->count() === 0) {
                     $stats['ignorees'][] = [
                         'id' => $inscription->id,
                         'etudiant' => $etudiantNom,
-                        'raison' => 'Aucun paiement associe a cette inscription',
+                        'raison' => 'Aucun paiement associé : '.$dispense['message'],
                     ];
                     $stats['raisons_ignorees']['sans_paiement']++;
                     continue;
@@ -1131,7 +1178,9 @@ class ESBTPInscriptionService
         int $userId
     ): string {
         // Vérifier le paiement
-        $paiement = ESBTPPaiement::find($inscription->paiement_validation_id);
+        $paiement = $inscription->paiement_validation_id
+            ? $inscription->paiements()->whereKey($inscription->paiement_validation_id)->first()
+            : null;
         if (!$paiement || $paiement->status !== 'validé') {
             $autrePaiementValide = $inscription->paiements->where('status', 'validé')->first();
             if ($autrePaiementValide) {

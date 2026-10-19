@@ -504,6 +504,17 @@ jobs:
           done
           exit $echec
 
+      # Exonération explicite : nécessite le vrai SQL et l'audit OwenIt,
+      # donc MariaDB, jamais le job de lint sans service de base.
+      - name: Validation 0 FCFA, audits et permissions de la CLI
+        run: |
+          echec=0
+          php vendor/bin/phpunit tests/Feature/Inscriptions/ValidationGratuiteTest.php --no-coverage || echec=1
+          # Vérifier tout le lot Nanan, y compris la clarification d'un
+          # montant absent avant de résoudre une filière inconnue.
+          php vendor/bin/phpunit tests/Feature/Assistant/NananLotATest.php --no-coverage || echec=1
+          exit $echec
+
   schema:
     name: Le schéma se crée entièrement (${{ matrix.moteur.nom }})
     runs-on: ubuntu-latest

@@ -218,17 +218,10 @@
             <div class="inscription-actions-buttons ii-actions">
                 @if($inscription->status === 'pending' || $inscription->status === 'en_attente')
                     @can('inscriptions.validate')
-                        @php
-                            $canValidateEnrollment = ! auth()->user()->can('identity.enrollment_officer')
-                                || auth()->user()->can('paiements.view')
-                                || ($inscription->relationLoaded('paiements')
-                                    ? $inscription->paiements->contains(fn ($p) => $p->status === 'validé')
-                                    : $inscription->paiements()->where('status', 'validé')->exists());
-                        @endphp
-                        @if($canValidateEnrollment)
                         <button type="button"
                                 class="ii-btn ii-btn--primary valider-btn"
                                 data-id="{{ $inscription->id }}"
+                                data-preview-url="{{ route('esbtp.inscriptions.validation-preview', $inscription->id) }}"
                                 title="Valider l'inscription">
                             <i class="fas fa-check"></i>
                         </button>
@@ -238,7 +231,6 @@
                             @csrf
                             @method('PUT')
                         </form>
-                        @endif
                     @endcan
                 @endif
 

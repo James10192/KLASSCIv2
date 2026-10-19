@@ -63,6 +63,10 @@ class ObstacleALaValidation
             return null;
         }
 
+        if (app(ExonerationInscription::class)->estApplicable($inscription)) {
+            return null;
+        }
+
         return $inscription->paiements()->where('status', 'en_attente')->exists()
             ? self::PAIEMENT_EN_ATTENTE
             : self::SANS_PAIEMENT;

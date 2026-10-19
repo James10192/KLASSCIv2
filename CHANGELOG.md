@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Inscriptions à 0 FCFA — validation encadrée :** les frais explicitement ramenés à zéro avec motif et trace d'audit peuvent permettre la validation sans paiement fictif, après vérification de toutes les souscriptions et du barème obligatoire. Modales de confirmation centrées et parcours inscription, étudiant, administration, lot et API fiabilisés ; les contrôles de permissions, paiements en attente, annulations, doublons et capacités restent applicables.
 - **Pool d'enseignants LMD :** vider la sélection d'enseignants d'un ECUE demeure un choix explicite ; les anciens liens de planification sont synchronisés pour empêcher la réapparition d'un professeur retiré.
 - **Sécurité des impressions BTS et LMD :** les fichiers PDF groupés recontrôlent les droits, soldes et validations au téléchargement, y compris si les autorisations ont changé depuis la génération ; les PDF individuels LMD tiennent compte de la permission d'impression spécifique.
 - **Performance de la fiche étudiant :** suppression du calcul d'un dossier historique non affiché, qui provoquait des requêtes de notes, bulletins et présences pour chaque ancienne inscription ; les données réellement visibles et les contrôles financiers restent inchangés.

@@ -770,5 +770,6 @@
     ];
 @endphp
 <script>window.etuIndexConfig = @json($etuIndexConfig);</script>
+<script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}"></script>
 <script src="{{ asset('js/etudiants-index.js') }}?v={{ @filemtime(public_path('js/etudiants-index.js')) ?: '1' }}"></script>
 @endpush

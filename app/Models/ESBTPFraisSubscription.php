@@ -70,14 +70,21 @@ class ESBTPFraisSubscription extends Model implements Auditable
      */
     public bool $realignementSurBareme = false;
 
+    /** Accord explicite et motivé d'un montant nul, uniquement pendant save(). */
+    public bool $exonerationExplicite = false;
+
     public const TAG_REALIGNEMENT = 'frais:realignement-bareme';
+    public const TAG_EXONERATION = 'frais:exoneration-explicite';
 
     /**
      * @return array<int, string>
      */
     public function generateTags(): array
     {
-        return $this->realignementSurBareme ? [self::TAG_REALIGNEMENT] : [];
+        return array_values(array_filter([
+            $this->realignementSurBareme ? self::TAG_REALIGNEMENT : null,
+            $this->exonerationExplicite ? self::TAG_EXONERATION : null,
+        ]));
     }
 
     public function inscription(): BelongsTo

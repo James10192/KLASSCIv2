@@ -186,7 +186,9 @@ class NananLotATest extends TestCase
         $this->versement($enAttente, ['status' => 'en_attente']);
         $payee = $this->inscription($classe, $attente);
         $this->versement($payee);
-        Sanctum::actingAs($this->utilisateur(), ['cli:read', 'cli:write']);
+        $cli = $this->utilisateur();
+        $cli->givePermissionTo('inscriptions.validate');
+        Sanctum::actingAs($cli, ['cli:read', 'cli:write']);
 
         $this->postJson("/api/cli/inscriptions/{$enAttente->id}/validate")->assertStatus(422)->assertJsonPath('message', 'Cannot validate: payment is still pending (en_attente)');
         $this->postJson('/api/cli/inscriptions/validate-bulk', ['classe_id' => $classe->id])->assertOk()
@@ -211,7 +213,9 @@ class NananLotATest extends TestCase
         $this->assertSame('active', $payee->fresh()->status);
 
         $this->refuse(app(ValiderInscriptions::class)->executeAuthorized(['inscriptions' => [$annulee->id]], $this->admin), 'inscription annulée');
-        Sanctum::actingAs($this->utilisateur(), ['cli:read', 'cli:write']);
+        $cli = $this->utilisateur();
+        $cli->givePermissionTo('inscriptions.validate');
+        Sanctum::actingAs($cli, ['cli:read', 'cli:write']);
         $this->postJson("/api/cli/inscriptions/{$annulee->id}/validate")->assertStatus(422)->assertJsonPath('message', 'Cannot validate: inscription is cancelled');
     }
 
