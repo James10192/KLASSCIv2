@@ -361,6 +361,21 @@ class AccesTemporairesTest extends TestCase
         $this->assertFalse($this->peut($user, 'notes.edit'));
     }
 
+    public function test_un_changement_de_role_etudiant_invalide_un_acces_deja_memoise_dans_la_meme_requete(): void
+    {
+        Role::findOrCreate('etudiant', 'web');
+        $user = User::factory()->create();
+        $service = $this->service();
+        $service->accorder($user, 'notes.edit', now(), null, 'Mission personnelle avant changement de role', $this->admin, true);
+
+        $this->assertTrue($service->detient($user, 'notes.edit'));
+
+        // Même instance de service, même objet User, sans rafraîchissement de requête.
+        $user->assignRole('etudiant');
+
+        $this->assertFalse($service->detient($user, 'notes.edit'));
+    }
+
     public function test_le_formulaire_definitif_refuse_une_date_et_accepte_une_duree_absente(): void
     {
         $user = User::factory()->create();

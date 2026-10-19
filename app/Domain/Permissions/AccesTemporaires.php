@@ -121,13 +121,14 @@ class AccesTemporaires
     /** @return array<int, string> noms canoniques */
     public function permissionsActives(User $user): array
     {
-        if (array_key_exists($user->id, $this->memo)) {
-            return $this->memo[$user->id];
-        }
-
-        // Une personne devenue etudiante perd ses derogations de personnel.
+        // Revalider l'identite AVANT le memo : une promotion vers le role
+        // etudiant au cours de la meme requete doit fermer aussitot les acces.
         if ($user->hasRole('etudiant') || $this->detientDeFaconPermanente($user, 'identity.student')) {
             return $this->memo[$user->id] = [];
+        }
+
+        if (array_key_exists($user->id, $this->memo)) {
+            return $this->memo[$user->id];
         }
 
         try {
