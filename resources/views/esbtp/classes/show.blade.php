@@ -600,7 +600,7 @@
     <div class="main-content">
 
         @php
-            $nombreEtudiants = $classe->etudiants->count();
+            $nombreEtudiants = (int) $classe->getAttribute('effectif_courant');
             $nbRedoublants = \App\Domain\Inscriptions\StatutRedoublant::nombreDansLaClasse($classe, \App\Models\ESBTPAnneeUniversitaire::getCurrent()?->id);
             $pourcentage = $classe->places_totales > 0 ? round(($nombreEtudiants / $classe->places_totales) * 100, 1) : 0;
             $placesLibres = max(0, $classe->places_totales - $nombreEtudiants);
@@ -670,21 +670,45 @@
                     </div>
                 </div>
                 <div class="cs-hero-actions">
+                    @if(auth()->user()->can('classes.liste_appel.view') || auth()->user()->can('classes.liste_appel.export') || auth()->user()->can('classes.liste_complete.view') || auth()->user()->can('classes.liste_complete.export'))
+                        <div class="dropdown">
+                            <button type="button" class="cs-btn--glass" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Documents de cette classe">
+                                <i class="fas fa-file-export"></i>Documents <i class="fas fa-chevron-down ms-1"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                @can('classes.liste_appel.view')
+                                    <li><a class="dropdown-item" href="{{ route('esbtp.classes.liste-appel', $classe->id) }}" target="_blank" rel="noopener"><i class="fas fa-clipboard-list me-2"></i>Voir la liste d'appel</a></li>
+                                @endcan
+                                @can('classes.liste_appel.export')
+                                    <li><a class="dropdown-item" href="{{ route('esbtp.classes.liste-appel.pdf', $classe->id) }}"><i class="fas fa-file-pdf me-2"></i>PDF liste d'appel</a></li>
+                                @endcan
+                                @can('classes.liste_complete.view')
+                                    <li><a class="dropdown-item" href="{{ route('esbtp.classes.liste-complete', $classe->id) }}" target="_blank" rel="noopener"><i class="fas fa-users me-2"></i>Voir la liste complète</a></li>
+                                @endcan
+                                @can('classes.liste_complete.export')
+                                    <li><a class="dropdown-item" href="{{ route('esbtp.classes.liste-complete.pdf', $classe->id) }}"><i class="fas fa-file-pdf me-2"></i>PDF liste complète</a></li>
+                                    <li><a class="dropdown-item" href="{{ route('esbtp.classes.liste-complete.excel', $classe->id) }}"><i class="fas fa-file-excel me-2"></i>Excel liste complète</a></li>
+                                @endcan
+                            </ul>
+                        </div>
+                    @endif
                     @if(auth()->user()->can('module.academic_pilotage.access') && auth()->user()->can('academic_pilotage.view'))
                         <a href="{{ route('esbtp.pilotage-academique.index', array_filter(['classe' => $classe->id])) }}" class="cs-btn--glass" title="Notes manquantes, relances et présence de cette classe">
                             <i class="fas fa-chart-line"></i>Pilotage académique
                         </a>
                     @endif
-                    @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.coordinate']))
-                        @if(($classe->systeme_academique ?? '') === 'LMD')
+                    @if(($classe->systeme_academique ?? '') === 'LMD')
+                        @can('lmd.structure.manage')
                             <a href="{{ route('esbtp.lmd.ue.index', array_filter(['parcours_id' => $classe->parcours_id, 'niveau_id' => $classe->niveau_etude_id, 'filiere_id' => $classe->filiere_id])) }}" class="cs-btn--glass" title="Gérer les Unités d'Enseignement et leurs ECUEs pour cette classe">
                                 <i class="fas fa-cubes"></i>Gérer UE / ECUE
                             </a>
-                        @else
+                        @endcan
+                    @else
+                        @can('classes.edit')
                             <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="cs-btn--glass">
                                 <i class="fas fa-book"></i>Gérer matières
                             </a>
-                        @endif
+                        @endcan
                     @endif
                     @can('classes.edit')
                         <a href="{{ route('esbtp.classes.edit', array_merge(['classe' => $classe->id], ['return_url' => request()->fullUrl()])) }}" class="cs-btn--white">
@@ -915,21 +939,24 @@
         {{-- TABS Alpine --}}
         @php
             $showOrientationTab = ($isClasseTC ?? false);
-            $allowedTabs = ['etudiants','matieres','heures'];
+            $canViewClasseStudents = auth()->user()->can('classes.students.view');
+            $allowedTabs = $canViewClasseStudents ? ['etudiants','matieres','heures'] : ['matieres','heures'];
             if ($showOrientationTab) { $allowedTabs[] = 'orientation'; }
             $allowedTabsJson = json_encode($allowedTabs);
         @endphp
         <div class="cs-tabs"
              x-data="{
-                tab: (location.hash && {{ $allowedTabsJson }}.includes(location.hash.slice(1))) ? location.hash.slice(1) : 'etudiants',
+                tab: (location.hash && {{ $allowedTabsJson }}.includes(location.hash.slice(1))) ? location.hash.slice(1) : {{ json_encode($allowedTabs[0]) }},
                 setTab(name) { this.tab = name; history.replaceState(null, '', '#' + name); }
              }"
              x-cloak>
             <div class="cs-tabs-nav">
+                @can('classes.students.view')
                 <button type="button" class="cs-tab" :class="{ 'cs-tab--active': tab === 'etudiants' }" @click="setTab('etudiants')">
                     <i class="fas fa-users"></i>Étudiants
                     <span class="cs-tab-badge">{{ $nombreEtudiants }}</span>
                 </button>
+                @endcan
                 <button type="button" class="cs-tab" :class="{ 'cs-tab--active': tab === 'matieres' }" @click="setTab('matieres')">
                     <i class="fas fa-book"></i>Matières
                     <span class="cs-tab-badge">{{ $nbMatieres }}</span>
@@ -946,6 +973,7 @@
             </div>
 
             {{-- TAB ÉTUDIANTS --}}
+            @can('classes.students.view')
             <div class="cs-tab-panel" x-show="tab === 'etudiants'">
                 <div class="cs-students-actions">
                     <div class="cs-students-count">
@@ -966,7 +994,7 @@
                                 <i class="fas fa-exchange-alt"></i>Retirer / Transférer
                             </button>
                         @endcan
-                        @if($nombreEtudiants > 0 && (auth()->user()->can('students.view') || auth()->user()->can('attendances.view')))
+                        @if(auth()->user()->can('classes.liste_appel.view') || auth()->user()->can('classes.liste_appel.export') || auth()->user()->can('classes.liste_complete.view') || auth()->user()->can('classes.liste_complete.export'))
                             <div class="dropdown">
                                 <button type="button"
                                         class="cs-btn--outline"
@@ -978,14 +1006,25 @@
                                     <i class="fas fa-download"></i>Exporter
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><h6 class="dropdown-header" style="font-size:.72rem;text-transform:uppercase;color:var(--cs-muted);">Liste d'appel</h6></li>
-                                    <li><a class="dropdown-item" href="{{ route('esbtp.classes.liste-appel', ['classe' => $classe->id]) }}" target="_blank"><i class="fas fa-eye me-2"></i>Aperçu</a></li>
-                                    <li><a class="dropdown-item" href="{{ route('esbtp.classes.liste-appel.pdf', ['classe' => $classe->id]) }}"><i class="fas fa-file-pdf me-2"></i>PDF</a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><h6 class="dropdown-header" style="font-size:.72rem;text-transform:uppercase;color:var(--cs-muted);">Liste complète</h6></li>
-                                    <li><a class="dropdown-item" href="{{ route('esbtp.classes.liste-complete', ['classe' => $classe->id]) }}" target="_blank"><i class="fas fa-eye me-2"></i>Aperçu</a></li>
-                                    <li><a class="dropdown-item" href="{{ route('esbtp.classes.liste-complete.pdf', ['classe' => $classe->id]) }}"><i class="fas fa-file-pdf me-2"></i>PDF</a></li>
-                                    <li><a class="dropdown-item" href="{{ route('esbtp.classes.liste-complete.excel', ['classe' => $classe->id]) }}"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
+                                    @if(auth()->user()->can('classes.liste_appel.view') || auth()->user()->can('classes.liste_appel.export'))
+                                        <li><h6 class="dropdown-header" style="font-size:.72rem;text-transform:uppercase;color:var(--cs-muted);">Liste d'appel</h6></li>
+                                        @can('classes.liste_appel.view')
+                                            <li><a class="dropdown-item" href="{{ route('esbtp.classes.liste-appel', ['classe' => $classe->id]) }}" target="_blank"><i class="fas fa-eye me-2"></i>Aperçu</a></li>
+                                        @endcan
+                                        @can('classes.liste_appel.export')
+                                            <li><a class="dropdown-item" href="{{ route('esbtp.classes.liste-appel.pdf', ['classe' => $classe->id]) }}"><i class="fas fa-file-pdf me-2"></i>PDF</a></li>
+                                        @endcan
+                                    @endif
+                                    @if(auth()->user()->can('classes.liste_complete.view') || auth()->user()->can('classes.liste_complete.export'))
+                                        <li><h6 class="dropdown-header" style="font-size:.72rem;text-transform:uppercase;color:var(--cs-muted);">Liste complète</h6></li>
+                                        @can('classes.liste_complete.view')
+                                            <li><a class="dropdown-item" href="{{ route('esbtp.classes.liste-complete', ['classe' => $classe->id]) }}" target="_blank"><i class="fas fa-eye me-2"></i>Aperçu</a></li>
+                                        @endcan
+                                        @can('classes.liste_complete.export')
+                                            <li><a class="dropdown-item" href="{{ route('esbtp.classes.liste-complete.pdf', ['classe' => $classe->id]) }}"><i class="fas fa-file-pdf me-2"></i>PDF</a></li>
+                                            <li><a class="dropdown-item" href="{{ route('esbtp.classes.liste-complete.excel', ['classe' => $classe->id]) }}"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
+                                        @endcan
+                                    @endif
                                 </ul>
                             </div>
                         @endif
@@ -996,6 +1035,7 @@
                     @include('esbtp.classes.partials.student-table-rows', ['classe' => $classe])
                 </div>
             </div>
+            @endcan
 
             {{-- TAB MATIÈRES --}}
             <div class="cs-tab-panel" x-show="tab === 'matieres'">

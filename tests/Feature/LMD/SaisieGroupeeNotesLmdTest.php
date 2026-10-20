@@ -13,6 +13,7 @@ use App\Models\ESBTPUniteEnseignement;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -34,7 +35,9 @@ class SaisieGroupeeNotesLmdTest extends TestCase
                 ['etudiant_id' => $etudiants[0], 'note' => '12,5'],
                 ['etudiant_id' => $etudiants[1], 'note' => '', 'is_absent' => '1'],
             ],
-        ])->assertRedirect(route('esbtp.lmd.notes.index'));
+        ])->assertRedirect(route('esbtp.lmd.notes.index', [
+            'annee_universitaire_id' => $evaluation->annee_universitaire_id,
+        ]));
 
         $this->assertSame(12.5, (float) ESBTPNote::where('evaluation_id', $evaluation->id)->where('etudiant_id', $etudiants[0])->value('note'));
         $absent = ESBTPNote::where('evaluation_id', $evaluation->id)->where('etudiant_id', $etudiants[1])->first();
@@ -66,6 +69,24 @@ class SaisieGroupeeNotesLmdTest extends TestCase
         $this->assertSame(0, ESBTPNote::where('evaluation_id', $evaluation->id)->count());
     }
 
+    public function test_lecteur_lmd_ne_peut_pas_enregistrer_de_notes(): void
+    {
+        [$evaluation, $etudiants] = $this->evaluationLmd();
+
+        Permission::findOrCreate('lmd.notes.view', 'web');
+        Permission::findOrCreate('lmd.notes.manage', 'web');
+        $lecteur = User::withoutEvents(fn () => User::factory()->create());
+        $lecteur->givePermissionTo('lmd.notes.view');
+        $this->actingAs($lecteur);
+
+        $this->post(route('esbtp.lmd.notes.save-bulk'), [
+            'evaluation_id' => $evaluation->id,
+            'notes' => [['etudiant_id' => $etudiants[0], 'note' => '12']],
+        ])->assertForbidden();
+
+        $this->assertSame(0, ESBTPNote::where('evaluation_id', $evaluation->id)->count());
+    }
+
     /** @return array{0: ESBTPEvaluation, 1: array<int, int>} */
     private function evaluationLmd(): array
     {
@@ -92,10 +113,13 @@ class SaisieGroupeeNotesLmdTest extends TestCase
             'status' => 'active', 'workflow_step' => 'etudiant_cree',
         ])->pluck('etudiant_id')->map(fn ($id) => (int) $id)->all();
 
-        $evaluation = ESBTPEvaluation::factory()->create([
+        // La saisie groupée travaille sur une évaluation déjà créée :
+        // son fixture ne doit pas déclencher la vérification du planning LMD
+        // (qui relève des tests de création/affectation d'évaluations).
+        $evaluation = ESBTPEvaluation::withoutEvents(fn () => ESBTPEvaluation::factory()->create([
             'classe_id' => $classe->id, 'matiere_id' => $matiere->id,
             'annee_universitaire_id' => $annee->id, 'bareme' => 20, 'periode' => 'semestre1',
-        ]);
+        ]));
 
         return [$evaluation, $etudiants];
     }

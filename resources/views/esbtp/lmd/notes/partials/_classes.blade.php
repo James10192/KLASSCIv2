@@ -49,7 +49,11 @@
                     <div class="ln-card-foot">
                         <button type="button" class="ln-card-btn ln-card-btn--primary"
                                 onclick="openNotesModal({{ $classe->id }}, @js($classe->name))">
-                            <i class="fas fa-edit"></i>Gérer les notes
+                            @if(auth()->user()->can('lmd.notes.manage') && (auth()->user()->can('notes.create') || auth()->user()->can('notes.edit')))
+                                <i class="fas fa-edit"></i>Gérer les notes
+                            @else
+                                <i class="fas fa-eye"></i>Consulter les notes
+                            @endif
                         </button>
                         @if(auth()->user()->can('module.lmd.access')
                             && auth()->user()->can('lmd.jury.view'))

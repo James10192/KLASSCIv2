@@ -23,11 +23,8 @@
     $totalCapacite = 0;
 
     foreach ($classes as $classe) {
-        $count = $classe->inscriptions()
-            ->where('status', 'active')
-            ->where('workflow_step', 'etudiant_cree')
-            ->when($anneeCourante, fn($q) => $q->where('annee_universitaire_id', $anneeCourante->id))
-            ->count();
+        // Pré-compté côté contrôleur via withCount : pas de SELECT par ligne PDF.
+        $count = (int) $classe->getAttribute('effectif_export');
         $effectifs[$classe->id] = $count;
         $totalEffectif += $count;
         $totalCapacite += $classe->places_totales ?? 0;

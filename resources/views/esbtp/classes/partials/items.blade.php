@@ -8,6 +8,10 @@
         'canDeleteClasse'  => $u->can('classes.delete'),
         'canManageSchool'  => $u->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.coordinate']),
         'canTeach'         => $u->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.teach', 'identity.coordinate']),
+        'canViewListeAppel' => $u->can('classes.liste_appel.view'),
+        'canViewListeComplete' => $u->can('classes.liste_complete.view'),
+        'canExportListeAppel' => $u->can('classes.liste_appel.export'),
+        'canExportListeComplete' => $u->can('classes.liste_complete.export'),
     ];
 @endphp
 @foreach($classes as $classe)

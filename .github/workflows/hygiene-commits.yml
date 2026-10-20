@@ -529,6 +529,25 @@ jobs:
           done
           exit $echec
 
+      # Les droits des documents doivent être éprouvés contre les routes
+      # réelles et les modèles MySQL/MariaDB ; aucune simulation de permission
+      # côté Blade ne protège une URL directe PDF ou AJAX.
+      - name: Permissions ciblées des classes, notes et relevés BTS/LMD
+        run: |
+          echec=0
+          for chemin in \
+            tests/Feature/Security/DocumentPermissionsRoutesTest.php \
+            tests/Feature/Classes/PermissionsDocumentsClasseTest.php \
+            tests/Feature/Notes/NotesDocumentPermissionsTest.php \
+            tests/Feature/Permissions/BtsReleveAccesCiblesTest.php \
+            tests/Feature/Notes/NotesExcelExportTest.php \
+            tests/Feature/LMD/SaisieGroupeeNotesLmdTest.php \
+            tests/Feature/Mobile/ScolariteBottomNavTest.php
+          do
+            php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
+          done
+          exit $echec
+
   schema:
     name: Le schéma se crée entièrement (${{ matrix.moteur.nom }})
     runs-on: ubuntu-latest

@@ -193,7 +193,7 @@
                         </button>
                     @endif
                 @endcan
-                @canany(['evaluations.edit', 'admin.access'])
+                @can('evaluations.edit')
                     @if($evaluation->isDeletable())
                         <button type="button"
                                 class="ev-action-btn ev-action-btn--danger"
@@ -204,7 +204,7 @@
                             <i class="fas fa-trash-can"></i>
                         </button>
                     @endif
-                @endcanany
+                @endcan
             </div>
             <div class="evaluation-actions-spinner" aria-hidden="true">
                 <div class="spinner-border spinner-border-sm text-primary" role="status">

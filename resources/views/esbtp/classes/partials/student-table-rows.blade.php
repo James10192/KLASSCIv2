@@ -13,7 +13,9 @@
                     <th>Genre</th>
                     <th>Naissance</th>
                     <th>Contact</th>
-                    <th style="width:60px;text-align:center;">Actions</th>
+                    @can('students.view')
+                        <th style="width:60px;text-align:center;">Actions</th>
+                    @endcan
                 </tr>
             </thead>
             <tbody>
@@ -80,13 +82,14 @@
                                 <span style="color: var(--cs-muted);font-size:.8rem;">—</span>
                             @endif
                         </td>
-                        <td style="text-align:center;">
-                            <a href="{{ route('esbtp.etudiants.show', ['etudiant' => $etudiant->id]) }}"
-                               class="cs-btn-view"
-                               title="Voir la fiche">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                        </td>
+                        @can('students.view')
+                            <td style="text-align:center;">
+                                <a href="{{ route('esbtp.etudiants.show', ['etudiant' => $etudiant->id]) }}"
+                                   class="cs-btn-view" title="Voir la fiche">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        @endcan
                     </tr>
                 @endforeach
             </tbody>

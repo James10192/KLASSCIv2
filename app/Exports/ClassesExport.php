@@ -66,10 +66,9 @@ class ClassesExport implements FromCollection, WithHeadings, WithMapping, WithTi
     {
         $this->rowCounter++;
 
-        // Calculer l'effectif actuel
-        $effectifActuel = $classe->inscriptions()
-            ->where('status', '!=', 'annulée')
-            ->count();
+        // Pré-calculé en une sous-requête groupée par getAllFilteredClasses :
+        // année courante + inscriptions effectives, sans N requêtes par ligne.
+        $effectifActuel = (int) $classe->getAttribute('effectif_export');
 
         $capaciteMax = $classe->places_totales ?? 0;
         $placesRestantes = max(0, $capaciteMax - $effectifActuel);
@@ -310,8 +309,7 @@ class ClassesExport implements FromCollection, WithHeadings, WithMapping, WithTi
         $totalEffectif = 0;
         $totalCapacite = 0;
         foreach ($this->classes as $classe) {
-            $effectif = $classe->inscriptions()->where('status', '!=', 'annulée')->count();
-            $totalEffectif += $effectif;
+            $totalEffectif += (int) $classe->getAttribute('effectif_export');
             $totalCapacite += $classe->places_totales ?? 0;
         }
 

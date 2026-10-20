@@ -45,8 +45,10 @@ final class BtsStudentTranscriptController extends Controller
         BtsStudentAcademicRecords $records,
         bool $download,
     ): Response {
+        // Les droits individuels distinguent consultation et téléchargement :
+        // l'accès général aux étudiants ou aux bulletins n'autorise pas ce PDF.
         abort_unless(
-            $request->user()?->can('students.view') && $request->user()?->can('bulletins.view'),
+            $request->user()?->can($download ? 'bts.releve.export' : 'bts.releve.view'),
             403
         );
 

@@ -33,6 +33,7 @@ class NotesExcelExportTest extends TestCase
 
         // Permissions
         Permission::findOrCreate('notes.view', 'web');
+        Permission::findOrCreate('notes.export_excel', 'web');
         Permission::findOrCreate('module.notes_evaluations.access', 'web');
         Permission::findOrCreate('admin.access', 'web');
     }
@@ -41,6 +42,7 @@ class NotesExcelExportTest extends TestCase
     {
         $user = User::factory()->create();
         $user->givePermissionTo('notes.view');
+        $user->givePermissionTo('notes.export_excel');
         $user->givePermissionTo('module.notes_evaluations.access');
         $user->givePermissionTo('admin.access');
         $this->actingAs($user);
@@ -130,6 +132,19 @@ class NotesExcelExportTest extends TestCase
         // Le nom porte un horodatage : on le reconnaît par motif.
         Excel::matchByRegex();
         Excel::assertDownloaded('/^notes_/');
+    }
+
+    public function test_notes_view_alone_does_not_allow_export(): void
+    {
+        $user = $this->authUser();
+        $user->revokePermissionTo('notes.export_excel');
+        $ctx = $this->buildContext();
+
+        $this->get(route('esbtp.notes.export-excel', [
+            'classe' => $ctx['classe']->id,
+            'matiere' => $ctx['matiere']->id,
+            'periode' => 'semestre1',
+        ]))->assertForbidden();
     }
 
     public function test_it_includes_correct_headers_with_bareme(): void

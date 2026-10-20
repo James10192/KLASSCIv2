@@ -65,7 +65,7 @@
             <span class="ci-card-status ci-card-status--{{ $classe->is_active ? 'active' : 'inactive' }}">
                 {{ $classe->is_active ? 'Active' : 'Inactive' }}
             </span>
-            @if($canManageSchool || $canTeach || $canEditClasse || $canDeleteClasse)
+            @if($canEditClasse || $canViewListeAppel || $canViewListeComplete || $canExportListeAppel || $canExportListeComplete || $canDeleteClasse)
                 <div class="dropdown ci-card-menu">
                     <button type="button"
                             class="ci-card-kebab"
@@ -78,24 +78,33 @@
                         <i class="fas fa-ellipsis-v"></i>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end ci-dropdown">
-                        @if($canManageSchool)
+                        @if($canEditClasse)
                             <li>
                                 <a class="dropdown-item" href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}">
                                     <i class="fas fa-book"></i>Gérer les matières
                                 </a>
                             </li>
                         @endif
-                        @if($canTeach)
+                        @if($canViewListeAppel)
                             <li>
                                 <a class="dropdown-item" href="{{ route('esbtp.classes.liste-appel', ['classe' => $classe->id]) }}" target="_blank">
                                     <i class="fas fa-clipboard-list"></i>Liste d'appel
                                 </a>
                             </li>
+                        @endif
+                        @if($canExportListeAppel)
+                            <li><a class="dropdown-item" href="{{ route('esbtp.classes.liste-appel.pdf', ['classe' => $classe->id]) }}"><i class="fas fa-file-pdf"></i>Exporter liste d'appel</a></li>
+                        @endif
+                        @if($canViewListeComplete)
                             <li>
                                 <a class="dropdown-item" href="{{ route('esbtp.classes.liste-complete', ['classe' => $classe->id]) }}" target="_blank">
                                     <i class="fas fa-users"></i>Liste complète
                                 </a>
                             </li>
+                        @endif
+                        @if($canExportListeComplete)
+                            <li><a class="dropdown-item" href="{{ route('esbtp.classes.liste-complete.pdf', ['classe' => $classe->id]) }}"><i class="fas fa-file-pdf"></i>Exporter liste complète (PDF)</a></li>
+                            <li><a class="dropdown-item" href="{{ route('esbtp.classes.liste-complete.excel', ['classe' => $classe->id]) }}"><i class="fas fa-file-excel"></i>Exporter liste complète (Excel)</a></li>
                         @endif
                         @if($canEditClasse || $canDeleteClasse)
                             <li><hr class="dropdown-divider"></li>
