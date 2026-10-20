@@ -809,7 +809,10 @@ let evalParamsCache = {};
 const ponderationEcue = @json($ponderation ?? null);
 let repriseLimitePrevue = null;
 let classeSemestres = []; // Dynamic semesters from class level
-const canEditExistingNotes = @json(auth()->user()->can('notes.edit'));
+const canManageLmdNotes = @json(auth()->user()->can('lmd.notes.manage'));
+const canCreateNewNotes = canManageLmdNotes && @json(auth()->user()->can('notes.create'));
+const canEditExistingNotes = canManageLmdNotes && @json(auth()->user()->can('notes.edit'));
+const canCreateEvaluations = canManageLmdNotes && @json(auth()->user()->can('evaluations.create'));
 const lmdAppreciationScale = @json(app(\App\Services\AppreciationScaleService::class)->frontendScale('lmd'));
 const lmdNotesQueueKey = 'klassci:lmd-notes:offline-queue:v1';
 let offlineNoteQueue = loadOfflineNoteQueue();
@@ -1048,7 +1051,7 @@ document.getElementById('ecueSelect').addEventListener('change', function() {
     currentMatiereName = this.options[this.selectedIndex]?.textContent || '';
 
     // Show create eval button
-    document.getElementById('createEvalBtn').style.display = 'inline-flex';
+    document.getElementById('createEvalBtn').style.display = canCreateEvaluations ? 'inline-flex' : 'none';
 
     loadEvaluationsAndBuildGrid(currentClasseId, matiereId);
 });
@@ -1217,8 +1220,8 @@ function buildNotesGrid() {
         evals.forEach(ev => {
             const noteVal = stuNotes[ev.id] ?? '';
             const isAbsent = stuNotes[ev.id + '_absent'] || false;
-            const hasExistingNote = noteVal !== '' && noteVal !== null;
-            const isLocked = hasExistingNote && !canEditExistingNotes;
+            const hasExistingNote = (noteVal !== '' && noteVal !== null) || isAbsent;
+            const isLocked = hasExistingNote ? !canEditExistingNotes : !canCreateNewNotes;
             const isDisabled = isAbsent || isLocked;
             const bareme = ev.bareme || 20;
             const uid = stu.id + '-' + ev.id;
@@ -1260,9 +1263,9 @@ function buildNotesGrid() {
     document.getElementById('classAvgRow').innerHTML = footHtml;
     document.getElementById('notesGridWrap').style.display = 'block';
     document.getElementById('notesEmpty').style.display = 'none';
-    document.getElementById('autosaveInfo').style.display = 'flex';
-    document.getElementById('saveAllNotesBtn').style.display = 'inline-flex';
-    document.getElementById('validateNotesBtn').style.display = 'inline-flex';
+    document.getElementById('autosaveInfo').style.display = (canCreateNewNotes || canEditExistingNotes) ? 'flex' : 'none';
+    document.getElementById('saveAllNotesBtn').style.display = (canCreateNewNotes || canEditExistingNotes) ? 'inline-flex' : 'none';
+    document.getElementById('validateNotesBtn').style.display = (canCreateNewNotes || canEditExistingNotes) ? 'inline-flex' : 'none';
 
     // Calculate
     students.forEach(stu => calculateStudentAverage(stu.id));

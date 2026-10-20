@@ -13,6 +13,7 @@ use App\Models\ESBTPUniteEnseignement;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -62,6 +63,24 @@ class SaisieGroupeeNotesLmdTest extends TestCase
             'evaluation_id' => $evaluation->id,
             'notes' => [['etudiant_id' => $etudiants[0], 'note' => '25']],
         ])->assertSessionHas('error');
+
+        $this->assertSame(0, ESBTPNote::where('evaluation_id', $evaluation->id)->count());
+    }
+
+    public function test_lecteur_lmd_ne_peut_pas_enregistrer_de_notes(): void
+    {
+        [$evaluation, $etudiants] = $this->evaluationLmd();
+
+        Permission::findOrCreate('lmd.notes.view', 'web');
+        Permission::findOrCreate('lmd.notes.manage', 'web');
+        $lecteur = User::withoutEvents(fn () => User::factory()->create());
+        $lecteur->givePermissionTo('lmd.notes.view');
+        $this->actingAs($lecteur);
+
+        $this->post(route('esbtp.lmd.notes.save-bulk'), [
+            'evaluation_id' => $evaluation->id,
+            'notes' => [['etudiant_id' => $etudiants[0], 'note' => '12']],
+        ])->assertForbidden();
 
         $this->assertSame(0, ESBTPNote::where('evaluation_id', $evaluation->id)->count());
     }

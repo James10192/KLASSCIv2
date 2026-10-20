@@ -9,6 +9,7 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPNote;
+use App\Models\ESBTPSeanceCours;
 use App\Http\Requests\LMD\SaveBulkLmdNotesRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +23,7 @@ class ESBTPLMDNoteController extends Controller
      */
     public function index(Request $request)
     {
+        abort_unless($request->user()?->can('lmd.notes.view') || $request->user()?->can('lmd.notes.manage'), 403);
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
         $anneeSelectionnee = $request->filled('annee_universitaire_id')
             ? ESBTPAnneeUniversitaire::findOrFail((int) $request->input('annee_universitaire_id'))
@@ -29,7 +31,7 @@ class ESBTPLMDNoteController extends Controller
         $anneeId = $anneeSelectionnee?->id;
         $anneesUniversitaires = ESBTPAnneeUniversitaire::orderByDesc('id')->get();
 
-        $classes = ESBTPClasse::where('systeme_academique', 'LMD')
+        $classesQuery = ESBTPClasse::where('systeme_academique', 'LMD')
             ->where('is_active', true)
             ->with(['filiere', 'niveau'])
             ->withCount([
@@ -38,12 +40,39 @@ class ESBTPLMDNoteController extends Controller
                     ->where('workflow_step', 'etudiant_cree')
                     ->when($anneeId, fn ($q2, $id) => $q2->where('annee_universitaire_id', $id)),
             ])
-            ->when($request->search, fn ($q, $s) => $q->where('name', 'like', "%{$s}%"))
-            ->orderBy('name')
-            ->get();
+            ->when($request->search, fn ($q, $s) => $q->where('name', 'like', "%{$s}%"));
+
+        $user = $request->user();
+        if ($user->can('identity.teach') && ! $user->can('identity.coordinate')) {
+            $matieresConfiees = DB::table('esbtp_enseignant_matiere')
+                ->where('enseignant_id', $user->id)
+                ->where('is_active', true)
+                ->when($anneeId, fn ($q, $id) => $q->where('annee_universitaire_id', $id))
+                ->pluck('matiere_id');
+
+            $teacherId = $user->teacherProfile?->id;
+            $classesPlanifiees = $teacherId
+                ? ESBTPSeanceCours::query()
+                    ->join('esbtp_emploi_temps', 'esbtp_seance_cours.emploi_temps_id', '=', 'esbtp_emploi_temps.id')
+                    ->where('esbtp_seance_cours.teacher_id', $teacherId)
+                    ->when($anneeId, fn ($q, $id) => $q->where('esbtp_emploi_temps.annee_universitaire_id', $id))
+                    ->pluck('esbtp_seance_cours.classe_id')
+                : collect();
+
+            $classesQuery->where(fn ($q) => $q
+                ->whereHas('evaluations', fn ($ev) => $ev
+                    ->when($anneeId, fn ($eq, $id) => $eq->where('annee_universitaire_id', $id))
+                    ->where(fn ($assigned) => $assigned
+                        ->where('enseignant_id', $user->id)
+                        ->orWhereIn('matiere_id', $matieresConfiees)))
+                ->orWhereIn('id', $classesPlanifiees));
+        }
+
+        $classes = $classesQuery->orderBy('name')->get();
 
         // Nombre d'évaluations par classe (uniquement celles liées à des ECUEs LMD)
         $evalCounts = ESBTPEvaluation::whereHas('classe', fn ($q) => $q->where('systeme_academique', 'LMD'))
+            ->whereIn('classe_id', $classes->pluck('id'))
             ->whereHas('matiere', fn ($q) => $q->whereNotNull('unite_enseignement_id'))
             ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED)
             ->when($anneeId, fn ($q, $id) => $q->where('annee_universitaire_id', $id))
@@ -91,10 +120,14 @@ class ESBTPLMDNoteController extends Controller
      */
     public function classeData(Request $request, ESBTPClasse $classe)
     {
+        abort_unless($request->user()?->can('lmd.notes.view') || $request->user()?->can('lmd.notes.manage'), 403);
+        abort_unless($classe->systeme_academique === 'LMD', 404);
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
         $anneeSelectionnee = $request->filled('annee_universitaire_id')
             ? ESBTPAnneeUniversitaire::findOrFail((int) $request->input('annee_universitaire_id'))
             : $anneeCourante;
+
+        $this->assertTeacherCanReadClass($classe, $anneeSelectionnee?->id);
 
         // Étudiants actifs de cette classe (même pattern que classes.show)
         $etudiants = $classe->inscriptions()
@@ -187,6 +220,9 @@ class ESBTPLMDNoteController extends Controller
      */
     public function saisieRapide(ESBTPEvaluation $evaluation)
     {
+        abort_unless(auth()->user()?->can('lmd.notes.view') || auth()->user()?->can('lmd.notes.manage'), 403);
+        $evaluation->loadMissing('classe');
+        abort_unless($evaluation->classe?->systeme_academique === 'LMD', 404);
         $this->assertEvaluationConfieeAEnseignant($evaluation);
 
         $evaluation->load([
@@ -225,6 +261,7 @@ class ESBTPLMDNoteController extends Controller
      */
     public function saveBulk(SaveBulkLmdNotesRequest $request)
     {
+        abort_unless($request->user()?->can('lmd.notes.manage'), 403);
         $evaluation = ESBTPEvaluation::findOrFail($request->evaluation_id);
         $evaluation->loadMissing('classe');
 
@@ -325,6 +362,42 @@ class ESBTPLMDNoteController extends Controller
             ->unique()
             ->values()
             ->all();
+    }
+
+    /**
+     * Une simple permission de lecture ne donne pas accès aux données
+     * nominatives des classes qui ne sont pas confiées à l'enseignant.
+     */
+    private function assertTeacherCanReadClass(ESBTPClasse $classe, ?int $anneeId): void
+    {
+        $user = auth()->user();
+        abort_unless($user, 403);
+        if (! $user->can('identity.teach') || $user->can('identity.coordinate')) {
+            return;
+        }
+
+        $matiereIds = DB::table('esbtp_enseignant_matiere')
+            ->where('enseignant_id', $user->id)
+            ->where('is_active', true)
+            ->when($anneeId, fn ($q, $id) => $q->where('annee_universitaire_id', $id))
+            ->pluck('matiere_id');
+
+        $aEvaluationConfiee = ESBTPEvaluation::query()
+            ->where('classe_id', $classe->id)
+            ->when($anneeId, fn ($q, $id) => $q->where('annee_universitaire_id', $id))
+            ->where(fn ($q) => $q->where('enseignant_id', $user->id)
+                ->orWhereIn('matiere_id', $matiereIds))
+            ->exists();
+
+        $teacherId = $user->teacherProfile?->id;
+        $classePlanifiee = $teacherId && ESBTPSeanceCours::query()
+            ->join('esbtp_emploi_temps', 'esbtp_seance_cours.emploi_temps_id', '=', 'esbtp_emploi_temps.id')
+            ->where('esbtp_seance_cours.teacher_id', $teacherId)
+            ->where('esbtp_seance_cours.classe_id', $classe->id)
+            ->when($anneeId, fn ($q, $id) => $q->where('esbtp_emploi_temps.annee_universitaire_id', $id))
+            ->exists();
+
+        abort_unless($aEvaluationConfiee || $classePlanifiee, 403, 'Cette classe ne vous est pas confiée.');
     }
 
     /**

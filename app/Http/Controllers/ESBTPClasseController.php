@@ -39,6 +39,52 @@ class ESBTPClasseController extends Controller
 {
     use \App\Http\Controllers\Concerns\RespondsWithInlinePdf;
 
+    /**
+     * Le périmètre enseignant est celui de l'index : une permission de document
+     * n'autorise pas à deviner l'ID d'une classe sans séance attribuée.
+     * La classe est universelle ; seule la séance/emploi du temps porte l'année.
+     */
+    private function enforceVisibleClasse(ESBTPClasse $classe): void
+    {
+        $user = Auth::user();
+        // IMPORTANT : le rôle enseignant possède admin.access dans KLASSCI.
+        // Ce drapeau d'accès au back-office n'est PAS un passe-droit sur les classes.
+        // Seules les identités de direction / coordination lèvent le périmètre
+        // de ses séances. Même classes.edit accordé individuellement ne le fait pas.
+        if (! ($user?->can('can_teach') || $user?->can('identity.teach')) || $user->can('identity.coordinate')
+            || $user->can('identity.direct_studies') || $user->can('identity.school_manager')) {
+            return;
+        }
+
+        $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $allowed = $this->filteredTeacherClasses(ESBTPClasse::query()->whereKey($classe->getKey()), $annee);
+        abort_unless($allowed->exists(), 404);
+    }
+
+    private function filteredTeacherClasses($query, ?ESBTPAnneeUniversitaire $annee = null)
+    {
+        $user = Auth::user();
+        if (! ($user?->can('can_teach') || $user?->can('identity.teach')) || $user->can('identity.coordinate')
+            || $user->can('identity.direct_studies') || $user->can('identity.school_manager')) {
+            return $query;
+        }
+
+        $teacher = $user->teacherProfile;
+        if (! $teacher) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIn('esbtp_classes.id', function ($q) use ($teacher, $annee) {
+            $q->select('esbtp_seance_cours.classe_id')
+                ->from('esbtp_seance_cours')
+                ->where('esbtp_seance_cours.teacher_id', $teacher->id);
+            if ($annee) {
+                $q->join('esbtp_emploi_temps', 'esbtp_seance_cours.emploi_temps_id', '=', 'esbtp_emploi_temps.id')
+                    ->where('esbtp_emploi_temps.annee_universitaire_id', $annee->id);
+            }
+        });
+    }
+
     public function __construct(
         private readonly ClassPlanningService $planningService,
         private readonly ClassStudentService $studentService,
@@ -52,6 +98,7 @@ class ESBTPClasseController extends Controller
      */
     public function index(Request $request)
     {
+        abort_unless($request->user()?->can('classes.view'), 403);
         $startMicrotime = microtime(true);
         $startTimestamp = now()->toIso8601String();
         $baseLogContext = [
@@ -94,14 +141,17 @@ class ESBTPClasseController extends Controller
         }
 
         if ($request->filled("capacite")) {
+            $effectifSql = '(SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status = ? AND esbtp_inscriptions.workflow_step = ?';
+            $effectifParams = ['active', 'etudiant_cree'];
+            if ($anneeCourante) {
+                $effectifSql .= ' AND esbtp_inscriptions.annee_universitaire_id = ?';
+                $effectifParams[] = $anneeCourante->id;
+            }
+            $effectifSql .= ')';
             if ($request->capacite === "disponible") {
-                $query->whereRaw(
-                    'places_totales > (SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status = "active" AND esbtp_inscriptions.workflow_step = "etudiant_cree")',
-                );
+                $query->whereRaw('places_totales > '.$effectifSql, $effectifParams);
             } elseif ($request->capacite === "pleine") {
-                $query->whereRaw(
-                    'places_totales <= (SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status = "active" AND esbtp_inscriptions.workflow_step = "etudiant_cree")',
-                );
+                $query->whereRaw('places_totales <= '.$effectifSql, $effectifParams);
             }
         }
 
@@ -118,22 +168,7 @@ class ESBTPClasseController extends Controller
         }
 
         // Enseignant : ne voir que les classes où il a des séances dans l'emploi du temps
-        if ($user && $user->can('can_teach')) {
-            $teacher = $user->teacherProfile;
-            if ($teacher && $anneeCourante) {
-                $classeIds = ESBTPSeanceCours::query()
-                    ->join('esbtp_emploi_temps', 'esbtp_seance_cours.emploi_temps_id', '=', 'esbtp_emploi_temps.id')
-                    ->where('esbtp_seance_cours.teacher_id', $teacher->id)
-                    ->where('esbtp_emploi_temps.annee_universitaire_id', $anneeCourante->id)
-                    ->distinct()
-                    ->pluck('esbtp_seance_cours.classe_id');
-                $query->whereIn('id', $classeIds);
-            } elseif ($teacher) {
-                $classeIds = ESBTPSeanceCours::where('teacher_id', $teacher->id)
-                    ->distinct()->pluck('classe_id');
-                $query->whereIn('id', $classeIds);
-            }
-        }
+        $this->filteredTeacherClasses($query, $anneeCourante);
 
         \Log::info(
             "ESBTPClasseController@index processing",
@@ -148,21 +183,16 @@ class ESBTPClasseController extends Controller
             ]),
         );
 
-        // Utiliser get() pour charger toutes les classes d'un coup
-        $allClasses = $query->get();
-
-        // Pour le chargement progressif via AJAX
+        // SQL paginate : ne pas hydrater toutes les classes avant de prendre 12 cartes.
         $perPage = 12;
-        $page = $request->input("page", 1);
+        $page = max(1, (int) $request->input("page", 1));
         $offset = ($page - 1) * $perPage;
-
-        // Simuler la pagination manuelle
-        $classes = $allClasses->slice($offset, $perPage)->values();
+        $totalCount = (clone $query)->count();
+        $classes = $query->orderBy('esbtp_classes.id')->offset($offset)->limit($perPage)->get();
         // Places prises et TC parent des cartes affichees, en requetes groupees :
         // sans cela chaque carte relance ~10 requetes (classe-card.blade.php).
         ESBTPClasse::preparerPourListe($classes);
-        $hasMore = $allClasses->count() > $offset + $perPage;
-        $totalCount = $allClasses->count();
+        $hasMore = $totalCount > $offset + $perPage;
 
         // Données pour les filtres
         // horsMiroirLmd : cette liste est le selecteur de filiere du mode BTS.
@@ -178,21 +208,16 @@ class ESBTPClasseController extends Controller
         // without() : les KPI ne lisent aucune relation, le $with du modele
         // ferait trois requetes pour rien.
         $kpiQuery = ESBTPClasse::without(["filiere", "niveau", "annee"])->where("is_active", true);
+        $this->filteredTeacherClasses($kpiQuery, $anneeCourante);
 
-        // Charger les relations avec comptage des étudiants de l'année courante
-        if ($anneeCourante) {
-            $kpiQuery->withCount([
-                "inscriptions as nombre_etudiants_annee_courante" => function (
-                    $q,
-                ) use ($anneeCourante) {
-                    $q->where(
-                        "annee_universitaire_id",
-                        $anneeCourante->id,
-                    )->where("status", "active")
-                      ->where("workflow_step", "etudiant_cree");
-                },
-            ]);
-        }
+        // Toujours agréger en SQL : même sans année courante, pas de N+1 sur
+        // l'accessor nombre_etudiants quand on construit les statistiques.
+        $kpiQuery->withCount([
+            'inscriptions as nombre_etudiants_annee_courante' => fn ($q) => $q
+                ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree')
+                ->when($anneeCourante, fn ($q) => $q->where('annee_universitaire_id', $anneeCourante->id)),
+        ]);
 
         $allActiveClasses = $kpiQuery->get();
 
@@ -202,9 +227,7 @@ class ESBTPClasseController extends Controller
             "classesActives" => $allActiveClasses
                 ->where("is_active", true)
                 ->count(),
-            "totalEtudiants" => $anneeCourante
-                ? $allActiveClasses->sum("nombre_etudiants_annee_courante")
-                : $allActiveClasses->sum("nombre_etudiants"),
+            "totalEtudiants" => $allActiveClasses->sum("nombre_etudiants_annee_courante"),
             "totalPlaces" => $allActiveClasses->sum("places_totales"),
         ];
 
@@ -220,9 +243,7 @@ class ESBTPClasseController extends Controller
         $classesSurcapacite = $allActiveClasses->filter(function ($classe) use (
             $anneeCourante,
         ) {
-            $nombreEtudiants = $anneeCourante
-                ? $classe->nombre_etudiants_annee_courante ?? 0
-                : $classe->nombre_etudiants ?? 0;
+            $nombreEtudiants = $classe->nombre_etudiants_annee_courante ?? 0;
             $placesTotales = $classe->places_totales ?? 0;
 
             return $placesTotales > 0 && $nombreEtudiants > $placesTotales;
@@ -232,9 +253,7 @@ class ESBTPClasseController extends Controller
         $kpiStats["depassementTotal"] = $classesSurcapacite->sum(function (
             $classe,
         ) use ($anneeCourante) {
-            $nombreEtudiants = $anneeCourante
-                ? $classe->nombre_etudiants_annee_courante ?? 0
-                : $classe->nombre_etudiants ?? 0;
+            $nombreEtudiants = $classe->nombre_etudiants_annee_courante ?? 0;
             $placesTotales = $classe->places_totales ?? 0;
 
             return max(0, $nombreEtudiants - $placesTotales);
@@ -307,6 +326,7 @@ class ESBTPClasseController extends Controller
      */
     public function create(Request $request)
     {
+        abort_unless($request->user()?->can('classes.create'), 403);
         // Pré-remplissage depuis query params (ex: bouton "Créer une classe"
         // depuis la page Specialisation TC → spé quand aucune classe candidate).
         // On utilise session flash input pour que les `old('field')` du form
@@ -438,6 +458,8 @@ class ESBTPClasseController extends Controller
      */
     public function show(Request $request, ESBTPClasse $classe)
     {
+        abort_unless($request->user()?->can('classes.view'), 403);
+        $this->enforceVisibleClasse($classe);
         $user = Auth::user();
 
         // Récupérer l'année universitaire courante
@@ -613,8 +635,14 @@ class ESBTPClasseController extends Controller
             !empty($lmdSemestres) ? $lmdSemestres : null,
         );
 
-        // Charger les étudiants et inscriptions FILTRÉS par année courante
-        if ($anneeCourante) {
+        // La permission classes.view ne donne pas accès aux identités ni contacts
+        // des étudiants. Les KPI de capacité restent agrégés pour tous.
+        $canViewClasseStudents = $user->can('classes.students.view');
+        $classe->setAttribute('effectif_courant', $classe->inscriptions()
+            ->where('status', 'active')->where('workflow_step', 'etudiant_cree')
+            ->when($anneeCourante, fn ($q) => $q->where('annee_universitaire_id', $anneeCourante->id))
+            ->count());
+        if ($canViewClasseStudents && $anneeCourante) {
             $classe->load([
                 "etudiants" => function ($query) use ($anneeCourante, $classe) {
                     $query
@@ -641,9 +669,13 @@ class ESBTPClasseController extends Controller
                         ->with("etudiant");
                 },
             ]);
-        } else {
+        } elseif ($canViewClasseStudents) {
             // Si aucune année courante définie, charger normalement (éviter les erreurs)
             $classe->load(["etudiants", "inscriptions"]);
+        } else {
+            // Empêche tout lazy loading à travers la vue si la tab est masquée.
+            $classe->setRelation('etudiants', $classe->newCollection());
+            $classe->setRelation('inscriptions', $classe->newCollection());
         }
 
         // Préparer l'année académique pour l'affichage (null si aucune année définie)
@@ -756,6 +788,8 @@ class ESBTPClasseController extends Controller
      */
     public function edit(Request $request, ESBTPClasse $classe)
     {
+        abort_unless($request->user()?->can('classes.edit'), 403);
+        $this->enforceVisibleClasse($classe);
         // horsMiroirLmd : cette liste est le selecteur de filiere du mode BTS.
         // Les reflets y feraient doublon avec les vraies filieres de meme nom.
         // Ils restent ACTIFS ailleurs : les desactiver les exclurait de la
@@ -801,6 +835,8 @@ class ESBTPClasseController extends Controller
      */
     public function update(UpdateClasseRequest $request, ESBTPClasse $classe)
     {
+        abort_unless($request->user()?->can('classes.edit'), 403);
+        $this->enforceVisibleClasse($classe);
         // Validation centralisee dans UpdateClasseRequest (LMD-aware).
         $validatedData = $request->validated();
 
@@ -902,6 +938,8 @@ class ESBTPClasseController extends Controller
      */
     public function refreshLigne(ESBTPClasse $classe)
     {
+        abort_unless(auth()->user()?->can('classes.view'), 403);
+        $this->enforceVisibleClasse($classe);
         try {
             $html = $this->carteHtml($classe);
 
@@ -954,6 +992,10 @@ class ESBTPClasseController extends Controller
             'canDeleteClasse'  => $u->can('classes.delete'),
             'canManageSchool'  => $u->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.coordinate']),
             'canTeach'         => $u->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.teach', 'identity.coordinate']),
+            'canViewListeAppel' => $u->can('classes.liste_appel.view'),
+            'canViewListeComplete' => $u->can('classes.liste_complete.view'),
+            'canExportListeAppel' => $u->can('classes.liste_appel.export'),
+            'canExportListeComplete' => $u->can('classes.liste_complete.export'),
         ])->render();
     }
 
@@ -1013,6 +1055,8 @@ class ESBTPClasseController extends Controller
      */
     public function destroy(ESBTPClasse $classe)
     {
+        abort_unless(auth()->user()?->can('classes.delete'), 403);
+        $this->enforceVisibleClasse($classe);
         // Vérifier si des étudiants sont inscrits dans cette classe
         if ($classe->inscriptions()->count() > 0) {
             return redirect()
@@ -1045,6 +1089,8 @@ class ESBTPClasseController extends Controller
      */
     public function matieres(ESBTPClasse $classe)
     {
+        abort_unless(auth()->user()?->can('classes.view'), 403);
+        $this->enforceVisibleClasse($classe);
         $classeFiliereId = $classe->filiere_id;
         $classeNiveauId = $classe->niveau_etude_id;
 
@@ -1163,6 +1209,8 @@ class ESBTPClasseController extends Controller
      */
     public function updateMatieres(Request $request, ESBTPClasse $classe)
     {
+        abort_unless($request->user()?->can('classes.edit'), 403);
+        $this->enforceVisibleClasse($classe);
         // Valider les données du formulaire
         $request->validate([
             "matiere_ids" => "nullable|array",
@@ -1384,9 +1432,10 @@ class ESBTPClasseController extends Controller
      */
     public function indexApi()
     {
-        $classes = ESBTPClasse::with(["filiere", "niveau", "annee"])
-            ->where("is_active", true)
-            ->get();
+        abort_unless(auth()->user()?->can('classes.view'), 403);
+        $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $query = ESBTPClasse::with(['filiere', 'niveau', 'annee'])->where('is_active', true);
+        $classes = $this->filteredTeacherClasses($query, $annee)->get();
         return response()->json($classes);
     }
 
@@ -1477,6 +1526,12 @@ class ESBTPClasseController extends Controller
      */
     public function getEtudiants(ESBTPClasse $classe, \Illuminate\Http\Request $request)
     {
+        // Endpoint partagé par le sélecteur de bulletins ; ne pas le limiter
+        // à classes.students.view uniquement (voir bulletins/select-scripts).
+        abort_unless(collect([
+            'classes.students.view', 'bulletins.generate', 'lmd.bulletins.generate',
+        ])->contains(fn ($permission) => $request->user()?->can($permission)), 403);
+        $this->enforceVisibleClasse($classe);
         $query = $classe
             ->etudiants()
             ->select("esbtp_etudiants.id", "esbtp_etudiants.nom", "esbtp_etudiants.prenoms", "esbtp_etudiants.matricule")
@@ -1485,12 +1540,15 @@ class ESBTPClasseController extends Controller
             ->orderBy("esbtp_etudiants.nom")
             ->orderBy("esbtp_etudiants.prenoms");
 
-        // Filtre optionnel : inscriptions de l'année universitaire spécifiée.
-        // Les classes sont universelles dans KLASSCI, donc une même classe peut avoir
-        // des inscriptions sur plusieurs années. Préciser annee_universitaire_id renvoie
-        // uniquement les étudiants inscrits cette année-là dans cette classe.
-        if ($request->filled('annee_universitaire_id')) {
-            $query->where('esbtp_inscriptions.annee_universitaire_id', (int) $request->input('annee_universitaire_id'));
+        // Un étudiant appartient à une classe via son inscription annuelle,
+        // jamais via l'année legacy sur esbtp_classes. Le sélecteur de bulletins
+        // peut fournir une année explicite ; sinon restreindre à l'année courante
+        // plutôt que mélanger dix promotions historiques dans une même réponse.
+        $anneeId = $request->filled('annee_universitaire_id')
+            ? (int) $request->input('annee_universitaire_id')
+            : ESBTPAnneeUniversitaire::where('is_current', true)->value('id');
+        if ($anneeId) {
+            $query->where('esbtp_inscriptions.annee_universitaire_id', $anneeId);
         }
 
         $etudiants = $query->get();
@@ -1511,6 +1569,10 @@ class ESBTPClasseController extends Controller
      */
     public function students(Request $request, ESBTPClasse $classe)
     {
+        // La grille Notes partage cette API avec d'autres écrans ; le droit
+        // notes.view est contrôlé par la route, le périmètre enseignant ici.
+        // Hors du try : abort(404) ne doit pas être transformé en erreur 500.
+        $this->enforceVisibleClasse($classe);
         try {
             \Log::info("👥 [API] students - Request received", [
                 "class_id" => $classe->id,
@@ -1710,6 +1772,8 @@ class ESBTPClasseController extends Controller
      */
     public function listeAppel(ESBTPClasse $classe)
     {
+        abort_unless(auth()->user()?->can('classes.liste_appel.view'), 403);
+        $this->enforceVisibleClasse($classe);
         $classe->load(["filiere", "niveau", "annee"]);
 
         // Récupérer l'année universitaire courante
@@ -1763,6 +1827,8 @@ class ESBTPClasseController extends Controller
      */
     public function listeAppelPDF(ESBTPClasse $classe, Request $request)
     {
+        abort_unless($request->user()?->can('classes.liste_appel.export'), 403);
+        $this->enforceVisibleClasse($classe);
         $classe->load(["filiere", "niveau", "annee"]);
 
         // Récupérer l'année universitaire courante
@@ -1825,6 +1891,8 @@ class ESBTPClasseController extends Controller
      */
     public function listeComplete(ESBTPClasse $classe)
     {
+        abort_unless(auth()->user()?->can('classes.liste_complete.view'), 403);
+        $this->enforceVisibleClasse($classe);
         $classe->load(["filiere", "niveau", "annee"]);
 
         // Récupérer l'année universitaire courante
@@ -1875,6 +1943,8 @@ class ESBTPClasseController extends Controller
      */
     public function listeCompletePDF(ESBTPClasse $classe, Request $request)
     {
+        abort_unless($request->user()?->can('classes.liste_complete.export'), 403);
+        $this->enforceVisibleClasse($classe);
         $classe->load(["filiere", "niveau", "annee"]);
 
         // Récupérer l'année universitaire courante
@@ -1934,6 +2004,8 @@ class ESBTPClasseController extends Controller
      */
     public function listeCompleteExcel(ESBTPClasse $classe)
     {
+        abort_unless(auth()->user()?->can('classes.liste_complete.export'), 403);
+        $this->enforceVisibleClasse($classe);
         $classe->load(["filiere", "niveau", "annee"]);
 
         // Récupérer l'année universitaire courante
@@ -1997,7 +2069,13 @@ class ESBTPClasseController extends Controller
      */
     private function getAllFilteredClasses(Request $request)
     {
-        $query = ESBTPClasse::with(["filiere", "niveau", "annee"]);
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $query = ESBTPClasse::with(["filiere", "niveau", "annee"])
+            ->withCount(['inscriptions as effectif_export' => fn ($q) => $q
+                ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree')
+                ->when($anneeCourante, fn ($q) => $q->where('annee_universitaire_id', $anneeCourante->id))]);
+        $this->filteredTeacherClasses($query, $anneeCourante);
 
         // Appliquer les mêmes filtres que dans index()
         if ($request->filled("filiere_id")) {
@@ -2013,14 +2091,17 @@ class ESBTPClasseController extends Controller
         }
 
         if ($request->filled("capacite")) {
+            $effectifSql = '(SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status = ? AND esbtp_inscriptions.workflow_step = ?';
+            $effectifParams = ['active', 'etudiant_cree'];
+            if ($anneeCourante) {
+                $effectifSql .= ' AND esbtp_inscriptions.annee_universitaire_id = ?';
+                $effectifParams[] = $anneeCourante->id;
+            }
+            $effectifSql .= ')';
             if ($request->capacite === "disponible") {
-                $query->whereRaw(
-                    'places_totales > (SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status = "active" AND esbtp_inscriptions.workflow_step = "etudiant_cree")',
-                );
+                $query->whereRaw('places_totales > '.$effectifSql, $effectifParams);
             } elseif ($request->capacite === "pleine") {
-                $query->whereRaw(
-                    'places_totales <= (SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status = "active" AND esbtp_inscriptions.workflow_step = "etudiant_cree")',
-                );
+                $query->whereRaw('places_totales <= '.$effectifSql, $effectifParams);
             }
         }
 
@@ -2045,6 +2126,7 @@ class ESBTPClasseController extends Controller
      */
     public function exportExcel(Request $request)
     {
+        abort_unless($request->user()?->can('classes.export'), 403);
         try {
             // Récupérer TOUTES les classes filtrées
             $classes = $this->getAllFilteredClasses($request);
@@ -2100,6 +2182,7 @@ class ESBTPClasseController extends Controller
      */
     public function exportCsv(Request $request)
     {
+        abort_unless($request->user()?->can('classes.export'), 403);
         try {
             // Récupérer TOUTES les classes filtrées
             $classes = $this->getAllFilteredClasses($request);
@@ -2162,6 +2245,7 @@ class ESBTPClasseController extends Controller
      */
     public function exportPdf(Request $request)
     {
+        abort_unless($request->user()?->can('classes.export'), 403);
         try {
             // Récupérer TOUTES les classes filtrées
             $classes = $this->getAllFilteredClasses($request);
@@ -2359,6 +2443,8 @@ class ESBTPClasseController extends Controller
      */
     public function searchAvailableStudents(Request $request, ESBTPClasse $classe)
     {
+        abort_unless($request->user()?->can('students.edit'), 403);
+        $this->enforceVisibleClasse($classe);
         try {
             $result = $this->studentService->searchAvailableStudents(
                 $classe,
@@ -2386,6 +2472,7 @@ class ESBTPClasseController extends Controller
      */
     public function addStudents(AddStudentsRequest $request, ESBTPClasse $classe)
     {
+        $this->enforceVisibleClasse($classe);
         try {
             $result = $this->studentService->addStudents(
                 $classe,
@@ -2415,6 +2502,7 @@ class ESBTPClasseController extends Controller
      */
     public function removeStudents(RemoveStudentsRequest $request, ESBTPClasse $classe)
     {
+        $this->enforceVisibleClasse($classe);
         try {
             $validated = $request->validated();
             $result = $this->studentService->removeStudents(
@@ -2445,6 +2533,8 @@ class ESBTPClasseController extends Controller
      */
     public function checkStudentData(Request $request, ESBTPClasse $classe)
     {
+        abort_unless($request->user()?->can('students.edit'), 403);
+        $this->enforceVisibleClasse($classe);
         $request->validate([
             'etudiant_ids' => 'required|array|min:1',
             'etudiant_ids.*' => 'integer',
@@ -2463,6 +2553,8 @@ class ESBTPClasseController extends Controller
      */
     public function studentTableHtml(ESBTPClasse $classe)
     {
+        abort_unless(auth()->user()?->can('classes.students.view'), 403);
+        $this->enforceVisibleClasse($classe);
         try {
             $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 

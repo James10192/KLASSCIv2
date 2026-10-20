@@ -85,6 +85,32 @@ class ScolariteBottomNavTest extends TestCase
         $this->assertStringContainsString(route('esbtp.classes.index'), $html);
     }
 
+    public function test_lmd_seul_ouvre_les_notes_lmd_sans_exiger_les_notes_bts(): void
+    {
+        Permission::findOrCreate('module.lmd.access', 'web');
+        Permission::findOrCreate('lmd.notes.view', 'web');
+
+        $user = User::factory()->create();
+        $user->givePermissionTo(['admin.access', 'module.lmd.access', 'lmd.notes.view']);
+
+        $html = $this->rendre($user);
+
+        $this->assertStringContainsString(route('esbtp.lmd.notes.index'), $html);
+        $this->assertStringNotContainsString(route('esbtp.notes.index'), $html);
+    }
+
+    public function test_lmd_ne_se_montre_pas_sans_acces_au_module(): void
+    {
+        Permission::findOrCreate('lmd.notes.view', 'web');
+
+        $user = User::factory()->create();
+        $user->givePermissionTo(['admin.access', 'lmd.notes.view']);
+
+        $html = $this->rendre($user);
+
+        $this->assertStringNotContainsString(route('esbtp.lmd.notes.index'), $html);
+    }
+
     private function rendre(User $user): string
     {
         $this->actingAs($user);

@@ -424,12 +424,15 @@
                         <h2 class="ev-card-title">Actions rapides</h2>
                     </div>
                     <div class="ev-card-body ev-card-body--stack">
+                        @canany(['notes.view', 'notes.create', 'notes.edit', 'notes.manage_own'])
                         <a href="{{ $notesDisabled ? '#' : route('esbtp.notes.saisie-rapide', $evaluation) }}"
                            class="ev-btn ev-btn--primary ev-btn--block {{ $notesDisabled ? 'ev-btn--disabled' : '' }}"
                            @if($notesDisabled) aria-disabled="true" tabindex="-1" title="{{ $evaluationDateFuture ? 'Disponible après la date d\'évaluation' : 'Publiez l\'évaluation pour saisir les notes' }}" @endif>
                             <i class="fas fa-pen-to-square"></i> Gérer les notes
                         </a>
+                        @endcanany
 
+                        @can('evaluations.edit')
                         @if($evaluation->isEditable() || auth()->user()->can('evaluations.edit_locked'))
                             <a href="{{ route('esbtp.evaluations.edit', $evaluation) }}" class="ev-btn ev-btn--ghost ev-btn--block">
                                 <i class="fas fa-edit"></i> Modifier l'évaluation
@@ -455,14 +458,17 @@
                                 {{ $evaluation->notes_published ? 'Masquer les notes' : 'Publier les notes' }}
                             </button>
                         </form>
+                        @endcan
 
+                        @can('evaluations.notes.export')
                         <x-pdf-actions
                             :preview-url="route('esbtp.evaluations.pdf-preview', $evaluation)"
                             :download-url="route('esbtp.evaluations.pdf', $evaluation)"
                             label="Évaluation"
                             buttonClass="ev-btn ev-btn--ghost ev-btn--block" />
+                        @endcan
 
-                        @if($evaluation->isDeletable())
+                        @if(auth()->user()->can('evaluations.edit') && $evaluation->isDeletable())
                             <button type="button" class="ev-btn ev-btn--danger ev-btn--block" data-bs-toggle="modal" data-bs-target="#deleteModal">
                                 <i class="fas fa-trash-alt"></i> Supprimer l'évaluation
                             </button>

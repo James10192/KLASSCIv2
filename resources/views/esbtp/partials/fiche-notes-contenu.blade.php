@@ -12,6 +12,7 @@
         $canCreateNote = auth()->user()->can('notes.create');
         $canEditNote = auth()->user()->can('notes.edit');
         $canDeleteNote = auth()->user()->can('notes.delete');
+        $canOpenEvaluation = \App\Support\PorteDeRoute::ouverte('esbtp.evaluations.show', auth()->user());
     @endphp
     <section class="fng-block" data-fng-inscription="{{ $ficheInsc->id }}"
         data-student="{{ $student->id }}"
@@ -27,44 +28,50 @@
                 @if($canCreateEval && $block['matieres']->isNotEmpty())
                     <button type="button" class="fng-btn fng-btn-primary" data-fng-new-eval><i class="fas fa-plus"></i> Évaluation</button>
                 @endif
-                @if(auth()->user()->can('bulletins.view'))
+                @if(\App\Support\PorteDeRoute::ouverte('esbtp.bulletins.index', auth()->user()))
                     <a class="fng-btn" data-fng-document target="_blank" rel="noopener" href="{{ route('esbtp.bulletins.index', ['etudiant_id' => $student->id, 'annee_universitaire_id' => $ficheInsc->annee_universitaire_id]) }}"><i class="fas fa-file-alt"></i> Bulletins</a>
                 @endif
+                @if(\App\Support\PorteDeRoute::ouverte('esbtp.bulletins.preview-pdf', auth()->user()))
                 @foreach($block['bulletins'] as $bul)
                     <a class="fng-btn" title="Ouvrir le bulletin / relevé {{ $bul->periode }}" data-fng-document target="_blank" rel="noopener"
                         href="{{ route('esbtp.bulletins.preview-pdf', $bul->id) }}"><i class="fas fa-file-pdf"></i> {{ $bul->periode }}</a>
                 @endforeach
+                @endif
                 @if(($ficheInsc->classe?->systeme_academique ?? '') === 'LMD')
                     @can('lmd.releve.view')
-                        @if(\Illuminate\Support\Facades\Route::has('esbtp.lmd.releves.status')
+                        @if(\App\Support\PorteDeRoute::ouverte('esbtp.lmd.releves.status', auth()->user())
                             && \Illuminate\Support\Facades\Route::has('esbtp.lmd.releves.issue')
-                            && \Illuminate\Support\Facades\Route::has('esbtp.lmd.releves.preview'))
+                            && \App\Support\PorteDeRoute::ouverte('esbtp.lmd.releves.preview', auth()->user()))
                         <button type="button" class="fng-btn" data-fng-lmd-releve
                             data-status-url="{{ route('esbtp.lmd.releves.status', ['etudiant' => $student->id, 'annee' => $ficheInsc->annee_universitaire_id]) }}"
                             data-issue-url="{{ route('esbtp.lmd.releves.issue', ['etudiant' => $student->id, 'annee' => $ficheInsc->annee_universitaire_id]) }}"
-                            data-can-issue="{{ auth()->user()->can('lmd.releve.issue') ? '1' : '0' }}">
+                            data-can-issue="{{ auth()->user()->can('lmd.releve.issue') && \App\Support\PorteDeRoute::ouverte('esbtp.lmd.releves.issue', auth()->user()) ? '1' : '0' }}">
                             <i class="fas fa-file-pdf"></i> Relevé LMD
                         </button>
                         <a hidden data-fng-lmd-preview data-fng-document target="_blank" rel="noopener"
                             href="{{ route('esbtp.lmd.releves.preview', ['etudiant' => $student->id, 'annee' => $ficheInsc->annee_universitaire_id]) }}">Relevé LMD</a>
                         @endif
                     @endcan
-                    @if(auth()->user()->can('module.lmd.access') && auth()->user()->can('lmd.jury.view'))
+                    @if(\App\Support\PorteDeRoute::ouverte('esbtp.lmd.jurys.index', auth()->user()))
                         <a class="fng-btn" target="_blank" rel="noopener"
                             href="{{ route('esbtp.lmd.jurys.index', ['classe_id' => $ficheInsc->classe_id, 'annee_universitaire_id' => $ficheInsc->annee_universitaire_id]) }}"
                             title="Le PV est un document collectif de jury"><i class="fas fa-users"></i> PV du jury</a>
                     @endif
-                @elseif(auth()->user()->can('students.view') && auth()->user()->can('bulletins.view'))
-                    @if(\Illuminate\Support\Facades\Route::has('esbtp.bts.releves.preview'))
+                @else
+                    @can('bts.releve.view')
+                    @if(\Illuminate\Support\Facades\Route::has('esbtp.bts.releves.preview') && \App\Support\PorteDeRoute::ouverte('esbtp.bts.releves.preview', auth()->user()))
                     <a class="fng-btn" data-fng-document target="_blank" rel="noopener"
                         href="{{ route('esbtp.bts.releves.preview', ['etudiant' => $student->id, 'annee' => $ficheInsc->annee_universitaire_id]) }}"
                         title="Relevé interne de l'établissement, distinct du relevé national BTS"><i class="fas fa-file-pdf"></i> Relevé BTS</a>
                     @endif
-                    @if(\Illuminate\Support\Facades\Route::has('esbtp.bts.releves.download'))
+                    @endcan
+                    @can('bts.releve.export')
+                    @if(\Illuminate\Support\Facades\Route::has('esbtp.bts.releves.download') && \App\Support\PorteDeRoute::ouverte('esbtp.bts.releves.download', auth()->user()))
                     <a class="fng-btn" target="_blank" rel="noopener"
                         href="{{ route('esbtp.bts.releves.download', ['etudiant' => $student->id, 'annee' => $ficheInsc->annee_universitaire_id]) }}"
                         title="Télécharger le relevé interne BTS"><i class="fas fa-download"></i> PDF</a>
                     @endif
+                    @endcan
                 @endif
             </div>
         </div>
@@ -141,7 +148,9 @@
                                             data-delete-url="{{ route('esbtp.fiche-notes.supprimer', ['inscription' => $ficheInsc->id, 'note' => $studentNote->id]) }}"
                                             data-title="{{ $eval->titre }}" data-matiere="{{ $eval->matiere?->name ?? 'Matière inconnue' }}"><i class="fas fa-trash"></i></button>
                                     @endif
-                                    <a class="fng-icon-btn" target="_blank" rel="noopener" title="Détails de l'évaluation" href="{{ route('esbtp.evaluations.show', $eval->id) }}"><i class="fas fa-arrow-up-right-from-square"></i></a>
+                                    @if($canOpenEvaluation)
+                                        <a class="fng-icon-btn" target="_blank" rel="noopener" title="Détails de l'évaluation" href="{{ route('esbtp.evaluations.show', $eval->id) }}"><i class="fas fa-arrow-up-right-from-square"></i></a>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

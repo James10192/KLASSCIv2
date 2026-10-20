@@ -773,50 +773,6 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
         // Routes accessibles aux superAdmin, secrÃ©taires, coordinateurs et enseignants
         Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer|identity.communicate', 'paywall'])->group(function () {
-            // Routes pour les classes ESBTP - index et show avec permission view_classes
-            Route::get('classes', [ESBTPClasseController::class, 'index'])
-                ->name('classes.index')
-                ->middleware(['permission:classes.view']);
-
-            // Ecriture des classes : meme audience que la lecture, l'autorisation reelle
-            // etant portee par les permissions fines ci-dessous. Aucun role code en dur.
-            // `classes/create` est declaree avant `classes/{classe}` (qui est whereNumber).
-            Route::middleware('permission:classes.create')->group(function () {
-                Route::get('classes/create', [ESBTPClasseController::class, 'create'])->name('classes.create');
-                Route::post('classes', [ESBTPClasseController::class, 'store'])->name('classes.store');
-            });
-            Route::middleware('permission:classes.edit')->group(function () {
-                Route::get('classes/{classe}/edit', [ESBTPClasseController::class, 'edit'])->name('classes.edit');
-                Route::match(['put', 'patch'], 'classes/{classe}', [ESBTPClasseController::class, 'update'])->name('classes.update');
-            });
-            Route::delete('classes/{classe}', [ESBTPClasseController::class, 'destroy'])
-                ->name('classes.destroy')
-                ->middleware('permission:classes.delete');
-
-            Route::get('classes/{classe}', [ESBTPClasseController::class, 'show'])
-                ->name('classes.show')
-                ->whereNumber('classe') // Ã©vite que classes/overcapacity soit capturÃ© par show
-                ->middleware(['permission:classes.view']);
-
-            // Route pour gÃ©rer les matiÃ¨res d'une classe - accessible aux superAdmin et secrÃ©taires
-            Route::get('classes/{classe}/matieres', [ESBTPClasseController::class, 'matieres'])
-                ->name('classes.matieres')
-                ->middleware(['permission:classes.view']);
-
-            // Routes de l'API pour rÃ©cupÃ©rer les matiÃ¨res d'une classe - accessible aux superAdmin et secrÃ©taires
-            Route::get('classes/{classe}/matieres/api', [ESBTPClasseController::class, 'getMatieres'])
-                ->name('classes.matieres.data')
-                ->middleware(['permission:classes.view']);
-
-// Route pour vÃ©rifier les places disponibles dans une classe (throttle 60/min contre spam Select2)
-            Route::get('classes/{id}/available-places', [ESBTPEtudiantController::class, 'getAvailablePlaces'])
-                ->name('classes.available-places')
-                ->middleware(['permission:classes.view', 'throttle:60,1']);
-            
-            // Route pour rÃ©cupÃ©rer les classes en surcapacitÃ©
-            Route::get('classes/overcapacity', [ESBTPClasseController::class, 'getOvercapacityClasses'])
-                ->name('classes.overcapacity')
-                ->middleware(['permission:classes.view']);
             // Routes pour les matiÃ¨res
             Route::name('matieres.')->prefix('matieres')->group(function () {
                 // Maquette du bulletin par (filière, niveau) — BTS : composition,
@@ -1683,10 +1639,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware('throttle:30,1')
                 ->name('notes.save-ajax-bulk');
 
-            // PR #7 â€” Excel import/export bidirectionnel + preview impact bulletin
-            Route::get('notes/export-excel', [ESBTPNoteController::class, 'exportExcel'])
-                ->middleware('throttle:10,1')
-                ->name('notes.export-excel');
+            // PR #7 â€” import bidirectionnel + preview impact bulletin.
+            // L'export est déclaré hors de ce groupe de rôle, avec son droit dédié.
             Route::post('notes/import/dry-run', [ESBTPNoteController::class, 'importDryRun'])
                 ->middleware('throttle:5,1')
                 ->name('notes.import.dry-run');
@@ -1697,6 +1651,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware('throttle:60,1')
                 ->name('notes.preview-impact');
             Route::resource('notes', \App\Http\Controllers\ESBTPNoteController::class)
+                ->except(['index']) // lecture ciblée définie hors de la garde d'identité administrative
                 ->names([
                     'index' => 'esbtp.notes.index',
                     'create' => 'esbtp.notes.create',
@@ -1710,14 +1665,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('evaluations/{evaluation}/saisie-rapide', [ESBTPNoteController::class, 'saisieRapide'])
                 ->middleware('throttle:60,1')
                 ->name('notes.saisie-rapide');
-            Route::get('evaluations/{evaluation}/saisie-rapide/pdf', [ESBTPNoteController::class, 'saisieRapidePDF'])->name('notes.saisie-rapide.pdf');
-            Route::get('evaluations/{evaluation}/saisie-rapide/pdf/preview', [ESBTPNoteController::class, 'saisieRapidePDFPreview'])
-                ->name('notes.saisie-rapide.pdf-preview')
-                ->middleware('throttle:60,1');
-            Route::get('classes/{classe}/notes/saisie-rapide/pdf', [ESBTPNoteController::class, 'saisieRapideBlankPDF'])->name('notes.saisie-rapide-blank.pdf');
-            Route::get('classes/{classe}/notes/saisie-rapide/pdf/preview', [ESBTPNoteController::class, 'saisieRapideBlankPDFPreview'])
-                ->name('notes.saisie-rapide-blank.pdf-preview')
-                ->middleware('throttle:60,1');
+            // Fiches de notes PDF : déclarées séparément avec le droit d'export.
             Route::post('notes/store-batch', [ESBTPNoteController::class, 'enregistrerSaisieRapide'])
                 ->middleware('throttle:10,1')
                 ->name('notes.store-batch');
@@ -2193,14 +2141,46 @@ Route::middleware(['auth', 'permission:notes.view', 'permission:admin.access|ide
             ->middleware(['permission:notes.delete', 'throttle:30,1']);
     });
 
+// Lecture des notes BTS : l'index et ses données AJAX constituent un droit
+// métier explicite. Une permission individuelle notes.view + toggle du module
+// suffit, sans ouvrir les routes administratives de saisie.
+Route::prefix('esbtp/notes')->name('esbtp.notes.')
+    ->middleware(['auth', 'paywall', 'permission:module.notes_evaluations.access'])->group(function () {
+        Route::get('/', [ESBTPNoteController::class, 'index'])
+            ->middleware('permission:notes.view')->name('index');
+        Route::get('api/evaluations/by-class-matiere/{classId}/{matiereId}', [ESBTPEvaluationController::class, 'byClassMatiere'])
+            ->middleware(['permission:notes.view', 'throttle:60,1'])->name('evaluations.by-class-matiere');
+        Route::get('api/classes/{classe}/students', [ESBTPClasseController::class, 'students'])
+            ->middleware(['permission:notes.view', 'throttle:60,1'])->name('classes.students');
+    });
+
+// Exports et fiches de notes BTS, distincts des droits de saisie/lecture.
+// Cette déclaration autonome permet un accès individuel ciblé sans accorder
+// l'identité administrative ouvrant l'ensemble du module scolaire.
+Route::middleware(['auth', 'paywall'])->group(function () {
+    Route::get('/esbtp/notes/export-excel', [ESBTPNoteController::class, 'exportExcel'])
+        ->middleware(['permission:notes.export_excel', 'throttle:10,1'])
+        ->name('esbtp.notes.export-excel');
+    Route::middleware('permission:notes.feuille_vierge.export')->group(function () {
+        Route::get('/esbtp/evaluations/{evaluation}/saisie-rapide/pdf', [ESBTPNoteController::class, 'saisieRapidePDF'])
+            ->whereNumber('evaluation')->middleware('throttle:10,1')->name('esbtp.notes.saisie-rapide.pdf');
+        Route::get('/esbtp/evaluations/{evaluation}/saisie-rapide/pdf/preview', [ESBTPNoteController::class, 'saisieRapidePDFPreview'])
+            ->whereNumber('evaluation')->middleware('throttle:30,1')->name('esbtp.notes.saisie-rapide.pdf-preview');
+        Route::get('/esbtp/classes/{classe}/notes/saisie-rapide/pdf', [ESBTPNoteController::class, 'saisieRapideBlankPDF'])
+            ->whereNumber('classe')->middleware('throttle:10,1')->name('esbtp.notes.saisie-rapide-blank.pdf');
+        Route::get('/esbtp/classes/{classe}/notes/saisie-rapide/pdf/preview', [ESBTPNoteController::class, 'saisieRapideBlankPDFPreview'])
+            ->whereNumber('classe')->middleware('throttle:30,1')->name('esbtp.notes.saisie-rapide-blank.pdf-preview');
+    });
+});
+
 // Routes pour les Ã©valuations
 // La seconde clause ferme le groupe à qui ne porte AUCUN droit sur les
 // évaluations : `admin.access` seul (caissier, comptable) suffisait à créer,
 // modifier ou supprimer une évaluation et ses coefficients. Les anciens noms
 // (view_evaluations…) restent acceptés pour les rôles créés avant le registre.
 Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'permission:evaluations.view|evaluations.create|evaluations.edit|view_evaluations|create_evaluations|edit_evaluations'])->group(function () {
-    Route::get('/', [ESBTPEvaluationController::class, 'index'])->name('index');
-    Route::get('/create', [ESBTPEvaluationController::class, 'create'])->name('create');
+    Route::get('/', [ESBTPEvaluationController::class, 'index'])->middleware('permission:evaluations.view')->name('index');
+    Route::get('/create', [ESBTPEvaluationController::class, 'create'])->middleware('permission:evaluations.create')->name('create');
     Route::post('/', [ESBTPEvaluationController::class, 'store'])->name('store')->middleware('permission:evaluations.create');
 
     // AJAX: Charger matiÃ¨res disponibles pour une classe (via combinaisons globales)
@@ -2222,17 +2202,23 @@ Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['aut
     Route::patch('/{evaluation}/cancel', [ESBTPEvaluationController::class, 'cancel'])->name('cancel')->middleware('permission:evaluations.edit|edit_evaluations');
     Route::patch('/{evaluation}/restore', [ESBTPEvaluationController::class, 'restore'])->name('restore')->middleware('permission:evaluations.edit|edit_evaluations');
     // whereNumber Ã©vite que evaluations/active-external-links etc. soit capturÃ© par show/update/destroy
-    Route::get('/{evaluation}', [ESBTPEvaluationController::class, 'show'])->whereNumber('evaluation')->name('show');
-    Route::get('/{evaluation}/edit', [ESBTPEvaluationController::class, 'edit'])->whereNumber('evaluation')->name('edit');
+    Route::get('/{evaluation}', [ESBTPEvaluationController::class, 'show'])->whereNumber('evaluation')->middleware('permission:evaluations.view')->name('show');
+    Route::get('/{evaluation}/edit', [ESBTPEvaluationController::class, 'edit'])->whereNumber('evaluation')->middleware('permission:evaluations.edit')->name('edit');
     Route::put('/{evaluation}', [ESBTPEvaluationController::class, 'update'])->whereNumber('evaluation')->name('update')->middleware('permission:evaluations.edit|edit_evaluations');
     Route::delete('/{evaluation}', [ESBTPEvaluationController::class, 'destroy'])->whereNumber('evaluation')->name('destroy')->middleware('permission:evaluations.edit|edit_evaluations');
     Route::patch('/{evaluation}/toggle-published', [ESBTPEvaluationController::class, 'togglePublished'])->name('toggle-published')->middleware('permission:evaluations.edit|edit_evaluations');
     Route::patch('/{evaluation}/toggle-notes-published', [ESBTPEvaluationController::class, 'toggleNotesPublished'])->name('toggle-notes-published')->middleware('permission:evaluations.edit|edit_evaluations');
     Route::patch('/{evaluation}/update-status', [ESBTPEvaluationController::class, 'updateStatus'])->name('update-status')->middleware('permission:evaluations.edit|edit_evaluations');
-    Route::get('/{evaluation}/pdf', [ESBTPEvaluationController::class, 'generatePdf'])->name('pdf');
-    Route::get('/{evaluation}/pdf/preview', [ESBTPEvaluationController::class, 'previewPdf'])
-        ->name('pdf-preview')
-        ->middleware('throttle:60,1');
+});
+
+// Les PDF de notes d'évaluation sont un document sensible autonome :
+// evaluations.view ne les accorde plus implicitement, et une permission
+// individuelle ciblée n'a pas besoin d'admin.access pour l'URL directe.
+Route::middleware(['auth', 'paywall', 'permission:evaluations.notes.export'])->group(function () {
+    Route::get('/esbtp/evaluations/{evaluation}/pdf', [ESBTPEvaluationController::class, 'generatePdf'])
+        ->whereNumber('evaluation')->middleware('throttle:10,1')->name('esbtp.evaluations.pdf');
+    Route::get('/esbtp/evaluations/{evaluation}/pdf/preview', [ESBTPEvaluationController::class, 'previewPdf'])
+        ->whereNumber('evaluation')->middleware('throttle:60,1')->name('esbtp.evaluations.pdf-preview');
 });
 
 // Routes pour les notifications des Ã©tudiants
@@ -2263,8 +2249,8 @@ Route::get('/evaluations/{evaluation}/pdf', [ESBTPEvaluationController::class, '
     ->name('evaluations.pdf')
     ->middleware([
         'auth',
-        'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk',
-        'permission:evaluations.view|evaluations.create|evaluations.edit|view_evaluations|create_evaluations|edit_evaluations',
+        'paywall',
+        'permission:evaluations.notes.export',
         'throttle:10,1',
     ]);
 
@@ -2940,8 +2926,22 @@ Route::get('/esbtp-special/bulletins/configuration-groupe', \App\Http\Controller
     ->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'permission:bulletins.configure|lmd.structure.view', 'paywall'])
     ->name('esbtp.bulletins.configuration-groupe');
 
-// Routes classes â€” PROTÃ‰GÃ‰ES
-Route::middleware(['auth'])->group(function () {
+// Chaque route de classe a sa propre permission, y compris en accès direct.
+// Un titulaire de classes.view n'obtient pas les listes nominatives ni les PDF.
+Route::middleware(['auth', 'paywall'])->group(function () {
+    Route::prefix('esbtp')->name('esbtp.')->group(function () {
+        Route::get('classes', [ESBTPClasseController::class, 'index'])->middleware('permission:classes.view')->name('classes.index');
+        Route::get('classes/create', [ESBTPClasseController::class, 'create'])->middleware('permission:classes.create')->name('classes.create');
+        Route::post('classes', [ESBTPClasseController::class, 'store'])->middleware('permission:classes.create')->name('classes.store');
+        Route::get('classes/overcapacity', [ESBTPClasseController::class, 'getOvercapacityClasses'])->middleware('permission:classes.view')->name('classes.overcapacity');
+        Route::get('classes/{classe}', [ESBTPClasseController::class, 'show'])->middleware('permission:classes.view')->whereNumber('classe')->name('classes.show');
+        Route::get('classes/{classe}/edit', [ESBTPClasseController::class, 'edit'])->middleware('permission:classes.edit')->name('classes.edit');
+        Route::match(['put', 'patch'], 'classes/{classe}', [ESBTPClasseController::class, 'update'])->middleware('permission:classes.edit')->name('classes.update');
+        Route::delete('classes/{classe}', [ESBTPClasseController::class, 'destroy'])->middleware('permission:classes.delete')->name('classes.destroy');
+        Route::get('classes/{classe}/matieres', [ESBTPClasseController::class, 'matieres'])->middleware('permission:classes.view')->name('classes.matieres');
+        Route::get('classes/{classe}/matieres/api', [ESBTPClasseController::class, 'getMatieres'])->middleware('permission:classes.view')->name('classes.matieres.data');
+        Route::get('classes/{id}/available-places', [ESBTPEtudiantController::class, 'getAvailablePlaces'])->middleware(['permission:classes.view', 'throttle:60,1'])->name('classes.available-places');
+    });
     // Ce groupe ne gardait que « etre connecte ». Cinq de ses routes ECRIVENT :
     // elles changeaient les matieres d'une classe, y ajoutaient ou en retiraient
     // des eleves, et rejouaient la synchronisation du systeme academique — sans
@@ -2954,23 +2954,35 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/esbtp/classes/sync-systeme-academique', [ESBTPClasseController::class, 'syncSystemeAcademique'])
         ->middleware('permission:classes.edit')
         ->name('esbtp.classes.sync-systeme-academique');
-    Route::get('/esbtp/classes/{classe}/etudiants', [ESBTPClasseController::class, 'getEtudiants'])->name('esbtp.classes.etudiants');
-    Route::get('/esbtp/classes/{classe}/semestres-lmd', [\App\Http\Controllers\Routage\RoutesSimplesController::class, 'semestresLmd'])->name('esbtp.classes.semestres-lmd');
-    Route::middleware('permission:classes.view')->group(function () {
-        Route::get('/esbtp/classes/{classe}/liste-appel', [ESBTPClasseController::class, 'listeAppel'])->name('esbtp.classes.liste-appel');
-        Route::get('/esbtp/classes/{classe}/liste-appel/pdf', [ESBTPClasseController::class, 'listeAppelPDF'])->name('esbtp.classes.liste-appel.pdf');
-        Route::get('/esbtp/classes/{classe}/liste-complete', [ESBTPClasseController::class, 'listeComplete'])->name('esbtp.classes.liste-complete');
-        Route::get('/esbtp/classes/{classe}/liste-complete/pdf', [ESBTPClasseController::class, 'listeCompletePDF'])->name('esbtp.classes.liste-complete.pdf');
-        Route::get('/esbtp/classes/{classe}/liste-complete/excel', [ESBTPClasseController::class, 'listeCompleteExcel'])->name('esbtp.classes.liste-complete.excel');
-    });
-    Route::get('/esbtp/classes-export/excel', [ESBTPClasseController::class, 'exportExcel'])->name('esbtp.classes.export.excel');
-    Route::get('/esbtp/classes-export/csv', [ESBTPClasseController::class, 'exportCsv'])->name('esbtp.classes.export.csv');
-    Route::get('/esbtp/classes-export/pdf', [ESBTPClasseController::class, 'exportPdf'])->name('esbtp.classes.export.pdf');
-    Route::get('/esbtp/classes/{classe}/refresh-ligne', [ESBTPClasseController::class, 'refreshLigne'])->name('esbtp.classes.refresh-ligne');
+    // Compatibilité du sélecteur utilisé aussi pour générer des bulletins.
+    Route::get('/esbtp/classes/{classe}/etudiants', [ESBTPClasseController::class, 'getEtudiants'])
+        ->middleware(['permission:classes.students.view|bulletins.generate|lmd.bulletins.generate', 'throttle:60,1'])
+        ->name('esbtp.classes.etudiants');
+    Route::get('/esbtp/classes/{classe}/semestres-lmd', [\App\Http\Controllers\Routage\RoutesSimplesController::class, 'semestresLmd'])
+        ->middleware('permission:classes.view|lmd.notes.view|lmd.bulletins.view')->name('esbtp.classes.semestres-lmd');
+    Route::get('/esbtp/classes/{classe}/liste-appel', [ESBTPClasseController::class, 'listeAppel'])
+        ->middleware(['permission:classes.liste_appel.view', 'throttle:30,1'])->name('esbtp.classes.liste-appel');
+    Route::get('/esbtp/classes/{classe}/liste-appel/pdf', [ESBTPClasseController::class, 'listeAppelPDF'])
+        ->middleware(['permission:classes.liste_appel.export', 'throttle:10,1'])->name('esbtp.classes.liste-appel.pdf');
+    Route::get('/esbtp/classes/{classe}/liste-complete', [ESBTPClasseController::class, 'listeComplete'])
+        ->middleware(['permission:classes.liste_complete.view', 'throttle:30,1'])->name('esbtp.classes.liste-complete');
+    Route::get('/esbtp/classes/{classe}/liste-complete/pdf', [ESBTPClasseController::class, 'listeCompletePDF'])
+        ->middleware(['permission:classes.liste_complete.export', 'throttle:10,1'])->name('esbtp.classes.liste-complete.pdf');
+    Route::get('/esbtp/classes/{classe}/liste-complete/excel', [ESBTPClasseController::class, 'listeCompleteExcel'])
+        ->middleware(['permission:classes.liste_complete.export', 'throttle:10,1'])->name('esbtp.classes.liste-complete.excel');
+    Route::get('/esbtp/classes-export/excel', [ESBTPClasseController::class, 'exportExcel'])
+        ->middleware(['permission:classes.export', 'throttle:10,1'])->name('esbtp.classes.export.excel');
+    Route::get('/esbtp/classes-export/csv', [ESBTPClasseController::class, 'exportCsv'])
+        ->middleware(['permission:classes.export', 'throttle:10,1'])->name('esbtp.classes.export.csv');
+    Route::get('/esbtp/classes-export/pdf', [ESBTPClasseController::class, 'exportPdf'])
+        ->middleware(['permission:classes.export', 'throttle:10,1'])->name('esbtp.classes.export.pdf');
+    Route::get('/esbtp/classes/{classe}/refresh-ligne', [ESBTPClasseController::class, 'refreshLigne'])
+        ->middleware('permission:classes.view')->name('esbtp.classes.refresh-ligne');
     Route::post('/esbtp/classes/{classe}/update-matieres', [ESBTPClasseController::class, 'updateMatieres'])
         ->middleware('permission:classes.edit')
         ->name('esbtp.classes.update-matieres');
-    Route::get('/esbtp/classes/{classe}/search-available-students', [ESBTPClasseController::class, 'searchAvailableStudents'])->name('esbtp.classes.search-available-students');
+    Route::get('/esbtp/classes/{classe}/search-available-students', [ESBTPClasseController::class, 'searchAvailableStudents'])
+        ->middleware(['permission:students.edit', 'throttle:60,1'])->name('esbtp.classes.search-available-students');
     // Placer ou retirer un eleve d'une classe est une operation sur l'ELEVE, pas
     // sur la structure de la classe : `students.edit`, et non `classes.edit`.
     //
@@ -2991,9 +3003,10 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('permission:students.edit')
         ->name('esbtp.classes.remove-students');
     Route::post('/esbtp/classes/{classe}/check-student-data', [ESBTPClasseController::class, 'checkStudentData'])
-        ->middleware('permission:classes.view')
+        ->middleware('permission:students.edit')
         ->name('esbtp.classes.check-student-data');
-    Route::get('/esbtp/classes/{classe}/student-table-html', [ESBTPClasseController::class, 'studentTableHtml'])->name('esbtp.classes.student-table-html');
+    Route::get('/esbtp/classes/{classe}/student-table-html', [ESBTPClasseController::class, 'studentTableHtml'])
+        ->middleware('permission:classes.students.view')->name('esbtp.classes.student-table-html');
 });
 
 // ... existing code ...
@@ -3214,8 +3227,8 @@ Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|iden
 Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk'])->prefix('esbtp')->name('esbtp.')->group(function () {
     // Routes pour les notes
     Route::prefix('notes')->name('notes.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\ESBTPNoteController::class, 'index'])->name('index')
-            ->middleware('permission:notes.view');
+        // L'index est déclaré sous auth + module + notes.view, hors de la garde
+        // d'identité administrative de ce groupe d'écriture.
         Route::get('/create', [\App\Http\Controllers\ESBTPNoteController::class, 'create'])->name('create')
             ->middleware('permission:notes.create');
         Route::post('/', [\App\Http\Controllers\ESBTPNoteController::class, 'store'])->name('store')
@@ -3231,12 +3244,8 @@ Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|iden
         // saisie-rapide already defined in enseignant|coordinateur group (line 1347)
         
         // API routes for new notes system â€” throttle gÃ©nÃ©reux 60/min (lecture seule).
-        Route::get('/api/evaluations/by-class-matiere/{classId}/{matiereId}', [\App\Http\Controllers\ESBTPEvaluationController::class, 'byClassMatiere'])
-            ->middleware('throttle:60,1')
-            ->name('evaluations.by-class-matiere');
-        Route::get('/api/classes/{classe}/students', [\App\Http\Controllers\ESBTPClasseController::class, 'students'])
-            ->middleware('throttle:60,1')
-            ->name('classes.students');
+        // Consultations AJAX de la grille : déclarées hors du groupe d'identité
+        // avec leur permission métier et un contrôle de cohorte serveur.
         Route::get('/api/classes/{classe}/matieres', \App\Http\Controllers\Notes\MatieresDeLaClasseController::class)
             ->middleware('throttle:60,1')
             ->name('classes.matieres');
@@ -3452,14 +3461,8 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
     // enseignant aux evaluations qui lui sont confiees (evaluation nommant
     // l'enseignant, ou affectation active a la matiere pour l'annee), puis
     // filtre creation et modification par notes.create / notes.edit.
-    Route::get('notes', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'index'])
-        ->middleware('permission:lmd.notes.view')->name('notes.index');
-    Route::get('notes/saisie/{evaluation}', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'saisieRapide'])
-        ->middleware('permission:lmd.notes.manage')->name('notes.saisie');
-    Route::post('notes/save-bulk', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'saveBulk'])
-        ->middleware('permission:lmd.notes.manage')->name('notes.save-bulk');
-    Route::get('notes/classe/{classe}/data', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'classeData'])
-        ->middleware('permission:lmd.notes.view')->name('notes.classe-data');
+    // Notes LMD (index, AJAX et saisie) : routes indépendantes ci-dessous,
+    // pour ne pas imposer une identité administrative au droit individuel.
     // Régularisations d'un relevé → examens (titre et type, aucune note ne bouge).
     Route::get('notes/classe/{classe}/requalification', [\App\Http\Controllers\ESBTPLMDRequalificationController::class, 'inventaire'])
         ->middleware(['permission:lmd.notes.manage', 'permission:evaluations.edit'])->name('notes.requalification');
@@ -3527,6 +3530,21 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
         ->whereNumber('ueId')
         ->name('ues.update-responsable');
 });
+
+// Accès LMD Notes granulaire, sans ouvrir le reste du module LMD aux rôles
+// sans identité administrative. Chaque route garde le toggle module et la
+// permission de lecture ou de saisie, et le contrôleur borne enseignants/années.
+Route::prefix('esbtp/lmd/notes')->name('esbtp.lmd.notes.')
+    ->middleware(['auth', 'paywall', 'permission:module.lmd.access'])->group(function () {
+        Route::get('/', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'index'])
+            ->middleware('permission:lmd.notes.view')->name('index');
+        Route::get('saisie/{evaluation}', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'saisieRapide'])
+            ->middleware('permission:lmd.notes.manage')->name('saisie');
+        Route::post('save-bulk', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'saveBulk'])
+            ->middleware(['permission:lmd.notes.manage', 'throttle:30,1'])->name('save-bulk');
+        Route::get('classe/{classe}/data', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'classeData'])
+            ->middleware(['permission:lmd.notes.view', 'throttle:120,1'])->name('classe-data');
+    });
 
 Route::get('/esbtp/lmd/ajournes', [\App\Http\Controllers\ESBTPLMDAjournesController::class, 'index'])
     ->middleware(['auth', 'permission:module.lmd.access', 'permission:lmd.ajournes.view', 'paywall'])
@@ -3618,12 +3636,11 @@ Route::get('/esbtp/lmd/jurys/official-documents/{document}/stream', [\App\Domain
 // ============================================================
 // Releve de notes (document officiel)
 // ============================================================
-// La garde de groupe du module est reprise a l'identique sur chaque route, puis
-// completee par le droit metier. `issue` cree une piece officielle immuable : elle
-// est separee de la simple consultation.
+// Chaque action ci-dessous a son propre droit métier. La garde d'identité
+// administrative n'est pas imposée : elle empêchait l'accès ciblé accordé à
+// une personne sur les seuls relevés. Module LMD et paywall restent obligatoires.
 Route::middleware([
     'auth',
-    'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk',
     'permission:module.lmd.access',
     'paywall',
 ])->group(function () {
@@ -3652,14 +3669,12 @@ Route::middleware([
 Route::middleware([
     'auth',
     'paywall',
-    'permission:students.view',
-    'permission:bulletins.view',
 ])->group(function () {
     Route::get('/esbtp/bts/releves/{etudiant}/{annee}/apercu', [\App\Http\Controllers\ESBTP\BtsStudentTranscriptController::class, 'preview'])
-        ->middleware('throttle:30,1')
+        ->middleware(['permission:bts.releve.view', 'throttle:30,1'])
         ->name('esbtp.bts.releves.preview');
     Route::get('/esbtp/bts/releves/{etudiant}/{annee}/telecharger', [\App\Http\Controllers\ESBTP\BtsStudentTranscriptController::class, 'download'])
-        ->middleware('throttle:20,1')
+        ->middleware(['permission:bts.releve.export', 'throttle:20,1'])
         ->name('esbtp.bts.releves.download');
 });
 

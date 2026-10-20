@@ -316,8 +316,12 @@
                 {{-- Auto-save info --}}
                 <div class="nm-autosave-info">
                     <i class="fas fa-info-circle"></i>
+                    @canany(['notes.create', 'notes.edit'])
                     Les modifications restent en brouillon local pendant la saisie.
                     <span class="fw-semibold">Cliquez sur « Valider les notes » pour enregistrer, verrouiller et actualiser la saisie finale.</span>
+                    @else
+                    Consultation des notes en lecture seule. Les documents disponibles dépendent de vos permissions individuelles.
+                    @endcanany
                 </div>
             </div>
             <div class="modal-footer nm-modal-footer">
@@ -325,18 +329,28 @@
                 <span id="nm-sync-badge" class="badge bg-light text-success border me-auto" style="display:none; font-weight: 500; padding: .45rem .65rem;" title="Le bulletin sera mis à jour automatiquement avec cette note">
                     <i class="fas fa-check-circle me-1"></i>Bulletin synchronisé · <span id="nm-sync-time">à l'instant</span>
                 </span>
-                <a href="#" class="btn btn-outline-secondary disabled" id="previewBlankPdfBtn" target="_blank" rel="noopener" aria-disabled="true" tabindex="-1" title="Aperçu PDF dans un nouvel onglet">
+                @can('notes.feuille_vierge.export')
+                <a href="#" class="btn btn-outline-secondary disabled" id="previewBlankPdfBtn" target="_blank" rel="noopener" aria-disabled="true" tabindex="-1" title="Aperçu PDF vierge dans un nouvel onglet">
                     <i class="fas fa-eye me-1"></i>Aperçu PDF
                 </a>
                 <a href="#" class="btn btn-outline-primary disabled" id="exportBlankPdfBtn" target="_blank" rel="noopener" aria-disabled="true" tabindex="-1">
                     <i class="fas fa-file-pdf me-1"></i>Feuille vierge (PDF)
                 </a>
+                @endcan
+                @can('notes.export_excel')
+                <button type="button" class="btn btn-outline-primary disabled" id="exportExcelBtn" disabled
+                        title="Sélectionnez une classe, une matière et un semestre pour exporter les notes">
+                    <i class="fas fa-file-excel me-1"></i>Notes Excel
+                </button>
+                @endcan
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times me-1"></i>Fermer
                 </button>
+                @canany(['notes.create', 'notes.edit'])
                 <button type="button" class="btn btn-success" id="saveAllNotesBtn" style="display: none;">
                     <i class="fas fa-check-circle me-1"></i>Valider les notes
                 </button>
+                @endcanany
             </div>
         </div>
     </div>
@@ -615,6 +629,7 @@ let evalParamsCache = {};
 let nmFinalSaveInFlight = false;
 let nmFinalSaveRetryTimer = null;
 const nmCanEditSubmittedNotes = @json(auth()->user()?->can('notes.edit') ?? false);
+const nmCanCreateNotes = @json(auth()->user()?->can('notes.create') ?? false);
 const nmAppreciationScale = @json(app(\App\Services\AppreciationScaleService::class)->frontendScale('bts'));
 const blankPdfUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf", ["classe" => ":classId", "annee_universitaire_id" => $anneeSelectionneeId]) }}';
 const blankPdfPreviewUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf-preview", ["classe" => ":classId", "annee_universitaire_id" => $anneeSelectionneeId]) }}';
@@ -1347,11 +1362,14 @@ function renderNotesGrid(students, sortedEvaluations) {
             const semesterNumber = evaluation._period === 'semestre2' ? 2 : 1;
             const isEligibleForEvaluation = eligibleSemesters.includes(semesterNumber);
             const noteMeta = noteMetaData[student.id]?.[evaluation.id] || {};
-            const isLocked = !!noteMeta.is_locked || !isEligibleForEvaluation;
+            const hasExistingNote = note !== '' && note !== null || isAbsent;
+            const isLocked = !!noteMeta.is_locked || !isEligibleForEvaluation
+                || (hasExistingNote && !nmCanEditSubmittedNotes)
+                || (!hasExistingNote && !nmCanCreateNotes);
             const lockedClass = isLocked ? ' nm-note-locked' : '';
             const disabledReason = !isEligibleForEvaluation
                 ? "L'étudiant n'était pas dans cette classe pour ce semestre."
-                : "Note déjà validée.";
+                : 'Vous ne disposez pas du droit de saisir ou modifier cette note.';
 
             const noteCell = `
                 <td class="text-center nm-note-cell">
@@ -1392,7 +1410,7 @@ function renderNotesGrid(students, sortedEvaluations) {
 
     buildClassAveragesRow(sortedEvaluations);
     calculateAllAverages();
-    $('#saveAllNotesBtn').show();
+    if (nmCanCreateNotes || nmCanEditSubmittedNotes) $('#saveAllNotesBtn').show();
 
     // Measure actual period row height for sticky offset
     const periodRowEl = document.querySelector('.nm-period-row th');

@@ -1561,12 +1561,12 @@
                                     <span>Filières</span>
                                 </a>
                                 @endcan
-                                @can('classes.view')
+                                @if(\App\Support\PorteDeRoute::ouverte('esbtp.classes.index', auth()->user()))
                                 <a href="{{ route('esbtp.classes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.classes.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Classes</span>
                                 </a>
-                                @endcan
+                                @endif
                                 @can('niveaux.view')
                                 <a href="{{ route('esbtp.niveaux-etudes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.niveaux-etudes.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
@@ -1711,7 +1711,15 @@
                         </div>
                     @endcan
                     @can('module.notes_evaluations.access')
-                    @can('notes.view')
+                    @php
+                        // Le droit métier de chaque destination se décide par sa
+                        // route réelle, et non par notes.view pour toute la rubrique.
+                        $sidebarNotes = auth()->user()->can('notes.view') && \App\Support\PorteDeRoute::ouverte('esbtp.notes.index', auth()->user());
+                        $sidebarResultats = \App\Support\PorteDeRoute::ouverte('esbtp.resultats.index', auth()->user());
+                        $sidebarBulletins = \App\Support\PorteDeRoute::ouverte('esbtp.bulletins.index', auth()->user());
+                        $sidebarReclamations = auth()->user()->can('notes.reclamations.traiter') && \App\Support\PorteDeRoute::ouverte('esbtp.reclamations-notes.index', auth()->user());
+                        $sidebarEvaluations = \App\Support\PorteDeRoute::ouverte('esbtp.evaluations.index', auth()->user());
+                    @endphp
                         @canany(['reports.academic.rentree', 'reports.academic.trimestre', 'reports.academic.annuel'])
                         <div class="menu-category">Rapports pedagogiques</div>
                         @can('reports.academic.rentree')
@@ -1740,9 +1748,11 @@
                         @endcan
                         @endcanany
 
+                        @if($sidebarNotes || $sidebarResultats || $sidebarBulletins || $sidebarReclamations || $sidebarEvaluations)
                         <div class="menu-category">Notes & Rapports</div>
 
                         <!-- Grades Management -->
+                        @if($sidebarNotes || $sidebarResultats || $sidebarBulletins || $sidebarReclamations)
                         <div class="menu-accordion">
                             <button class="menu-accordion-btn {{ Request::routeIs('esbtp.notes.*') || Request::routeIs('esbtp.bulletins.*') || Request::routeIs('esbtp.resultats.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-file-alt"></i></div>
@@ -1750,42 +1760,63 @@
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
                             <div class="menu-accordion-content {{ Request::routeIs('esbtp.notes.*') || Request::routeIs('esbtp.bulletins.*') || Request::routeIs('esbtp.resultats.*') || Request::routeIs('esbtp.reclamations-notes.*') ? 'show' : '' }}">
+                                @if($sidebarNotes)
                                 <a href="{{ route('esbtp.notes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.notes.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Gestion des notes</span>
                                 </a>
+                                @endif
+                                @if($sidebarResultats)
                                 <a href="{{ route('esbtp.resultats.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.resultats.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Résultats & Classements</span>
                                 </a>
-                                @can('notes.reclamations.traiter')
+                                @endif
+                                @if($sidebarReclamations)
                                 <a href="{{ route('esbtp.reclamations-notes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.reclamations-notes.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Réclamations de notes</span>
                                 </a>
-                                @endcan
-                                @can('bulletins.view')
+                                @endif
+                                @if($sidebarBulletins)
                                 <a href="{{ route('esbtp.bulletins.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.bulletins.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Bulletins</span>
                                 </a>
-                                @endcan
+                                @endif
                             </div>
                         </div>
+                        @endif
 
                         <!-- Exams & Evaluations -->
+                        @if($sidebarEvaluations)
                         <div class="menu-item">
                             <a href="{{ route('esbtp.evaluations.index') }}" class="menu-link {{ Request::routeIs('esbtp.evaluations.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-clipboard-list"></i></div>
                                 <div class="menu-text">Examens & Évaluations</div>
                             </a>
                         </div>
-                    @endcan
+                        @endif
+                        @endif
                     @endcan
 
                     <!-- LMD Section (Licence-Master-Doctorat) -->
                     @can('module.lmd.access')
-                    @can('notes.view')
+                    @php
+                        $sidebarLmdRoutes = [
+                            'esbtp.lmd.parcours-domain.index', 'esbtp.lmd.ue.index',
+                            'esbtp.lmd.notes.index', 'esbtp.lmd.resultats.index',
+                            'esbtp.lmd.bulletins.index', 'esbtp.lmd.planning.index',
+                            'esbtp.examens.index', 'esbtp.lmd.rattrapage.index',
+                            'esbtp.lmd.jurys.index', 'esbtp.lmd.ajournes.index',
+                            'esbtp.lmd.reconciliation.index',
+                        ];
+                        $sidebarLmdOuverts = [];
+                        foreach ($sidebarLmdRoutes as $sidebarLmdRoute) {
+                            $sidebarLmdOuverts[$sidebarLmdRoute] = \App\Support\PorteDeRoute::ouverte($sidebarLmdRoute, auth()->user());
+                        }
+                    @endphp
+                    @if(in_array(true, $sidebarLmdOuverts, true))
                         <div class="menu-category">Système LMD</div>
 
                         <div class="menu-accordion">
@@ -1795,73 +1826,75 @@
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
                             <div class="menu-accordion-content {{ Request::routeIs('esbtp.lmd.*') ? 'show' : '' }}">
-                                @can('lmd.structure.view')
+                                @if($sidebarLmdOuverts['esbtp.lmd.parcours-domain.index'])
                                 <a href="{{ route('esbtp.lmd.parcours-domain.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.parcours-domain.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Domaines & Parcours</span>
                                 </a>
+                                @endif
+                                @if($sidebarLmdOuverts['esbtp.lmd.ue.index'])
                                 <a href="{{ route('esbtp.lmd.ue.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.ue.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Unités d'Enseignement</span>
                                 </a>
-                                @endcan
-                                @can('lmd.notes.view')
+                                @endif
+                                @if($sidebarLmdOuverts['esbtp.lmd.notes.index'])
                                 <a href="{{ route('esbtp.lmd.notes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.notes.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Notes LMD</span>
                                 </a>
-                                @endcan
-                                @can('lmd.resultats.view')
+                                @endif
+                                @if($sidebarLmdOuverts['esbtp.lmd.resultats.index'])
                                 <a href="{{ route('esbtp.lmd.resultats.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.resultats.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Résultats LMD</span>
                                 </a>
-                                @endcan
-                                @can('lmd.bulletins.view')
+                                @endif
+                                @if($sidebarLmdOuverts['esbtp.lmd.bulletins.index'])
                                 <a href="{{ route('esbtp.lmd.bulletins.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.bulletins.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Bulletins LMD</span>
                                 </a>
-                                @endcan
-                                @can('lmd.planning.view')
+                                @endif
+                                @if($sidebarLmdOuverts['esbtp.lmd.planning.index'])
                                 <a href="{{ route('esbtp.lmd.planning.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.planning.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Maquettes</span>
                                 </a>
-                                @endcan
-                                @can('lmd.examens.view')
+                                @endif
+                                @if($sidebarLmdOuverts['esbtp.examens.index'])
                                 <a href="{{ route('esbtp.examens.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.examens.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Examens planifiés</span>
                                 </a>
-                                @endcan
-                                @can('lmd.rattrapage.view')
+                                @endif
+                                @if($sidebarLmdOuverts['esbtp.lmd.rattrapage.index'])
                                 <a href="{{ route('esbtp.lmd.rattrapage.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.rattrapage.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Sessions &amp; Rattrapage</span>
                                 </a>
-                                @endcan
-                                @can('lmd.jury.view')
+                                @endif
+                                @if($sidebarLmdOuverts['esbtp.lmd.jurys.index'])
                                 <a href="{{ route('esbtp.lmd.jurys.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.jurys.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Jurys de délibération</span>
                                 </a>
-                                @endcan
-                                @can('lmd.ajournes.view')
+                                @endif
+                                @if($sidebarLmdOuverts['esbtp.lmd.ajournes.index'])
                                 <a href="{{ route('esbtp.lmd.ajournes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.ajournes.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Ajournés (UE / IE)</span>
                                 </a>
-                                @endcan
-                                @can('lmd.reconciliation.manage')
+                                @endif
+                                @if($sidebarLmdOuverts['esbtp.lmd.reconciliation.index'])
                                 <a href="{{ route('esbtp.lmd.reconciliation.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.reconciliation.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Réconciliation doublons</span>
                                 </a>
-                                @endcan
+                                @endif
                             </div>
                         </div>
-                    @endcan
+                    @endif
                     @endcan
 
                     {{-- TPE — Travail Personnel Etudiant (LMD UEMOA) --}}

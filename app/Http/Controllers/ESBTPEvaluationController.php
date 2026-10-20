@@ -1316,6 +1316,8 @@ class ESBTPEvaluationController extends Controller
             [$pdf, $filename] = $this->buildEvaluationPdf($evaluation);
 
             return $pdf->download($filename);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+            throw $e;
         } catch (\Exception $e) {
             return back()->with('error', 'Erreur lors de la génération du PDF : '.$e->getMessage());
         }
@@ -1330,6 +1332,8 @@ class ESBTPEvaluationController extends Controller
             [$pdf, $filename] = $this->buildEvaluationPdf($evaluation);
 
             return $pdf->stream($filename);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+            throw $e;
         } catch (\Exception $e) {
             return back()->with('error', 'Erreur lors de la prévisualisation du PDF : '.$e->getMessage());
         }
@@ -1341,6 +1345,31 @@ class ESBTPEvaluationController extends Controller
      */
     private function buildEvaluationPdf(ESBTPEvaluation $evaluation): array
     {
+        $user = Auth::user();
+        abort_unless($user?->can('evaluations.notes.export'), 403);
+
+        // Le droit d'export ne donne pas accès aux relevés d'une autre classe.
+        if ($user->can('identity.teach') && ! $user->can('identity.coordinate')) {
+            $owner = (int) $evaluation->enseignant_id === (int) $user->id
+                || (int) $evaluation->created_by === (int) $user->id;
+            $teacherId = $user->teacherProfile?->id;
+            $classeConfiee = ! $owner && $teacherId && \App\Models\ESBTPSeanceCours::query()
+                ->join('esbtp_emploi_temps', 'esbtp_seance_cours.emploi_temps_id', '=', 'esbtp_emploi_temps.id')
+                ->where('esbtp_seance_cours.teacher_id', $teacherId)
+                ->where('esbtp_seance_cours.classe_id', $evaluation->classe_id)
+                ->where('esbtp_emploi_temps.annee_universitaire_id', $evaluation->annee_universitaire_id)
+                ->exists();
+            $matiereConfiee = ! $owner && $classeConfiee && $evaluation->matiere_id
+                && DB::table('esbtp_enseignant_matiere')
+                    ->where('enseignant_id', $user->id)
+                    ->where('matiere_id', $evaluation->matiere_id)
+                    ->where('annee_universitaire_id', $evaluation->annee_universitaire_id)
+                    ->where('is_active', true)
+                    ->exists();
+
+            abort_unless($owner || $matiereConfiee, 403, 'Cette évaluation ne vous est pas confiée.');
+        }
+
         $evaluation->load(['classe', 'matiere', 'notes.etudiant']);
 
         $anneeCourante = ESBTPAnneeUniversitaire::find($evaluation->annee_universitaire_id);
@@ -1990,6 +2019,58 @@ class ESBTPEvaluationController extends Controller
      */
     public function byClassMatiere(Request $request, $classId, $matiereId)
     {
+        // Ces données contiennent les notes nominatives. Les droits et le
+        // périmètre enseignant se vérifient AVANT le try/catch métier afin
+        // qu'un refus 403 ne soit jamais converti en erreur serveur 500.
+        $user = $request->user();
+        abort_unless($user && (
+            $user->can('notes.view') || $user->can('notes.view_own')
+            || $user->can('notes.create') || $user->can('notes.edit')
+            || $user->can('notes.manage_own') || $user->can('lmd.notes.view')
+            || $user->can('lmd.notes.manage')
+        ), 403);
+
+        $anneeAutorisee = $this->anneeDemandeeOuCourante($request);
+        if ($anneeAutorisee && $user->can('identity.teach') && ! $user->can('identity.coordinate')) {
+            $evaluationConfiee = ESBTPEvaluation::query()
+                ->where('classe_id', $classId)
+                ->where('matiere_id', $matiereId)
+                ->where('annee_universitaire_id', $anneeAutorisee->id)
+                ->where(fn ($q) => $q
+                    ->where('enseignant_id', $user->id)
+                    ->orWhere('created_by', $user->id))
+                ->exists();
+
+            $teacherId = $user->teacherProfile?->id;
+            $classePlanifiee = $teacherId && \App\Models\ESBTPSeanceCours::query()
+                ->join('esbtp_emploi_temps', 'esbtp_seance_cours.emploi_temps_id', '=', 'esbtp_emploi_temps.id')
+                ->where('esbtp_seance_cours.teacher_id', $teacherId)
+                ->where('esbtp_seance_cours.classe_id', $classId)
+                ->where('esbtp_emploi_temps.annee_universitaire_id', $anneeAutorisee->id)
+                ->exists();
+
+            // Le pivot matière vaut pour l'année, pas pour une classe : il ne
+            // suffit pas à lui seul pour lire les notes d'une autre cohorte.
+            $matiereConfiee = ! $evaluationConfiee && $classePlanifiee && DB::table('esbtp_enseignant_matiere')
+                ->where('enseignant_id', $user->id)
+                ->where('matiere_id', $matiereId)
+                ->where('annee_universitaire_id', $anneeAutorisee->id)
+                ->where('is_active', true)
+                ->exists();
+
+            $seanceConfiee = ! $evaluationConfiee && ! $matiereConfiee && $teacherId
+                && \App\Models\ESBTPSeanceCours::query()
+                    ->join('esbtp_emploi_temps', 'esbtp_seance_cours.emploi_temps_id', '=', 'esbtp_emploi_temps.id')
+                    ->where('esbtp_seance_cours.teacher_id', $teacherId)
+                    ->where('esbtp_seance_cours.classe_id', $classId)
+                    ->where('esbtp_seance_cours.matiere_id', $matiereId)
+                    ->where('esbtp_emploi_temps.annee_universitaire_id', $anneeAutorisee->id)
+                    ->exists();
+
+            abort_unless($evaluationConfiee || $matiereConfiee || $seanceConfiee, 403,
+                'Cette classe et cette matière ne vous sont pas confiées pour cette année.');
+        }
+
         try {
             \Log::info('📚 [API] byClassMatiere - Request received', [
                 'class_id' => $classId,
@@ -2015,7 +2096,7 @@ class ESBTPEvaluationController extends Controller
                 ], 404);
             }
 
-            $anneeCourante = $this->anneeDemandeeOuCourante($request);
+            $anneeCourante = $anneeAutorisee;
             if (! $anneeCourante) {
                 return response()->json([
                     'success' => false,

@@ -512,6 +512,40 @@ return [
             'icon' => 'fa-school',
             'aliases' => ['view_classes', 'view classes'],
         ],
+        // Chaque consultation/édition/export conserve sa propre autorisation.
+        // Ces droits ne sont PAS impliqués par classes.view : une délégation
+        // individuelle peut donc être limitée à une seule fiche ou impression.
+        'classes.students.view' => [
+            'label' => 'Consulter les étudiants d’une classe',
+            'description' => 'Accéder aux listes nominatives et aux tableaux des étudiants depuis la fiche classe.',
+            'group' => 'Académique',
+            'icon' => 'fa-users',
+        ],
+        'classes.liste_appel.view' => [
+            'label' => 'Consulter la liste d’appel d’une classe',
+            'group' => 'Académique',
+            'icon' => 'fa-list-check',
+        ],
+        'classes.liste_appel.export' => [
+            'label' => 'Exporter la liste d’appel en PDF',
+            'group' => 'Académique',
+            'icon' => 'fa-file-pdf',
+        ],
+        'classes.liste_complete.view' => [
+            'label' => 'Consulter la liste complète d’une classe',
+            'group' => 'Académique',
+            'icon' => 'fa-list',
+        ],
+        'classes.liste_complete.export' => [
+            'label' => 'Exporter la liste complète d’une classe (PDF/Excel)',
+            'group' => 'Académique',
+            'icon' => 'fa-file-export',
+        ],
+        'classes.export' => [
+            'label' => 'Exporter le catalogue des classes (PDF/Excel/CSV)',
+            'group' => 'Académique',
+            'icon' => 'fa-file-export',
+        ],
         'classes.create' => [
             'label' => 'Créer une classe',
             'group' => 'Académique',
@@ -703,6 +737,23 @@ return [
             'group' => 'Notes & Évaluations',
             'icon' => 'fa-file-import',
             'aliases' => [],
+        ],
+        'notes.export_excel' => [
+            'label' => 'Exporter les notes dans Excel',
+            'group' => 'Notes & Évaluations',
+            'icon' => 'fa-file-excel',
+        ],
+        'notes.feuille_vierge.export' => [
+            'label' => 'Imprimer une fiche de saisie de notes vierge',
+            'description' => 'Autorise les fiches vierges par classe ou évaluation, sans autoriser les feuilles contenant les résultats.',
+            'group' => 'Notes & Évaluations',
+            'icon' => 'fa-file-pdf',
+        ],
+        'evaluations.notes.export' => [
+            'label' => 'Exporter les feuilles d’évaluation renseignées',
+            'description' => 'Autorise les PDF d’évaluation contenant les notes nominatives, distinctement des fiches vierges.',
+            'group' => 'Notes & Évaluations',
+            'icon' => 'fa-file-pdf',
         ],
         // Réclamations de notes : l'élève conteste, l'enseignant de l'évaluation
         // donne son avis (par affectation, pas par permission), et seul le
@@ -1798,6 +1849,18 @@ return [
             'description' => 'L\'émission crée une pièce officielle immuable et versionnée. À réserver au profil qui publie déjà les délibérations.',
             'group' => 'LMD',
             'icon' => 'fa-file-circle-check',
+        ],
+        'bts.releve.view' => [
+            'label' => 'Consulter les relevés de notes BTS internes',
+            'description' => 'Donne accès à l’aperçu individuel du relevé BTS interne, distinct du relevé officiel LMD.',
+            'group' => 'Notes & Évaluations',
+            'icon' => 'fa-file-lines',
+        ],
+        'bts.releve.export' => [
+            'label' => 'Télécharger les relevés de notes BTS internes',
+            'description' => 'Autorise le téléchargement des relevés BTS, sans droit automatique sur les bulletins ou relevés LMD.',
+            'group' => 'Notes & Évaluations',
+            'icon' => 'fa-file-pdf',
         ],
 
         // ===== Seconde session : saisie des notes =====

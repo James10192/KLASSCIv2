@@ -1327,6 +1327,7 @@
                     <i class="fas fa-rotate-left"></i>
                 </button>
 
+                @can('classes.export')
                 <div class="dropdown">
                     <button type="button"
                             class="ci-btn--ghost"
@@ -1343,6 +1344,7 @@
                         <li><button type="button" class="dropdown-item" onclick="exportClasses('pdf')"><i class="fas fa-file-pdf"></i>PDF</button></li>
                     </ul>
                 </div>
+                @endcan
 
                 {{-- Bouton submit caché pour maintenir compatibilité form AJAX --}}
                 <button type="submit" style="display:none;" aria-hidden="true">Filtrer</button>

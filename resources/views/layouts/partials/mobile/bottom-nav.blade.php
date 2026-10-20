@@ -92,6 +92,11 @@
                     'classes' => ['route' => 'esbtp.classes.index', 'on' => 'esbtp.classes.*', 'icon' => 'grid', 'label' => 'Classes', 'court' => 'Classes'],
                     'edt' => ['route' => 'esbtp.emploi-temps.index', 'on' => 'esbtp.emploi-temps.*', 'icon' => 'cal', 'label' => 'Emplois du temps', 'court' => 'EDT'],
                     'notes' => ['route' => 'esbtp.notes.index', 'on' => 'esbtp.notes.*', 'icon' => 'list', 'label' => 'Notes', 'court' => 'Notes'],
+                    // Des droits LMD seuls ne supposent pas notes.view (BTS).
+                    // PorteDeRoute filtre aussi la garde de module et d'identité.
+                    'notes_lmd' => ['route' => 'esbtp.lmd.notes.index', 'on' => 'esbtp.lmd.notes.*', 'icon' => 'list', 'label' => 'Notes LMD', 'court' => 'Notes LMD'],
+                    'resultats_lmd' => ['route' => 'esbtp.lmd.resultats.index', 'on' => 'esbtp.lmd.resultats.*', 'icon' => 'grid', 'label' => 'Résultats LMD', 'court' => 'Résultats'],
+                    'bulletins_lmd' => ['route' => 'esbtp.lmd.bulletins.index', 'on' => 'esbtp.lmd.bulletins.*', 'icon' => 'file', 'label' => 'Bulletins LMD', 'court' => 'Bulletins'],
                     'ue' => ['route' => 'esbtp.lmd.ue.index', 'on' => 'esbtp.lmd.ue.*', 'icon' => 'book', 'label' => 'UE et ECUE (LMD)', 'court' => 'UE'],
                     'parcours' => ['route' => 'esbtp.lmd.parcours-domain.index', 'on' => 'esbtp.lmd.parcours-domain.*', 'icon' => 'scale', 'label' => 'Parcours LMD', 'court' => 'Parcours'],
                     'evaluations' => ['route' => 'esbtp.evaluations.index', 'on' => 'esbtp.evaluations.*', 'icon' => 'pen', 'label' => 'Évaluations', 'court' => 'Évaluations'],
@@ -100,8 +105,8 @@
                     'filieres' => ['route' => 'esbtp.filieres.index', 'on' => 'esbtp.filieres.*', 'icon' => 'book', 'label' => 'Filières', 'court' => 'Filières'],
                 ];
                 $mScoOrdre = $mScoPedago
-                    ? ['classes', 'edt', 'notes', 'ue', 'evaluations', 'bulletins', 'etudiants', 'inscriptions', 'parcours', 'annonces', 'filieres', 'paiements']
-                    : ['inscriptions', 'etudiants', 'paiements', 'classes', 'ue', 'edt', 'notes', 'bulletins', 'evaluations', 'parcours', 'annonces', 'filieres'];
+                    ? ['classes', 'edt', 'notes', 'notes_lmd', 'ue', 'evaluations', 'bulletins', 'resultats_lmd', 'bulletins_lmd', 'etudiants', 'inscriptions', 'parcours', 'annonces', 'filieres', 'paiements']
+                    : ['inscriptions', 'etudiants', 'paiements', 'classes', 'ue', 'edt', 'notes', 'notes_lmd', 'bulletins', 'bulletins_lmd', 'evaluations', 'resultats_lmd', 'parcours', 'annonces', 'filieres'];
                 $mScoOuverts = [];
                 foreach ($mScoOrdre as $cle) {
                     $lien = $mScoCatalogue[$cle];

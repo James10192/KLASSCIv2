@@ -54,6 +54,17 @@
         </div>
     @endif
 
+    @php
+        $peutAjouterNote = auth()->user()?->can('lmd.notes.manage') && auth()->user()?->can('notes.create');
+        $peutModifierNote = auth()->user()?->can('lmd.notes.manage') && auth()->user()?->can('notes.edit');
+    @endphp
+
+    @unless($peutAjouterNote || $peutModifierNote)
+        <div class="alert alert-info" role="status">
+            <i class="fas fa-lock me-1"></i> Vous pouvez consulter ces notes, mais pas les modifier.
+        </div>
+    @endunless
+
     {{-- Form --}}
     <div class="main-card">
         <form action="{{ route('esbtp.lmd.notes.save-bulk') }}" method="POST" id="notesForm">
@@ -72,6 +83,11 @@
                 </thead>
                 <tbody>
                     @foreach($etudiants as $index => $etudiant)
+                        @php
+                            $noteExistante = array_key_exists($etudiant->id, $notesExistantes)
+                                || !empty($absencesExistantes[$etudiant->id]);
+                            $peutEcrireLigne = $noteExistante ? $peutModifierNote : $peutAjouterNote;
+                        @endphp
                         <tr>
                             <td class="lmd-student-num">{{ $index + 1 }}</td>
                             @if($numerosAnonymat !== null)
@@ -93,6 +109,7 @@
                                        inputmode="decimal" autocomplete="off"
                                        placeholder="--"
                                        data-bareme="{{ $evaluation->bareme }}"
+                                       {{ $peutEcrireLigne ? '' : 'disabled' }}
                                        oninput="colorNote(this)">
                             </td>
                             <td style="text-align: center;">
@@ -101,6 +118,7 @@
                                        value="1"
                                        class="lmd-absent-check"
                                        {{ ($absencesExistantes[$etudiant->id] ?? false) ? 'checked' : '' }}
+                                       {{ $peutEcrireLigne ? '' : 'disabled' }}
                                        onchange="toggleAbsent(this, {{ $index }})">
                             </td>
                         </tr>
@@ -112,9 +130,11 @@
                 <a href="{{ route('esbtp.lmd.notes.index') }}" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left me-1"></i> Retour
                 </a>
-                <button type="submit" class="btn-acasi primary">
-                    <i class="fas fa-save me-1"></i> Enregistrer les notes
-                </button>
+                @if($peutAjouterNote || $peutModifierNote)
+                    <button type="submit" class="btn-acasi primary">
+                        <i class="fas fa-save me-1"></i> Enregistrer les notes
+                    </button>
+                @endif
             </div>
         </form>
     </div>

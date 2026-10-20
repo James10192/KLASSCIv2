@@ -65,6 +65,35 @@ class ESBTPNoteController extends Controller
         return app(SaisieGroupeeDeNotes::class)->peutGerer($user, $evaluation);
     }
 
+    /**
+     * L'accès au document reste limité aux classes confiées à l'enseignant.
+     */
+    private function assertTeacherDocumentScope(int $classeId, ?int $anneeId, ?ESBTPEvaluation $evaluation = null): void
+    {
+        $user = Auth::user();
+        abort_unless($user, 403);
+
+        if (! $user->can('identity.teach') || $user->can('identity.coordinate')) {
+            return;
+        }
+
+        if ($evaluation && ((int) $evaluation->enseignant_id === (int) $user->id
+            || (int) $evaluation->created_by === (int) $user->id)) {
+            return;
+        }
+
+        $teacherId = $user->teacherProfile?->id;
+        $seances = ESBTPSeanceCours::query()
+            ->join('esbtp_emploi_temps', 'esbtp_seance_cours.emploi_temps_id', '=', 'esbtp_emploi_temps.id')
+            ->where('esbtp_seance_cours.classe_id', $classeId)
+            ->where('esbtp_seance_cours.teacher_id', $teacherId);
+        if ($anneeId) {
+            $seances->where('esbtp_emploi_temps.annee_universitaire_id', $anneeId);
+        }
+
+        abort_unless($teacherId && $seances->exists(), 403, 'Cette classe ne vous est pas confiée.');
+    }
+
     private function studentBelongsToEvaluationCohort(int $studentId, ESBTPEvaluation $evaluation): bool
     {
         return $this->noteStudentCohortService
@@ -107,11 +136,11 @@ class ESBTPNoteController extends Controller
                     $query->where('annee_universitaire_id', $anneeSelectionnee->id);
                 }
             }])
-            ->with(['filiere', 'niveau', 'annee']);
+            ->with(['filiere.parent', 'niveau', 'annee']);
 
         // Enseignant : ne voir que les classes où il a des séances dans l'emploi du temps
         $user = Auth::user();
-        if ($user && $user->can('identity.teach')) {
+        if ($user && $user->can('identity.teach') && ! $user->can('identity.coordinate')) {
             $teacher = $user->teacherProfile;
             if ($teacher && $anneeSelectionnee) {
                 $classeIds = ESBTPSeanceCours::query()
@@ -125,6 +154,10 @@ class ESBTPNoteController extends Controller
                 $classeIds = ESBTPSeanceCours::where('teacher_id', $teacher->id)
                     ->distinct()->pluck('classe_id');
                 $classesQuery->whereIn('id', $classeIds);
+            } else {
+                // Aucun profil enseignant exploitable : ne pas exposer toutes
+                // les classes de l'établissement par défaut.
+                $classesQuery->whereRaw('1 = 0');
             }
         }
 
@@ -377,8 +410,9 @@ class ESBTPNoteController extends Controller
      */
     public function create()
     {
+        abort_unless(Auth::user()?->can('notes.create'), 403);
         $today = Carbon::today();
-        $evaluations = ESBTPEvaluation::with(['classe', 'matiere'])
+        $evaluationsQuery = ESBTPEvaluation::with(['classe', 'matiere'])
             ->where('is_published', true)
             ->whereNotNull('date_evaluation')
             ->whereDate('date_evaluation', '<=', $today)
@@ -387,9 +421,36 @@ class ESBTPNoteController extends Controller
                 ESBTPEvaluation::STATUS_IN_PROGRESS,
                 ESBTPEvaluation::STATUS_COMPLETED,
             ])
-            ->orderBy('date_evaluation', 'desc')
+            ->orderBy('date_evaluation', 'desc');
+
+        $user = Auth::user();
+        if ($user->can('identity.teach') && ! $user->can('identity.coordinate')) {
+            $matieresConfiees = DB::table('esbtp_enseignant_matiere')
+                ->where('enseignant_id', $user->id)
+                ->where('is_active', true)
+                ->pluck('matiere_id');
+            $teacherId = $user->teacherProfile?->id;
+            $classesPlanifiees = $teacherId
+                ? ESBTPSeanceCours::query()
+                    ->where('teacher_id', $teacherId)
+                    ->distinct()
+                    ->pluck('classe_id')
+                : collect();
+
+            $evaluationsQuery->where(fn ($q) => $q
+                ->where('enseignant_id', $user->id)
+                ->orWhere('created_by', $user->id)
+                ->orWhereIn('matiere_id', $matieresConfiees)
+                ->orWhereIn('classe_id', $classesPlanifiees));
+        }
+
+        $evaluations = $evaluationsQuery->get();
+        $etudiants = ESBTPEtudiant::query()
+            ->when($user->can('identity.teach') && ! $user->can('identity.coordinate'), fn ($q) => $q
+                ->whereHas('inscriptions', fn ($inscription) => $inscription
+                    ->whereIn('classe_id', $evaluations->pluck('classe_id'))))
+            ->orderBy('nom')
             ->get();
-        $etudiants = ESBTPEtudiant::orderBy('nom')->get();
 
         // Ajouter un message flash pour tester
         session()->flash('info', 'Formulaire de création de note chargé. Veuillez remplir tous les champs requis.');
@@ -404,6 +465,7 @@ class ESBTPNoteController extends Controller
      */
     public function store(Request $request)
     {
+        abort_unless(Auth::user()?->can('notes.create'), 403);
         $request->validate([
             'etudiant_id' => 'required|exists:esbtp_etudiants,id',
             'evaluation_id' => 'required|exists:esbtp_evaluations,id',
@@ -418,6 +480,10 @@ class ESBTPNoteController extends Controller
             'note.min' => 'La note doit être positive',
             'is_absent.in' => 'Le statut d\'absence n\'est pas valide',
         ]);
+
+        $evaluationAutorisee = ESBTPEvaluation::findOrFail($request->integer('evaluation_id'));
+        $this->assertTeacherDocumentScope((int) $evaluationAutorisee->classe_id, (int) $evaluationAutorisee->annee_universitaire_id, $evaluationAutorisee);
+        abort_unless($this->studentBelongsToEvaluationCohort((int) $request->etudiant_id, $evaluationAutorisee), 422, 'Cet étudiant ne fait pas partie de cette évaluation.');
 
         try {
             // Débogage : Log du début du try
@@ -811,6 +877,11 @@ class ESBTPNoteController extends Controller
      */
     public function destroy(ESBTPNote $note)
     {
+        abort_unless(Auth::user()?->can('notes.delete'), 403);
+        $evaluation = $note->evaluation;
+        abort_unless($evaluation, 404);
+        $this->assertTeacherDocumentScope((int) $evaluation->classe_id, (int) $evaluation->annee_universitaire_id, $evaluation);
+
         try {
             $note->delete();
 
@@ -828,6 +899,8 @@ class ESBTPNoteController extends Controller
     public function saisieRapide(ESBTPEvaluation $evaluation)
     {
         $user = Auth::user();
+        abort_unless($user?->can('notes.view') || $user?->can('notes.view_own') || $user?->can('notes.create') || $user?->can('notes.edit') || $user?->can('notes.manage_own'), 403);
+        $this->assertTeacherDocumentScope((int) $evaluation->classe_id, (int) $evaluation->annee_universitaire_id, $evaluation);
         $evaluation->load(['classe', 'matiere', 'notes.etudiant']);
 
         if ($evaluation->date_evaluation && $evaluation->date_evaluation->isFuture()) {
@@ -870,6 +943,7 @@ class ESBTPNoteController extends Controller
      */
     public function saisieRapidePDF(ESBTPEvaluation $evaluation)
     {
+        $this->assertTeacherDocumentScope((int) $evaluation->classe_id, (int) $evaluation->annee_universitaire_id, $evaluation);
         [$pdf, $filename] = $this->buildSaisieRapidePdf($evaluation);
 
         return $pdf->download($filename);
@@ -880,6 +954,7 @@ class ESBTPNoteController extends Controller
      */
     public function saisieRapidePDFPreview(ESBTPEvaluation $evaluation)
     {
+        $this->assertTeacherDocumentScope((int) $evaluation->classe_id, (int) $evaluation->annee_universitaire_id, $evaluation);
         [$pdf, $filename] = $this->buildSaisieRapidePdf($evaluation);
 
         return $pdf->stream($filename);
@@ -921,6 +996,7 @@ class ESBTPNoteController extends Controller
      */
     public function saisieRapideBlankPDF(Request $request, ESBTPClasse $classe)
     {
+        $this->assertTeacherDocumentScope((int) $classe->id, $request->integer('annee_universitaire_id') ?: ESBTPAnneeUniversitaire::where('is_current', true)->value('id'));
         [$pdf, $filename] = $this->buildSaisieRapideBlankPdf($classe, $request->integer('annee_universitaire_id') ?: null);
 
         return $pdf->download($filename);
@@ -931,6 +1007,7 @@ class ESBTPNoteController extends Controller
      */
     public function saisieRapideBlankPDFPreview(Request $request, ESBTPClasse $classe)
     {
+        $this->assertTeacherDocumentScope((int) $classe->id, $request->integer('annee_universitaire_id') ?: ESBTPAnneeUniversitaire::where('is_current', true)->value('id'));
         [$pdf, $filename] = $this->buildSaisieRapideBlankPdf($classe, $request->integer('annee_universitaire_id') ?: null);
 
         return $pdf->stream($filename);
@@ -990,10 +1067,11 @@ class ESBTPNoteController extends Controller
      */
     public function enregistrerSaisieRapide(Request $request)
     {
+        abort_unless(Auth::user()?->can('notes.create') || Auth::user()?->can('notes.edit') || Auth::user()?->can('notes.manage_own'), 403);
         $request->validate([
             'evaluation_id' => 'required|exists:esbtp_evaluations,id',
             'notes' => 'required|array',
-            'notes.*.etudiant_id' => 'required|exists:esbtp_etudiants,id',
+            'notes.*.etudiant_id' => 'required|distinct|exists:esbtp_etudiants,id',
             'notes.*.valeur' => 'required_without:notes.*.absent|nullable|numeric|min:0',
             'notes.*.commentaire' => 'nullable|string',
             'notes.*.absent' => 'nullable|boolean',
@@ -1005,6 +1083,7 @@ class ESBTPNoteController extends Controller
 
         $evaluation = ESBTPEvaluation::findOrFail($request->evaluation_id);
         $user = Auth::user();
+        $this->assertTeacherDocumentScope((int) $evaluation->classe_id, (int) $evaluation->annee_universitaire_id, $evaluation);
 
         // Voir saisieRapide() pour la justification : exempte les users avec notes.edit
         // global (superAdmin/coordinateur) du check ownership restrictif.
@@ -1040,6 +1119,36 @@ class ESBTPNoteController extends Controller
             ->allowedStudentIdsForEvaluation($evaluation)
             ->all();
 
+        // Séparer strictement AJOUTER et MODIFIER. Une note déjà présente,
+        // y compris encore brouillon, n'est pas modifiable avec notes.create
+        // seul. Précharger les lignes réduit également les N SELECT de la boucle.
+        $incomingStudentIds = collect($request->input('notes', []))
+            ->filter(fn ($data) => (isset($data['valeur']) && $data['valeur'] !== '') || (string) ($data['absent'] ?? '') === '1')
+            ->pluck('etudiant_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $existingNotesByStudent = ESBTPNote::query()
+            ->where('evaluation_id', $evaluation->id)
+            ->whereIn('etudiant_id', $incomingStudentIds)
+            ->get()
+            ->keyBy('etudiant_id');
+
+        if ($existingNotesByStudent->isNotEmpty() && ! $user->can('notes.edit')) {
+            abort_unless($user->can('notes.manage_own')
+                && $existingNotesByStudent->every(fn ($note) => (int) $note->created_by === (int) $user->id),
+                403,
+                'La modification des notes existantes exige un droit spécifique.');
+        }
+
+        // Le droit de MODIFIER ne doit pas autoriser en silence à CRÉER une
+        // note. L'enseignant peut également saisir ses évaluations avec le
+        // droit historique notes.manage_own, mais uniquement s'il en est responsable.
+        $newStudentIds = array_diff($incomingStudentIds, $existingNotesByStudent->keys()->map(fn ($id) => (int) $id)->all());
+        if ($newStudentIds && ! $user->can('notes.create')) {
+            $managesOwnEvaluation = $user->can('notes.manage_own')
+                && ((int) $evaluation->enseignant_id === (int) $user->id
+                    || (int) $evaluation->created_by === (int) $user->id);
+            abort_unless($managesOwnEvaluation, 403, 'La création de nouvelles notes exige un droit spécifique.');
+        }
+
         // Ce que la saisie a REELLEMENT ecrit, et ce qu'elle a saute. Les lignes
         // laissees vides sont ignorees en silence depuis toujours : l'ecran
         // annoncait « enregistrees avec succes » pour cinquante lignes dont une
@@ -1070,9 +1179,7 @@ class ESBTPNoteController extends Controller
                 }
 
                 // Vérifier si l'étudiant a déjà une note pour cette évaluation
-                $note = ESBTPNote::where('evaluation_id', $evaluation->id)
-                    ->where('etudiant_id', $etudiantId)
-                    ->first();
+                $note = $existingNotesByStudent->get((int) $etudiantId);
 
                 if ($note) {
                     // Mise à jour de la note existante
@@ -1378,7 +1485,7 @@ class ESBTPNoteController extends Controller
     public function exportExcel(Request $request)
     {
         $user = Auth::user();
-        if (! $user || ! $user->can('notes.view')) {
+        if (! $user || ! $user->can('notes.export_excel')) {
             abort(403, "Vous n'avez pas la permission d'exporter les notes.");
         }
 
@@ -1399,6 +1506,8 @@ class ESBTPNoteController extends Controller
         $anneeId = $request->filled('annee_universitaire_id')
             ? (int) $request->input('annee_universitaire_id')
             : null;
+
+        $this->assertTeacherDocumentScope($classeId, $anneeId);
 
         $export = new NotesClasseMatiereExport($classeId, $matiereId, $periode, $anneeId);
 

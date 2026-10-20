@@ -408,18 +408,22 @@
                     </div>
                 </div>
                 <div class="nm-sr-header-actions">
+                    @can('notes.feuille_vierge.export')
                     <a href="{{ route('esbtp.notes.saisie-rapide.pdf-preview', $evaluation) }}" class="nm-sr-header-btn" target="_blank" title="Aperçu du PDF vierge dans un nouvel onglet">
                         <i class="fas fa-eye"></i> Aperçu vierge
                     </a>
                     <a href="{{ route('esbtp.notes.saisie-rapide.pdf', $evaluation) }}" class="nm-sr-header-btn nm-sr-header-btn--danger">
                         <i class="fas fa-file-pdf"></i> PDF vierge
                     </a>
+                    @endcan
+                    @can('evaluations.notes.export')
                     <a href="{{ route('esbtp.evaluations.pdf-preview', $evaluation) }}" class="nm-sr-header-btn" target="_blank" title="Aperçu PDF avec notes">
                         <i class="fas fa-eye"></i> Aperçu
                     </a>
                     <a href="{{ route('esbtp.evaluations.pdf', $evaluation) }}" class="nm-sr-header-btn">
                         <i class="fas fa-file-export"></i> Exporter
                     </a>
+                    @endcan
                     <a href="{{ route('esbtp.evaluations.show', $evaluation) }}" class="nm-sr-header-btn">
                         <i class="fas fa-eye"></i> Voir
                     </a>

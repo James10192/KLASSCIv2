@@ -148,6 +148,7 @@ Route::get('/v1/parent-chatbot/report-cards/{bulletin}', App\Http\Controllers\Pa
 // elle, passe par les routes web equivalentes, qui sont protegees.
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/classes/{classe}/matieres', [ESBTPClasseController::class, 'getMatieresForApi'])
+        ->middleware('permission:classes.view')
         ->name('api.classes.matieres');
 });
 
@@ -163,11 +164,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->name('api.attendance.sync');
 });
 
-Route::middleware(['auth:sanctum'])->get('/classes/{id}/available-places', [ESBTPClasseController::class, 'getAvailablePlaces']);
+Route::middleware(['auth:sanctum', 'permission:classes.view'])->get('/classes/{id}/available-places', [ESBTPClasseController::class, 'getAvailablePlaces']);
 
 Route::middleware(['auth:sanctum'])->post('/inscriptions/validate', [ESBTPEtudiantController::class, 'validateInscription'])->name('api.inscriptions.validate');
 
-Route::middleware(['auth:sanctum'])->get('/classes', [ESBTPClasseController::class, 'indexApi']);
+Route::middleware(['auth:sanctum', 'permission:classes.view'])->get('/classes', [ESBTPClasseController::class, 'indexApi']);
 
 /*
 |--------------------------------------------------------------------------

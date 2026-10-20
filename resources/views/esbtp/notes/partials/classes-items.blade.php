@@ -88,8 +88,10 @@
                     <i class="fas fa-calendar"></i>{{ $classe->annee->name }}
                 @endif
             </div>
-            <button type="button" class="nm-card-action class-select-btn" title="Saisir les notes">
-                <i class="fas fa-edit"></i>
+            <button type="button" class="nm-card-action class-select-btn"
+                    title="{{ auth()->user()->can('notes.create') || auth()->user()->can('notes.edit') ? 'Gérer les notes' : 'Consulter les notes' }}"
+                    aria-label="{{ auth()->user()->can('notes.create') || auth()->user()->can('notes.edit') ? 'Gérer les notes' : 'Consulter les notes' }}">
+                <i class="fas {{ auth()->user()->can('notes.create') || auth()->user()->can('notes.edit') ? 'fa-edit' : 'fa-eye' }}"></i>
             </button>
         </div>
     </div>
