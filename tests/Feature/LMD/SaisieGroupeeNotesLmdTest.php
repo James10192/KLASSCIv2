@@ -35,7 +35,9 @@ class SaisieGroupeeNotesLmdTest extends TestCase
                 ['etudiant_id' => $etudiants[0], 'note' => '12,5'],
                 ['etudiant_id' => $etudiants[1], 'note' => '', 'is_absent' => '1'],
             ],
-        ])->assertRedirect(route('esbtp.lmd.notes.index'));
+        ])->assertRedirect(route('esbtp.lmd.notes.index', [
+            'annee_universitaire_id' => $evaluation->annee_universitaire_id,
+        ]));
 
         $this->assertSame(12.5, (float) ESBTPNote::where('evaluation_id', $evaluation->id)->where('etudiant_id', $etudiants[0])->value('note'));
         $absent = ESBTPNote::where('evaluation_id', $evaluation->id)->where('etudiant_id', $etudiants[1])->first();
