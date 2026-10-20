@@ -108,6 +108,7 @@ class ScolariteBottomNavTest extends TestCase
 
         $html = $this->rendre($user);
 
+        $this->assertStringContainsString('class="m-bottomnav"', $html);
         $this->assertStringNotContainsString(route('esbtp.lmd.notes.index'), $html);
     }
 

@@ -63,6 +63,10 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ESBTPAuditController;
 // use App\Http\Controllers\ESBTP\ESBTPSecurityController; // COMMENTED - CONTROLLER NOT IMPLEMENTED
 
+// Les routes notes/{note} du CRUD ne doivent pas capturer les URL fixes
+// notes/export-excel : seuls des identifiants numériques désignent une note.
+Route::pattern('note', '[0-9]+');
+
 /*
 |--------------------------------------------------------------------------
 | Routes Web ESBTP-yAKRO

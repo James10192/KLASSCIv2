@@ -75,6 +75,10 @@ class MobileProfileResolver
         'inscriptions.view',
         'students.view',
         'classes.view',
+        // Une personne dotée seulement de la consultation BTS ou LMD doit
+        // également retrouver son écran dans la navigation mobile.
+        'notes.view',
+        'lmd.notes.view',
     ];
 
     /**

@@ -111,10 +111,13 @@ class SaisieGroupeeNotesLmdTest extends TestCase
             'status' => 'active', 'workflow_step' => 'etudiant_cree',
         ])->pluck('etudiant_id')->map(fn ($id) => (int) $id)->all();
 
-        $evaluation = ESBTPEvaluation::factory()->create([
+        // La saisie groupée travaille sur une évaluation déjà créée :
+        // son fixture ne doit pas déclencher la vérification du planning LMD
+        // (qui relève des tests de création/affectation d'évaluations).
+        $evaluation = ESBTPEvaluation::withoutEvents(fn () => ESBTPEvaluation::factory()->create([
             'classe_id' => $classe->id, 'matiere_id' => $matiere->id,
             'annee_universitaire_id' => $annee->id, 'bareme' => 20, 'periode' => 'semestre1',
-        ]);
+        ]));
 
         return [$evaluation, $etudiants];
     }

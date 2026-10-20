@@ -3,6 +3,7 @@
 namespace Tests\Feature\Notes;
 
 use App\Models\ESBTPEvaluation;
+use App\Models\ESBTPClasse;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
@@ -27,7 +28,11 @@ class NotesDocumentPermissionsTest extends TestCase
         $reader->givePermissionTo('notes.view');
         $this->actingAs($reader);
 
-        $evaluation = ESBTPEvaluation::factory()->create();
+        $classe = ESBTPClasse::factory()->create();
+        $evaluation = ESBTPEvaluation::factory()->create([
+            'classe_id' => $classe->id,
+            'annee_universitaire_id' => $classe->annee_universitaire_id,
+        ]);
 
         $this->get(route('esbtp.evaluations.pdf-preview', $evaluation))->assertForbidden();
         $this->get(route('esbtp.evaluations.pdf', $evaluation))->assertForbidden();
