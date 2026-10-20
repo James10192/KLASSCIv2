@@ -7,11 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Une permission ouverte a une personne jusqu'a une date donnee.
+ * Une permission individuelle temporaire ou definitive, toujours revocable.
  *
- * L'acces se lit dans le temps, pas dans une colonne d'etat : une ligne est
- * active tant que `starts_at <= maintenant < expires_at` et qu'elle n'a pas ete
- * retiree. Personne n'a donc a « fermer » un acces arrive a echeance.
+ * Le caractere definitif est explicite : une ancienne date de fin NULL ne
+ * doit jamais ouvrir un droit qui etait jusqu'ici inactif.
  */
 class TemporaryPermissionGrant extends Model
 {
@@ -20,6 +19,7 @@ class TemporaryPermissionGrant extends Model
         'permission',
         'starts_at',
         'expires_at',
+        'is_permanent',
         'motif',
         'granted_by',
         'revoked_at',
@@ -29,6 +29,7 @@ class TemporaryPermissionGrant extends Model
     protected $casts = [
         'starts_at' => 'datetime',
         'expires_at' => 'datetime',
+        'is_permanent' => 'boolean',
         'revoked_at' => 'datetime',
     ];
 
@@ -53,7 +54,13 @@ class TemporaryPermissionGrant extends Model
 
         return $query->whereNull('revoked_at')
             ->where('starts_at', '<=', $maintenant)
-            ->where('expires_at', '>', $maintenant);
+            ->where(function (Builder $period) use ($maintenant) {
+                $period->where(function (Builder $permanent) {
+                    $permanent->where('is_permanent', true)->whereNull('expires_at');
+                })->orWhere(function (Builder $temporaire) use ($maintenant) {
+                    $temporaire->where('is_permanent', false)->where('expires_at', '>', $maintenant);
+                });
+            });
     }
 
     public function estActive(): bool
@@ -62,10 +69,12 @@ class TemporaryPermissionGrant extends Model
 
         return $this->revoked_at === null
             && $this->starts_at !== null && $this->starts_at->lte($maintenant)
-            && $this->expires_at !== null && $this->expires_at->gt($maintenant);
+            && ($this->is_permanent
+                ? $this->expires_at === null
+                : ($this->expires_at !== null && $this->expires_at->gt($maintenant)));
     }
 
-    /** `active`, `a_venir`, `expiree` ou `retiree`. */
+    /** `active`, `definitif`, `a_venir`, `expiree` ou `retiree`. */
     public function statut(): string
     {
         if ($this->revoked_at !== null) {
@@ -75,6 +84,10 @@ class TemporaryPermissionGrant extends Model
             return 'a_venir';
         }
 
-        return $this->estActive() ? 'active' : 'expiree';
+        if (! $this->estActive()) {
+            return 'expiree';
+        }
+
+        return $this->is_permanent ? 'definitif' : 'active';
     }
 }

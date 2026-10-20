@@ -515,6 +515,20 @@ jobs:
           php vendor/bin/phpunit tests/Feature/Assistant/NananLotATest.php --no-coverage || echec=1
           exit $echec
 
+      # Ces tests lisent et ecrivent la base reelle. Ne pas les executer
+      # dans le job Laravel Lint, qui ne possede aucun service SQL.
+      - name: Accès individuels temporaires et définitifs (web, CLI, garde-fous)
+        run: |
+          echec=0
+          for chemin in \
+            tests/Feature/Permissions/AccesTemporairesTest.php \
+            tests/Feature/Permissions/AccesTemporairesNonAccordablesTest.php \
+            tests/Feature/API/CLI/AccesIndividuelsCliTest.php
+          do
+            php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
+          done
+          exit $echec
+
   schema:
     name: Le schéma se crée entièrement (${{ matrix.moteur.nom }})
     runs-on: ubuntu-latest

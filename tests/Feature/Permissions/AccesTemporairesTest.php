@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -34,7 +35,7 @@ class AccesTemporairesTest extends TestCase
             \App\Http\Middleware\PaywallMiddleware::class,
         ]);
 
-        foreach (['notes.edit', 'paiements.view', 'identity.coordinate', 'identity.student', 'permissions.temporaires.manage', 'personnel.manage', 'users.manage'] as $p) {
+        foreach (['notes.edit', 'paiements.view', 'identity.coordinate', 'identity.student', 'permissions.temporaires.manage', 'permissions.individuels.permanents.manage', 'personnel.manage', 'users.manage'] as $p) {
             Permission::findOrCreate($p, 'web');
         }
         Role::findOrCreate('superAdmin', 'web');
@@ -168,7 +169,7 @@ class AccesTemporairesTest extends TestCase
         $this->actingAs($this->admin)
             ->get(route('esbtp.acces-temporaires.index'))
             ->assertOk()
-            ->assertSee('Accès temporaires');
+            ->assertSee('Accès individuels');
     }
 
     public function test_ouvert_depuis_une_fiche_l_ecran_choisit_deja_la_personne(): void
@@ -191,18 +192,18 @@ class AccesTemporairesTest extends TestCase
     {
         $cible = User::factory()->create();
         $bouton = '<x-personnel.bouton-acces-temporaire :user-id="$id" />';
-        $lien = route('esbtp.acces-temporaires.index', ['user_id' => $cible->id]);
+        $lien = route('esbtp.acces-individuels.index', ['user_id' => $cible->id]);
 
         $this->actingAs($this->admin);
         $this->assertStringContainsString($lien, (string) $this->blade($bouton, ['id' => $cible->id]));
         // Jamais sur son propre compte.
-        $this->assertStringNotContainsString('acces-temporaires', (string) $this->blade($bouton, ['id' => $this->admin->id]));
+        $this->assertStringNotContainsString('acces-individuels', (string) $this->blade($bouton, ['id' => $this->admin->id]));
 
         // « Accorder des accès temporaires » sans « Gérer le personnel » : la route refuserait.
         $sansPersonnel = User::factory()->create();
         $sansPersonnel->givePermissionTo('permissions.temporaires.manage');
         $this->actingAs($sansPersonnel->fresh());
-        $this->assertStringNotContainsString('acces-temporaires', (string) $this->blade($bouton, ['id' => $cible->id]));
+        $this->assertStringNotContainsString('acces-individuels', (string) $this->blade($bouton, ['id' => $cible->id]));
 
         $sansPersonnel->givePermissionTo('personnel.manage');
         $this->actingAs($sansPersonnel->fresh());
@@ -266,5 +267,176 @@ class AccesTemporairesTest extends TestCase
         $user->givePermissionTo('permissions.temporaires.manage');
 
         $this->actingAs($user->fresh())->get(route('esbtp.acces-temporaires.index'))->assertForbidden();
+    }
+
+    public function test_un_acces_definitif_survit_aux_limites_temporelles_et_reste_revocable(): void
+    {
+        $user = User::factory()->create();
+        $acces = $this->service()->accorder($user, 'notes.edit', now(), null, 'Mission permanente au service des notes', $this->admin, true);
+
+        $this->assertTrue($acces->is_permanent);
+        $this->assertNull($acces->expires_at);
+        $this->assertSame('definitif', $acces->statut());
+
+        Carbon::setTestNow(now()->addYear());
+        $this->assertTrue($this->peut($user, 'notes.edit'));
+
+        $this->service()->retirer($acces, $this->admin);
+        $this->assertFalse($this->peut($user, 'notes.edit'));
+        $this->assertNotNull($acces->fresh()->revoked_at);
+    }
+
+    public function test_une_ancienne_date_de_fin_nulle_ne_se_transforme_pas_en_acces_definitif(): void
+    {
+        $user = User::factory()->create();
+        $acces = TemporaryPermissionGrant::create([
+            'user_id' => $user->id, 'permission' => 'notes.edit',
+            'starts_at' => now()->subDay(), 'expires_at' => null,
+            'motif' => 'Historique incomplet avant le nouveau mode', 'granted_by' => $this->admin->id,
+        ]);
+
+        $this->assertFalse($acces->fresh()->is_permanent);
+        $this->assertFalse($acces->fresh()->estActive());
+        $this->assertFalse($this->peut($user, 'notes.edit'));
+    }
+
+    public function test_un_gestionnaire_temporaire_ne_peut_pas_accorder_de_definitif(): void
+    {
+        $manager = User::factory()->create();
+        $manager->givePermissionTo(['permissions.temporaires.manage', 'personnel.manage', 'notes.edit']);
+
+        $this->expectException(AccesTemporaireRefuse::class);
+        $this->service()->accorder(User::factory()->create(), 'notes.edit', now(), null, 'Mission durable sans habilitation', $manager, true);
+    }
+
+    public function test_un_gestionnaire_explicitement_habilite_peut_accorder_du_definitif(): void
+    {
+        $manager = User::factory()->create();
+        $manager->givePermissionTo(['permissions.temporaires.manage', 'permissions.individuels.permanents.manage', 'personnel.manage', 'notes.edit']);
+
+        $grant = $this->service()->accorder(User::factory()->create(), 'notes.edit', now(), null, 'Mission durable du service des notes', $manager, true);
+        $this->assertTrue($grant->is_permanent);
+    }
+
+    public function test_une_permission_individuelle_ne_permet_pas_de_se_donner_un_autre_droit(): void
+    {
+        $this->expectException(AccesTemporaireRefuse::class);
+        $this->expectExceptionMessage('Vous ne pouvez pas vous accorder');
+        $this->service()->accorder($this->admin, 'notes.edit', now(), null, 'Auto-attribution interdite du personnel', $this->admin, true);
+    }
+
+    public function test_un_definitif_et_un_temporaire_ne_peuvent_pas_se_chevaucher_dans_les_deux_sens(): void
+    {
+        $user = User::factory()->create();
+        $temporaire = $this->service()->accorder($user, 'notes.edit', now(), now()->addDays(2), 'Correction temporaire de notes', $this->admin);
+
+        try {
+            $this->service()->accorder($user, 'notes.edit', now(), null, 'Droit définitif en doublon interdit', $this->admin, true);
+            $this->fail('Le definitif doit etre refuse pendant un temporaire.');
+        } catch (AccesTemporaireRefuse $e) {
+            $this->assertStringContainsString('couvre déjà', $e->getMessage());
+        }
+
+        $this->service()->retirer($temporaire, $this->admin);
+        $this->service()->accorder($user, 'notes.edit', now(), null, 'Droit definitif apres retrait', $this->admin, true);
+
+        $this->expectException(AccesTemporaireRefuse::class);
+        $this->service()->accorder($user, 'notes.edit', now(), now()->addDay(), 'Temporaire en doublon interdit', $this->admin);
+    }
+
+    public function test_les_permissions_de_contournement_et_la_gestion_des_acces_definitifs_sont_non_accordables(): void
+    {
+        foreach (['sod.bypass', 'paiements.validate.self_override', 'comptabilite.period.bypass_lock',
+            'comptabilite.reconciliation.bypass_lock', 'permissions.individuels.permanents.manage'] as $ability) {
+            $this->assertFalse($this->service()->estAccordable($ability), $ability);
+        }
+    }
+
+    public function test_un_acces_accorde_a_un_personnel_ne_suit_pas_son_promotion_vers_compte_etudiant(): void
+    {
+        $user = User::factory()->create();
+        $this->service()->accorder($user, 'notes.edit', now(), null, 'Ancienne mission du service des notes', $this->admin, true);
+        $user->givePermissionTo('identity.student');
+
+        $this->assertFalse($this->peut($user, 'notes.edit'));
+    }
+
+    public function test_un_changement_de_role_etudiant_invalide_un_acces_deja_memoise_dans_la_meme_requete(): void
+    {
+        Role::findOrCreate('etudiant', 'web');
+        $user = User::factory()->create();
+        $service = $this->service();
+        $service->accorder($user, 'notes.edit', now(), null, 'Mission personnelle avant changement de role', $this->admin, true);
+
+        $this->assertTrue($service->detient($user, 'notes.edit'));
+
+        // Même instance de service, même objet User, sans rafraîchissement de requête.
+        $user->assignRole('etudiant');
+
+        $this->assertFalse($service->detient($user, 'notes.edit'));
+    }
+
+    public function test_le_formulaire_definitif_refuse_une_date_et_accepte_une_duree_absente(): void
+    {
+        $user = User::factory()->create();
+        $payload = [
+            'user_id' => $user->id, 'permission' => 'notes.edit',
+            'mode' => 'definitif', 'motif' => 'Délégation durable du service des notes',
+        ];
+        $this->actingAs($this->admin)->postJson(route('esbtp.acces-temporaires.store'), [
+            ...$payload, 'fin' => now()->addDay()->format('Y-m-d H:i'),
+        ])->assertUnprocessable()->assertJsonValidationErrors('fin');
+
+        $this->actingAs($this->admin)->postJson(route('esbtp.acces-temporaires.store'), $payload)
+            ->assertCreated()->assertJsonPath('acces.0.statut', 'definitif');
+    }
+
+    public function test_un_definitif_plus_ancien_que_200_operations_reste_visible_et_retirable(): void
+    {
+        $user = User::factory()->create();
+        $permanent = $this->service()->accorder($user, 'notes.edit', now(), null, 'Acces durable a retrouver dans les archives', $this->admin, true);
+
+        for ($i = 0; $i < 205; $i++) {
+            TemporaryPermissionGrant::create([
+                'user_id' => $user->id, 'permission' => 'notes.edit',
+                'starts_at' => now()->subDays(3), 'expires_at' => now()->subDay(),
+                'motif' => 'Accès historique sans effet aujourd’hui', 'granted_by' => $this->admin->id,
+            ]);
+        }
+
+        $reponse = $this->actingAs($this->admin)->getJson(route('esbtp.acces-temporaires.data', ['scope' => 'en_cours']));
+        $reponse->assertOk()->assertJsonPath('statistiques.actifs', 1);
+        $this->assertContains($permanent->id, array_column($reponse->json('acces'), 'id'));
+    }
+
+    public function test_la_liste_paginee_charge_les_auteurs_et_beneficiaires_sans_n_plus_un(): void
+    {
+        // Les relations doivent etre eager-loadees : 30 personnes ne doivent
+        // pas produire 30 requetes SQL pour leurs noms ou les auteurs.
+        $this->actingAs($this->admin);
+
+        $premier = User::factory()->create();
+        $this->service()->accorder($premier, 'notes.edit', now(), now()->addDay(), 'Délégation numéro un du personnel', $this->admin);
+
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        $this->getJson(route('esbtp.acces-temporaires.data', ['scope' => 'en_cours']))->assertOk();
+        $requeteUne = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        for ($i = 0; $i < 32; $i++) {
+            $user = User::factory()->create();
+            $this->service()->accorder($user, 'notes.edit', now(), now()->addDay(), 'Délégation individuelle du personnel', $this->admin);
+        }
+
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        $this->getJson(route('esbtp.acces-temporaires.data', ['scope' => 'en_cours', 'page' => 1]))
+            ->assertOk()->assertJsonPath('pagination.total', 33);
+        $requeteTrente = count(DB::getQueryLog());
+        DB::disableQueryLog();
+        DB::flushQueryLog();
+
+        $this->assertLessThanOrEqual($requeteUne + 3, $requeteTrente, 'Une requête supplémentaire par ligne signalerait un N+1.');
     }
 }

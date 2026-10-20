@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 
 /**
  * Acces temporaires depuis le CLI : les memes refus que l'ecran
@@ -39,7 +40,8 @@ class CLIAccesTemporairesController extends BaseApiController
 
     /**
      * POST /api/cli/user/{id}/acces-temporaires
-     * Corps : permission, fin (date) ou duree_heures, debut (optionnel), motif.
+     * Corps : mode (temporaire par defaut), permission, fin/duree_heures
+     * pour un mode temporaire, debut (optionnel), motif.
      */
     public function store(Request $request, int $id): JsonResponse
     {
@@ -47,11 +49,13 @@ class CLIAccesTemporairesController extends BaseApiController
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
 
+        $definitif = $request->input('mode', AccesTemporaires::MODE_TEMPORAIRE) === AccesTemporaires::MODE_DEFINITIF;
         $valide = $request->validate([
             'permission' => 'required|string|max:125',
-            'debut' => 'nullable|date',
-            'fin' => 'required_without:duree_heures|nullable|date',
-            'duree_heures' => 'required_without:fin|nullable|integer|min:1',
+            'mode' => ['sometimes', Rule::in(AccesTemporaires::MODES)],
+            'debut' => $definitif ? ['prohibited'] : ['nullable', 'date'],
+            'fin' => $definitif ? ['prohibited'] : ['required_without:duree_heures', 'nullable', 'date'],
+            'duree_heures' => $definitif ? ['prohibited'] : ['required_without:fin', 'nullable', 'integer', 'min:1'],
             'motif' => 'required|string|min:10|max:1000',
         ]);
 
@@ -61,17 +65,17 @@ class CLIAccesTemporairesController extends BaseApiController
         }
 
         $debut = isset($valide['debut']) ? Carbon::parse($valide['debut']) : now();
-        $fin = isset($valide['fin'])
+        $fin = $definitif ? null : (isset($valide['fin'])
             ? Carbon::parse($valide['fin'])
-            : $debut->copy()->addHours((int) $valide['duree_heures']);
+            : $debut->copy()->addHours((int) $valide['duree_heures']));
 
         try {
-            $grant = $this->acces->accorder($user, $valide['permission'], $debut, $fin, $valide['motif'], $request->user());
+            $grant = $this->acces->accorder($user, $valide['permission'], $debut, $fin, $valide['motif'], $request->user(), $definitif);
         } catch (AccesTemporaireRefuse $e) {
             return $this->errorResponse($e->getMessage(), ['code' => 'ACCES_REFUSE'], 422);
         }
 
-        return $this->successResponse($this->serialiser($grant), 'Accès temporaire accordé.');
+        return $this->successResponse($this->serialiser($grant), $definitif ? 'Accès définitif accordé.' : 'Accès temporaire accordé.');
     }
 
     /** POST /api/cli/acces-temporaires/{grant}/retirer */
@@ -86,10 +90,13 @@ class CLIAccesTemporairesController extends BaseApiController
             return $this->errorResponse("Accès {$grant} introuvable.", [], 404);
         }
 
-        return $this->successResponse(
-            $this->serialiser($this->acces->retirer($modele, $request->user())),
-            'Accès temporaire retiré.'
-        );
+        try {
+            $retire = $this->acces->retirer($modele, $request->user());
+        } catch (AccesTemporaireRefuse $e) {
+            return $this->errorResponse($e->getMessage(), ['code' => 'ACCES_REFUSE'], 403);
+        }
+
+        return $this->successResponse($this->serialiser($retire), 'Accès individuel retiré.');
     }
 
     private function serialiser(TemporaryPermissionGrant $g): array
@@ -100,6 +107,7 @@ class CLIAccesTemporairesController extends BaseApiController
             'permission' => $g->permission,
             'debut' => $g->starts_at?->toIso8601String(),
             'fin' => $g->expires_at?->toIso8601String(),
+            'mode' => $g->is_permanent ? AccesTemporaires::MODE_DEFINITIF : AccesTemporaires::MODE_TEMPORAIRE,
             'statut' => $g->statut(),
             'motif' => $g->motif,
             'accorde_par' => $g->granted_by,

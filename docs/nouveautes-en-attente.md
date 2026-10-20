@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-19 · #1633 · Personnel > Accès individuels : attribuer une permission nominative temporaire ou définitive sans changer le rôle ; confirmation centrée, suivi et retrait AJAX, historique paginé et habilitation supplémentaire pour les droits sans expiration. Recette sécurité, droits, expiration, mobile et API CLI sur présentation avant annonce ou propagation aux écoles.
 - 2026-10-19 · #1632 · Inscriptions gratuites après exonération explicite : frais à 0 FCFA justifiés et audités, validation sans faux paiement, modales centrées, confirmations AJAX sans rechargement dans les listes et fiches ; recette 0/partiel/en attente, droits, lot, BTS/LMD, mobile et historique des exonérations requise sur présentation avant toute diffusion.
 - 2026-10-17 · #1622 · Planning LMD : noms des professeurs ECUE et responsable UE visibles, sélection multiple premium avec recherche et retrait, sauvegarde AJAX sécurisée ; vérifier les anciennes affectations et le responsive sur présentation avant diffusion.
 - 2026-10-17 · #1621 · Évaluations : activations et publications AJAX sans double requête, traitement en lot stoppé sur erreur avec bilan des succès partiels, actualisation finale unique et permissions de modification vérifiées ; tester mobile, filtres et erreurs 429 sur présentation avant propagation aux établissements.

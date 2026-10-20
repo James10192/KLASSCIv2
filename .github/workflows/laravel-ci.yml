@@ -93,6 +93,10 @@ jobs:
       - name: Check PHP syntax errors
         run: find app config routes -name "*.php" -print0 | xargs -0 -n1 php -l
 
+      - name: Vérifier la migration des accès individuels
+        if: github.event_name == 'pull_request'
+        run: php -l database/migrations/2026_10_19_201500_add_permanent_mode_to_temporary_permission_grants_table.php
+
       # Chaque operation d'ecriture de la CLI est declaree pour Nanan : faite par
       # lui, a lui apprendre, ou hors de sa portee avec la raison. Une operation
       # faite a la main pour une ecole ne doit pas rester a la main. Ne touche
