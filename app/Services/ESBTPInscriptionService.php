@@ -593,7 +593,8 @@ class ESBTPInscriptionService
 
             return [
                 'success' => false,
-                'message' => 'Erreur lors de l\'annulation de l\'inscription: ' . $e->getMessage()
+                'message' => "Erreur technique lors de l'annulation. Contactez le support si elle persiste.",
+                'technical_error' => true,
             ];
         }
     }

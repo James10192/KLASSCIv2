@@ -1647,7 +1647,7 @@ class ESBTPInscriptionController extends Controller
             );
 
             if ($result["success"]) {
-                if ($request->ajax()) {
+                if ($request->expectsJson()) {
                     return response()->json([
                         "success" => true,
                         "message" => "Inscription annulée avec succès.",
@@ -1658,33 +1658,27 @@ class ESBTPInscriptionController extends Controller
                     ->route("esbtp.inscriptions.show", $inscription->id)
                     ->with("success", "Inscription annulée avec succès.");
             } else {
-                // Un refus métier n'est pas une panne serveur.
-                if ($request->ajax() || $request->wantsJson()) {
+                // Un refus métier (422) diffère d'une panne technique (500).
+                $statut = ($result['technical_error'] ?? false) ? 500 : 422;
+                if ($request->expectsJson()) {
                     return response()->json([
                         'success' => false,
                         'message' => $result['message'],
-                    ], 422);
+                    ], $statut);
                 }
                 return redirect()->back()->with('error', $result['message']);
             }
         } catch (\Exception $e) {
-            if ($request->ajax()) {
-                return response()->json(
-                    [
-                        "success" => false,
-                        "message" =>
-                            'Erreur lors de l\'annulation: ' . $e->getMessage(),
-                    ],
-                    500,
-                );
+            Log::error("Erreur technique lors de l'annulation d'inscription", [
+                'inscription_id' => $inscription->id,
+                'exception' => $e,
+            ]);
+            $message = "Erreur technique lors de l'annulation. Contactez le support si elle persiste.";
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 500);
             }
 
-            return redirect()
-                ->back()
-                ->with(
-                    "error",
-                    'Erreur lors de l\'annulation: ' . $e->getMessage(),
-                );
+            return redirect()->back()->with('error', $message);
         }
     }
 

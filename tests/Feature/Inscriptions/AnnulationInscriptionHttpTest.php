@@ -85,4 +85,31 @@ class AnnulationInscriptionHttpTest extends TestCase
             ->assertJsonPath('success', false);
         $this->assertSame($niveau, DB::transactionLevel());
     }
+    public function test_accept_json_sans_entete_ajax_retourne_json_apres_annulation(): void
+    {
+        $this->actingAs($this->agent)->call(
+            'POST',
+            route('esbtp.inscriptions.annuler', $this->inscription),
+            ['_method' => 'PUT', 'motif' => 'Traitement autorisé sans header XMLHttpRequest'],
+            [], [],
+            ['HTTP_ACCEPT' => 'application/json']
+        )->assertOk()->assertJsonPath('success', true);
+    }
+
+    public function test_exception_technique_ne_divulgue_aucun_detail_interne_en_json(): void
+    {
+        $service = \Mockery::mock(\App\Services\ESBTPInscriptionService::class);
+        $service->shouldReceive('annulerInscription')->once()
+            ->andThrow(new \RuntimeException('SQLSTATE[HY000] password=secret'));
+        $this->app->instance(\App\Services\ESBTPInscriptionService::class, $service);
+
+        $reponse = $this->actingAs($this->agent)->call(
+            'POST', route('esbtp.inscriptions.annuler', $this->inscription),
+            ['_method' => 'PUT', 'motif' => 'Une annulation simulée'], [], [],
+            ['HTTP_ACCEPT' => 'application/json']
+        );
+        $reponse->assertStatus(500)->assertJsonPath('success', false);
+        $this->assertStringNotContainsString('SQLSTATE', $reponse->getContent());
+        $this->assertStringNotContainsString('secret', $reponse->getContent());
+    }
 }
