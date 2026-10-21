@@ -3668,8 +3668,8 @@ Route::middleware([
         ->name('esbtp.lmd.releves.official-documents.stream');
 });
 
-// Relevé interne BTS : document individuel construit depuis les bulletins
-// déjà publiés. Distinct du relevé national DEXCO, sans émission officielle.
+// Relevé BTS : consultatif depuis les notes si aucun bulletin publié,
+// sinon interne depuis les seuls bulletins publiés. Jamais un relevé national DEXCO.
 Route::middleware([
     'auth',
     'paywall',

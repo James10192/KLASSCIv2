@@ -62,14 +62,14 @@
                     @if(\Illuminate\Support\Facades\Route::has('esbtp.bts.releves.preview') && \App\Support\PorteDeRoute::ouverte('esbtp.bts.releves.preview', auth()->user()))
                     <a class="fng-btn" data-fng-document target="_blank" rel="noopener"
                         href="{{ route('esbtp.bts.releves.preview', ['etudiant' => $student->id, 'annee' => $ficheInsc->annee_universitaire_id]) }}"
-                        title="Relevé interne de l'établissement, distinct du relevé national BTS"><i class="fas fa-file-pdf"></i> Relevé BTS</a>
+                        title="Relevé BTS : provisoire depuis les notes si aucun bulletin n'est publié ; sinon interne publié, distinct du relevé national"><i class="fas fa-file-pdf"></i> Relevé BTS</a>
                     @endif
                     @endcan
                     @can('bts.releve.export')
                     @if(\Illuminate\Support\Facades\Route::has('esbtp.bts.releves.download') && \App\Support\PorteDeRoute::ouverte('esbtp.bts.releves.download', auth()->user()))
                     <a class="fng-btn" target="_blank" rel="noopener"
                         href="{{ route('esbtp.bts.releves.download', ['etudiant' => $student->id, 'annee' => $ficheInsc->annee_universitaire_id]) }}"
-                        title="Télécharger le relevé interne BTS"><i class="fas fa-download"></i> PDF</a>
+                        title="Télécharger le relevé BTS : provisoire avant publication, interne publié ensuite"><i class="fas fa-download"></i> PDF</a>
                     @endif
                     @endcan
                 @endif

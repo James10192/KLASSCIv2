@@ -11,6 +11,11 @@ class StudentDocumentRouteAvailabilityTest extends TestCase
     {
         $this->assertTrue(Route::has('esbtp.bts.releves.preview'));
         $this->assertTrue(Route::has('esbtp.bts.releves.download'));
+        $this->assertTrue(Route::has('esbtp.lmd.releves.status'));
+        $this->assertTrue(Route::has('esbtp.lmd.releves.preview'));
+        $this->assertTrue(Route::has('esbtp.lmd.releves.issue'));
+        $this->assertTrue(Route::has('esbtp.lmd.releves.download'));
+
     }
 
     public function test_les_vues_bts_protegent_leurs_liens_de_releves(): void
@@ -22,6 +27,8 @@ class StudentDocumentRouteAvailabilityTest extends TestCase
         $this->assertStringContainsString("Route::has('esbtp.bts.releves.download')", $fiche);
         $this->assertStringContainsString("Route::has('esbtp.bts.releves.preview')", $notes);
         $this->assertStringContainsString('&& btsDocumentUrl', $notes);
+        $this->assertStringContainsString('canViewBtsReleve', $notes);
+        $this->assertStringNotContainsString('canViewStudent && canViewBulletin && btsDocumentUrl', $notes);
     }
 
     public function test_le_controleur_transmet_l_inscription_selectionnee_a_la_vue(): void

@@ -32,10 +32,20 @@ class AcademicDocumentsNavigationTest extends TestCase
         $btsNotesController = $this->source('app/Http/Controllers/ESBTPNoteController.php');
         $lmdNotes = $this->source('resources/views/esbtp/lmd/notes/index.blade.php');
         $lmdClasses = $this->source('resources/views/esbtp/lmd/notes/partials/_classes.blade.php');
+        $lmdReleveScript = $this->source('resources/views/esbtp/lmd/notes/partials/_releve-etudiant-script.blade.php');
 
         $this->assertStringContainsString("orWhere('systeme_academique', '!=', 'LMD')", $btsNotesController);
         $this->assertStringContainsString('Fiche · Relevé', $lmdNotes);
         $this->assertStringContainsString('students.view', $lmdNotes);
+        $this->assertStringContainsString('data-lmd-releve', $lmdNotes);
+        $this->assertStringContainsString('lmdReleveStatusTemplate', $lmdReleveScript);
+        $this->assertStringContainsString("Route::has('esbtp.lmd.releves.status')", $lmdReleveScript);
+        $this->assertStringContainsString("Route::has('esbtp.lmd.releves.preview')", $lmdReleveScript);
+        $this->assertStringContainsString("Route::has('esbtp.lmd.releves.issue')", $lmdReleveScript);
+        $this->assertStringContainsString('canIssueReleveLmdFromNotes', $lmdReleveScript);
+        $this->assertStringContainsString("window.open('about:blank', '_blank')", $lmdReleveScript);
+        $this->assertStringContainsString('previewTab.location.replace(previewUrl)', $lmdReleveScript);
+        $this->assertStringNotContainsString('window.location.assign(previewUrl)', $lmdReleveScript);
         $this->assertStringContainsString('esbtp.lmd.jurys.index', $lmdClasses);
         $this->assertStringContainsString('lmd.jury.view', $lmdClasses);
     }
@@ -52,6 +62,8 @@ class AcademicDocumentsNavigationTest extends TestCase
         $this->assertStringContainsString("where('etudiant_id', \$etudiant->id)", $controller);
         $this->assertStringContainsString("'systeme_academique', 'BTS'", $controller);
         $this->assertStringContainsString('$bulletin->is_published', $controller);
+        $this->assertStringContainsString('BtsProvisionalTranscript::hasResults', $controller);
+        $this->assertStringContainsString('pdf.bts-releve-provisoire', $controller);
         $this->assertStringContainsString('ne remplace pas le relevé', $pdf);
     }
 

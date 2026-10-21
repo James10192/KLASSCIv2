@@ -316,7 +316,9 @@ jobs:
             tests/Unit/Security/MotDePasseTemporaireEtudiantTest.php \
             tests/Unit/Comptabilite \
             tests/Unit/Photos \
-            tests/Unit/Services/Master
+            tests/Unit/Services/Master \
+            tests/Unit/Services/BtsProvisionalTranscriptTest.php \
+            tests/Unit/Views/AcademicDocumentsNavigationTest.php
           do
             echo "::group::$chemin"
             php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
@@ -542,6 +544,8 @@ jobs:
             tests/Feature/Classes/PermissionsDocumentsClasseTest.php \
             tests/Feature/Notes/NotesDocumentPermissionsTest.php \
             tests/Feature/Permissions/BtsReleveAccesCiblesTest.php \
+            tests/Feature/Bts/BtsTranscriptProvisionalHttpTest.php \
+            tests/Feature/Resultat/StudentDocumentRouteAvailabilityTest.php \
             tests/Feature/Notes/NotesExcelExportTest.php \
             tests/Feature/LMD/SaisieGroupeeNotesLmdTest.php \
             tests/Feature/Mobile/ScolariteBottomNavTest.php

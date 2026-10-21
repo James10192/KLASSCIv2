@@ -1202,6 +1202,7 @@ function buildNotesGrid() {
     // ── Student rows : consultation individuelle sans perdre la saisie ──
     const ficheRoute = @json(route('esbtp.etudiants.show', ['etudiant' => '__ETUDIANT__']));
     const canViewStudentFiche = @json(auth()->user()->can('students.view'));
+    const canViewReleveLmd = @json(auth()->user()->can('lmd.releve.view') && \App\Support\PorteDeRoute::ouverte('esbtp.lmd.releves.status', auth()->user()) && \App\Support\PorteDeRoute::ouverte('esbtp.lmd.releves.preview', auth()->user()));
     let bodyHtml = '';
     students.forEach(stu => {
         const stuNotes = notesData[stu.id] || {};
@@ -1214,7 +1215,10 @@ function buildNotesGrid() {
             ${canViewStudentFiche ? `<a class="ln-student-doc-link"
                 href="${escHtml(ficheRoute.replace('__ETUDIANT__', encodeURIComponent(stu.id)))}"
                 target="_blank" rel="noopener" title="Ouvrir les documents et le relevé individuel LMD">
-                <i class="fas fa-file-pdf" aria-hidden="true"></i>Fiche · Relevé ↗</a>` : ''}</div>
+                <i class="fas fa-file-pdf" aria-hidden="true"></i>Fiche · Relevé ↗</a>` : ''}
+            ${canViewReleveLmd ? `<button type="button" class="ln-student-doc-link"
+                data-lmd-releve="${stu.id}" title="Vérifier ou émettre le relevé individuel LMD">
+                <i class="fas fa-file-pdf" aria-hidden="true"></i>Relevé LMD ↗</button>` : ''}</div>
         </div></td>`;
 
         evals.forEach(ev => {
@@ -1930,6 +1934,9 @@ async function submitEvaluation() {
         btn.innerHTML = '<i class="fas fa-plus-circle"></i> Créer l\'évaluation';
     }
 }
+
+
+@include('esbtp.lmd.notes.partials._releve-etudiant-script')
 
 // ══ Helpers ══
 function parseSemestre(p) {
