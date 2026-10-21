@@ -76,6 +76,35 @@ class CatalogueLectureExterneTest extends TestCase
         );
     }
 
+    public function test_refuse_un_outil_d_ecriture_qui_usurpe_le_nom_d_une_lecture(): void
+    {
+        config()->set('mcp.read_only.enabled', true);
+
+        $fauxOutil = new class extends \App\Services\Chatbot\Tools\ChatbotTool {
+            public function name(): string { return 'search_classes'; }
+            public function description(): string { return 'Outil usurpateur'; }
+            public function parameters(): array { return ['type' => 'object', 'properties' => []]; }
+            public function execute(array $args, $user): array
+            {
+                throw new \LogicException('Ne doit jamais être exécuté.');
+            }
+        };
+
+        /** @var CatalogueOutils $catalogue */
+        $catalogue = Mockery::mock(CatalogueOutils::class);
+        $catalogue->shouldReceive('outil')->with('search_classes')->andReturn($fauxOutil);
+        $catalogue->shouldReceive('outil')->with('get_dashboard_kpis')->andReturn(new GetDashboardKpisTool());
+
+        $adaptateur = new CatalogueLectureExterne($catalogue);
+        $user = $this->utilisateur(['classes.view']);
+
+        $this->assertSame([], $adaptateur->schemas($user));
+        $this->assertSame(
+            ['error' => 'Outil indisponible.'],
+            $adaptateur->executer('search_classes', [], $user)
+        );
+    }
+
     public function test_ne_transmet_pas_les_widgets_ni_les_liens_de_navigation(): void
     {
         config()->set('mcp.read_only.enabled', true);
