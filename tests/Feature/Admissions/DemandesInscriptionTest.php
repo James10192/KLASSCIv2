@@ -208,10 +208,14 @@ class DemandesInscriptionTest extends TestCase
             ]],
         ], '', '&', PHP_QUERY_RFC1738);
 
-        // Même type de corps et d'entêtes que fetch(URLSearchParams). Un postJson
-        // seul ne couvrirait pas la requête réellement émise par la page.
+        // Le client de test Symfony ne remplit pas automatiquement $_POST
+        // à partir du corps brut lorsque call() reçoit une liste de paramètres
+        // vide. On décode ici comme PHP le ferait pour application/x-www-form-urlencoded.
+        $formulaire = [];
+        parse_str($payload, $formulaire);
+        $this->assertSame('Père', $formulaire['parents'][0]['relation']);
         $reponse = $this->actingAs($this->agent)->call(
-            'POST', route('esbtp.inscriptions.store'), [], [], [],
+            'POST', route('esbtp.inscriptions.store'), $formulaire, [], [],
             ['CONTENT_TYPE' => 'application/x-www-form-urlencoded; charset=UTF-8',
                 'HTTP_ACCEPT' => 'application/json', 'HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest'],
             $payload,
