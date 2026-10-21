@@ -18,6 +18,7 @@ function creer(repondre) {
     const toasts = [], events = [];
     const document = {
         getElementById: () => null,
+        addEventListener() {},
         createElement: () => ({ style: {}, textContent: '', classList: { add() {}, remove() {} } }),
         head: { appendChild() {} },
     };
