@@ -540,13 +540,14 @@
 
         fetch(ROUTES.bulkValider, {
             method: 'POST',
-            body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            body: new URLSearchParams(formData),
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json',
+            },
+            credentials: 'same-origin',
         })
-            .then(async (r) => {
-                if (!r.ok) throw new Error(await messageDErreur(r, 'Erreur validation.'));
-                return r.json();
-            })
+            .then(r => window.iiLireReponseInscription(r))
             .then((data) => {
                 if (!data.success) {
                     showToast(data.message || 'Validation échouée.', 'error');
@@ -605,8 +606,12 @@
 
             fetch(ROUTES.bulkAnnuler, {
                 method: 'POST',
-                body: formData,
-                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                body: new URLSearchParams(formData),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                    'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json',
+                },
+                credentials: 'same-origin',
             })
                 .then(async (r) => {
                     if (!r.ok) throw new Error(await messageDErreur(r, 'Erreur lors de l\'annulation.'));

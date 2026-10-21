@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Validation des inscriptions en lot :** la liste et l'administration (validation, aperçu, dérogation de capacité) envoient un formulaire URL-encodé au lieu d'un multipart inutile ; droits et contrôles financiers côté serveur inchangés, erreurs HTTP mieux qualifiées. Recette obligatoire sur presentation.
 - **Création d'inscription — photo facultative :** les seules données texte sont transmises en URL-encodé, le multipart est réservé à une photo réellement jointe ; la validation serveur reste inchangée. Recette avec et sans photo requise sur presentation.
 - **Validation des inscriptions — transport HTTP cohérent :** fiche étudiant, listes et fiche inscription utilisent un POST URL-encodé sans multipart, un contrôle strict de confirmation JSON et des messages distincts selon l'erreur ; les notifications n'interprètent plus le HTML. La création complète avec photo reste multipart. Recette sur presentation avant propagation.
 - **Inscriptions — conversion des candidatures derrière une passerelle HTTP :** le bouton « Accepter et inscrire » transmet maintenant les champs texte dans un formulaire encodé URL au lieu d'un multipart sans fichier. Les réponses 403 HTML provenant potentiellement d'une passerelle sont signalées avec leur référence technique si disponible ; aucun droit métier ou contrôle financier n'est assoupli. Recette de bout en bout SuperAdmin sur presentation requise avant diffusion.

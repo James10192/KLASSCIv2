@@ -109,3 +109,14 @@ test('fiche inscription : même contrat ; création complète : photo et multipa
     assert.ok(creation.includes('form.enctype = avecFichier'));
     assert.ok(creation.includes('application/x-www-form-urlencoded'));
 });
+
+test('liste et administration : les validations groupées et aperçus restent URL-encodés', () => {
+    const index = fs.readFileSync(path.resolve(__dirname, '../../public/js/inscriptions/index.js'), 'utf8');
+    const admin = fs.readFileSync(path.resolve(__dirname,
+        '../../resources/views/esbtp/inscriptions/administration.blade.php'), 'utf8');
+    assert.ok(index.includes('body: new URLSearchParams(formData)'));
+    assert.ok(admin.includes('body: new URLSearchParams(previewPayload)'));
+    assert.equal((admin.match(/body: new URLSearchParams\\(formData\\)/g) || []).length, 2);
+    assert.ok(admin.includes('window.iiLireReponseInscription(response)'));
+});
+

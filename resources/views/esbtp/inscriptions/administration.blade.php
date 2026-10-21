@@ -1249,8 +1249,7 @@
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                     credentials: 'same-origin',
                 });
-                verdict = await response.json();
-                if (!response.ok) throw new Error(verdict.message || 'Aperçu indisponible');
+                verdict = await window.iiLireReponseInscription(response);
             } catch (error) {
                 window.showToast?.(error.message || 'Vérification impossible.', 'error');
                 return;
@@ -1279,17 +1278,15 @@
 
         fetch("{{ route('esbtp.inscriptions.bulk-valider') }}", {
             method: 'POST',
-            body: formData,
+            body: new URLSearchParams(formData),
             headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+            credentials: 'same-origin',
         })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erreur lors de la validation.');
-            }
-            return response.json();
-        })
+        .then(response => window.iiLireReponseInscription(response))
         .then(data => {
             if (!data.success) {
                 highlightInscriptionRow(inscriptionId, 'reject');
@@ -1425,11 +1422,14 @@
         try {
             const response = await fetch("{{ route('esbtp.inscriptions.bulk-validation-preview') }}", {
                 method: 'POST',
-                body: previewPayload,
-                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: new URLSearchParams(previewPayload),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                    'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
             });
-            const json = await response.json();
-            if (!response.ok) throw new Error(json.message || 'Aperçu indisponible');
+            const json = await window.iiLireReponseInscription(response);
             verdicts = new Map((json.items || []).map(item => [String(item.id), item]));
             document.getElementById('bulk-waived-count').textContent = json.waived || 0;
         } catch (error) {
@@ -1642,15 +1642,16 @@
 
         fetch("{{ route('esbtp.inscriptions.bulk-valider') }}", {
             method: 'POST',
-            body: formData,
+            body: new URLSearchParams(formData),
             headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            }
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json',
+            },
+            credentials: 'same-origin',
         })
         .then(async response => {
-            const data = await response.json();
-            if (!response.ok || !data.success) throw new Error(data.message || 'Validation refusée');
+            const data = await window.iiLireReponseInscription(response);
+            if (data.success !== true) throw new Error(data.message || 'Validation refusée');
             return data;
         })
         .then(data => {
