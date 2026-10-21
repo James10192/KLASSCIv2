@@ -70,7 +70,7 @@ class McpBridgeTest extends TestCase
         $body = json_encode($payload, JSON_THROW_ON_ERROR);
         return $this->call('POST', '/api/mcp-bridge', [], [], [], [
             'CONTENT_TYPE' => 'application/json',
-            'HTTP_X_KLASSCI_MCP_SIGNATURE' => hash_hmac('sha256', $body, self::SECRET),
+            'HTTP_X_KLASSCI_MCP_SIGNATURE' => hash_hmac('sha256', $body, (string) config('mcp.bridge.secret')),
         ], $body);
     }
 
@@ -114,6 +114,23 @@ class McpBridgeTest extends TestCase
             'tool' => 'get_connected_profile',
             'arguments' => [],
         ])->assertStatus(403);
+    }
+
+    public function test_identifiant_profil_reste_identique_lors_de_la_rotation_du_secret_du_pont(): void
+    {
+        $user = $this->utilisateur();
+        $this->lier($user, 'auth0|secret-rotation');
+        $outil = ['tool' => 'get_connected_profile', 'arguments' => []];
+
+        $original = $this->demander('auth0|secret-rotation', $outil)
+            ->assertOk()->json('id');
+
+        config()->set('mcp.bridge.secret', str_repeat('z', 64));
+
+        $apresRotation = $this->demander('auth0|secret-rotation', $outil)
+            ->assertOk()->json('id');
+
+        $this->assertSame($original, $apresRotation);
     }
 
     public function test_le_quota_ne_bloque_pas_les_autres_personnels_derriere_la_meme_passerelle(): void

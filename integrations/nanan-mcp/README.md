@@ -75,6 +75,36 @@ Un enregistrement associe cette empreinte unique à un `user_id` autorisé.
 Ne pas procéder à un appairage automatique sur l'e-mail ; ne pas provisionner
 de compte étudiant ou de mineur pour ce pilote.
 
+## Connexions utilisateur : consulter et révoquer (phase 5)
+
+La session Laravel de **l'utilisateur lui-même** donne accès à :
+
+- `GET /nanan/mcp/connections` — liste uniquement ses liaisons dans son
+  établissement (identifiants locaux, dates, état révoqué).
+- `POST /nanan/mcp/connections/{identity}/revoke` — révoque sa liaison,
+  avec authentification de session, cookie + token CSRF du groupe `web`,
+  contrôle de propriété dans le `UPDATE` et limitation de fréquence.
+
+Ces routes sont disponibles après la migration de
+`mcp_external_identities` et un `MCP_TENANT_ORGANIZATION` non vide,
+même lorsque `MCP_BRIDGE_ENABLED=false` : désactiver le pont ne doit pas
+priver le personnel du contrôle de ses anciens accès.
+
+L'identifiant de profil `get_connected_profile` est pseudonyme et
+**stable** lors de la rotation du secret HMAC de transport. Ne pas
+l'utiliser comme jeton, preuve OAuth ou identifiant de base de données.
+
+**Limite cruciale :** révoquer coupe la liaison locale au prochain appel
+MCP, même si le JWT reste valide ; cela ne révoque pas automatiquement les
+tokens émis par Auth0, ne retire pas l'application de l'interface ChatGPT,
+et n'efface pas les conversations ChatGPT préexistantes. Le futur écran
+d'onboarding doit le dire clairement. Un nouveau lien ne peut être créé
+sans une preuve OIDC authentifiée et un consentement explicite.
+
+Le serveur ne propose pas encore d'écran de connexion ou
+d'autorisation OAuth interactif. Le parcours complet reste bloqué tant
+que l'issue #1642 n'est pas implémentée.
+
 ## Mettre en ligne plus tard
 
 - HTTPS public stable sur `/mcp` derrière proxy, Host/Origin allowlist,

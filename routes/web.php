@@ -3922,3 +3922,6 @@ Route::post('/mobile/profil', [\App\Http\Controllers\PwaController::class, 'prof
     ->name('mobile.profil');
 // Console d'exploitation ADC (lecture seule, hors parcours des ecoles).
 require __DIR__.'/exploitation-control-center.php';
+
+// Nanan Connect — gestion des connexions sous session Laravel + CSRF.
+require __DIR__.'/nanan-mcp-accounts.php';
