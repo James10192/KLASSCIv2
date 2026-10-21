@@ -8,15 +8,18 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
 use App\Services\ESBTP\BtsStudentAcademicRecords;
+use App\Services\ESBTP\BtsProvisionalTranscript;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Relevé interne BTS, construit uniquement à partir des bulletins publiés.
+ * Relevé interne BTS selon l'état de publication :
+ *  - consultatif et non officiel depuis les notes disponibles sans bulletin publié ;
+ *  - publié exclusivement depuis les bulletins publiés, sans recalcul.
  *
- * Ce document est distinct du relevé national de l'examen BTS (DEXCO).
- * Aucun calcul de moyenne et aucune écriture de données n'ont lieu ici.
+ * Distinct du relevé national de l'examen BTS (DEXCO).
+ * Aucune écriture de données ou publication n'a lieu ici.
  */
 final class BtsStudentTranscriptController extends Controller
 {
@@ -25,8 +28,9 @@ final class BtsStudentTranscriptController extends Controller
         ESBTPEtudiant $etudiant,
         ESBTPAnneeUniversitaire $annee,
         BtsStudentAcademicRecords $records,
+        BtsProvisionalTranscript $provisional,
     ): Response {
-        return $this->render($request, $etudiant, $annee, $records, false);
+        return $this->render($request, $etudiant, $annee, $records, $provisional, false);
     }
 
     public function download(
@@ -34,8 +38,9 @@ final class BtsStudentTranscriptController extends Controller
         ESBTPEtudiant $etudiant,
         ESBTPAnneeUniversitaire $annee,
         BtsStudentAcademicRecords $records,
+        BtsProvisionalTranscript $provisional,
     ): Response {
-        return $this->render($request, $etudiant, $annee, $records, true);
+        return $this->render($request, $etudiant, $annee, $records, $provisional, true);
     }
 
     private function render(
@@ -43,6 +48,7 @@ final class BtsStudentTranscriptController extends Controller
         ESBTPEtudiant $etudiant,
         ESBTPAnneeUniversitaire $annee,
         BtsStudentAcademicRecords $records,
+        BtsProvisionalTranscript $provisional,
         bool $download,
     ): Response {
         // Les droits individuels distinguent consultation et téléchargement :
@@ -82,8 +88,30 @@ final class BtsStudentTranscriptController extends Controller
                 ], true))
             ->values();
 
-        abort_if($bulletins->isEmpty(), 404,
-            "Aucun bulletin BTS publié pour cette période. Publiez d'abord les résultats.");
+        // Le relevé interne publié ne reprend QUE les bulletins publiés.
+        // Avant la publication, un document provisoire peut lire les notes
+        // courantes du moteur BTS, sans publier ni recalculer les bulletins.
+        if ($bulletins->isEmpty()) {
+            $sections = $provisional->sections((int) $etudiant->id, $inscription, $periode, $records);
+            if (! BtsProvisionalTranscript::hasResults($sections)) {
+                return response()->view('esbtp.bts.releves.indisponible', [
+                    'annee' => $annee,
+                    'periode' => $periode,
+                ], 422);
+            }
+
+            $pdf = Pdf::loadView('pdf.bts-releve-provisoire', [
+                'etudiant' => $etudiant,
+                'annee' => $annee,
+                'sections' => $sections,
+                'periode' => $periode,
+                'generatedAt' => now(),
+            ])->setPaper('a4', 'portrait');
+
+            $filename = 'releve-PROVISOIRE-bts-'.$etudiant->id.'-'.$annee->id.'-'.$periode.'.pdf';
+
+            return $download ? $pdf->download($filename) : $pdf->stream($filename);
+        }
 
         $bulletins->load(['classe', 'resultats.matiere']);
 

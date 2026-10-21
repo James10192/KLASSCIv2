@@ -1333,11 +1333,11 @@ function renderNotesGrid(students, sortedEvaluations) {
             .replace('__ETUDIANT__', encodeURIComponent(student.id))
             .replace('__ANNEE__', encodeURIComponent(nmAcademicYearId));
         const canViewStudent = @json(auth()->user()->can('students.view'));
-        const canViewBulletin = @json(auth()->user()->can('bulletins.view'));
+        const canViewBtsReleve = @json(auth()->user()->can('bts.releve.view') && \App\Support\PorteDeRoute::ouverte('esbtp.bts.releves.preview', auth()->user()));
         const documentLinks = '<div class="nm-student-docs">'
             + (canViewStudent ? '<a href="'+nmEscapeHtml(studentDocumentUrl)+'" target="_blank" rel="noopener">Fiche · Documents ↗</a>' : '')
-            + (canViewStudent && canViewBulletin && btsDocumentUrl
-                ? '<a href="'+nmEscapeHtml(btsDocumentUrl)+'" target="_blank" rel="noopener" title="Relevé interne BTS publié">Relevé BTS ↗</a>' : '')
+            + (canViewBtsReleve && btsDocumentUrl
+                ? '<a href="'+nmEscapeHtml(btsDocumentUrl)+'" target="_blank" rel="noopener" title="Relevé BTS : publié si des bulletins sont publiés, provisoire sinon">Relevé BTS ↗</a>' : '')
             + '</div>';
         const row = $(`
             <tr data-student-id="${student.id}">

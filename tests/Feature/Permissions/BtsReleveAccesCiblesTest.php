@@ -7,6 +7,7 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPEtudiant;
 use App\Models\User;
 use App\Services\ESBTP\BtsStudentAcademicRecords;
+use App\Services\ESBTP\BtsProvisionalTranscript;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
@@ -52,6 +53,7 @@ class BtsReleveAccesCiblesTest extends TestCase
                 new ESBTPEtudiant(),
                 new ESBTPAnneeUniversitaire(),
                 app(BtsStudentAcademicRecords::class),
+                app(BtsProvisionalTranscript::class),
             );
 
             $this->fail('Un droit BTS ciblé ne doit pas ouvrir une action distincte.');
