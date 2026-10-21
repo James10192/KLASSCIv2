@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 
 /**
  * Appelé exclusivement par la passerelle Nanan Connect après vérification OAuth.
@@ -46,6 +47,18 @@ final class McpBridgeController extends Controller
         if (! $user) {
             return response()->json(['error' => 'Accès refusé.'], 403);
         }
+
+        // Après authentification HMAC + liaison à un compte local actif,
+        // limiter PAR UTILISATEUR, pas par IP partagée de la passerelle.
+        // Un utilisateur bruyant ne doit jamais épuiser le quota des autres.
+        $quota = max(1, min(120, (int) config('mcp.bridge.requests_per_minute', 30)));
+        $quotaKey = 'mcp:rate:'.hash('sha256', $payload['organization'].'|'.$user->id);
+        if (RateLimiter::tooManyAttempts($quotaKey, $quota)) {
+            return response()->json(['error' => 'Limite de lectures atteinte.'], 429)
+                ->header('Retry-After', (string) max(1, RateLimiter::availableIn($quotaKey)))
+                ->header('Cache-Control', 'no-store');
+        }
+        RateLimiter::hit($quotaKey, 60);
 
         // Profil de l'identité LOCALE, seulement après preuve JWT, signature
         // HMAC, lien non révoqué et compte actif. Aucune recherche par e-mail.
