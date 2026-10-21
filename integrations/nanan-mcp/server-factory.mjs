@@ -50,5 +50,19 @@ export function createSchoolServer(principal, { tenants, issuer, call = callScho
     })
   }, async (args) => read('get_dashboard_kpis', args));
 
+  // OpenAI utilise ce profil pour différencier les comptes KLASSCI connectés.
+  // La réponse est récupérée dans Laravel à partir d'un compte VÉRIFIÉ.
+  mcp.registerTool('get_connected_profile', {
+    description: 'Identifier le compte KLASSCI réellement connecté ; aucune recherche de données scolaires.',
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    securitySchemes: [{ type: 'oauth2', scopes: ['mcp:read'] }],
+    _meta: {
+      securitySchemes: [{ type: 'oauth2', scopes: ['mcp:read'] }],
+      'openai/profile': true
+    },
+    inputSchema: z.object({}),
+    outputSchema: z.object({ id: z.string(), name: z.string() })
+  }, async () => read('get_connected_profile', {}));
+
   return mcp;
 }
