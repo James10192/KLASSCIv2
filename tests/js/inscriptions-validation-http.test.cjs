@@ -106,6 +106,6 @@ test('fiche inscription : même contrat ; création complète : photo et multipa
     assert.match(detail, /window\.iiLireReponseInscription\(response\)/);
     assert.match(creation, /enctype="multipart\/form-data"/);
     assert.match(creation, /type="file"/);
-    assert.match(creation, /form\\.enctype = avecFichier/);
-    assert.match(creation, /application\\/x-www-form-urlencoded/);
+    assert.ok(creation.includes('form.enctype = avecFichier'));
+    assert.ok(creation.includes('application/x-www-form-urlencoded'));
 });
