@@ -147,3 +147,13 @@ test('les mutations résiduelles de liste et administration passent par le parse
     assert.equal((admin.match(/window\.iiCorpsFormulaireInscription\(this\)/g) || []).length, 4);
     assert.equal((admin.match(/iiLireReponseInscription\(response, 'success'\)/g) || []).length >= 6, true);
 });
+
+
+test('édition de souscription : contrôle HTTP strict et aucun token ou motif dans un journal debug', () => {
+    const show = fs.readFileSync(path.resolve(__dirname, '../../resources/views/esbtp/inscriptions/show.blade.php'), 'utf8');
+    const section = show.split('const editForm = document.getElementById(\'editSubscriptionForm\')')[1].split('Formulaire editSubscriptionForm non trouvé')[0];
+    assert.match(section, /iiCorpsFormulaireInscription\(this\)/);
+    assert.match(section, /payload\.body\.set\('_method', 'PUT'\)/);
+    assert.match(section, /iiLireReponseInscription\(response, 'success'\)/);
+    assert.doesNotMatch(section, /formData\.get\('_token'\)/);
+});

@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-21 · #1656 · Ajustement de souscription depuis la fiche inscription : formulaire texte sans multipart inutile, refus HTTP détaillé sans afficher SQL ni secret, méthode PUT et CSRF préservés. Recette financière et visibilité des motifs sur presentation avant propagation.
 - 2026-10-21 · #1656 · Les annulations individuelles et les actions rapides de caisse/classe/annulation utilisent le contrôle HTTP partagé ; le motif d'annulation est validé et les refus métiers ne sont plus des 500. Recette SuperAdmin, paiements, permissions, réseau, mobile et journaux sur presentation avant propagation.
 - 2026-10-21 · #1651 complément · Création sans photo / avec photo et validation « tout le filtre » : transport adapté, dérogation de capacité sans contournement métier. Recette sur présentation et cookies/session requise avant propagation.
 - 2026-10-21 · #1651 · Validation des inscriptions sur fiche étudiant, fiche inscription et listes : les requêtes AJAX texte évitent les multipart inutiles, les refus HTTP affichent leur nature, les validations groupées conservent les protections métier. Tester le proxy, les permissions et les paiements sur présentation avant propagation.

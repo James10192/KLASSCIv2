@@ -4749,7 +4749,6 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
             editForm.addEventListener('submit', function(e) {
             e.preventDefault();
 
-            const formData = new FormData(this);
             const newAmount = document.getElementById('edit_subscription_new_amount').value;
             const reason = document.getElementById('edit_subscription_reason').value;
 
@@ -4769,28 +4768,23 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                 return;
             }
 
-            // Ajouter la méthode PUT pour Laravel
-            formData.append('_method', 'PUT');
+            // Le modal est textuel : conserver la méthode PUT sans envoyer de multipart.
+            // Ne pas journaliser le motif ni le CSRF dans la console du navigateur.
+            const payload = window.iiCorpsFormulaireInscription(this);
+            payload.body.set('_method', 'PUT');
 
-            // Debug: afficher les données envoyées
-            debugLog('📤 Données envoyées:', {
-                action: this.action,
-                amount: formData.get('amount'),
-                reason: formData.get('reason'),
-                _method: formData.get('_method'),
-                _token: formData.get('_token')
-            });
-
-            // Soumission via fetch
             fetch(this.action, {
                 method: 'POST',
-                body: formData,
+                body: payload.body,
                 headers: {
+                    ...payload.headers,
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                    'Accept': 'application/json'
-                }
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin'
             })
-            .then(response => response.json())
+            .then(response => window.iiLireReponseInscription(response, 'success'))
             .then(data => {
                 if (data.success) {
                     // Fermer le modal
@@ -4805,7 +4799,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
             })
             .catch(error => {
                 debugError('Erreur:', error);
-                alert('Une erreur est survenue lors de la mise à jour');
+                alert(error.message || 'Une erreur est survenue lors de la mise à jour');
             });
             });
         } else {
