@@ -1,0 +1,32 @@
+name: Nanan Connect MCP
+
+on:
+  pull_request:
+    paths:
+      - 'integrations/nanan-mcp/**'
+      - '.github/workflows/nanan-mcp.yml'
+  push:
+    branches: [presentation]
+    paths:
+      - 'integrations/nanan-mcp/**'
+      - '.github/workflows/nanan-mcp.yml'
+
+jobs:
+  gateway:
+    name: Tests OAuth MCP et isolation des tenants
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: integrations/nanan-mcp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Installer les dépendances du pilote
+        run: npm install --no-audit --no-fund
+      - name: Syntaxe
+        run: npm run check
+      - name: Vérifications de sécurité
+        run: npm test
