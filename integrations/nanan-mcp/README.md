@@ -105,6 +105,38 @@ Le serveur ne propose pas encore d'écran de connexion ou
 d'autorisation OAuth interactif. Le parcours complet reste bloqué tant
 que l'issue #1642 n'est pas implémentée.
 
+## Découverte des outils selon les droits locaux
+
+Le serveur MCP **n'annonce plus tous les outils à tous les comptes**.
+Avant chaque requête moderne, la factory asynchrone du SDK v2 interroge
+l'instance Laravel via une requête HMAC dédiée
+`list_authorized_tools`. Cette opération est **interne au pont** et
+n'apparaît jamais dans `tools/list`.
+
+Laravel valide signature, nonce, organisation, identité liée, compte actif,
+quota, puis `CatalogueLectureExterne::schemas($user)` afin d'obtenir
+uniquement les outils que l'utilisateur peut réellement consulter.
+
+- `search_classes` et `get_dashboard_kpis` ne sont enregistrés que
+  si la liste reçue les autorise pour ce compte à cet instant.
+- `get_connected_profile` n'est enregistré qu'après vérification de la
+  liaison active ; il aide le client à identifier sa connexion même lorsque
+  son compte n'a pas le droit de consulter les indicateurs scolaires.
+- Une erreur de découverte, un lien révoqué, des données malformées ou un
+  outil inconnu ne déclenchent **aucun fallback vers tous les outils**.
+- L'appel `tools/call` repasse aussi par cette découverte, et l'outil
+  scolaire lui-même réévalue les permissions au moment de son exécution.
+
+### Coût et risque opérationnel à mesurer
+
+Il y a une requête interne signée de plus pour chaque appel MCP ; une
+invocation scolaire consomme actuellement deux accès au quota du pont
+(découverte + lecture). Tester la latence et réviser les limites par compte
+avant un pilote élargi ; ne pas mettre les autorisations en cache au prix
+d'une révocation tardive. Ne pas considérer `tools/list` comme un
+mécanisme suffisant pour protéger une lecture : l'exécution conserve
+ses propres contrôles côté Laravel.
+
 ## Mettre en ligne plus tard
 
 - HTTPS public stable sur `/mcp` derrière proxy, Host/Origin allowlist,
