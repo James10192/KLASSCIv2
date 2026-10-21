@@ -173,6 +173,6 @@ test('les notifications partagées affichent les réponses serveur en texte, jam
     const index = fs.readFileSync(
         path.resolve(__dirname, '../../public/js/inscriptions/index.js'), 'utf8'
     );
-    assert.match(index, /toast\\.querySelector\\('span'\\)\\.textContent = String\\(message\\)/);
-    assert.doesNotMatch(index, /String\\(message\\)\\.replace\\(\\/\\[<>\\]\\/g, ''\\)/);
+    assert.match(index, /toast\.querySelector\('span'\)\.textContent = String\(message\)/);
+    assert.doesNotMatch(index, /String\(message\)\.replace\(\/\[<>\]\/g, ''\)/);
 });
