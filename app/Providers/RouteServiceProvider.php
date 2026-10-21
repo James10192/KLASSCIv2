@@ -67,6 +67,12 @@ class RouteServiceProvider extends ServiceProvider
                 ->namespace($this->namespace)
                 ->group(base_path('routes/api.php'));
 
+            // Pont prive Nanan Connect : signature HMAC et liaison identitaire obligatoires.
+            Route::prefix('api')
+                ->middleware('api')
+                ->namespace($this->namespace)
+                ->group(base_path('routes/mcp-bridge.php'));
+
             // Charger les routes statiques LMD avant bulletins/{bulletin}.
             Route::middleware('web')
                 ->namespace($this->namespace)
