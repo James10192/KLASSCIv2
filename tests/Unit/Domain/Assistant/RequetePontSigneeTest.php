@@ -62,7 +62,12 @@ class RequetePontSigneeTest extends TestCase
         $body = $this->contenu();
         $mauvaiseSignature = $this->requete($body, 'another-different-secret-string-32-chars');
         $this->assertNull($garde->extraire($mauvaiseSignature));
-        $this->assertNull($garde->extraire($this->requete($body.' ')), 'signature du contenu exact');
+        // Altérer le body mais conserver le HMAC du contenu original.
+        $falsifie = Request::create('/api/mcp-bridge', 'POST', [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_KLASSCI_MCP_SIGNATURE' => hash_hmac('sha256', $body, self::SECRET),
+        ], $body.' ');
+        $this->assertNull($garde->extraire($falsifie), 'signature du contenu exact');
 
         foreach ([
             ['issuer' => 'https://evil.example/'],
