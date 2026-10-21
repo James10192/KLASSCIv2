@@ -1721,12 +1721,13 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Veuillez attendre la fin du chargement des frais avant de soumettre le formulaire.');
             return false;
         }
-        debugLog && debugLog('SUBMIT EVENT TRIGGERED!');
+        // Le formulaire HTML garde le multipart UNIQUEMENT pour une photo réelle.
+        // Sans fichier, le POST natif urlencoded évite une requête multipart
+        // inutile susceptible d'être refusée par une passerelle HTTP.
         const form = e.target;
-        const formData = new FormData(form);
-        debugLog && debugLog(`Nom: ${formData.get('nom') || 'VIDE'}`);
-        debugLog && debugLog(`Classe: ${formData.get('classe_id') || 'VIDE'}`);
-        debugLog && debugLog(`Matricule: ${formData.get('matricule') || 'VIDE'}`);
+        const hasFile = Array.from(form.querySelectorAll('input[type="file"]'))
+            .some(input => input.files && input.files.length > 0);
+        form.enctype = hasFile ? 'multipart/form-data' : 'application/x-www-form-urlencoded';
     });
 
     // =============================================
