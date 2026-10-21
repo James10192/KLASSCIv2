@@ -17,7 +17,7 @@ d'un établissement de son instance.
 | --- | --- | --- |
 | Données et règles scolaires | Laravel KLASSCIv2 + base par établissement | Déjà en production ; permissions et actions métiers canoniques à réutiliser |
 | Contrôle des droits | Spatie permissions + garde métier dans l'instance Laravel | Réévaluation à chaque appel ; aucune autorisation déduite des instructions du LLM |
-| Transport externe | Node.js 22 LTS + TypeScript cible, SDK MCP v2 officiel (déjà amorcé en ESM JS) | Compatible MCP 2026-07-28, Streamable HTTP stateless, clients ChatGPT/Codex |
+| Transport externe | Node.js 24 LTS en cible de déploiement (tests Node 22/24) + TypeScript cible, SDK MCP v2 officiel (déjà amorcé en ESM JS) | Compatible MCP 2026-07-28, Streamable HTTP stateless, clients ChatGPT/Codex |
 | Authentification du pilote | Auth0 Auth for MCP + Organizations + OAuth 2.1/CIMD | IdP existant, issuer/JWKS, consentement, PKCE, organisation dans le jeton ; en disponibilité générale |
 | Liaison du compte | Compte Laravel actif **explicitement lié** à (issuer, sub, org_id) | Pas d'association implicite par nom/e-mail ; révocable |
 | Pont vers les écoles | HTTPS + HMAC horodaté, clé différente par tenant, nonce anti-rejeu | Jeton OAuth jamais retransmis au tenant ; séparation stricte |
