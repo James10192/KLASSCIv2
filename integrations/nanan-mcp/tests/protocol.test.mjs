@@ -42,7 +42,7 @@ test('SDK MCP expose trois outils en lecture seule, dont le profil, et aucun CRU
     assert.match(raw, /search_classes/);
     assert.match(raw, /get_dashboard_kpis/);
     assert.match(raw, /get_connected_profile/);
-    assert.match(raw, /openai\\/profile/);
+    assert.match(raw, /openai\/profile/);
     assert.doesNotMatch(raw, /proposer_creation_classes/);
     assert.doesNotMatch(raw, /paiements\/annuler/);
     assert.match(raw, /mcp:read/);
