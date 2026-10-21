@@ -3,6 +3,20 @@ import * as z from 'zod/v4';
 import { callSchoolBridge } from './bridge.mjs';
 
 /**
+ * Autorisations effectives du compte local, revérifiées à chaque demande MCP.
+ * Les seuls outils côté modèle sont un sous-ensemble fermé de ce catalogue.
+ */
+export async function resolveAuthorizedTools(principal, { tenants, issuer, call = callSchoolBridge }) {
+  const answer = await call(principal, tenants, issuer, 'list_authorized_tools', {});
+  if (!answer || !Array.isArray(answer.tools)
+      || answer.tools.some((name) =>
+        !['search_classes', 'get_dashboard_kpis'].includes(name))) {
+    throw new Error('Réponse de permissions invalide');
+  }
+  return [...new Set(['get_connected_profile', ...answer.tools])];
+}
+
+/**
  * Un serveur et un utilisateur par appel HTTP.
  * Aucune variable globale ne doit contenir le principal du dernier appel.
  */
