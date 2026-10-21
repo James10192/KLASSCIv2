@@ -211,13 +211,23 @@
                 window.showToast?.(data.message || 'Cette inscription ne peut pas être validée.', 'warning');
                 return false;
             }
-            const waiver = data.mode === 'explicit_waiver';
+            // Trois preuves distinctes : un barème réellement gratuit ne vaut
+            // jamais un versement validé ni une exonération individuelle.
+            const messages = {
+                explicit_waiver: 'Exonération individuelle motivée et auditée : les frais concernés sont à 0 FCFA. Aucun paiement ni reçu fictif ne sera créé. Valider définitivement cette inscription ?',
+                configured_free: 'Gratuité confirmée par le barème configuré pour cette inscription : aucun paiement ni reçu fictif ne sera créé. Valider définitivement cette inscription ?',
+                validated_payment: 'Paiement validé vérifié. Valider définitivement cette inscription et activer le dossier étudiant ?',
+            };
+            const message = Object.prototype.hasOwnProperty.call(messages, data.mode)
+                ? messages[data.mode] : null;
+            if (!message) {
+                window.showToast?.('Mode de validation non reconnu. Vérification nécessaire.', 'error');
+                return false;
+            }
             return window.iiConfirm({
                 variant: 'validation',
                 title: 'Confirmer la validation',
-                message: waiver
-                    ? 'Exonération vérifiée : toutes les souscriptions concernées sont à 0 FCFA. Aucun paiement ni reçu fictif ne sera créé. Valider définitivement cette inscription ?'
-                    : 'Paiement validé vérifié. Valider définitivement cette inscription et activer le dossier étudiant ?',
+                message,
                 confirmLabel: 'Valider l’inscription',
             });
         } catch (error) {

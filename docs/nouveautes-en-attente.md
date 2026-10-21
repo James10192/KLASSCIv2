@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-21 · #1657 · Confirmation de validation d'inscription : distinguer paiement validé, gratuité de barème et exonération auditée, sans prétendre à un paiement pour un dossier réellement gratuit ; recette des trois modales sur présentation avant diffusion.
 - 2026-10-21 · #1656 · Annulation : le droit inscriptions.cancel suffit à l'action autorisée, sans exiger l'autre droit inscriptions.validate ; test de refus si seul le droit de validation est présent. Recette multi-rôles sur presentation avant livraison.
 - 2026-10-21 · #1656 · Messages des actions d'inscriptions : affichage sûr en texte, jamais en HTML exécutable ; recette toasts d'erreur et messages métiers sur presentation avant propagation.
 - 2026-10-21 · #1656 · Ajustement de souscription depuis la fiche inscription : formulaire texte sans multipart inutile, refus HTTP détaillé sans afficher SQL ni secret, méthode PUT et CSRF préservés. Recette financière et visibilité des motifs sur presentation avant propagation.
