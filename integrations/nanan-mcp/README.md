@@ -88,6 +88,19 @@ de compte étudiant ou de mineur pour ce pilote.
 - Les instances KLASSCI indépendantes conservent leurs propres données ; aucune
   copie centralisée d'informations scolaires dans la passerelle.
 
+
+### Compatibilité des métadonnées OAuth du SDK MCP v2
+
+Au contrôle de protocole, le SDK v2 conservait la politique OAuth dans
+`_meta.securitySchemes` mais omettait son équivalent racine
+`securitySchemes` dans `tools/list`. Les deux outils publient donc
+le miroir `_meta` et le serveur présente systématiquement un défi HTTP
+`401 WWW-Authenticate` avec les métadonnées de ressource OAuth.
+**Ne pas considérer cela comme une preuve de compatibilité ChatGPT** :
+MCP Inspector + écran de liaison OAuth ChatGPT doivent confirmer le parcours.
+Si le client exige le champ racine, adapter le SDK ou un adaptateur explicitement
+testé plutôt que bricoler silencieusement les messages MCP.
+
 ## Limites actuelles
 
 - Aucun IdP, secret, compte ou domaine MCP de production n'est configuré.
