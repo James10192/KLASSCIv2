@@ -96,8 +96,10 @@ class ESBTPInscriptionController extends Controller
         $this->middleware("permission:inscriptions.delete", [
             "only" => ["destroy"],
         ]);
+        // L'annulation a son propre droit : la route inscriptions.annuler
+        // exige inscriptions.cancel. Ne pas exiger en plus inscriptions.validate.
         $this->middleware("permission:inscriptions.validate", [
-            "only" => ["valider", "annuler"],
+            "only" => ["valider"],
         ]);
     }
 

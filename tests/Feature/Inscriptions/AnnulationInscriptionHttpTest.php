@@ -24,11 +24,14 @@ class AnnulationInscriptionHttpTest extends TestCase
             \App\Http\Middleware\EnsureInstalled::class,
             \App\Http\Middleware\PaywallMiddleware::class,
         ]);
-        foreach (['admin.access', 'inscriptions.cancel'] as $nom) {
+        foreach (['admin.access', 'inscriptions.cancel', 'inscriptions.validate'] as $nom) {
             Permission::findOrCreate($nom, 'web');
         }
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
         $this->agent = User::factory()->create();
         $this->agent->givePermissionTo(['admin.access', 'inscriptions.cancel']);
+        $this->assertTrue($this->agent->can('inscriptions.cancel'));
+        $this->assertFalse($this->agent->can('inscriptions.validate'));
         $this->inscription = ESBTPInscription::factory()->create([
             'status' => 'en_attente',
             'workflow_step' => 'documents_complets',
@@ -57,6 +60,20 @@ class AnnulationInscriptionHttpTest extends TestCase
     public function test_motif_absent_refuse_sans_annuler(): void
     {
         $this->envoyer([])->assertStatus(422)->assertJsonValidationErrors('motif');
+        $this->assertSame('en_attente', $this->inscription->fresh()->status);
+    }
+
+    public function test_validation_seule_ne_donne_pas_le_droit_d_annuler(): void
+    {
+        $valideur = User::factory()->create();
+        $valideur->givePermissionTo(['admin.access', 'inscriptions.validate']);
+        $this->actingAs($valideur)->call(
+            'POST',
+            route('esbtp.inscriptions.annuler', $this->inscription),
+            ['_method' => 'PUT', 'motif' => 'Test de refus ciblé'],
+            [], [],
+            ['HTTP_ACCEPT' => 'application/json', 'HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest']
+        )->assertForbidden();
         $this->assertSame('en_attente', $this->inscription->fresh()->status);
     }
 
