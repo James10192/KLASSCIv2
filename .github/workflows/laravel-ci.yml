@@ -198,6 +198,11 @@ jobs:
         if: github.event_name == 'pull_request'
         run: node --check < resources/views/esbtp/partials/_fiche-notes-view-script.blade.php
 
+      - name: Contrat HTTP AJAX des demandes d'inscription
+        if: github.event_name == 'pull_request'
+        run: node --test tests/js/admissions-demandes-http.test.cjs
+
+
       - name: Test cohérence des maquettes et filtres pédagogiques AJAX
         if: github.event_name == 'pull_request'
         run: |
