@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Sécurité des notifications d’inscription :** les messages de refus et de validation sont affichés comme du texte, jamais comme du HTML interprétable ; le comportement des formulaires, permissions et paiements reste inchangé. Vérifier l’affichage sur présentation avant diffusion.
 - **Création et réinscription BTS/LMD à 0 FCFA :** conservation des souscriptions obligatoires gratuites dans les dossiers nouvellement créés ; les barèmes non configurés et les exonérations non auditées restent bloquants. Aucune transaction ni reçu fictif ; vérifier sur présentation avant diffusion aux établissements.
 - **Création et sélection groupée des inscriptions** : le formulaire classique utilise URL-encoded sans photo et garde multipart avec photo ; la validation depuis l'index (tout le filtre) et la dérogation de capacité depuis l'administration suivent les mêmes règles HTTP/CSRF et messages contrôlés.
 - **Validation des inscriptions (fiche étudiant, fiche inscription, listes, administration)** : formulaires AJAX texte URL-encodés plutôt que multipart, erreurs HTTP explicites sans succès fictif, preview et validation en lot protégés ; création classique avec photo, permissions et paiements inchangés. Recette serveur/proxy sur présentation indispensable avant diffusion.
