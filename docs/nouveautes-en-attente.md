@@ -121,3 +121,4 @@ Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 - 2026-10-06 · bulletin LMD · le bandeau Code établissement / Statut / Direction masque maintenant complètement les rubriques sans valeur et redistribue automatiquement l'espace entre celles qui restent.
 
 - 2026-10-09 · Notes BTS et LMD : changer l'année universitaire sans recharger la page ; classes, indicateurs, saisie des évaluations et suivi des notes actualisés.
+- 2026-10-21 · Inscriptions > Demandes : la conversion d'une candidature est envoyée comme formulaire texte, sans envoi multipart inutile ; si une passerelle refuse encore la requête avant KLASSCI, sa référence technique s'affiche pour le support.

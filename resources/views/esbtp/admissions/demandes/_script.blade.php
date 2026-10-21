@@ -46,12 +46,33 @@ window.demandesInscription = function () {
             const o = options || {};
             const entetes = { 'X-CSRF-TOKEN': jeton(), 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
             let corps = o.corps;
-            if (corps && !(corps instanceof FormData)) { entetes['Content-Type'] = 'application/json'; corps = JSON.stringify(corps); }
+            if (corps instanceof URLSearchParams) {
+                entetes['Content-Type'] = 'application/x-www-form-urlencoded;charset=UTF-8';
+            } else if (corps && !(corps instanceof FormData)) {
+                entetes['Content-Type'] = 'application/json';
+                corps = JSON.stringify(corps);
+            }
             const r = await fetch(url, { method: o.methode || 'GET', headers: entetes, body: corps, credentials: 'same-origin' });
-            const d = await r.json().catch(() => ({}));
-            if (!r.ok || d.ok === false) {
-                const e = new Error(d.message || ({ 419: 'Votre session a expiré : rechargez la page.', 429: 'Trop de demandes, patientez une minute.', 403: "Vous n'avez pas le droit de faire cette action." })[r.status] || ('Action impossible (erreur ' + r.status + ').'));
-                e.donnees = d; e.statut = r.status;
+            const brut = await r.text();
+            const typeReponse = (r.headers.get('content-type') || '').toLowerCase();
+            let d = null;
+            try {
+                const valeur = brut ? JSON.parse(brut) : null;
+                if (valeur && typeof valeur === 'object' && !Array.isArray(valeur)) d = valeur;
+            } catch (_) { /* La passerelle peut répondre en HTML ou avec un corps invalide. */ }
+            // Une réponse HTTP 2xx sans objet JSON exploitable ne constitue PAS
+            // une confirmation d'inscription. Sinon le navigateur suit un
+            // redirect absent et la véritable erreur passe inaperçue.
+            if (!r.ok || d?.ok === false || d === null) {
+                const referenceEdge = r.headers.get('edge-request-id');
+                const refusEnAmont = r.status === 403 && d === null && !typeReponse.includes('application/json');
+                const message = refusEnAmont
+                    ? 'Réponse 403 non JSON : blocage possible en amont de KLASSCI.' + (referenceEdge ? ' Référence technique : ' + referenceEdge + '.' : '')
+                    : (d?.message || (r.ok && d === null
+                        ? 'Réponse inattendue du serveur : confirmation JSON absente.'
+                        : ({ 419: 'Votre session a expiré : rechargez la page.', 429: 'Trop de demandes, patientez une minute.', 403: "Vous n'avez pas le droit de faire cette action." })[r.status] || ('Action impossible (erreur ' + r.status + ').')));
+                const e = new Error(message);
+                e.donnees = d || {}; e.statut = r.status; e.referenceEdge = referenceEdge;
                 throw e;
             }
             return d;
@@ -542,7 +563,10 @@ window.demandesInscription = function () {
             return this.redoPret('ins') ? '' : 'Dites pourquoi il redouble (10 caractères au moins).';
         },
         formulaire() {
-            const fd = new FormData();
+            // Cette conversion ne téléverse aucun fichier. URLSearchParams évite un
+            // multipart/form-data inutile, que certaines passerelles inspectent
+            // plus strictement que les champs texte ordinaires.
+            const fd = new URLSearchParams();
             const f = this.ins.f, c = this.ins.prep.candidature;
             ['nom', 'prenoms', 'sexe', 'date_naissance', 'lieu_naissance', 'telephone', 'email_personnel', 'ville', 'commune', 'classe_id', 'statut_etablissement'].forEach((k) => { if (f[k]) fd.append(k, f[k]); });
             if (!this.ins.prep.matricule_automatique && f.matricule) fd.append('matricule', f.matricule.trim());
@@ -571,6 +595,13 @@ window.demandesInscription = function () {
             // transaction. Un refus laisse la candidature telle qu'elle etait.
             try {
                 const d = await this.appeler(this.cfg.store, { methode: 'POST', corps: this.formulaire() });
+                if (d.ok !== true || typeof d.redirect !== 'string' || !d.redirect.trim()) {
+                    throw new Error("La réponse d'inscription ne confirme pas la création du dossier.");
+                }
+                const destination = new URL(d.redirect, window.location.href);
+                if (destination.origin !== window.location.origin) {
+                    throw new Error("Redirection d'inscription non autorisée.");
+                }
                 this.notifier('success', d.message || 'Inscription enregistrée.');
                 // EXCEPTION ajax-no-reload-premium : l'inscription est creee, sa fiche
                 // prend la suite (identifiants du compte, photo, premier paiement).

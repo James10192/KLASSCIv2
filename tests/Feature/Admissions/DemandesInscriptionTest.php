@@ -193,6 +193,45 @@ class DemandesInscriptionTest extends TestCase
         $this->assertSame(StatutReservationRdv::Honoree, $rdv->fresh()->statut);
     }
 
+    public function test_accepter_et_inscrire_depuis_un_formulaire_urlencode_conserve_les_parents(): void
+    {
+        $classe = $this->classe('1A BTS Génie civil', 30);
+        $candidature = $this->candidature(['nom' => 'KOUAME', 'prenoms' => 'Aminata']);
+        $payload = http_build_query([
+            'nom' => 'KOUAME', 'prenoms' => 'Aminata', 'sexe' => 'F',
+            'date_naissance' => '2007-03-12', 'telephone' => '+225 07 07 12 34 56',
+            'classe_id' => $classe->id, 'annee_universitaire_id' => $this->annee->id,
+            'candidature_id' => $candidature->id, 'duplicate_override' => '0',
+            'parents' => [[
+                'type' => 'nouveau', 'nom' => 'KOUAMÉ', 'prenoms' => 'Jean',
+                'telephone' => '+225 05 05 44 21 10', 'relation' => 'Père',
+            ]],
+        ], '', '&', PHP_QUERY_RFC1738);
+
+        // Le client de test Symfony ne remplit pas automatiquement $_POST
+        // à partir du corps brut lorsque call() reçoit une liste de paramètres
+        // vide. On décode ici comme PHP le ferait pour application/x-www-form-urlencoded.
+        $formulaire = [];
+        parse_str($payload, $formulaire);
+        $this->assertSame('Père', $formulaire['parents'][0]['relation']);
+        $reponse = $this->actingAs($this->agent)->call(
+            'POST', route('esbtp.inscriptions.store'), $formulaire, [], [],
+            ['CONTENT_TYPE' => 'application/x-www-form-urlencoded; charset=UTF-8',
+                'HTTP_ACCEPT' => 'application/json', 'HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest'],
+            $payload,
+        );
+
+        $reponse->assertOk()->assertJsonPath('ok', true);
+        $candidature->refresh();
+        $this->assertSame('convertie', $candidature->statut);
+        $this->assertNotNull($candidature->inscription_id);
+        $this->assertSame(1, ESBTPEtudiant::query()->where('nom', 'KOUAME')->count());
+        $this->assertSame(
+            route('esbtp.inscriptions.show', $candidature->inscription_id),
+            $reponse->json('redirect'),
+        );
+    }
+
     public function test_la_preparation_propose_le_parent_deja_enregistre_et_les_annees_ouvertes(): void
     {
         $suivante = ESBTPAnneeUniversitaire::factory()->create(['name' => '2027-2028', 'is_current' => false,

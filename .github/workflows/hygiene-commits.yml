@@ -514,6 +514,8 @@ jobs:
           php vendor/bin/phpunit tests/Feature/Inscriptions/ValidationGratuiteTest.php --no-coverage || echec=1
           # Les écrans de configuration doivent également résoudre LMD et BTS.
           php vendor/bin/phpunit tests/Feature/Frais/FraisConfigureLmdAjaxTest.php --no-coverage || echec=1
+          # Conserver la sérialisation réelle du navigateur pour Accepter et inscrire.
+          php vendor/bin/phpunit tests/Feature/Admissions/DemandesInscriptionTest.php --no-coverage || echec=1
           # Vérifier tout le lot Nanan, y compris la clarification d'un
           # montant absent avant de résoudre une filière inconnue.
           php vendor/bin/phpunit tests/Feature/Assistant/NananLotATest.php --no-coverage || echec=1
