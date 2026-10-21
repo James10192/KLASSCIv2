@@ -496,4 +496,20 @@ class ValidationGratuiteTest extends TestCase
         $this->assertSame('en_attente', $this->inscription->fresh()->status);
     }
 
+    public function test_la_cli_retourne_500_et_pas_422_si_service_de_validation_en_panne(): void
+    {
+        $this->exonere();
+        Sanctum::actingAs($this->agent, ['cli:read', 'cli:write']);
+        $service = Mockery::mock(\App\Services\ESBTPInscriptionService::class);
+        $service->shouldReceive('validerInscription')->once()->andReturn([
+            'success' => false,
+            'technical_error' => true,
+            'message' => "Erreur technique lors de la validation. Contactez le support si elle persiste.",
+        ]);
+        $this->app->instance(\App\Services\ESBTPInscriptionService::class, $service);
+        $this->postJson("/api/cli/inscriptions/{$this->inscription->id}/validate")
+            ->assertStatus(500);
+        $this->assertSame('en_attente', $this->inscription->fresh()->status);
+    }
+
 }
