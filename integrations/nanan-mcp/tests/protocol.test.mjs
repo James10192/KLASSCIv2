@@ -6,14 +6,26 @@ import { createSchoolServer } from '../server-factory.mjs';
 const caller = Object.freeze({ subject: 'auth0|test-teacher', organization: 'org_aaaaaa' });
 
 function request(method, params = undefined) {
+  const modern = {
+    ...(params || {}),
+    _meta: {
+      'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+      'io.modelcontextprotocol/clientInfo': { name: 'nanan-test', version: '1.0' },
+      'io.modelcontextprotocol/clientCapabilities': {}
+    }
+  };
+  const headers = {
+    Accept: 'application/json, text/event-stream',
+    'Content-Type': 'application/json',
+    'MCP-Protocol-Version': '2026-07-28',
+    'Mcp-Method': method
+  };
+  if (method === 'tools/call') headers['Mcp-Name'] = params.name;
+
   return new Request('https://mcp.klassci.com/mcp', {
     method: 'POST',
-    headers: {
-      Accept: 'application/json, text/event-stream',
-      'Content-Type': 'application/json',
-      'MCP-Protocol-Version': '2025-11-25'
-    },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 17, method, ...(params ? { params } : {}) })
+    headers,
+    body: JSON.stringify({ jsonrpc: '2.0', id: 17, method, params: modern })
   });
 }
 
@@ -22,7 +34,7 @@ test('SDK MCP expose trois outils en lecture seule, dont le profil, et aucun CRU
     tenants: new Map(),
     issuer: 'https://tenant.auth0.com/',
     call: async () => ({ results: [] })
-  }));
+  }), { legacy: 'reject' });
   try {
     const response = await handler.fetch(request('tools/list'));
     const raw = await response.text();
@@ -72,7 +84,7 @@ test('SDK MCP transmet seulement les filtres de lecture au pont interne', async 
       called.push({ principal, issuer, tool, params });
       return { results: [{ nom: 'L1' }], count: 1 };
     }
-  }));
+  }), { legacy: 'reject' });
   try {
     const response = await handler.fetch(request('tools/call', {
       name: 'search_classes', arguments: { name: 'L1', limit: 1 }
