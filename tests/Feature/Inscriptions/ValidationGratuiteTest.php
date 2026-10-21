@@ -128,6 +128,23 @@ class ValidationGratuiteTest extends TestCase
         $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
     }
 
+    public function test_validation_en_lot_formulaire_urlencode_preserve_les_regles_de_gratuite(): void
+    {
+        $this->exonere();
+        $response = $this->call(
+            'POST',
+            route('esbtp.inscriptions.bulk-valider'),
+            ['inscription_ids' => [$this->inscription->id]],
+            [], [],
+            ['CONTENT_TYPE' => 'application/x-www-form-urlencoded; charset=UTF-8',
+                'HTTP_ACCEPT' => 'application/json', 'HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest']
+        );
+
+        $response->assertOk()->assertJsonPath('success', true);
+        $this->assertSame('etudiant_cree', $this->inscription->fresh()->workflow_step);
+        $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
+    }
+
     public function test_un_zero_non_approuve_ne_vaut_pas_gratuite(): void
     {
         $this->souscription->update(['amount' => 0]);

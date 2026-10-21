@@ -1249,8 +1249,7 @@
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                     credentials: 'same-origin',
                 });
-                verdict = await response.json();
-                if (!response.ok) throw new Error(verdict.message || 'Aperçu indisponible');
+                verdict = await window.iiLireReponseInscription(response);
             } catch (error) {
                 window.showToast?.(error.message || 'Vérification impossible.', 'error');
                 return;
@@ -1268,7 +1267,7 @@
             })) return;
         } else if (!await window.iiConfirmerValidationInscription(previewUrl)) return;
 
-        const formData = new FormData();
+        const formData = new URLSearchParams();
         formData.append('_token', '{{ csrf_token() }}');
         formData.append('inscription_ids[]', inscriptionId);
         if (forceValidation) {
@@ -1281,15 +1280,13 @@
             method: 'POST',
             body: formData,
             headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            credentials: 'same-origin'
         })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erreur lors de la validation.');
-            }
-            return response.json();
-        })
+        .then(response => window.iiLireReponseInscription(response, 'success'))
         .then(data => {
             if (!data.success) {
                 highlightInscriptionRow(inscriptionId, 'reject');

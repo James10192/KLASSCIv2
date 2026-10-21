@@ -130,4 +130,10 @@ test('les trois parcours AJAX de validation et le lot utilisent un parseur stric
     assert.match(show, /iiLireReponseInscription\(response, 'success'\)/);
     assert.match(admin, /new URLSearchParams\(\)/);
     assert.match(admin, /iiLireReponseInscription\(response, 'success'\)/);
+    const list = fs.readFileSync(path.resolve(__dirname, '../../public/js/inscriptions/index.js'), 'utf8');
+    const create = fs.readFileSync(path.resolve(__dirname, '../../resources/views/esbtp/inscriptions/create.blade.php'), 'utf8');
+    assert.match(list, /iiLireReponseInscription\(r, 'success'\)/);
+    assert.match(list, /new URLSearchParams\(\)/);
+    assert.match(admin, /async function handleInscriptionValidation[\s\S]*?iiLireReponseInscription\(response, 'success'\)/);
+    assert.match(create, /form\.enctype = hasFile \? 'multipart\/form-data' : 'application\/x-www-form-urlencoded'/);
 });
