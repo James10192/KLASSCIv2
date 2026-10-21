@@ -512,6 +512,7 @@ jobs:
         run: |
           echec=0
           php vendor/bin/phpunit tests/Feature/Inscriptions/ValidationGratuiteTest.php --no-coverage || echec=1
+          php vendor/bin/phpunit tests/Feature/Inscriptions/AnnulationInscriptionTest.php --no-coverage || echec=1
           # Les écrans de configuration doivent également résoudre LMD et BTS.
           php vendor/bin/phpunit tests/Feature/Frais/FraisConfigureLmdAjaxTest.php --no-coverage || echec=1
           # Conserver la sérialisation réelle du navigateur pour Accepter et inscrire.

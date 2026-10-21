@@ -79,7 +79,6 @@ class ESBTPInscriptionApiController extends Controller
                 "niveau_id" => $niveauId,
                 "annee_id" => $anneeId,
                 "formation_id" => $formationId,
-                "request" => $request->all(),
             ],
         );
 
