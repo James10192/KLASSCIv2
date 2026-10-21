@@ -1,7 +1,7 @@
 import { createHmac, randomUUID } from 'node:crypto';
 
 export function signedBody(principal, issuer, tool, argumentsObject, secret, timestamp = Math.floor(Date.now()/1000)) {
-  if (!['search_classes', 'get_dashboard_kpis'].includes(tool)) throw new Error('Outil non exposé');
+  if (!['search_classes', 'get_dashboard_kpis', 'get_connected_profile'].includes(tool)) throw new Error('Outil non exposé');
   const body = JSON.stringify({
     issuer,
     subject: principal.subject,

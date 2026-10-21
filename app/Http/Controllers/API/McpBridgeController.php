@@ -47,6 +47,17 @@ final class McpBridgeController extends Controller
             return response()->json(['error' => 'Accès refusé.'], 403);
         }
 
+        // Profil de l'identité LOCALE, seulement après preuve JWT, signature
+        // HMAC, lien non révoqué et compte actif. Aucune recherche par e-mail.
+        if ($payload['tool'] === 'get_connected_profile') {
+            $opaqueId = hash_hmac('sha256', $hash, (string) config('mcp.bridge.secret'));
+
+            return response()->json([
+                'id' => 'kl_'.substr($opaqueId, 0, 24),
+                'name' => (string) $user->name,
+            ])->header('Cache-Control', 'no-store');
+        }
+
         // L'outil vérifie de nouveau les permissions effectives.
         $resultat = $lectures->executer($payload['tool'], $payload['arguments'], $user);
         if (array_key_exists('error', $resultat)) {

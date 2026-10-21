@@ -92,6 +92,30 @@ class McpBridgeTest extends TestCase
             ->assertJson(['results' => [['nom' => 'L1']], 'count' => 1]);
     }
 
+    public function test_profil_ne_repond_qu_apres_liaison_du_compte_local(): void
+    {
+        $user = $this->utilisateur();
+        $this->lier($user, 'auth0|staff-profile');
+
+        $premier = $this->demander('auth0|staff-profile', [
+            'tool' => 'get_connected_profile',
+            'arguments' => [],
+        ])->assertOk()->assertJsonStructure(['id', 'name'])
+          ->assertJson(['name' => $user->name])
+          ;
+
+        $this->assertStringContainsString('no-store', (string) $premier->headers->get('Cache-Control'));
+
+        $this->assertStringStartsWith('kl_', (string) $premier->json('id'));
+        $this->assertMatchesRegularExpression('/^kl_[0-9a-f]{24}$/', (string) $premier->json('id'));
+        $this->assertNotSame((string) $user->id, (string) $premier->json('id'));
+
+        $this->demander('auth0|not-linked', [
+            'tool' => 'get_connected_profile',
+            'arguments' => [],
+        ])->assertStatus(403);
+    }
+
     public function test_aucune_liaison_ni_revocation_ne_donnent_acces(): void
     {
         $user = $this->utilisateur();

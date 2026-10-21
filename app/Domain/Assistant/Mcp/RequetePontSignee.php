@@ -44,7 +44,7 @@ final class RequetePontSignee
             || ! is_string($payload['subject'] ?? null)
             || strlen($payload['subject']) > 255
             || ($payload['subject'] ?? '') === ''
-            || ! in_array($payload['tool'] ?? null, ['search_classes', 'get_dashboard_kpis'], true)
+            || ! in_array($payload['tool'] ?? null, ['search_classes', 'get_dashboard_kpis', 'get_connected_profile'], true)
             || ! is_array($payload['arguments'] ?? null)
             || ! is_int($payload['iat'] ?? null)
             || abs(time() - $payload['iat']) > 30
