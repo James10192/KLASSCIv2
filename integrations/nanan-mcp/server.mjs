@@ -45,8 +45,17 @@ const protocol = createMcpHandler((ctx) => {
 }, { legacy: 'reject' });
 const serve = toNodeHandler(protocol);
 
-app.post('/mcp', oauthGate, (req, res) => {
-  void serve(req, res, req.body);
+app.post('/mcp', oauthGate, async (req, res) => {
+  try {
+    await serve(req, res, req.body);
+  } catch {
+    // N'exposer aucun détail interne, JWT ou erreur du tenant.
+    if (!res.headersSent) {
+      res.status(500).set('Cache-Control', 'no-store').json({ error: 'mcp_unavailable' });
+    } else {
+      res.end();
+    }
+  }
 });
 
 // MCP 2026-07-28 : aucun GET ou DELETE de session hérité.
