@@ -1,0 +1,104 @@
+# Nanan Connect — passerelle MCP privée (phase 1)
+
+> **Prototype de code — aucun établissement n'est activé ou lié à ChatGPT.**
+> Ce projet ne doit pas être exposé à Internet tant que la recette OAuth et
+> inter-tenant (et les contrôles CI) n'a pas été validée.
+
+## Fonctionnement
+
+Client ChatGPT/Code MCP -> `https://mcp.klassci.com/mcp` (Streamable HTTP, SDK v2)
+-> vérification stricte du JWT OAuth 2.1 par JWKS (RS256, issuer, audience, expiration,
+scopes `mcp:read`, `org_id`)
+-> registre d'organisations explicitement provisionnées
+-> POST HMAC à **l'instance HTTPS correspondante**, sans transmettre le jeton OAuth
+-> Laravel `/api/mcp-bridge` :
+    signature + horodatage ±30 sec + nonce anti-rejeu
+    -> org_id identique à la configuration locale -> identité externe liée à un utilisateur actif
+    -> `CatalogueLectureExterne` et droits KLASSCI natifs
+    -> données minimisées vers le modèle.
+
+Le LLM peut filtrer une recherche, pas indiquer quel établissement ou compte
+utilisateur le serveur doit choisir. Les écritures et le CRUD restent **fermés**.
+
+## Préparer une instance de recette (aucune valeur de production dans le dépôt)
+
+1. Installer un fournisseur OAuth 2.1 reconnu (ex. Auth0) qui expose son
+   metadata discovery, PKCE S256, client ID metadata / DCR ou client
+   pré-enregistré. Exiger l'audience correspondant exactement à
+   `MCP_RESOURCE_URL` et la présence de l'`org_id` dans les access tokens.
+   La page d'authentification doit permettre de choisir l'organisation
+   appropriée ; sans organisation, le jeton est rejeté.
+2. Configurer la passerelle Node dans un environnement isolé :
+   ```dotenv
+   MCP_RESOURCE_URL=https://mcp.klassci.com/mcp
+   MCP_OAUTH_ISSUER=https://tenant-auth.example.com/
+   MCP_TENANTS_JSON=[{"organization":"org_EXAMPLE123","bridgeUrl":"https://demonstration.klassci.com/api/mcp-bridge","secretEnv":"MCP_BRIDGE_SECRET_DEMO"}]
+   MCP_BRIDGE_SECRET_DEMO=<secret aléatoire de 32 octets minimum, identique à celui du tenant>
+   PORT=3200
+   ```
+   Ne mettre aucun secret dans `MCP_TENANTS_JSON` ni dans GitHub.
+   Ce pilote limite les destinations aux sous-domaines `*.klassci.com`.
+3. Installer les dépendances dans `integrations/nanan-mcp` :
+   ```bash
+   npm install
+   npm run check
+   npm test
+   npm start
+   ```
+4. Après migration de l'instance de **recette** KLASSCI :
+   ```dotenv
+   MCP_READ_ONLY_ENABLED=true
+   MCP_BRIDGE_ENABLED=true
+   MCP_OAUTH_ISSUER=https://tenant-auth.example.com/
+   MCP_TENANT_ORGANIZATION=org_EXAMPLE123
+   MCP_BRIDGE_SECRET=<le même secret que dans la passerelle>
+   ```
+   Contrôler la cohérence de l'issuer exact (slash final inclus).
+   Utiliser un cache partagé avec `Cache::add` atomique, comme Redis ou DB
+   correctement configurée : pas de store `array` en déploiement.
+
+## Lier un compte de recette
+
+Ne jamais associer une identité par e-mail, nom affiché, ou paramètre envoyé
+par le modèle. Après preuve d'identité et consentement côté administrateur,
+lier **explicitement** l'utilisateur KLASSCI local à son `sub` Auth0 via
+la table `mcp_external_identities` de CE tenant. L'empreinte est :
+
+```php
+\App\Domain\Assistant\Mcp\RequetePontSignee::identiteHash(
+    'https://tenant-auth.example.com/', 'auth0|identifiant-confirmé', 'org_EXAMPLE123'
+);
+```
+
+Un enregistrement associe cette empreinte unique à un `user_id` autorisé.
+`revoked_at` permet la révocation immédiate d'une liaison. 
+Ne pas procéder à un appairage automatique sur l'e-mail ; ne pas provisionner
+de compte étudiant ou de mineur pour ce pilote.
+
+## Mettre en ligne plus tard
+
+- HTTPS public stable sur `/mcp` derrière proxy, Host/Origin allowlist,
+  aucune ouverture du bridge à un réseau tiers sans filtrage supplémentaire.
+- Protéger les secrets par gestionnaire de secrets, avec rotation par tenant.
+- Ouvrir le flux OAuth dans MCP Inspector (auth code + PKCE, resource, audience).
+- Tester identité A/école A, identité B/école B, compte désactivé, révocation,
+  droits retirés pendant la session, scope absent, jeton périmé, jeton d'une
+  autre ressource, double requête, panne et dépassements de quotas.
+- Ne jamais autoriser les redirections HTTP vers une destination non approuvée.
+- Les instances KLASSCI indépendantes conservent leurs propres données ; aucune
+  copie centralisée d'informations scolaires dans la passerelle.
+
+## Limites actuelles
+
+- Aucun IdP, secret, compte ou domaine MCP de production n'est configuré.
+- Aucun test end-to-end connecté à ChatGPT n'a été réalisé.
+- Démarrage de la passerelle uniquement avec une configuration explicite.
+- Auth0/IdP doit être configuré pour émettre un jeton d'accès JWT avec
+  `org_id` et `aud` correspondant à la ressource MCP.
+- Le registre des établissements est statique pour ce pilote ; onboarding,
+  provisioning sécurisé, révocation automatisée et surveillance opérationnelle
+  seront nécessaires avant un service commercial.
+- Tests sécurité/charge et conformité des données scolaires exigés avant déploiement.
+
+Documentation : https://developers.openai.com/plugins/build/auth et
+https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization
