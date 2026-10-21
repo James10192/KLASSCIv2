@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-21 · Créer une inscription : formulaire natif URL-encodé sans photo, multipart si une photo est jointe. Vérification upload et champs parents sur presentation obligatoire avant propagation.
 - 2026-10-21 · Validation d'inscription : les fiches et listes transmettent désormais leur validation en texte URL-encodé (CSRF et PUT conservés), distinguent erreurs métiers / 403 non JSON et affichent des messages sans HTML exécutable ; création avec photo inchangée. Recette écran, permissions, finance et proxy sur presentation obligatoire.
 - 2026-10-21 · #1646 · BTS : relevé provisoire consultatif si les bulletins ne sont pas publiés, depuis les notes de la bonne classe et année (tronc commun inclus), puis relevé interne publié ; notes.index et fiches alignés sur les droits de relevé. LMD : accès direct depuis les notes avec vérification d'état et émission autorisée, sinon explication claire. Recette PDF/semestres/droits et multi-années obligatoire sur présentation avant propagation.
 - 2026-10-21 · #1638 · La validation sans paiement distingue le zéro réellement configuré d'une exonération individuelle motivée et auditée ; messages clairs sur la fiche et dans l'aperçu AJAX, barème LMD par parcours+niveau, BTS par filière+niveau, sans reçu fictif. Vérifier les cas 0/positif/non-affecté, permissions, lot, CLI et mobile sur présentation avant annonce ou propagation.

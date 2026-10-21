@@ -1723,6 +1723,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         debugLog && debugLog('SUBMIT EVENT TRIGGERED!');
         const form = e.target;
+        // Le formulaire contient une photo facultative : ne choisir multipart
+        // que lorsque l'utilisateur a effectivement sélectionné un fichier.
+        const avecFichier = Array.from(form.querySelectorAll('input[type="file"]'))
+            .some(champ => champ.files && champ.files.length > 0);
+        form.enctype = avecFichier
+            ? 'multipart/form-data'
+            : 'application/x-www-form-urlencoded';
         const formData = new FormData(form);
         debugLog && debugLog(`Nom: ${formData.get('nom') || 'VIDE'}`);
         debugLog && debugLog(`Classe: ${formData.get('classe_id') || 'VIDE'}`);
