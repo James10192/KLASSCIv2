@@ -40,7 +40,7 @@ async function fixture() {
   const gate = requireBearerAuth({
     verifier,
     requiredScopes: ['mcp:read'],
-    resourceMetadataUrl: meta,
+    resourceMetadataUrl: meta.href,
     expectedResource: new URL(settings.resource)
   });
 
