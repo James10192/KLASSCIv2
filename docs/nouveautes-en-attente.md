@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-21 · #1656 · Les annulations individuelles et les actions rapides de caisse/classe/annulation utilisent le contrôle HTTP partagé ; le motif d'annulation est validé et les refus métiers ne sont plus des 500. Recette SuperAdmin, paiements, permissions, réseau, mobile et journaux sur presentation avant propagation.
 - 2026-10-21 · #1651 complément · Création sans photo / avec photo et validation « tout le filtre » : transport adapté, dérogation de capacité sans contournement métier. Recette sur présentation et cookies/session requise avant propagation.
 - 2026-10-21 · #1651 · Validation des inscriptions sur fiche étudiant, fiche inscription et listes : les requêtes AJAX texte évitent les multipart inutiles, les refus HTTP affichent leur nature, les validations groupées conservent les protections métier. Tester le proxy, les permissions et les paiements sur présentation avant propagation.
 - 2026-10-21 · #1646 · BTS : relevé provisoire consultatif si les bulletins ne sont pas publiés, depuis les notes de la bonne classe et année (tronc commun inclus), puis relevé interne publié ; notes.index et fiches alignés sur les droits de relevé. LMD : accès direct depuis les notes avec vérification d'état et émission autorisée, sinon explication claire. Recette PDF/semestres/droits et multi-années obligatoire sur présentation avant propagation.

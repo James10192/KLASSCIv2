@@ -1842,14 +1842,15 @@
                 const inscriptionId = actionUrl.split('/').slice(-2, -1)[0];
                 const autoValidate = formData.get('auto_validate_inscription') === '1';
 
+                const payload = window.iiCorpsFormulaireInscription(this);
                 fetch(actionUrl, {
                     method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    body: payload.body,
+                    headers: { ...payload.headers, 'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json' },
+                    credentials: 'same-origin',
                 })
-                .then(response => response.json())
+                .then(response => window.iiLireReponseInscription(response, 'success'))
                 .then(data => {
                     if (data.success) {
                         bootstrap.Modal.getInstance(document.getElementById('paymentModal')).hide();
@@ -1865,7 +1866,7 @@
                 .catch(error => {
                     debugError(error);
                     highlightInscriptionRow(inscriptionId, 'reject');
-                    alert('Erreur lors de la création du paiement');
+                    alert(error.message || 'Erreur lors de la création du paiement');
                 })
                 .finally(() => {
                     submitBtn.disabled = false;
@@ -1888,14 +1889,15 @@
                 const actionUrl = this.action;
                 const inscriptionId = document.getElementById('valider_inscription_id').value;
 
+                const payload = window.iiCorpsFormulaireInscription(this);
                 fetch(actionUrl, {
                     method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    body: payload.body,
+                    headers: { ...payload.headers, 'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json' },
+                    credentials: 'same-origin',
                 })
-                .then(response => response.json())
+                .then(response => window.iiLireReponseInscription(response, 'success'))
                 .then(data => {
                     if (data.success) {
                         bootstrap.Modal.getInstance(document.getElementById('modalValiderPaiement')).hide();
@@ -1906,7 +1908,7 @@
                 })
                 .catch(error => {
                     debugError(error);
-                    alert('Erreur lors de la validation du paiement');
+                    alert(error.message || 'Erreur lors de la validation du paiement');
                 })
                 .finally(() => {
                     submitBtn.disabled = false;
@@ -1929,14 +1931,15 @@
                 const actionUrl = this.action;
                 const inscriptionId = document.getElementById('changer_inscription_id').value;
 
+                const payload = window.iiCorpsFormulaireInscription(this);
                 fetch(actionUrl, {
                     method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    body: payload.body,
+                    headers: { ...payload.headers, 'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json' },
+                    credentials: 'same-origin',
                 })
-                .then(response => response.json())
+                .then(response => window.iiLireReponseInscription(response, 'success'))
                 .then(data => {
                     if (data.success) {
                         bootstrap.Modal.getInstance(document.getElementById('modalChangerClasse')).hide();
@@ -1948,7 +1951,7 @@
                 })
                 .catch(error => {
                     debugError(error);
-                    alert('Erreur lors du changement de classe');
+                    alert(error.message || 'Erreur lors du changement de classe');
                 })
                 .finally(() => {
                     submitBtn.disabled = false;
@@ -1971,14 +1974,15 @@
                 const actionUrl = this.action;
                 const inscriptionId = actionUrl.split('/').slice(-2, -1)[0];
 
+                const payload = window.iiCorpsFormulaireInscription(this);
                 fetch(actionUrl, {
                     method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    body: payload.body,
+                    headers: { ...payload.headers, 'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json' },
+                    credentials: 'same-origin',
                 })
-                .then(response => response.json())
+                .then(response => window.iiLireReponseInscription(response, 'success'))
                 .then(data => {
                     if (data.success) {
                         bootstrap.Modal.getInstance(document.getElementById('cancelInscriptionModal')).hide();
@@ -1997,7 +2001,7 @@
                 .catch(error => {
                     debugError(error);
                     highlightInscriptionRow(inscriptionId, 'reject');
-                    alert('Erreur lors de l\'annulation');
+                    alert(error.message || 'Erreur lors de l\'annulation');
                 })
                 .finally(() => {
                     submitBtn.disabled = false;

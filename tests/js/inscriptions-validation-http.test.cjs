@@ -137,3 +137,13 @@ test('les trois parcours AJAX de validation et le lot utilisent un parseur stric
     assert.match(admin, /async function handleInscriptionValidation[\s\S]*?iiLireReponseInscription\(response, 'success'\)/);
     assert.match(create, /form\.enctype = hasFile \? 'multipart\/form-data' : 'application\/x-www-form-urlencoded'/);
 });
+
+
+test('les mutations résiduelles de liste et administration passent par le parseur strict', () => {
+    const index = fs.readFileSync(path.resolve(__dirname, '../../public/js/inscriptions/index.js'), 'utf8');
+    const admin = fs.readFileSync(path.resolve(__dirname, '../../resources/views/esbtp/inscriptions/administration.blade.php'), 'utf8');
+    assert.match(index, /fetch\(ROUTES\.bulkAnnuler,[\s\S]*?iiLireReponseInscription\(r, 'success'\)/);
+    assert.match(index, /const payload = window\.iiCorpsFormulaireInscription\(this\);[\s\S]*?iiLireReponseInscription\(r, 'success'\)/);
+    assert.equal((admin.match(/window\.iiCorpsFormulaireInscription\(this\)/g) || []).length, 4);
+    assert.equal((admin.match(/iiLireReponseInscription\(response, 'success'\)/g) || []).length >= 6, true);
+});
