@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMcpHandler } from '@modelcontextprotocol/server';
-import { createSchoolServer } from '../server-factory.mjs';
+import { createSchoolServer, resolveAuthorizedTools } from '../server-factory.mjs';
 
 const caller = Object.freeze({ subject: 'auth0|test-teacher', organization: 'org_aaaaaa' });
 
@@ -32,6 +32,7 @@ function request(method, params = undefined) {
 test('SDK MCP expose trois outils en lecture seule, dont le profil, et aucun CRUD', async () => {
   const handler = createMcpHandler(() => createSchoolServer(caller, {
     tenants: new Map(),
+    authorizedTools: ['search_classes', 'get_dashboard_kpis', 'get_connected_profile'],
     issuer: 'https://tenant.auth0.com/',
     call: async () => ({ results: [] })
   }), { legacy: 'reject' });
@@ -54,6 +55,7 @@ test('SDK MCP expose trois outils en lecture seule, dont le profil, et aucun CRU
 test('outil profil résout une identité locale, non fournie par le modèle', async () => {
   const handler = createMcpHandler(() => createSchoolServer(caller, {
     tenants: new Map(),
+    authorizedTools: ['search_classes', 'get_dashboard_kpis', 'get_connected_profile'],
     issuer: 'https://tenant.auth0.com/',
     call: async (principal, registry, issuer, tool, args) => {
       assert.equal(principal, caller);
@@ -79,6 +81,7 @@ test('SDK MCP transmet seulement les filtres de lecture au pont interne', async 
   const called = [];
   const handler = createMcpHandler(() => createSchoolServer(caller, {
     tenants: new Map(),
+    authorizedTools: ['search_classes', 'get_dashboard_kpis', 'get_connected_profile'],
     issuer: 'https://tenant.auth0.com/',
     call: async (principal, registry, issuer, tool, params) => {
       called.push({ principal, issuer, tool, params });
@@ -96,6 +99,110 @@ test('SDK MCP transmet seulement les filtres de lecture au pont interne', async 
     assert.equal(called[0].principal, caller);
     assert.equal(called[0].tool, 'search_classes');
     assert.deepEqual(called[0].params, { name: 'L1', limit: 1 });
+  } finally {
+    await handler.close();
+  }
+});
+
+test('SDK MCP masque un outil absent des permissions du compte local', async () => {
+  const requests = [];
+  const handler = createMcpHandler(() => createSchoolServer(caller, {
+    tenants: new Map(),
+    authorizedTools: ['search_classes', 'get_connected_profile'],
+    issuer: 'https://tenant.auth0.com/',
+    call: async (...parts) => {
+      requests.push(parts);
+      return {results: []};
+    }
+  }), { legacy: 'reject' });
+  try {
+    const list = await handler.fetch(request('tools/list'));
+    const listed = await list.text();
+    assert.equal(list.status, 200, listed);
+    assert.match(listed, /search_classes/);
+    assert.match(listed, /get_connected_profile/);
+    assert.doesNotMatch(listed, /get_dashboard_kpis/);
+
+    const denied = await handler.fetch(request('tools/call', {
+      name:'get_dashboard_kpis', arguments: {focus: 'finance'}
+    }));
+    const text = await denied.text();
+    assert.doesNotMatch(text, /total_paiements/);
+    assert.equal(requests.length, 0);
+  } finally {
+    await handler.close();
+  }
+});
+
+test('un catalogue absent ou mal typé ne peut pas ouvrir les outils', () => {
+  assert.throws(() => createSchoolServer(caller, {
+    tenants:new Map(),
+    issuer:'https://tenant.auth0.com/',
+    authorizedTools:undefined
+  }));
+  assert.throws(() => createSchoolServer(caller, {
+    tenants:new Map(),
+    issuer:'https://tenant.auth0.com/',
+    authorizedTools:['search_classes', null]
+  }));
+});
+
+test('une requête MCP relit la liste blanche Laravel sans autorisation héritée d’un autre utilisateur', async () => {
+  const alice = { subject: 'auth0|alice', organization: 'org_aaaaaa' };
+  const bob = { subject: 'auth0|bob', organization: 'org_aaaaaa' };
+  const calls = [];
+  const school = async (principal, tenants, issuer, tool, args) => {
+    calls.push({ principal, tool, args });
+    return principal.subject === 'auth0|alice'
+      ? { tools: ['search_classes'] } : { tools: [] };
+  };
+  const dependencies = { tenants:new Map(), issuer:'https://tenant.auth0.com/', call: school };
+
+  const aliceTools = await resolveAuthorizedTools(alice, dependencies);
+  const bobTools = await resolveAuthorizedTools(bob, dependencies);
+  assert.deepEqual(aliceTools, ['get_connected_profile', 'search_classes']);
+  assert.deepEqual(bobTools, ['get_connected_profile']);
+  assert.equal(calls.length, 2);
+  assert.ok(calls.every((r) => r.tool === 'list_authorized_tools'));
+  assert.ok(calls.every((r) => Object.keys(r.args).length === 0));
+});
+
+test('réponse de découverte de permissions inconnue ou indisponible = aucun outil', async () => {
+  const base = {tenants:new Map(),issuer:'https://tenant.auth0.com/'};
+  for (const payload of [
+    null,
+    { tools: 'search_classes' },
+    { tools: ['search_classes', 'delete_all_students'] },
+    { tools: ['search_classes', null] },
+    { notTools: [] }
+  ]) {
+    await assert.rejects(() => resolveAuthorizedTools(caller, {
+      ...base, call:async()=>payload
+    }));
+  }
+  await assert.rejects(() => resolveAuthorizedTools(caller, {
+    ...base, call:async()=>{throw new Error('bridge refused')}
+  }));
+});
+
+test('le SDK MCP supporte une factory asynchrone basée sur les permissions', async () => {
+  const handler = createMcpHandler(async () => {
+    const authorizedTools = await resolveAuthorizedTools(caller, {
+      tenants: new Map(), issuer:'https://tenant.auth0.com/',
+      call: async () => ({tools: ['search_classes']})
+    });
+    return createSchoolServer(caller, {
+      tenants:new Map(), issuer:'https://tenant.auth0.com/', authorizedTools,
+      call:async()=>({results:[]})
+    });
+  }, {legacy:'reject'});
+  try {
+    const result=await handler.fetch(request('tools/list'));
+    const response=await result.text();
+    assert.equal(result.status, 200, response);
+    assert.match(response, /search_classes/);
+    assert.match(response, /get_connected_profile/);
+    assert.doesNotMatch(response, /get_dashboard_kpis/);
   } finally {
     await handler.close();
   }

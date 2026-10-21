@@ -116,6 +116,32 @@ class McpBridgeTest extends TestCase
         ])->assertStatus(403);
     }
 
+    public function test_decouverte_des_outils_est_bornee_aux_permissions_du_compte_local(): void
+    {
+        $user = $this->utilisateur();
+        $this->lier($user, 'auth0|discovery-staff');
+
+        $catalogue = Mockery::mock(CatalogueLectureExterne::class);
+        $catalogue->shouldReceive('schemas')->once()
+            ->withArgs(fn ($resolved) => $resolved instanceof User && $resolved->id === $user->id)
+            ->andReturn([[
+                'name' => 'search_classes',
+                'description' => 'Détail interne non exporté',
+                'inputSchema' => ['type' => 'object'],
+            ]]);
+        app()->instance(CatalogueLectureExterne::class, $catalogue);
+
+        $this->demander('auth0|discovery-staff', [
+            'tool' => 'list_authorized_tools',
+            'arguments' => [],
+        ])->assertOk()->assertExactJson(['tools' => ['search_classes']]);
+
+        $this->demander('auth0|unlinked-discovery', [
+            'tool' => 'list_authorized_tools',
+            'arguments' => [],
+        ])->assertStatus(403);
+    }
+
     public function test_identifiant_profil_reste_identique_lors_de_la_rotation_du_secret_du_pont(): void
     {
         $user = $this->utilisateur();

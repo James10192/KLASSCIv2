@@ -3,10 +3,31 @@ import * as z from 'zod/v4';
 import { callSchoolBridge } from './bridge.mjs';
 
 /**
+ * Autorisations effectives du compte local, revérifiées à chaque demande MCP.
+ * Les seuls outils côté modèle sont un sous-ensemble fermé de ce catalogue.
+ */
+export async function resolveAuthorizedTools(principal, { tenants, issuer, call = callSchoolBridge }) {
+  const answer = await call(principal, tenants, issuer, 'list_authorized_tools', {});
+  if (!answer || !Array.isArray(answer.tools)
+      || answer.tools.some((name) =>
+        !['search_classes', 'get_dashboard_kpis'].includes(name))) {
+    throw new Error('Réponse de permissions invalide');
+  }
+  return [...new Set(['get_connected_profile', ...answer.tools])];
+}
+
+/**
  * Un serveur et un utilisateur par appel HTTP.
  * Aucune variable globale ne doit contenir le principal du dernier appel.
  */
-export function createSchoolServer(principal, { tenants, issuer, call = callSchoolBridge }) {
+export function createSchoolServer(principal, { tenants, issuer, authorizedTools, call = callSchoolBridge }) {
+  // Cette liste provient exclusivement de Laravel APRES preuve signée et
+  // résolution du compte local. Aucun paramètre modèle ne choisit ces droits.
+  if (!Array.isArray(authorizedTools)
+    || authorizedTools.some((name) => typeof name !== 'string')) {
+    throw new Error('Liste de permissions de l’établissement indisponible');
+  }
+  const allowed = new Set(authorizedTools);
   const mcp = new McpServer({ name: 'klassci-nanan-connect', version: '0.1.0' });
 
   const read = async (name, args) => {
@@ -22,7 +43,7 @@ export function createSchoolServer(principal, { tenants, issuer, call = callScho
     }
   };
 
-  mcp.registerTool('search_classes', {
+  if (allowed.has('search_classes')) mcp.registerTool('search_classes', {
     description: 'Consulter les classes accessibles, les capacités et les effectifs de votre établissement KLASSCI.',
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: [{ type: 'oauth2', scopes: ['mcp:read'] }],
@@ -39,7 +60,7 @@ export function createSchoolServer(principal, { tenants, issuer, call = callScho
     })
   }, async (args) => read('search_classes', args));
 
-  mcp.registerTool('get_dashboard_kpis', {
+  if (allowed.has('get_dashboard_kpis')) mcp.registerTool('get_dashboard_kpis', {
     description: 'Lire les indicateurs agrégés autorisés du tableau de bord KLASSCI ; les chiffres financiers exigent des droits financiers.',
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: [{ type: 'oauth2', scopes: ['mcp:read'] }],
@@ -52,7 +73,7 @@ export function createSchoolServer(principal, { tenants, issuer, call = callScho
 
   // OpenAI utilise ce profil pour différencier les comptes KLASSCI connectés.
   // La réponse est récupérée dans Laravel à partir d'un compte VÉRIFIÉ.
-  mcp.registerTool('get_connected_profile', {
+  if (allowed.has('get_connected_profile')) mcp.registerTool('get_connected_profile', {
     description: 'Identifier le compte KLASSCI réellement connecté ; aucune recherche de données scolaires.',
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: [{ type: 'oauth2', scopes: ['mcp:read'] }],

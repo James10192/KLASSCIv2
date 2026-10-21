@@ -60,6 +60,20 @@ final class McpBridgeController extends Controller
         }
         RateLimiter::hit($quotaKey, 60);
 
+        // Découverte interne UNIQUEMENT, jamais exposée comme outil au modèle.
+        // Lire le catalogue Nanan local à CET établissement et CE compte :
+        // les permissions ont pu changer depuis l'émission du JWT.
+        if ($payload['tool'] === 'list_authorized_tools') {
+            $schemas = $lectures->schemas($user);
+
+            return response()->json([
+                'tools' => array_values(array_map(
+                    fn (array $schema) => $schema['name'],
+                    $schemas
+                )),
+            ])->header('Cache-Control', 'no-store');
+        }
+
         // Profil de l'identité LOCALE, seulement après preuve JWT, signature
         // HMAC, lien non révoqué et compte actif. Aucune recherche par e-mail.
         if ($payload['tool'] === 'get_connected_profile') {
