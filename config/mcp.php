@@ -11,6 +11,10 @@ return [
     'read_only' => [
         'enabled' => env('MCP_READ_ONLY_ENABLED', false),
     ],
+    'pairing' => [
+        // Bootstrap désactivé indépendamment de la lecture MCP.
+        'enabled' => env('MCP_PAIRING_ENABLED', false),
+    ],
     'bridge' => [
         'enabled' => env('MCP_BRIDGE_ENABLED', false),
         // Secret unique par établissement, au moins 32 caractères aléatoires.

@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { createSchoolServer, resolveAuthorizedTools } from '../server-factory.mjs';
+import { SchoolIdentityNotLinked } from '../bridge.mjs';
 
 const caller = Object.freeze({ subject: 'auth0|test-teacher', organization: 'org_aaaaaa' });
 
@@ -203,6 +204,69 @@ test('le SDK MCP supporte une factory asynchrone basée sur les permissions', as
     assert.match(response, /search_classes/);
     assert.match(response, /get_connected_profile/);
     assert.doesNotMatch(response, /get_dashboard_kpis/);
+  } finally {
+    await handler.close();
+  }
+});
+
+test('l’identité OAuth non liée ne voit que le parcours de liaison lorsque le pilote est activé', async () => {
+  const base = { tenants:new Map(), issuer:'https://demo.auth0.example/',
+    call: async () => {throw new SchoolIdentityNotLinked();} };
+  const onlyLink = await resolveAuthorizedTools(caller, {...base, pairingEnabled:true});
+  assert.deepEqual(onlyLink, ['start_account_link']);
+  await assert.rejects(() => resolveAuthorizedTools(caller, {...base, pairingEnabled:false}), SchoolIdentityNotLinked);
+});
+
+test('un code aléatoire est demandé au pont, et jamais dérivé d’un paramètre modèle', async () => {
+  const calls=[];
+  const tenant=new Map([[caller.organization,{
+    url:'https://demonstration.klassci.com/api/mcp-bridge', secret:'x'.repeat(64)
+  }]]);
+  const handler=createMcpHandler(() => createSchoolServer(caller, {
+    tenants:tenant, issuer:'https://demo.auth0.example/',
+    authorizedTools:['start_account_link'],
+    call:async (principal, registry, issuer,tool,args)=>{
+      calls.push({principal,registry,issuer,tool,args});
+      return {accepted:true,expires_in_seconds:600};
+    }
+  }), {legacy:'reject'});
+  try {
+    const listed=await (await handler.fetch(request('tools/list'))).text();
+    assert.match(listed, /start_account_link/);
+    assert.doesNotMatch(listed, /search_classes/);
+    assert.doesNotMatch(listed, /get_connected_profile/);
+    const result=await handler.fetch(request('tools/call',{
+      name:'start_account_link', arguments:{}
+    }));
+    const raw=await result.text();
+    assert.equal(result.status,200,raw);
+    assert.equal(calls.length,1);
+    assert.equal(calls[0].principal,caller);
+    assert.equal(calls[0].tool,'create_pairing_challenge');
+    assert.match(calls[0].args.code,/^[A-Za-z0-9_-]{43}$/);
+    assert.match(raw,/https:\/\/demonstration\.klassci\.com\/nanan\/mcp\/connect/);
+    assert.match(raw,/verification_code/);
+    assert.match(raw,/expires_in_seconds/);
+  } finally {
+    await handler.close();
+  }
+});
+
+test('échec du stockage du challenge : le code n’est pas retourné au client', async () => {
+  const handler=createMcpHandler(() => createSchoolServer(caller, {
+    tenants:new Map([[caller.organization,{url:'https://demo.klassci.com/api/mcp-bridge'}]]),
+    issuer:'https://demo.auth0.example/',
+    authorizedTools:['start_account_link'],
+    call:async()=>{throw new Error('rate limited');}
+  }), {legacy:'reject'});
+  try {
+    const result=await handler.fetch(request('tools/call',{
+      name:'start_account_link',arguments:{}
+    }));
+    const raw=await result.text();
+    assert.equal(result.status,200,raw);
+    assert.match(raw,/La création du code/);
+    assert.doesNotMatch(raw,/verification_code/);
   } finally {
     await handler.close();
   }

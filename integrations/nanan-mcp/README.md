@@ -137,6 +137,81 @@ d'une révocation tardive. Ne pas considérer `tools/list` comme un
 mécanisme suffisant pour protéger une lecture : l'exécution conserve
 ses propres contrôles côté Laravel.
 
+## Premier appairage depuis ChatGPT — code OAuth à usage unique
+
+Cette voie de bootstrap supprime le besoin de manipuler manuellement les
+`identity_hash` en SQL. Elle **ne remplace pas OAuth** : Nanan doit d'abord
+valider la signature du jeton d'accès émis par l'IdP, son audience, son
+`org_id` et le scope `mcp:read`. Elle complète ensuite cette preuve
+OAuth avec la **session authentifiée KLASSCI** du vrai utilisateur.
+
+Le pilote est **désactivé par défaut indépendamment du mode lecture**. Pour
+l'activer en environnement de démonstration uniquement :
+
+- Dans la passerelle : `MCP_PAIRING_ENABLED=true`.
+- Dans l'établissement démo : `MCP_PAIRING_ENABLED=true`, ainsi que les
+  paramètres du pont signés configurés dans la section précédente.
+- Exécuter la migration `mcp_link_challenges` avec celles des identités.
+- Dans Auth0 : provisionner l'organisation pilote, un login d'employé et
+  l'audience MCP. Aucune identité n'est créée automatiquement.
+
+**Séquence pour l'utilisateur :**
+
+1. Installer un serveur MCP privé dans ChatGPT/Work, ouvrir Nanan et
+   s'authentifier via l'IdP OAuth de KLASSCI.
+2. Tant que ce `(iss,sub,org_id)` n'est pas lié dans l'école,
+   `tools/list` propose **uniquement** `start_account_link`. Les
+   classes, les KPI et le profil KLASSCI restent invisibles.
+3. L'outil demande à l'école un challenge HMAC contenant un code **aléatoire
+   256 bits** de 43 caractères. La base locale stocke uniquement
+   `SHA256(code)`, l'empreinte de l'identité, l'organisation et sa date
+   d'expiration (**10 minutes**). Jusqu'à trois codes par identité toutes
+   les dix minutes et quota global par établissement.
+4. Le modèle remet le code et l'URL du site officiel de l'école. Pour
+   éviter les substitutions de compte, **un administrateur distinct** doit
+   vérifier par un canal indépendant l'identité de l'employé, son compte
+   OAuth et son appartenance à l'établissement. L'administrateur ouvre
+   `/nanan/mcp/review`, indique l'ID utilisateur local exact, le code et
+   confirme le contrôle effectué.
+5. `POST /nanan/mcp/connections/approve` requiert une session Laravel
+   `superAdmin` active, CSRF et une identité locale distincte de
+   l'administrateur ; le code doit exister, être non expiré, non consommé
+   et pas déjà approuvé. Cette opération n'ouvre **aucune lecture scolaire**.
+6. L'employé ouvre `/nanan/mcp/connect` et s'authentifie dans **sa**
+   session Laravel. Le formulaire demande le code et le consentement
+   explicite. `POST /nanan/mcp/connections/claim` exige que la session
+   corresponde exactement à l'utilisateur préapprouvé.
+7. La preuve est consommée dans la base propre à l'école via
+   `SELECT FOR UPDATE` ; une erreur, un rejeu, un code intercepté par
+   une autre session ou un changement de compte est refusé.
+8. Après liaison seulement, Nanan découvre les permissions locales
+   et peut effectuer les lectures autorisées. La révocation coupe
+   l'accès au prochain appel.
+
+**Modèle de menace et limites :** il s'agit d'une approbation humaine
+explicite **en deux étapes**, pas d'une preuve cryptographique que le compte
+Auth0 et le compte Laravel appartiennent à la même personne. L'administrateur
+doit réellement vérifier les deux identités. Le contrôle indépendant
+réduit le risque de phishing par substitution de code ; il ne le supprime
+pas si l'administrateur valide une fausse identité. Pour une liaison
+entièrement autonome à grande échelle, remplacer cette revue par une
+seconde authentification OIDC avec `state`, `nonce` et PKCE et une
+égalité stricte des sujets signés ; **ne pas désactiver** la revue
+sans disposer de cette preuve automatisée.
+
+Le code reste strictement désactivé par défaut sur le gateway et les
+écoles ; aucun membre du personnel ou administrateur de production n'est
+invité à effectuer un appairage à ce stade.
+
+Le succès du flux en tests Node/PHP ne démontre PAS que l'IdP est
+configuré, ni que le callback OAuth/CIMD fonctionne dans ChatGPT.
+Tester le parcours réel via MCP Inspector, puis ChatGPT sur une instance
+de démonstration avec deux comptes et sans données réelles d'enfants.
+
+Références officielles :
+https://developers.openai.com/plugins/build/auth et
+https://developers.openai.com/plugins/deploy/connect-chatgpt
+
 ## Mettre en ligne plus tard
 
 - HTTPS public stable sur `/mcp` derrière proxy, Host/Origin allowlist,
@@ -177,3 +252,23 @@ testé plutôt que bricoler silencieusement les messages MCP.
 
 Documentation : https://developers.openai.com/plugins/build/auth et
 https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization
+
+
+### Sécurité du SDK MCP — CVE-2026-111771 (avis du 20 octobre 2026)
+
+Les versions `@modelcontextprotocol/server` 2.0.0–2.2.0 et
+`@modelcontextprotocol/express` 2.0.0–2.0.1 sont affectées par
+[GHSA-rvq5-wwqv-78pq](https://github.com/advisories/GHSA-rvq5-wwqv-78pq).
+Le vérificateur JOSE refuse déjà tout JWT dont l'audience n'est pas
+`MCP_RESOURCE_URL`, mais la configuration garde **en plus**
+`requireBearerAuth({expectedResource})`. Le manifeste impose
+`server >=2.3.1`, `express >=2.0.2` et `node >=2.1.1`.
+
+Le test HTTP `tests/express-audience.test.mjs` est un test de régression :
+il injecte un `AuthInfo.resource` étranger et exige un refus 401 dans
+le véritable middleware Express. Ne jamais retirer ce contrôle, même si
+la vérification `jwtVerify(audience)` est toujours présente.
+
+**Avant déploiement** : figer et vérifier les dépendances résolues dans un
+`package-lock.json` audité et utiliser `npm ci`; le CI actuel utilise
+`npm install` pour le pilote, ce qui n'est pas encore un build reproductible.

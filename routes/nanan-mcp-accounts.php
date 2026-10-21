@@ -9,6 +9,23 @@ Route::middleware(['auth'])->prefix('nanan/mcp')->name('nanan.mcp.')->group(func
     Route::get('/connections', [McpConnectionsController::class, 'index'])
         ->name('connections.index');
 
+    Route::get('/connect', [McpConnectionsController::class, 'connect'])
+        ->name('connect');
+
+    // Approbation nominative par un superAdmin distinct de l'employé.
+    // Ne crée aucun lien : seul le détenteur de la session cible peut
+    // confirmer le consentement après approbation.
+    Route::get('/review', [McpConnectionsController::class, 'review'])
+        ->name('review');
+
+    Route::post('/connections/approve', [McpConnectionsController::class, 'approve'])
+        ->middleware('throttle:5,1')
+        ->name('connections.approve');
+
+    Route::post('/connections/claim', [McpConnectionsController::class, 'claim'])
+        ->middleware('throttle:5,1')
+        ->name('connections.claim');
+
     Route::post('/connections/{identity}/revoke', [McpConnectionsController::class, 'revoke'])
         ->whereNumber('identity')
         ->middleware('throttle:10,1')

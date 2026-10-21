@@ -1,7 +1,11 @@
 import { createHmac, randomUUID } from 'node:crypto';
 
+export class SchoolIdentityNotLinked extends Error {
+  constructor() { super('Compte non lié.'); this.name = 'SchoolIdentityNotLinked'; }
+}
+
 export function signedBody(principal, issuer, tool, argumentsObject, secret, timestamp = Math.floor(Date.now()/1000)) {
-  if (!['search_classes', 'get_dashboard_kpis', 'get_connected_profile', 'list_authorized_tools'].includes(tool)) throw new Error('Outil non exposé');
+  if (!['search_classes', 'get_dashboard_kpis', 'get_connected_profile', 'list_authorized_tools', 'create_pairing_challenge'].includes(tool)) throw new Error('Outil non exposé');
   const body = JSON.stringify({
     issuer,
     subject: principal.subject,
@@ -29,6 +33,9 @@ export async function callSchoolBridge(principal, registry, issuer, tool, argume
     headers: { 'Content-Type': 'application/json', 'X-Klassci-Mcp-Signature': signed.signature },
     body: signed.body
   });
+  if (response.status === 403 && tool === 'list_authorized_tools') {
+    throw new SchoolIdentityNotLinked();
+  }
   if (!response.ok) throw new Error('L’établissement a refusé la demande.');
   // Le serveur Laravel supprime déjà les champs réservés à l'interface.
   const data = await response.json();

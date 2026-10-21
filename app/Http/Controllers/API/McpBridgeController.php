@@ -33,6 +33,54 @@ final class McpBridgeController extends Controller
             $payload['issuer'], $payload['subject'], $payload['organization']
         );
 
+        // Cet endpoint de bootstrap n'ouvre AUCUN accès scolaire. Une preuve
+        // OAuth d'une organisation approvisionnée et la signature du gateway
+        // ne suffisent qu'à demander un code court à usage unique. La liaison
+        // se fait plus tard dans une session Laravel avec consentement.
+        if ($payload['tool'] === 'create_pairing_challenge') {
+            if (config('mcp.pairing.enabled') !== true) {
+                return response()->json(['error' => 'Appairage indisponible.'], 403)
+                    ->header('Cache-Control', 'no-store');
+            }
+            $code = $payload['arguments']['code'] ?? null;
+            if (! is_string($code) || ! preg_match('/^[A-Za-z0-9_-]{43}$/D', $code)
+                || ! is_array($payload['arguments']) || count($payload['arguments']) !== 1) {
+                return response()->json(['error' => 'Demande invalide.'], 422)
+                    ->header('Cache-Control', 'no-store');
+            }
+
+            // Une liaison préexistante, y compris révoquée, n'est pas
+            // silencieusement remplacée par une nouvelle identité.
+            if (DB::table('mcp_external_identities')->where('identity_hash', $hash)->exists()) {
+                return response()->json(['error' => 'Liaison existante.'], 409)
+                    ->header('Cache-Control', 'no-store');
+            }
+
+            $parIdentite = 'mcp:pair:'.hash('sha256', $hash);
+            $parEcole = 'mcp:pair:org:'.hash('sha256', $payload['organization']);
+            if (RateLimiter::tooManyAttempts($parIdentite, 3)
+                || RateLimiter::tooManyAttempts($parEcole, 100)) {
+                return response()->json(['error' => 'Trop de demandes.'], 429)
+                    ->header('Cache-Control', 'no-store');
+            }
+
+            RateLimiter::hit($parIdentite, 600);
+            RateLimiter::hit($parEcole, 3600);
+
+            DB::table('mcp_link_challenges')->insert([
+                'code_hash' => hash('sha256', $code),
+                'identity_hash' => $hash,
+                'organization' => $payload['organization'],
+                'expires_at' => now()->addMinutes(10),
+                'consumed_at' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            return response()->json(['accepted' => true, 'expires_in_seconds' => 600])
+                ->header('Cache-Control', 'no-store');
+        }
+
         $lien = DB::table('mcp_external_identities')
             ->where('identity_hash', $hash)
             ->where('organization', $payload['organization'])
