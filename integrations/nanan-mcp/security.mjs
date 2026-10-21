@@ -31,6 +31,11 @@ export function checkedPrincipal(claims) {
   if (typeof claims.scope !== 'string' || !claims.scope.split(/\s+/).includes('mcp:read')) {
     throw new AccessDenied();
   }
+  // Un outil scolaire est exclusivement un accès délégué à une personne.
+  // Des clients M2M Auth0 n'ont pas de responsable humain à contrôler localement.
+  if (claims.gty === 'client-credentials' || claims.sub.endsWith('@clients')) {
+    throw new AccessDenied();
+  }
   return Object.freeze({ subject: claims.sub, organization: claims.org_id });
 }
 
