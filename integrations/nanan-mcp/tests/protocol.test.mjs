@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMcpHandler } from '@modelcontextprotocol/server';
-import { createSchoolServer } from '../server-factory.mjs';
+import { createSchoolServer, resolveAuthorizedTools } from '../server-factory.mjs';
 
 const caller = Object.freeze({ subject: 'auth0|test-teacher', organization: 'org_aaaaaa' });
 
@@ -145,4 +145,65 @@ test('un catalogue absent ou mal typé ne peut pas ouvrir les outils', () => {
     issuer:'https://tenant.auth0.com/',
     authorizedTools:['search_classes', null]
   }));
+});
+
+test('une requête MCP relit la liste blanche Laravel sans autorisation héritée d’un autre utilisateur', async () => {
+  const alice = { subject: 'auth0|alice', organization: 'org_aaaaaa' };
+  const bob = { subject: 'auth0|bob', organization: 'org_aaaaaa' };
+  const calls = [];
+  const school = async (principal, tenants, issuer, tool, args) => {
+    calls.push({ principal, tool, args });
+    return principal.subject === 'auth0|alice'
+      ? { tools: ['search_classes'] } : { tools: [] };
+  };
+  const dependencies = { tenants:new Map(), issuer:'https://tenant.auth0.com/', call: school };
+
+  const aliceTools = await resolveAuthorizedTools(alice, dependencies);
+  const bobTools = await resolveAuthorizedTools(bob, dependencies);
+  assert.deepEqual(aliceTools, ['get_connected_profile', 'search_classes']);
+  assert.deepEqual(bobTools, ['get_connected_profile']);
+  assert.equal(calls.length, 2);
+  assert.ok(calls.every((r) => r.tool === 'list_authorized_tools'));
+  assert.ok(calls.every((r) => Object.keys(r.args).length === 0));
+});
+
+test('réponse de découverte de permissions inconnue ou indisponible = aucun outil', async () => {
+  const base = {tenants:new Map(),issuer:'https://tenant.auth0.com/'};
+  for (const payload of [
+    null,
+    { tools: 'search_classes' },
+    { tools: ['search_classes', 'delete_all_students'] },
+    { tools: ['search_classes', null] },
+    { notTools: [] }
+  ]) {
+    await assert.rejects(() => resolveAuthorizedTools(caller, {
+      ...base, call:async()=>payload
+    }));
+  }
+  await assert.rejects(() => resolveAuthorizedTools(caller, {
+    ...base, call:async()=>{throw new Error('bridge refused')}
+  }));
+});
+
+test('le SDK MCP supporte une factory asynchrone basée sur les permissions', async () => {
+  const handler = createMcpHandler(async () => {
+    const authorizedTools = await resolveAuthorizedTools(caller, {
+      tenants: new Map(), issuer:'https://tenant.auth0.com/',
+      call: async () => ({tools: ['search_classes']})
+    });
+    return createSchoolServer(caller, {
+      tenants:new Map(), issuer:'https://tenant.auth0.com/', authorizedTools,
+      call:async()=>({results:[]})
+    });
+  }, {legacy:'reject'});
+  try {
+    const result=await handler.fetch(request('tools/list'));
+    const response=await result.text();
+    assert.equal(result.status, 200, response);
+    assert.match(response, /search_classes/);
+    assert.match(response, /get_connected_profile/);
+    assert.doesNotMatch(response, /get_dashboard_kpis/);
+  } finally {
+    await handler.close();
+  }
 });
