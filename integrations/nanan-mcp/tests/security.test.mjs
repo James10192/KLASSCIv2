@@ -54,6 +54,8 @@ test('OAuth : un JWT valide exige audience, issuer, scope et organisation correc
 test('un utilisateur sans org_id ou sans mcp:read n’est jamais admis', () => {
   assert.throws(() => checkedPrincipal({sub:'user-1', scope:'mcp:read'}), AccessDenied);
   assert.throws(() => checkedPrincipal({sub:'user-1', org_id:orgA, scope:'profile'}), AccessDenied);
+  assert.throws(() => checkedPrincipal({sub:'machine@clients', org_id:orgA, scope:'mcp:read'}), AccessDenied);
+  assert.throws(() => checkedPrincipal({sub:'service-1', org_id:orgA, scope:'mcp:read', gty:'client-credentials'}), AccessDenied);
 });
 
 test('registry refuse tenant arbitraire, doublon, URL non HTTPS, host extérieur et secret faible', () => {
