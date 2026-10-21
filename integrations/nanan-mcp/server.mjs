@@ -1,13 +1,13 @@
-import { createMcpExpressApp } from '@modelcontextprotocol/express';
+import { createMcpExpressApp, requireBearerAuth } from '@modelcontextprotocol/express';
 import { toNodeHandler } from '@modelcontextprotocol/node';
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { createSchoolServer } from './server-factory.mjs';
 
-import { AccessDenied, requireConfiguration, tenantRegistry, verifierFor } from './security.mjs';
+import { requireConfiguration, tenantRegistry } from './security.mjs';
+import { sdkVerifierFor } from './sdk-authorization.mjs';
 
 const settings = requireConfiguration();
 const tenants = tenantRegistry(process.env.MCP_TENANTS_JSON);
-const verify = verifierFor(settings);
 const publicHost = new URL(settings.resource).hostname;
 const app = createMcpExpressApp({ host: '0.0.0.0', allowedHosts: [publicHost] });
 
@@ -22,34 +22,31 @@ app.get(metadataPath, (_req, res) => res.set('Cache-Control', 'public, max-age=3
 app.get('/.well-known/oauth-protected-resource', (_req, res) => res.set('Cache-Control', 'public, max-age=300').json(resourceMetadata));
 app.get('/healthz', (_req, res) => res.status(200).json({ status: 'ok' }));
 
-function challenge(res) {
-  res.set('Cache-Control', 'no-store');
-  res.set('WWW-Authenticate',
-    'Bearer resource_metadata="' + new URL(metadataPath, settings.resource).href + '", scope="mcp:read", error="invalid_token", error_description="OAuth access token required"');
-  return res.status(401).json({ error: 'unauthorized' });
-}
+// Le SDK répond 401 invalid_token, ou 403 insufficient_scope, avec le
+// WWW-Authenticate normalisé que ChatGPT comprend. Pas de gate maison.
+const resourceMetadataUrl = new URL(metadataPath, settings.resource);
+const oauthGate = requireBearerAuth({
+  verifier: sdkVerifierFor(settings, tenants),
+  requiredScopes: ['mcp:read'],
+  expectedResource: new URL(settings.resource),
+  resourceMetadataUrl
+});
 
-// La factory crée une session sans état, bornée à l'identité OAuth vérifiée.
-app.post('/mcp', async (req, res) => {
-  let principal;
-  try {
-    principal = await verify(req.headers.authorization);
-    if (!tenants.has(principal.organization)) throw new AccessDenied();
-  } catch {
-    return challenge(res);
+// Un handler persistant mais une instance métier par requête.
+// Le SDK transmet authInfo depuis le gate, sans variable globale de session.
+const protocol = createMcpHandler((ctx) => {
+  const principal = ctx.authInfo?.extra?.principal;
+  if (!principal || typeof principal.subject !== 'string'
+    || typeof principal.organization !== 'string'
+    || !tenants.has(principal.organization)) {
+    throw new Error('Authenticated principal not available');
   }
+  return createSchoolServer(principal, { tenants, issuer: settings.issuer });
+}, { legacy: 'reject' });
+const serve = toNodeHandler(protocol);
 
-  // Le SDK 2026 utilise Streamable HTTP ; le handler reçoit le body
-  // déjà analysé par createMcpExpressApp.
-  try {
-    const handler = createMcpHandler(
-      () => createSchoolServer(principal, { tenants, issuer: settings.issuer }),
-      { legacy: 'reject' }
-    );
-    await toNodeHandler(handler)(req, res, req.body);
-  } catch {
-    if (!res.headersSent) res.status(500).json({ error: 'mcp_unavailable' });
-  }
+app.post('/mcp', oauthGate, (req, res) => {
+  void serve(req, res, req.body);
 });
 
 // MCP 2026-07-28 : aucun GET ou DELETE de session hérité.
