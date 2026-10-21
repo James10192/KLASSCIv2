@@ -512,4 +512,20 @@ class ValidationGratuiteTest extends TestCase
         $this->assertSame('en_attente', $this->inscription->fresh()->status);
     }
 
+    public function test_exception_de_validation_en_lot_renvoie_500_sans_detail_sql(): void
+    {
+        $service = Mockery::mock(\App\Services\ESBTPInscriptionService::class);
+        $service->shouldReceive('processBulkValidation')->once()
+            ->andThrow(new \RuntimeException('SQLSTATE[HY000] server-secret'));
+        $this->app->instance(\App\Services\ESBTPInscriptionService::class, $service);
+
+        $response = $this->postJson(route('esbtp.inscriptions.bulk-valider'), [
+            'inscription_ids' => [$this->inscription->id],
+        ]);
+        $response->assertStatus(500)->assertJsonPath('success', false);
+        $this->assertStringNotContainsString('SQLSTATE', $response->getContent());
+        $this->assertStringNotContainsString('server-secret', $response->getContent());
+        $this->assertSame('en_attente', $this->inscription->fresh()->status);
+    }
+
 }
