@@ -1635,10 +1635,7 @@ class ESBTPInscriptionController extends Controller
      */
     public function annuler(AnnulerInscriptionRequest $request, ESBTPInscription $inscription)
     {
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput();
-        }
-
+        // La validation du motif est déjà assurée par AnnulerInscriptionRequest.
         try {
             $motif = $request->input("motif");
             $result = $this->inscriptionService->annulerInscription(
@@ -1659,7 +1656,14 @@ class ESBTPInscriptionController extends Controller
                     ->route("esbtp.inscriptions.show", $inscription->id)
                     ->with("success", "Inscription annulée avec succès.");
             } else {
-                throw new \Exception($result["message"]);
+                // Un refus métier n'est pas une panne serveur.
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $result['message'],
+                    ], 422);
+                }
+                return redirect()->back()->with('error', $result['message']);
             }
         } catch (\Exception $e) {
             if ($request->ajax()) {

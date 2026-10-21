@@ -543,6 +543,8 @@ class ESBTPInscriptionService
 
             // Ne pas annuler une inscription déjà annulée
             if ($inscription->status === 'annulée') {
+                DB::rollBack();
+
                 return [
                     'success' => false,
                     'message' => 'Cette inscription est déjà annulée'
