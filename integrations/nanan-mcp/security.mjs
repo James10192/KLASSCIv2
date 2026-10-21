@@ -20,7 +20,7 @@ export function requireConfiguration(env = process.env) {
   return { issuer: expectedIssuer, resource: res.href };
 }
 
-export function checkedPrincipal(claims) {
+export function checkedPrincipal(claims, requireReadScope = true) {
   if (typeof claims.sub !== 'string' || claims.sub.length < 1 || claims.sub.length > 255) {
     throw new AccessDenied();
   }
@@ -28,7 +28,7 @@ export function checkedPrincipal(claims) {
   if (typeof claims.org_id !== 'string' || !/^org_[a-zA-Z0-9]{3,128}$/.test(claims.org_id)) {
     throw new AccessDenied();
   }
-  if (typeof claims.scope !== 'string' || !claims.scope.split(/\s+/).includes('mcp:read')) {
+  if (requireReadScope && (typeof claims.scope !== 'string' || !claims.scope.split(/\s+/).includes('mcp:read'))) {
     throw new AccessDenied();
   }
   // Un outil scolaire est exclusivement un accès délégué à une personne.
