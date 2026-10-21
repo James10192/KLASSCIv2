@@ -63,7 +63,10 @@ final class McpBridgeController extends Controller
         // Profil de l'identité LOCALE, seulement après preuve JWT, signature
         // HMAC, lien non révoqué et compte actif. Aucune recherche par e-mail.
         if ($payload['tool'] === 'get_connected_profile') {
-            $opaqueId = hash_hmac('sha256', $hash, (string) config('mcp.bridge.secret'));
+            // Identifiant stable entre les tokens, reconnexions et rotations du
+            // secret HMAC du pont. Ce hash pseudonyme n'est PAS une
+            // authentification ni une donnée pour retrouver un compte.
+            $opaqueId = hash('sha256', "klassci:nanan-profile:v1\0".$hash);
 
             return response()->json([
                 'id' => 'kl_'.substr($opaqueId, 0, 24),
