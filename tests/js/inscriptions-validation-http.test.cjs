@@ -116,7 +116,7 @@ test('liste et administration : les validations groupées et aperçus restent UR
         '../../resources/views/esbtp/inscriptions/administration.blade.php'), 'utf8');
     assert.ok(index.includes('body: new URLSearchParams(formData)'));
     assert.ok(admin.includes('body: new URLSearchParams(previewPayload)'));
-    assert.equal((admin.match(/body: new URLSearchParams\\(formData\\)/g) || []).length, 2);
+    assert.equal(admin.split('body: new URLSearchParams(formData)').length - 1, 2);
     assert.ok(admin.includes('window.iiLireReponseInscription(response)'));
 });
 
@@ -125,7 +125,7 @@ test('les modales caisse, validation de paiement et classes restent URL-encodée
     const admin = fs.readFileSync(path.resolve(__dirname,
         '../../resources/views/esbtp/inscriptions/administration.blade.php'), 'utf8');
     assert.ok(index.includes('body: new URLSearchParams(new FormData(this))'));
-    assert.equal((admin.match(/body: new URLSearchParams\\(formData\\)/g) || []).length, 6);
+    assert.equal(admin.split('body: new URLSearchParams(formData)').length - 1, 6);
     assert.ok(admin.includes("credentials: 'same-origin'"));
 });
 
