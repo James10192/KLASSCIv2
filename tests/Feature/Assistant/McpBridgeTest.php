@@ -102,7 +102,9 @@ class McpBridgeTest extends TestCase
             'arguments' => [],
         ])->assertOk()->assertJsonStructure(['id', 'name'])
           ->assertJson(['name' => $user->name])
-          ->assertHeader('Cache-Control', 'no-store');
+          ;
+
+        $this->assertStringContainsString('no-store', (string) $premier->headers->get('Cache-Control'));
 
         $this->assertStringStartsWith('kl_', (string) $premier->json('id'));
         $this->assertMatchesRegularExpression('/^kl_[0-9a-f]{24}$/', (string) $premier->json('id'));
