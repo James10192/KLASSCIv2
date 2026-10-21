@@ -1,10 +1,9 @@
 import { createMcpExpressApp } from '@modelcontextprotocol/express';
 import { toNodeHandler } from '@modelcontextprotocol/node';
-import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
-import * as z from 'zod/v4';
+import { createMcpHandler } from '@modelcontextprotocol/server';
+import { createSchoolServer } from './server-factory.mjs';
 
 import { AccessDenied, requireConfiguration, tenantRegistry, verifierFor } from './security.mjs';
-import { callSchoolBridge } from './bridge.mjs';
 
 const settings = requireConfiguration();
 const tenants = tenantRegistry(process.env.MCP_TENANTS_JSON);
@@ -30,50 +29,7 @@ function challenge(res) {
   return res.status(401).json({ error: 'unauthorized' });
 }
 
-// Pas de session partagée : une instance McpServer et un principal par requête.
-function createSchoolServer(principal) {
-  const mcp = new McpServer({ name: 'klassci-nanan-connect', version: '0.1.0' });
-
-  const read = async (name, args) => {
-    try {
-      const result = await callSchoolBridge(principal, tenants, settings.issuer, name, args);
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-        structuredContent: result
-      };
-    } catch {
-      // Ne jamais divulguer le secret du tenant, un JWT, ni l'URL du backend.
-      return { isError: true, content: [{ type: 'text', text: 'Lecture indisponible ou refusée par KLASSCI.' }] };
-    }
-  };
-
-  mcp.registerTool('search_classes', {
-    description: 'Consulter les classes accessibles, les capacités et les effectifs de votre établissement KLASSCI.',
-    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    securitySchemes: [{ type: 'oauth2', scopes: ['mcp:read'] }],
-    inputSchema: z.object({
-      name: z.string().max(120).optional(),
-      filiere: z.string().max(120).optional(),
-      niveau: z.string().max(120).optional(),
-      systeme: z.enum(['BTS', 'LMD']).optional(),
-      active_only: z.boolean().optional(),
-      has_places: z.boolean().optional(),
-      limit: z.number().int().min(1).max(50).optional()
-    })
-  }, async (args) => read('search_classes', args));
-
-  mcp.registerTool('get_dashboard_kpis', {
-    description: 'Lire les indicateurs agrégés autorisés du tableau de bord KLASSCI ; les chiffres financiers exigent des droits financiers.',
-    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    securitySchemes: [{ type: 'oauth2', scopes: ['mcp:read'] }],
-    inputSchema: z.object({
-      focus: z.enum(['general', 'academic', 'attendance', 'finance']).optional()
-    })
-  }, async (args) => read('get_dashboard_kpis', args));
-
-  return mcp;
-}
-
+// La factory crée une session sans état, bornée à l'identité OAuth vérifiée.
 app.all('/mcp', async (req, res) => {
   let principal;
   try {
@@ -86,7 +42,7 @@ app.all('/mcp', async (req, res) => {
   // Le SDK 2026 utilise Streamable HTTP ; le handler reçoit le body
   // déjà analysé par createMcpExpressApp.
   try {
-    const handler = createMcpHandler(() => createSchoolServer(principal));
+    const handler = createMcpHandler(() => createSchoolServer(principal, { tenants, issuer: settings.issuer }));
     await toNodeHandler(handler)(req, res, req.body);
   } catch {
     if (!res.headersSent) res.status(500).json({ error: 'mcp_unavailable' });
