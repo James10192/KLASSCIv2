@@ -30,7 +30,7 @@ function challenge(res) {
 }
 
 // La factory crée une session sans état, bornée à l'identité OAuth vérifiée.
-app.all('/mcp', async (req, res) => {
+app.post('/mcp', async (req, res) => {
   let principal;
   try {
     principal = await verify(req.headers.authorization);
@@ -42,12 +42,18 @@ app.all('/mcp', async (req, res) => {
   // Le SDK 2026 utilise Streamable HTTP ; le handler reçoit le body
   // déjà analysé par createMcpExpressApp.
   try {
-    const handler = createMcpHandler(() => createSchoolServer(principal, { tenants, issuer: settings.issuer }));
+    const handler = createMcpHandler(
+      () => createSchoolServer(principal, { tenants, issuer: settings.issuer }),
+      { legacy: 'reject' }
+    );
     await toNodeHandler(handler)(req, res, req.body);
   } catch {
     if (!res.headersSent) res.status(500).json({ error: 'mcp_unavailable' });
   }
 });
+
+// MCP 2026-07-28 : aucun GET ou DELETE de session hérité.
+app.all('/mcp', (_req, res) => res.set('Allow', 'POST').status(405).end());
 
 const port = Number(process.env.PORT || 3200);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT invalide');
