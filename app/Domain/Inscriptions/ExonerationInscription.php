@@ -8,8 +8,9 @@ use App\Services\ApplicableFraisResolver;
 use OwenIt\Auditing\Models\Audit;
 
 /**
- * L'absence de paiement n'est possible que pour des frais explicitement
- * exonérés, avec auteur + motif audités. Un zéro de barème est INCONNU.
+ * L'absence de paiement est autorisée si le barème effectif contient une
+ * gratuité configurée OU si une exonération individuelle est auditée.
+ * Un montant issu du catalogue par défaut ne prouve jamais une gratuité.
  *
  * Aucun faux paiement de 0 FCFA n'est créé. On relit systématiquement la base
  * avant toute validation (un aperçu AJAX ne fait jamais autorité).
@@ -39,21 +40,41 @@ final class ExonerationInscription
             return $refus('Aucune souscription active : les frais doivent être configurés et vérifiés.');
         }
 
-        // Ne pas confondre catégorie obligatoire absente et gratuité.
+        // Le resolver lit le barème effectif (LMD : parcours/niveau, BTS :
+        // filière/niveau, avec priorité à l'année de l'inscription).
+        // NE JAMAIS déduire la présence du barème du seul montant calculé :
+        // le fallback default_amount, même positif, n'est pas une configuration.
         $categories = $souscriptions->pluck('frais_category_id')->map(fn ($id) => (int) $id)->all();
+        $montantsNormaux = [];
+        $gratuiteConfiguree = false;
         foreach ($this->bareme->resolveMandatoryFeesForInscription($inscription) as $frais) {
-            if ((float) $frais['amount'] <= 0) {
-                return $refus('Le barème d’un frais obligatoire n’est pas défini pour cette inscription.');
+            if (! $frais['configuration']) {
+                return $refus('Barème manquant : un frais obligatoire ne possède pas de configuration applicable.');
             }
-            if (! in_array((int) $frais['category']->id, $categories, true)) {
+            if ($frais['configuration']->getMontantByStatus(
+                $inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
+            ) === null) {
+                return $refus('Montant non défini dans le barème applicable pour ce statut d’affectation.');
+            }
+            if ((float) $frais['amount'] < 0) {
+                return $refus('Montant négatif invalide dans le barème applicable.');
+            }
+            $categoryId = (int) $frais['category']->id;
+            if (! in_array($categoryId, $categories, true)) {
                 return $refus('Un frais obligatoire est absent des souscriptions. Complétez les frais avant validation.');
             }
+            $montantsNormaux[$categoryId] = (float) $frais['amount'];
+            $gratuiteConfiguree = $gratuiteConfiguree || $montantsNormaux[$categoryId] === 0.0;
         }
 
         foreach ($souscriptions->where('satisfied_in_kind', true) as $depot) {
             if (! $depot->deposited_at || ! $depot->deposited_by) {
                 return $refus('Un dépôt en nature n’est pas confirmé par un auteur et une date.');
             }
+        }
+
+        if ($souscriptions->contains(fn (ESBTPFraisSubscription $s) => (float) $s->amount < 0)) {
+            return $refus('Une souscription présente un montant négatif non autorisé.');
         }
 
         $du = (float) $souscriptions->sum(fn (ESBTPFraisSubscription $s) => $s->chargedAmount());
@@ -66,9 +87,13 @@ final class ExonerationInscription
             return $refus('Un paiement est en attente de validation. Traitez-le avant de valider l’inscription.');
         }
 
-        $aAuditer = $souscriptions->filter(fn (ESBTPFraisSubscription $s) => ! $s->satisfied_in_kind);
-        if ($aAuditer->isEmpty()) {
-            return $refus('Une validation sans paiement exige au moins une exonération monétaire explicite.');
+        // Seul un zéro sur barème normal positif est une exonération.
+        // Pour un optionnel sans montant normal prouvé, conserver l'audit
+        // conservateur de la PR #1632 : jamais de gratuité déduite par défaut.
+        $aAuditer = $souscriptions->filter(fn (ESBTPFraisSubscription $s) => ! $s->satisfied_in_kind
+            && ($montantsNormaux[(int) $s->frais_category_id] ?? INF) > 0);
+        if ($aAuditer->isEmpty() && ! $gratuiteConfiguree) {
+            return $refus('Une validation sans paiement exige une gratuité configurée ou une exonération monétaire explicite.');
         }
         if ($aAuditer->isNotEmpty()) {
             $audits = Audit::query()
@@ -97,15 +122,17 @@ final class ExonerationInscription
                     || ! str_contains((string) $preuve->tags, ESBTPFraisSubscription::TAG_EXONERATION)
                     || ! str_contains((string) $s->notes, self::TRACE)
                     || ! preg_match('/utilisateur #\\d+/', (string) $s->notes)) {
-                    return $refus('Un frais à 0 FCFA ne possède pas de dispense auditée. Confirmez cet ajustement avec un motif.');
+                    return $refus('Exonération individuelle à confirmer : ce frais normalement payant est à 0 FCFA sans motif, auteur et preuve d’audit valides.');
                 }
             }
         }
 
         return [
             'eligible' => true,
-            'mode' => 'explicit_waiver',
-            'message' => 'Toutes les souscriptions sont exonérées ou satisfaites en nature : aucun paiement n’est requis.',
+            'mode' => $aAuditer->isEmpty() ? 'configured_free' : 'explicit_waiver',
+            'message' => $aAuditer->isEmpty()
+                ? 'Gratuité configurée dans le barème applicable : aucun paiement n’est requis.'
+                : 'Exonération individuelle confirmée et auditée : aucun paiement n’est requis.',
             'montant_du' => 0.0,
         ];
     }

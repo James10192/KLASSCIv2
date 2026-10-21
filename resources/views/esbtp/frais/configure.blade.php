@@ -300,7 +300,7 @@
                     <button type="button"
                             class="fc-btn-config configure-btn"
                             data-systeme="{{ $classe->scope['systeme'] ?? 'BTS' }}"
-                            data-filiere-id="{{ $classe->scope['filiere_id'] ?? $classe->filiere->id }}"
+                            data-filiere-id="{{ ($classe->scope['systeme'] ?? 'BTS') === 'LMD' ? '' : ($classe->scope['filiere_id'] ?? $classe->filiere->id) }}"
                             data-parcours-id="{{ $classe->scope['parcours_id'] ?? '' }}"
                             data-niveau-id="{{ $classe->niveau->id }}"
                             data-filiere-name="{{ $classe->filiere->name }}"

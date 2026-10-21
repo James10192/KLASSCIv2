@@ -1544,6 +1544,7 @@ class ESBTPInscriptionController extends Controller
             'total' => count($items),
             'ready' => collect($items)->where('eligible', true)->count(),
             'waived' => collect($items)->where('mode', 'explicit_waiver')->count(),
+            'configured_free' => collect($items)->where('mode', 'configured_free')->count(),
             'items' => $items,
         ]);
     }

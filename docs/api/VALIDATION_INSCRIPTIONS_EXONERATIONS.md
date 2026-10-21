@@ -37,7 +37,7 @@ Réponse 200 :
 {"eligible":true,"mode":"explicit_waiver","message":"Toutes les souscriptions sont exonérées ou satisfaites en nature : aucun paiement n’est requis."}
 ```
 
-Modes : `validated_payment`, `explicit_waiver`, `blocked`. L'aperçu
+Modes : `validated_payment`, `configured_free` (gratuité issue de la configuration effective), `explicit_waiver` (montant normal positif ramené à zéro avec audit), `blocked`. Un `default_amount` à zéro sans configuration applicable reste bloquant. L'aperçu
 ne transmet aucun détail financier privé et ne réserve pas de place.
 
 ### `POST /esbtp/inscriptions/bulk-validation-preview`

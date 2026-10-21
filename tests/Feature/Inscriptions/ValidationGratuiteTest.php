@@ -5,6 +5,10 @@ namespace Tests\Feature\Inscriptions;
 use App\Domain\Inscriptions\ExonerationInscription;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFraisCategory;
+use App\Models\ESBTPFraisConfiguration;
+use App\Models\ESBTPLMDDomaine;
+use App\Models\ESBTPLMDMention;
+use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
@@ -65,7 +69,11 @@ class ValidationGratuiteTest extends TestCase
         // c'est le resolver réel qui détecte les autres frais manquants.
         $resolver = Mockery::mock(ApplicableFraisResolver::class);
         $resolver->shouldReceive('resolveMandatoryFeesForInscription')
-            ->andReturn(collect([['category' => $this->categorie, 'amount' => 50000]]));
+            ->andReturn(collect([[
+                'category' => $this->categorie,
+                'configuration' => new ESBTPFraisConfiguration(['amount' => 50000, 'is_active' => true]),
+                'amount' => 50000,
+            ]]));
         $this->app->instance(ApplicableFraisResolver::class, $resolver);
     }
 
@@ -211,9 +219,220 @@ class ValidationGratuiteTest extends TestCase
         $simple->givePermissionTo('admin.access');
         $this->actingAs($simple);
         $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])->assertStatus(403);
+        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))->assertForbidden();
+        $this->postJson(route('esbtp.inscriptions.bulk-validation-preview'), [
+            'inscription_ids' => [$this->inscription->id],
+        ])->assertForbidden();
         $this->putJson(route('esbtp.inscriptions.update-subscription', [
             'inscription' => $this->inscription->id,
             'subscription' => $this->souscription->id,
         ]), ['amount' => 0, 'reason' => 'Décision approuvée et motivée'])->assertStatus(403);
+    }
+
+    /**
+     * Remplacer le mock historique par le resolver réel pour couvrir les
+     * configurations SQL et la sélection LMD/BTS selon le statut d'affectation.
+     */
+    private function baremeReel(string $systeme, int $affecte, int $nonAffecte = 280000): ESBTPFraisConfiguration
+    {
+        $this->app->forgetInstance(ApplicableFraisResolver::class);
+
+        $classe = $this->inscription->classe;
+        $parcoursId = null;
+        if ($systeme === 'LMD') {
+            $domaine = ESBTPLMDDomaine::create([
+                'name' => 'Sciences humaines', 'code' => 'SH-CI', 'is_active' => true,
+            ]);
+            $mention = ESBTPLMDMention::create([
+                'name' => 'Communication', 'code' => 'COM-CI',
+                'domaine_id' => $domaine->id, 'is_active' => true,
+            ]);
+            $parcours = ESBTPLMDParcours::create([
+                'name' => 'Communication des Organisations', 'code' => 'CO-CI',
+                'mention_id' => $mention->id, 'filiere_id' => $classe->filiere_id,
+                'is_active' => true,
+            ]);
+            $parcoursId = $parcours->id;
+            $classe->update(['systeme_academique' => 'LMD', 'parcours_id' => $parcoursId]);
+        }
+
+        return ESBTPFraisConfiguration::create([
+            'frais_category_id' => $this->categorie->id,
+            'systeme_academique' => $systeme,
+            'filiere_id' => $systeme === 'LMD' ? null : $classe->filiere_id,
+            'parcours_id' => $parcoursId,
+            'niveau_id' => $classe->niveau_etude_id,
+            'annee_universitaire_id' => $this->inscription->annee_universitaire_id,
+            'amount' => $nonAffecte,
+            'amount_affecte' => $affecte,
+            'amount_reaffecte' => $affecte,
+            'amount_non_affecte' => $nonAffecte,
+            'payment_deadline_days' => 30,
+            'effective_date' => now()->toDateString(),
+            'is_active' => true,
+            'created_by' => $this->agent->id,
+        ]);
+    }
+
+    public function test_lmd_gratuite_effective_parcours_niveau_sans_exoneration_ni_recu(): void
+    {
+        $configuration = $this->baremeReel('LMD', 0);
+        $this->inscription->update([
+            'statut_etablissement' => 'ancien',
+            'affectation_status' => ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
+        ]);
+        $this->souscription->update(['amount' => 0]);
+
+        $frais = app(ApplicableFraisResolver::class)->resolveMandatoryFeesForInscription($this->inscription)->first();
+        $this->assertTrue($configuration->is($frais['configuration']));
+        $this->assertSame(0.0, $frais['amount']);
+        $this->assertSame('LMD', $frais['scope']['systeme']);
+        $this->assertSame($configuration->parcours_id, $frais['scope']['parcours_id']);
+
+        $apercu = $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertOk()->assertJsonPath('eligible', true)->assertJsonPath('mode', 'configured_free');
+        $this->assertStringContainsString('Gratuité configurée', $apercu->json('message'));
+        $this->postJson(route('esbtp.inscriptions.bulk-validation-preview'), [
+            'inscription_ids' => [$this->inscription->id],
+        ])->assertOk()->assertJsonPath('ready', 1)
+            ->assertJsonPath('configured_free', 1)
+            ->assertJsonPath('items.0.mode', 'configured_free');
+        $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])
+            ->assertOk()->assertJsonPath('success', true);
+        $this->assertSame('active', $this->inscription->fresh()->status);
+        $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
+        $this->assertStringNotContainsString(ExonerationInscription::TRACE, (string) $this->souscription->fresh()->notes);
+    }
+
+    public function test_bts_gratuite_effective_filiere_niveau_reste_valide(): void
+    {
+        $configuration = $this->baremeReel('BTS', 0);
+        $this->souscription->update(['amount' => 0]);
+        $frais = app(ApplicableFraisResolver::class)->resolveMandatoryFeesForInscription($this->inscription)->first();
+        $this->assertTrue($configuration->is($frais['configuration']));
+        $this->assertSame('BTS', $frais['scope']['systeme']);
+        $this->assertSame($configuration->filiere_id, $frais['scope']['filiere_id']);
+
+        $this->postJson(route('esbtp.inscriptions.bulk-valider'), [
+            'inscription_ids' => [$this->inscription->id],
+        ])->assertOk()->assertJsonPath('stats.validees_direct', 1);
+        $this->assertSame('active', $this->inscription->fresh()->status);
+        $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
+    }
+
+    public function test_absence_de_configuration_ne_se_transforme_pas_en_gratuite_meme_par_defaut_zero(): void
+    {
+        $this->app->forgetInstance(ApplicableFraisResolver::class);
+        $this->categorie->update(['default_amount' => 0]);
+        $this->souscription->update(['amount' => 0]);
+
+        $apercu = $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertJsonPath('eligible', false);
+        $this->assertStringContainsString('Barème manquant', $apercu->json('message'));
+        $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])->assertStatus(422);
+        $this->assertSame('en_attente', $this->inscription->fresh()->status);
+    }
+
+    public function test_bareme_inactif_ou_hors_scope_reste_bloquant(): void
+    {
+        $configuration = $this->baremeReel('BTS', 0);
+        $this->souscription->update(['amount' => 0]);
+        $configuration->update(['is_active' => false]);
+        $this->assertFalse(app(ExonerationInscription::class)->estApplicable($this->inscription));
+
+        $autreNiveau = \App\Models\ESBTPNiveauEtude::factory()->create();
+        $configuration->update(['is_active' => true, 'niveau_id' => $autreNiveau->id]);
+        $this->assertFalse(app(ExonerationInscription::class)->estApplicable($this->inscription));
+    }
+
+    public function test_bareme_normal_positif_zero_sans_audit_refuse_et_avec_motif_autorise(): void
+    {
+        $this->baremeReel('LMD', 50000);
+        $this->souscription->update(['amount' => 0]);
+        $apercu = $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertJsonPath('eligible', false);
+        $this->assertStringContainsString('Exonération individuelle à confirmer', $apercu->json('message'));
+        $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])->assertStatus(422);
+
+        $this->exonere();
+        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertJsonPath('eligible', true)->assertJsonPath('mode', 'explicit_waiver');
+        $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])->assertOk();
+        $this->assertStringContainsString(ExonerationInscription::TRACE, (string) $this->souscription->fresh()->notes);
+    }
+
+    public function test_gratuite_configuree_respecte_paiement_en_attente_et_annulation(): void
+    {
+        $this->baremeReel('BTS', 0);
+        $this->souscription->update(['amount' => 0]);
+        $paiement = ESBTPPaiement::factory()->pour($this->inscription)->create(['status' => 'en_attente']);
+        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertJsonPath('eligible', false);
+        $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])->assertStatus(422);
+        $paiement->delete();
+
+        $this->inscription->update(['status' => 'annulée']);
+        $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])->assertStatus(422);
+    }
+
+    public function test_cli_unitaire_accepte_gratuite_configuree_et_refuse_droits_insuffisants(): void
+    {
+        $this->baremeReel('LMD', 0);
+        $this->souscription->update(['amount' => 0]);
+        $sansDroit = User::factory()->create();
+        Sanctum::actingAs($sansDroit, ['cli:read', 'cli:write']);
+        $this->postJson("/api/cli/inscriptions/{$this->inscription->id}/validate")->assertForbidden();
+
+        Sanctum::actingAs($this->agent, ['cli:read', 'cli:write']);
+        $this->postJson("/api/cli/inscriptions/{$this->inscription->id}/validate")->assertOk();
+        $this->assertSame('active', $this->inscription->fresh()->status);
+    }
+
+    public function test_statut_non_affecte_ne_beneficie_pas_du_zero_affecte(): void
+    {
+        $this->baremeReel('LMD', 0, 280000);
+        $this->inscription->update(['affectation_status' => 'non_affecte']);
+        $this->souscription->update(['amount' => 0]);
+        $frais = app(ApplicableFraisResolver::class)->resolveMandatoryFeesForInscription($this->inscription)->first();
+        $this->assertSame(280000.0, $frais['amount']);
+        $apercu = $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertJsonPath('eligible', false);
+        $this->assertStringContainsString('Exonération individuelle à confirmer', $apercu->json('message'));
+    }
+
+    public function test_gratuite_bareme_ne_contourne_pas_doublon_ou_capacite(): void
+    {
+        $this->baremeReel('BTS', 0);
+        $this->souscription->update(['amount' => 0]);
+
+        // La base impose (étudiant, année, classe) unique : le doublon
+        // métier à tester est dans une AUTRE classe de la même année.
+        $autreClasse = ESBTPClasse::factory()->create([
+            'filiere_id' => $this->inscription->filiere_id,
+            'niveau_etude_id' => $this->inscription->niveau_id,
+            'annee_universitaire_id' => $this->inscription->annee_universitaire_id,
+        ]);
+        $doublon = ESBTPInscription::factory()->create([
+            'etudiant_id' => $this->inscription->etudiant_id,
+            'classe_id' => $autreClasse->id,
+            'annee_universitaire_id' => $this->inscription->annee_universitaire_id,
+            'status' => 'active',
+            'workflow_step' => 'etudiant_cree',
+        ]);
+        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertJsonPath('eligible', false);
+        $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])->assertStatus(422);
+        $doublon->delete();
+
+        $this->inscription->classe->update(['places_totales' => 1]);
+        ESBTPInscription::factory()->create([
+            'classe_id' => $this->inscription->classe_id,
+            'annee_universitaire_id' => $this->inscription->annee_universitaire_id,
+            'status' => 'active',
+            'workflow_step' => 'etudiant_cree',
+        ]);
+        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertJsonPath('eligible', false);
+        $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])->assertStatus(422);
     }
 }

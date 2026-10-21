@@ -331,7 +331,9 @@ class InscriptionWorkflowService
                     'paiement_id' => $inscription->paiement_validation_id,
                     'mode_validation' => $inscription->paiement_validation_id
                         ? 'paiement_valide'
-                        : 'exoneration_sans_paiement',
+                        : (app(\App\Domain\Inscriptions\ExonerationInscription::class)->examiner($inscription)['mode'] === 'configured_free'
+                            ? 'gratuite_bareme'
+                            : 'exoneration_sans_paiement'),
                 ]
             );
 

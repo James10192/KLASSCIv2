@@ -295,6 +295,7 @@ class CLIStudentController extends BaseApiController
                 ObstacleALaValidation::ANNULEE => 'Cannot validate: inscription is cancelled',
                 ObstacleALaValidation::AUTRE_INSCRIPTION_ACTIVE => 'Cannot validate: student already has another active inscription this year',
                 ObstacleALaValidation::CLASSE_PLEINE => 'Cannot validate: class is full',
+                ObstacleALaValidation::SANS_PAIEMENT => app(\App\Domain\Inscriptions\ExonerationInscription::class)->examiner($inscription)['message'],
                 default => 'Cannot validate: no payment found for this inscription',
             }, [], 422);
         }
