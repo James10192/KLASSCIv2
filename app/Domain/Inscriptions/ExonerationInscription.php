@@ -48,12 +48,16 @@ final class ExonerationInscription
         $montantsNormaux = [];
         $gratuiteConfiguree = false;
         foreach ($this->bareme->resolveMandatoryFeesForInscription($inscription) as $frais) {
-            if (! $frais['configuration']
-                || $frais['configuration']->getMontantByStatus(
-                    $inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
-                ) === null
-                || (float) $frais['amount'] < 0) {
+            if (! $frais['configuration']) {
                 return $refus('Barème manquant : un frais obligatoire ne possède pas de configuration applicable.');
+            }
+            if ($frais['configuration']->getMontantByStatus(
+                $inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
+            ) === null) {
+                return $refus('Montant non défini dans le barème applicable pour ce statut d’affectation.');
+            }
+            if ((float) $frais['amount'] < 0) {
+                return $refus('Montant négatif invalide dans le barème applicable.');
             }
             $categoryId = (int) $frais['category']->id;
             if (! in_array($categoryId, $categories, true)) {
