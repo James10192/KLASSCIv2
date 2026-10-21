@@ -108,6 +108,47 @@ class ValidationGratuiteTest extends TestCase
         $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
     }
 
+    public function test_le_post_urlencode_simulant_put_valide_depuis_la_fiche(): void
+    {
+        $this->exonere();
+        $reponse = $this->actingAs($this->agent)->call(
+            'POST', route('esbtp.inscriptions.valider', $this->inscription),
+            ['_method' => 'PUT', '_token' => 'csrf-test'], [], [],
+            ['CONTENT_TYPE' => 'application/x-www-form-urlencoded; charset=UTF-8',
+             'HTTP_ACCEPT' => 'application/json', 'HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest']
+        );
+        $reponse->assertOk()->assertJsonPath('success', true)
+            ->assertJsonPath('inscription_id', $this->inscription->id);
+        $this->assertSame('etudiant_cree', $this->inscription->fresh()->workflow_step);
+        $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
+    }
+
+    public function test_annulation_passe_par_le_form_request_sans_validator_fantome(): void
+    {
+        Permission::findOrCreate('inscriptions.cancel', 'web');
+        $this->agent->givePermissionTo('inscriptions.cancel');
+
+        $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->putJson(route('esbtp.inscriptions.annuler', $this->inscription),
+                ['motif' => 'Inscription enregistrée par erreur'])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+        $this->assertSame('annulée', $this->inscription->fresh()->status);
+    }
+
+    public function test_annulation_sans_motif_est_refusee_par_le_form_request(): void
+    {
+        Permission::findOrCreate('inscriptions.cancel', 'web');
+        $this->agent->givePermissionTo('inscriptions.cancel');
+
+        $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->putJson(route('esbtp.inscriptions.annuler', $this->inscription),
+                ['motif' => ''])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('motif');
+        $this->assertNotSame('annulée', $this->inscription->fresh()->status);
+    }
+
     public function test_un_zero_non_approuve_ne_vaut_pas_gratuite(): void
     {
         $this->souscription->update(['amount' => 0]);

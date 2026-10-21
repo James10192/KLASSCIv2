@@ -1635,9 +1635,7 @@ class ESBTPInscriptionController extends Controller
      */
     public function annuler(AnnulerInscriptionRequest $request, ESBTPInscription $inscription)
     {
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput();
-        }
+        // AnnulerInscriptionRequest valide le motif avant l'entrée ici.
 
         try {
             $motif = $request->input("motif");
