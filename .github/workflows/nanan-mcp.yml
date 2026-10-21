@@ -12,6 +12,7 @@ on:
       - 'app/Providers/RouteServiceProvider.php'
       - 'tests/Unit/Domain/Assistant/RequetePontSigneeTest.php'
       - 'tests/Feature/Assistant/McpBridgeTest.php'
+      - 'tests/Unit/Domain/Assistant/McpBridgeLogPrivacyTest.php'
       - '.github/workflows/nanan-mcp.yml'
   push:
     branches: [presentation]
@@ -25,6 +26,7 @@ on:
       - 'app/Providers/RouteServiceProvider.php'
       - 'tests/Unit/Domain/Assistant/RequetePontSigneeTest.php'
       - 'tests/Feature/Assistant/McpBridgeTest.php'
+      - 'tests/Unit/Domain/Assistant/McpBridgeLogPrivacyTest.php'
       - '.github/workflows/nanan-mcp.yml'
 
 jobs:
@@ -87,7 +89,9 @@ jobs:
           php -l app/Http/Controllers/API/McpBridgeController.php
           php -l tests/Unit/Domain/Assistant/RequetePontSigneeTest.php
           php -l tests/Feature/Assistant/McpBridgeTest.php
+          php -l tests/Unit/Domain/Assistant/McpBridgeLogPrivacyTest.php
       - name: Tests de signature, de permissions et de liaison d'identité
         run: |
           php vendor/bin/phpunit tests/Unit/Domain/Assistant/RequetePontSigneeTest.php --no-coverage
           php vendor/bin/phpunit tests/Feature/Assistant/McpBridgeTest.php --no-coverage
+          php vendor/bin/phpunit tests/Unit/Domain/Assistant/McpBridgeLogPrivacyTest.php --no-coverage
