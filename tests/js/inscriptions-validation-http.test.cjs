@@ -157,3 +157,10 @@ test('édition de souscription : contrôle HTTP strict et aucun token ou motif d
     assert.match(section, /iiLireReponseInscription\(response, 'success'\)/);
     assert.doesNotMatch(section, /formData\.get\('_token'\)/);
 });
+
+
+test('le toast ne peut pas exécuter du HTML depuis une erreur métier', () => {
+    const shared = fs.readFileSync(path.resolve(__dirname, '../../public/js/inscriptions/common.js'), 'utf8');
+    assert.match(shared, /toast\.querySelector\("span"\)\.textContent = String\(message \?\? ""\)/);
+    assert.doesNotMatch(shared, /<span style="flex:1;">\$\{message\}<\/span>/);
+});
