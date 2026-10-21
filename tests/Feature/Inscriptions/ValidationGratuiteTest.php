@@ -289,9 +289,9 @@ class ValidationGratuiteTest extends TestCase
         $this->assertSame('LMD', $frais['scope']['systeme']);
         $this->assertSame($configuration->parcours_id, $frais['scope']['parcours_id']);
 
-        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
-            ->assertOk()->assertJsonPath('eligible', true)->assertJsonPath('mode', 'configured_free')
-            ->assertSee('Gratuité configurée');
+        $apercu = $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertOk()->assertJsonPath('eligible', true)->assertJsonPath('mode', 'configured_free');
+        $this->assertStringContainsString('Gratuité configurée', $apercu->json('message'));
         $this->postJson(route('esbtp.inscriptions.bulk-validation-preview'), [
             'inscription_ids' => [$this->inscription->id],
         ])->assertOk()->assertJsonPath('ready', 1)
@@ -326,8 +326,9 @@ class ValidationGratuiteTest extends TestCase
         $this->categorie->update(['default_amount' => 0]);
         $this->souscription->update(['amount' => 0]);
 
-        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
-            ->assertJsonPath('eligible', false)->assertSee('Barème manquant');
+        $apercu = $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertJsonPath('eligible', false);
+        $this->assertStringContainsString('Barème manquant', $apercu->json('message'));
         $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])->assertStatus(422);
         $this->assertSame('en_attente', $this->inscription->fresh()->status);
     }
@@ -348,8 +349,9 @@ class ValidationGratuiteTest extends TestCase
     {
         $this->baremeReel('LMD', 50000);
         $this->souscription->update(['amount' => 0]);
-        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
-            ->assertJsonPath('eligible', false)->assertSee('Exonération individuelle à confirmer');
+        $apercu = $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertJsonPath('eligible', false);
+        $this->assertStringContainsString('Exonération individuelle à confirmer', $apercu->json('message'));
         $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])->assertStatus(422);
 
         $this->exonere();
@@ -369,7 +371,7 @@ class ValidationGratuiteTest extends TestCase
         $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])->assertStatus(422);
         $paiement->delete();
 
-        $this->inscription->update(['status' => ESBTPInscription::STATUTS_ANNULES[0]]);
+        $this->inscription->update(['status' => 'annulée']);
         $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])->assertStatus(422);
     }
 
@@ -393,8 +395,9 @@ class ValidationGratuiteTest extends TestCase
         $this->souscription->update(['amount' => 0]);
         $frais = app(ApplicableFraisResolver::class)->resolveMandatoryFeesForInscription($this->inscription)->first();
         $this->assertSame(280000.0, $frais['amount']);
-        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
-            ->assertJsonPath('eligible', false)->assertSee('Exonération individuelle à confirmer');
+        $apercu = $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertJsonPath('eligible', false);
+        $this->assertStringContainsString('Exonération individuelle à confirmer', $apercu->json('message'));
     }
 
     public function test_gratuite_bareme_ne_contourne_pas_doublon_ou_capacite(): void
@@ -402,9 +405,16 @@ class ValidationGratuiteTest extends TestCase
         $this->baremeReel('BTS', 0);
         $this->souscription->update(['amount' => 0]);
 
+        // La base impose (étudiant, année, classe) unique : le doublon
+        // métier à tester est dans une AUTRE classe de la même année.
+        $autreClasse = ESBTPClasse::factory()->create([
+            'filiere_id' => $this->inscription->filiere_id,
+            'niveau_etude_id' => $this->inscription->niveau_id,
+            'annee_universitaire_id' => $this->inscription->annee_universitaire_id,
+        ]);
         $doublon = ESBTPInscription::factory()->create([
             'etudiant_id' => $this->inscription->etudiant_id,
-            'classe_id' => $this->inscription->classe_id,
+            'classe_id' => $autreClasse->id,
             'annee_universitaire_id' => $this->inscription->annee_universitaire_id,
             'status' => 'active',
             'workflow_step' => 'etudiant_cree',
