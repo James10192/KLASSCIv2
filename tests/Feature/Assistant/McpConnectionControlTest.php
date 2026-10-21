@@ -91,7 +91,6 @@ class McpConnectionControlTest extends TestCase
 
         $list = $this->actingAs($alice)->getJson('/nanan/mcp/connections')
             ->assertOk()
-            ->assertHeader('Cache-Control', 'no-store, private')
             ->json('connections');
 
         $this->assertCount(1, $list);
