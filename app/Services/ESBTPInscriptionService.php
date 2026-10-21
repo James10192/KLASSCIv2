@@ -841,6 +841,29 @@ class ESBTPInscriptionService
             }
 
             foreach ($generatedFees as $fee) {
+                // Un montant nul réellement issu du barème reste une souscription
+                // obligatoire. Sans cette ligne, ExonerationInscription refuse
+                // ensuite la gratuité faute de frais souscrit (BTS et LMD).
+                // Ne PAS écraser une souscription déjà existante, notamment
+                // si elle a reçu des paiements : un changement de barème se
+                // réconcilie séparément avec la comptabilité.
+                if (($fee['type'] ?? null) === 'mandatory' && (float) ($fee['amount'] ?? -1) === 0.0) {
+                    ESBTPFraisSubscription::firstOrCreate(
+                        [
+                            'inscription_id' => $inscription->id,
+                            'frais_category_id' => $fee['category_id'],
+                        ],
+                        [
+                            'selected_option_id' => null,
+                            'amount' => 0,
+                            'is_active' => true,
+                            'subscribed_at' => $inscription->date_inscription ?? now(),
+                            'created_by' => $inscription->created_by ?? auth()->id(),
+                            'notes' => 'Frais obligatoire créé automatiquement à 0 FCFA lors de l’inscription - ' . $fee['description'] . ' (statut: ' . $affectationStatus . ')',
+                        ]
+                    );
+                    continue;
+                }
 
                 if ($fee['amount'] > 0) {
                     // CORRECTION : Utiliser updateOrCreate comme dans regenererFraisInscription
