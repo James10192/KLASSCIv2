@@ -24,7 +24,7 @@ app.get('/healthz', (_req, res) => res.status(200).json({ status: 'ok' }));
 
 // Le SDK répond 401 invalid_token, ou 403 insufficient_scope, avec le
 // WWW-Authenticate normalisé que ChatGPT comprend. Pas de gate maison.
-const resourceMetadataUrl = new URL(metadataPath, settings.resource);
+const resourceMetadataUrl = new URL(metadataPath, settings.resource).href;
 const oauthGate = requireBearerAuth({
   verifier: sdkVerifierFor(settings, tenants),
   requiredScopes: ['mcp:read'],
