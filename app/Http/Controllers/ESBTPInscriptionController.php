@@ -96,8 +96,10 @@ class ESBTPInscriptionController extends Controller
         $this->middleware("permission:inscriptions.delete", [
             "only" => ["destroy"],
         ]);
+        // L'annulation a son propre droit : la route inscriptions.annuler
+        // exige inscriptions.cancel. Ne pas exiger en plus inscriptions.validate.
         $this->middleware("permission:inscriptions.validate", [
-            "only" => ["valider", "annuler"],
+            "only" => ["valider"],
         ]);
     }
 
@@ -713,17 +715,17 @@ class ESBTPInscriptionController extends Controller
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
             }
-            \Log::error('Erreur lors de l\'inscription: ' . $e->getMessage());
-            \Log::error($e->getTraceAsString());
-
-            return redirect()
-                ->back()
-                ->with(
-                    "error",
-                    'Une erreur est survenue lors de l\'inscription. Détails : ' .
-                        $e->getMessage(),
-                )
-                ->withInput();
+            Log::error("Erreur technique lors de la création d'inscription", [
+                'exception_type' => get_class($e),
+                'user_id' => auth()->id(),
+            ]);
+            $message = "Erreur technique lors de la création de l'inscription. Vérifiez les journaux serveur.";
+            if ($request->expectsJson()) {
+                // La conversion de candidature est AJAX : une panne reste un 500,
+                // sans passer par traduireRedirection() qui traduirait un refus en 422.
+                return response()->json(['ok' => false, 'message' => $message], 500);
+            }
+            return redirect()->back()->with('error', $message)->withInput();
         }
     }
 
@@ -1563,7 +1565,14 @@ class ESBTPInscriptionController extends Controller
             );
 
             if (! $result['success']) {
-                throw new \Exception($result['message']);
+                DB::rollBack();
+                $statut = ($result['technical_error'] ?? false) ? 500 : 422;
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false, 'message' => $result['message'],
+                    ], $statut);
+                }
+                return redirect()->back()->with('error', $result['message']);
             }
 
             $montantPaye = $request->input("montant_paye", 0);
@@ -1576,13 +1585,20 @@ class ESBTPInscriptionController extends Controller
 
             DB::commit();
 
-            // Workflow event : fin du chain (issue #298) — pas de notif (next_perm null)
-            // mais loggé pour audit + permet hook futur (e.g. génération bulletin auto)
-            \App\Support\WorkflowFlash::dispatch(
-                'inscription.validated',
-                Auth::user(),
-                ['inscription' => $inscription->id, 'etudiant_id' => $inscription->etudiant_id],
-            );
+            // Effet secondaire APRÈS commit : un listener de notification en échec
+            // ne doit jamais transformer une inscription persistée en faux 500.
+            try {
+                \App\Support\WorkflowFlash::dispatch(
+                    'inscription.validated',
+                    Auth::user(),
+                    ['inscription' => $inscription->id, 'etudiant_id' => $inscription->etudiant_id],
+                );
+            } catch (\Throwable $e) {
+                Log::warning('Notification de workflow indisponible après validation confirmée', [
+                    'inscription_id' => $inscription->id,
+                    'exception_type' => get_class($e),
+                ]);
+            }
 
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
@@ -1613,20 +1629,15 @@ class ESBTPInscriptionController extends Controller
                 ->with("success", "Inscription validée avec succès.");
         } catch (\Exception $e) {
             DB::rollBack();
-
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json([
-                    "success" => false,
-                    "message" => "Erreur lors de la validation: " . $e->getMessage(),
-                ], 422);
+            Log::error("Erreur technique lors de la validation d'inscription", [
+                'inscription_id' => $inscription->id,
+                'exception_type' => get_class($e),
+            ]);
+            $message = "Erreur technique lors de la validation. Contactez le support si elle persiste.";
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 500);
             }
-
-            return redirect()
-                ->back()
-                ->with(
-                    "error",
-                    "Erreur lors de la validation: " . $e->getMessage(),
-                );
+            return redirect()->back()->with('error', $message);
         }
     }
 
@@ -1635,10 +1646,7 @@ class ESBTPInscriptionController extends Controller
      */
     public function annuler(AnnulerInscriptionRequest $request, ESBTPInscription $inscription)
     {
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput();
-        }
-
+        // La validation du motif est déjà assurée par AnnulerInscriptionRequest.
         try {
             $motif = $request->input("motif");
             $result = $this->inscriptionService->annulerInscription(
@@ -1648,7 +1656,7 @@ class ESBTPInscriptionController extends Controller
             );
 
             if ($result["success"]) {
-                if ($request->ajax()) {
+                if ($request->expectsJson()) {
                     return response()->json([
                         "success" => true,
                         "message" => "Inscription annulée avec succès.",
@@ -1659,26 +1667,27 @@ class ESBTPInscriptionController extends Controller
                     ->route("esbtp.inscriptions.show", $inscription->id)
                     ->with("success", "Inscription annulée avec succès.");
             } else {
-                throw new \Exception($result["message"]);
+                // Un refus métier (422) diffère d'une panne technique (500).
+                $statut = ($result['technical_error'] ?? false) ? 500 : 422;
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $result['message'],
+                    ], $statut);
+                }
+                return redirect()->back()->with('error', $result['message']);
             }
         } catch (\Exception $e) {
-            if ($request->ajax()) {
-                return response()->json(
-                    [
-                        "success" => false,
-                        "message" =>
-                            'Erreur lors de l\'annulation: ' . $e->getMessage(),
-                    ],
-                    500,
-                );
+            Log::error("Erreur technique lors de l'annulation d'inscription", [
+                'inscription_id' => $inscription->id,
+                'exception' => $e,
+            ]);
+            $message = "Erreur technique lors de l'annulation. Contactez le support si elle persiste.";
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 500);
             }
 
-            return redirect()
-                ->back()
-                ->with(
-                    "error",
-                    'Erreur lors de l\'annulation: ' . $e->getMessage(),
-                );
+            return redirect()->back()->with('error', $message);
         }
     }
 
@@ -1983,21 +1992,14 @@ class ESBTPInscriptionController extends Controller
                 ->with("inscriptions_problemes", $inscriptionsAvecProblemes);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Erreur validation groupée inscriptions: " . $e->getMessage());
-
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(
-                    [
-                        "success" => false,
-                        "message" => "Erreur lors de la validation groupée: " . $e->getMessage(),
-                    ],
-                    500,
-                );
+            Log::error("Erreur technique lors de la validation groupée des inscriptions", [
+                'exception_type' => get_class($e),
+            ]);
+            $message = 'Erreur technique lors de la validation groupée. Contactez le support si elle persiste.';
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 500);
             }
-
-            return redirect()
-                ->back()
-                ->with("error", "Erreur lors de la validation groupée: " . $e->getMessage());
+            return redirect()->back()->with('error', $message);
         }
     }
 
@@ -2059,7 +2061,7 @@ class ESBTPInscriptionController extends Controller
             return response()->json(
                 [
                     "success" => false,
-                    "message" => "Erreur lors du changement de classe: " . $e->getMessage(),
+                    "message" => "Erreur technique lors du changement de classe. Contactez le support.",
                 ],
                 500,
             );
@@ -2092,7 +2094,11 @@ class ESBTPInscriptionController extends Controller
                     $errors[$id] = $result["message"] ?? "Erreur inconnue";
                 }
             } catch (\Exception $e) {
-                $errors[$id] = $e->getMessage();
+                Log::error("Erreur technique lors de l'annulation groupée d'inscription", [
+                    'inscription_id' => $id,
+                    'exception_type' => get_class($e),
+                ]);
+                $errors[$id] = "Erreur technique : contactez le support.";
             }
         }
 
@@ -2282,9 +2288,7 @@ class ESBTPInscriptionController extends Controller
             return response()->json(
                 [
                     "success" => false,
-                    "message" =>
-                        "Erreur lors du rafraîchissement de la ligne: " .
-                        $e->getMessage(),
+                    "message" => "Erreur technique lors du rafraîchissement de la ligne.",
                 ],
                 500,
             );
@@ -2721,7 +2725,7 @@ class ESBTPInscriptionController extends Controller
             ]);
 
             return redirect()->back()
-                ->with('error', 'Erreur lors de la pré-inscription: ' . $e->getMessage())
+                ->with('error', 'Erreur technique lors de la pré-inscription. Contactez le support si elle persiste.')
                 ->withInput();
         }
     }

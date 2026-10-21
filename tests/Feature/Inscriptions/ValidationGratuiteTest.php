@@ -472,4 +472,75 @@ class ValidationGratuiteTest extends TestCase
             ->assertJsonPath('eligible', false);
         $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])->assertStatus(422);
     }
+    public function test_erreur_métier_de_validation_reste_422_en_json(): void
+    {
+        $service = Mockery::mock(\App\Services\ESBTPInscriptionService::class);
+        $service->shouldReceive('validerInscription')->once()->andReturn([
+            'success' => false, 'message' => 'Versement encore en attente',
+        ]);
+        $this->app->instance(\App\Services\ESBTPInscriptionService::class, $service);
+        $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])
+            ->assertStatus(422)->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Versement encore en attente');
+    }
+
+    public function test_exception_technique_de_validation_reste_500_et_cache_sqlstate(): void
+    {
+        $service = Mockery::mock(\App\Services\ESBTPInscriptionService::class);
+        $service->shouldReceive('validerInscription')->once()
+            ->andThrow(new \RuntimeException('SQLSTATE[HY000] secret interne'));
+        $this->app->instance(\App\Services\ESBTPInscriptionService::class, $service);
+        $reponse = $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), []);
+        $reponse->assertStatus(500)->assertJsonPath('success', false);
+        $this->assertStringNotContainsString('SQLSTATE', $reponse->getContent());
+        $this->assertSame('en_attente', $this->inscription->fresh()->status);
+    }
+
+    public function test_la_cli_retourne_500_et_pas_422_si_service_de_validation_en_panne(): void
+    {
+        $this->exonere();
+        Sanctum::actingAs($this->agent, ['cli:read', 'cli:write']);
+        $service = Mockery::mock(\App\Services\ESBTPInscriptionService::class);
+        $service->shouldReceive('validerInscription')->once()->andReturn([
+            'success' => false,
+            'technical_error' => true,
+            'message' => "Erreur technique lors de la validation. Contactez le support si elle persiste.",
+        ]);
+        $this->app->instance(\App\Services\ESBTPInscriptionService::class, $service);
+        $this->postJson("/api/cli/inscriptions/{$this->inscription->id}/validate")
+            ->assertStatus(500);
+        $this->assertSame('en_attente', $this->inscription->fresh()->status);
+    }
+
+    public function test_exception_de_validation_en_lot_renvoie_500_sans_detail_sql(): void
+    {
+        $service = Mockery::mock(\App\Services\ESBTPInscriptionService::class);
+        $service->shouldReceive('processBulkValidation')->once()
+            ->andThrow(new \RuntimeException('SQLSTATE[HY000] server-secret'));
+        $this->app->instance(\App\Services\ESBTPInscriptionService::class, $service);
+
+        $response = $this->postJson(route('esbtp.inscriptions.bulk-valider'), [
+            'inscription_ids' => [$this->inscription->id],
+        ]);
+        $response->assertStatus(500)->assertJsonPath('success', false);
+        $this->assertStringNotContainsString('SQLSTATE', $response->getContent());
+        $this->assertStringNotContainsString('server-secret', $response->getContent());
+        $this->assertSame('en_attente', $this->inscription->fresh()->status);
+    }
+
+    public function test_validation_effective_reste_un_succes_si_listener_workflow_post_commit_echoue(): void
+    {
+        $this->exonere();
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\WorkflowStepCompleted::class,
+            function (): void {
+                throw new \RuntimeException('Échec simulé de la notification après commit');
+            }
+        );
+        $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])
+            ->assertOk()->assertJsonPath('success', true);
+        $this->assertSame('etudiant_cree', $this->inscription->fresh()->workflow_step);
+        $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
+    }
+
 }

@@ -211,13 +211,23 @@
                 window.showToast?.(data.message || 'Cette inscription ne peut pas être validée.', 'warning');
                 return false;
             }
-            const waiver = data.mode === 'explicit_waiver';
+            // Trois preuves distinctes : un barème réellement gratuit ne vaut
+            // jamais un versement validé ni une exonération individuelle.
+            const messages = {
+                explicit_waiver: 'Exonération individuelle motivée et auditée : les frais concernés sont à 0 FCFA. Aucun paiement ni reçu fictif ne sera créé. Valider définitivement cette inscription ?',
+                configured_free: 'Gratuité confirmée par le barème configuré pour cette inscription : aucun paiement ni reçu fictif ne sera créé. Valider définitivement cette inscription ?',
+                validated_payment: 'Paiement validé vérifié. Valider définitivement cette inscription et activer le dossier étudiant ?',
+            };
+            const message = Object.prototype.hasOwnProperty.call(messages, data.mode)
+                ? messages[data.mode] : null;
+            if (!message) {
+                window.showToast?.('Mode de validation non reconnu. Vérification nécessaire.', 'error');
+                return false;
+            }
             return window.iiConfirm({
                 variant: 'validation',
                 title: 'Confirmer la validation',
-                message: waiver
-                    ? 'Exonération vérifiée : toutes les souscriptions concernées sont à 0 FCFA. Aucun paiement ni reçu fictif ne sera créé. Valider définitivement cette inscription ?'
-                    : 'Paiement validé vérifié. Valider définitivement cette inscription et activer le dossier étudiant ?',
+                message,
                 confirmLabel: 'Valider l’inscription',
             });
         } catch (error) {
@@ -308,7 +318,9 @@
             display:flex; align-items:center; gap:.6rem; font-size:.88rem; font-weight:500;
             max-width:380px; animation:iiToastSlideIn .25s ease-out;
         `;
-        toast.innerHTML = `<i class="fas ${c.icon}" style="font-size:1.05rem;"></i><span style="flex:1;">${message}</span><button type="button" style="background:transparent; border:none; color:rgba(255,255,255,.85); cursor:pointer; padding:0 .2rem; font-size:1rem;"><i class="fas fa-times"></i></button>`;
+        toast.innerHTML = `<i class="fas ${c.icon}" style="font-size:1.05rem;"></i><span style="flex:1;"></span><button type="button" style="background:transparent; border:none; color:rgba(255,255,255,.85); cursor:pointer; padding:0 .2rem; font-size:1rem;"><i class="fas fa-times"></i></button>`;
+        // Le serveur peut renvoyer des valeurs saisies par un utilisateur : jamais de HTML exécutable.
+        toast.querySelector("span").textContent = String(message ?? "");
 
         const closeBtn = toast.querySelector('button');
         const dismiss = () => {

@@ -590,7 +590,7 @@
             const motif = document.getElementById('ii-bulk-annuler-motif').value.trim();
             if (!motif || selectionVide()) return;
 
-            const formData = new FormData();
+            const formData = new URLSearchParams();
             formData.append('_token', CSRF_TOKEN);
             formData.append('motif', motif);
             const sel = ajouterSelection(formData);
@@ -604,12 +604,11 @@
             fetch(ROUTES.bulkAnnuler, {
                 method: 'POST',
                 body: formData,
-                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                    'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                credentials: 'same-origin',
             })
-                .then(async (r) => {
-                    if (!r.ok) throw new Error(await messageDErreur(r, 'Erreur lors de l\'annulation.'));
-                    return r.json();
-                })
+                .then(r => window.iiLireReponseInscription(r, 'success'))
                 .then((data) => {
                     bootstrap.Modal.getInstance(document.getElementById('ii-modal-bulk-annuler')).hide();
                     if (data.success) {
@@ -1069,12 +1068,15 @@
                 this.querySelector('[name="inscription_id"]')?.value
                 || this.querySelector('input[type="hidden"]')?.value;
 
+            const payload = window.iiCorpsFormulaireInscription(this);
             fetch(this.action, {
                 method: 'POST',
-                body: new FormData(this),
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: payload.body,
+                headers: { ...payload.headers, 'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json' },
+                credentials: 'same-origin',
             })
-                .then((r) => r.json())
+                .then(r => window.iiLireReponseInscription(r, 'success'))
                 .then((data) => {
                     if (data.success) {
                         bootstrap.Modal.getInstance(modalEl).hide();
@@ -1086,7 +1088,7 @@
                 })
                 .catch((err) => {
                     debugError('[inscriptions] quick action:', err);
-                    showToast('Erreur lors de la soumission.', 'error');
+                    showToast(err.message || 'Erreur lors de la soumission.', 'error');
                 })
                 .finally(() => {
                     submitting = false;

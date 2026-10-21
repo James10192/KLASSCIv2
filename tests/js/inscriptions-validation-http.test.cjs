@@ -35,8 +35,9 @@ function client(fetchMock) {
         FormData: FormDataFake, CustomEvent: class { constructor(type) { this.type = type; } },
         setTimeout: () => {}, console,
     }, { filename: 'public/js/inscriptions/common.js', timeout: 1000 });
+    const confirmer = window.iiConfirmerValidationInscription;
     window.iiConfirmerValidationInscription = async () => true;
-    return { window, toasts, eventNames };
+    return { window, toasts, eventNames, confirmer };
 }
 
 test('POST de validation : URL-encodé, _method PUT, CSRF et encodage conservés', async () => {
@@ -136,4 +137,57 @@ test('les trois parcours AJAX de validation et le lot utilisent un parseur stric
     assert.match(list, /new URLSearchParams\(\)/);
     assert.match(admin, /async function handleInscriptionValidation[\s\S]*?iiLireReponseInscription\(response, 'success'\)/);
     assert.match(create, /form\.enctype = hasFile \? 'multipart\/form-data' : 'application\/x-www-form-urlencoded'/);
+});
+
+
+test('les mutations résiduelles de liste et administration passent par le parseur strict', () => {
+    const index = fs.readFileSync(path.resolve(__dirname, '../../public/js/inscriptions/index.js'), 'utf8');
+    const admin = fs.readFileSync(path.resolve(__dirname, '../../resources/views/esbtp/inscriptions/administration.blade.php'), 'utf8');
+    assert.match(index, /fetch\(ROUTES\.bulkAnnuler,[\s\S]*?iiLireReponseInscription\(r, 'success'\)/);
+    assert.match(index, /const payload = window\.iiCorpsFormulaireInscription\(this\);[\s\S]*?iiLireReponseInscription\(r, 'success'\)/);
+    assert.equal((admin.match(/window\.iiCorpsFormulaireInscription\(this\)/g) || []).length, 4);
+    assert.equal((admin.match(/iiLireReponseInscription\(response, 'success'\)/g) || []).length >= 6, true);
+});
+
+
+test('édition de souscription : contrôle HTTP strict et aucun token ou motif dans un journal debug', () => {
+    const show = fs.readFileSync(path.resolve(__dirname, '../../resources/views/esbtp/inscriptions/show.blade.php'), 'utf8');
+    const section = show.split('const editForm = document.getElementById(\'editSubscriptionForm\')')[1].split('Formulaire editSubscriptionForm non trouvé')[0];
+    assert.match(section, /iiCorpsFormulaireInscription\(this\)/);
+    assert.match(section, /payload\.body\.set\('_method', 'PUT'\)/);
+    assert.match(section, /iiLireReponseInscription\(response, 'success'\)/);
+    assert.doesNotMatch(section, /formData\.get\('_token'\)/);
+});
+
+
+test('le toast ne peut pas exécuter du HTML depuis une erreur métier', () => {
+    const shared = fs.readFileSync(path.resolve(__dirname, '../../public/js/inscriptions/common.js'), 'utf8');
+    assert.match(shared, /toast\.querySelector\("span"\)\.textContent = String\(message \?\? ""\)/);
+    assert.doesNotMatch(shared, /<span style="flex:1;">\$\{message\}<\/span>/);
+});
+
+
+test('aperçu de validation distingue paiement, gratuité de barème et exonération auditée', async () => {
+    const exemples = [
+        ['validated_payment', /Paiement validé vérifié/, /barème configuré/],
+        ['configured_free', /Gratuité confirmée par le barème/, /Paiement validé vérifié/],
+        ['explicit_waiver', /Exonération individuelle motivée et auditée/, /Paiement validé vérifié/],
+    ];
+    for (const [mode, attendu, interdit] of exemples) {
+        const { window, confirmer } = client(async () => response(200, JSON.stringify({ eligible: true, mode })));
+        let message = '';
+        window.iiConfirm = async choix => { message = choix.message; return true; };
+        assert.equal(await confirmer('/preview'), true);
+        assert.match(message, attendu);
+        assert.doesNotMatch(message, interdit);
+    }
+});
+
+test('un mode de validation inconnu ne confirme aucune inscription', async () => {
+    const { window, confirmer, toasts } = client(async () => response(200, JSON.stringify({ eligible: true, mode: 'undefined_mode' })));
+    let confirms = 0;
+    window.iiConfirm = async () => { confirms++; return true; };
+    assert.equal(await confirmer('/preview'), false);
+    assert.equal(confirms, 0);
+    assert.equal(toasts.some(t => t.kind === 'error'), true);
 });

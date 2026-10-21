@@ -307,7 +307,9 @@ class CLIStudentController extends BaseApiController
             );
 
             if (!$result['success']) {
-                return $this->errorResponse($result['message'], [], 422);
+                // Une panne technique du service n'est pas un refus métier 422.
+                $statut = ($result['technical_error'] ?? false) ? 500 : 422;
+                return $this->errorResponse($result['message'], [], $statut);
             }
 
             return $this->successResponse([

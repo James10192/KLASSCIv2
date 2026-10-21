@@ -521,7 +521,8 @@ class ESBTPInscriptionService
 
             return [
                 'success' => false,
-                'message' => 'Erreur lors de la validation de l\'inscription: ' . $e->getMessage()
+                'message' => "Erreur technique lors de la validation. Contactez le support si elle persiste.",
+                'technical_error' => true,
             ];
         }
     }
@@ -543,6 +544,8 @@ class ESBTPInscriptionService
 
             // Ne pas annuler une inscription déjà annulée
             if ($inscription->status === 'annulée') {
+                DB::rollBack();
+
                 return [
                     'success' => false,
                     'message' => 'Cette inscription est déjà annulée'
@@ -591,7 +594,8 @@ class ESBTPInscriptionService
 
             return [
                 'success' => false,
-                'message' => 'Erreur lors de l\'annulation de l\'inscription: ' . $e->getMessage()
+                'message' => "Erreur technique lors de l'annulation. Contactez le support si elle persiste.",
+                'technical_error' => true,
             ];
         }
     }

@@ -29,3 +29,11 @@
 - Laravel HTTP Request/CSRF/Validation ; route POST + `_method=PUT`.
 - OWASP Logging Cheat Sheet : ne pas logger les secrets, PII et corps de requête.
 - Rules projet : `.claude/skills/plan-and-confirm/SKILL.md`, `.claude/rules/pre-merge-checklist.md`, `.claude/rules/inscriptions.md`.
+
+## Écarts complémentaires (#1656)
+- Annulation individuelle : suppression du contrôle `$validator` non initialisé (le FormRequest contrôle le motif) ; refus de double annulation en HTTP 422, transaction refermée dans le service.
+- Index : annulation en lot et trois actions rapides (paiement, validation de paiement, changement de classe) sur `URLSearchParams` ou multipart seulement si un fichier réel est présent, analyse HTTP stricte avec le helper partagé.
+- Administration : quatre formulaires (paiement, validation, classe, annulation) utilisent le même helper, sans avaler les HTTP 403/419/422/500 non JSON.
+- Fiche inscription : montant/motif et token CSRF ne sont plus écrits dans les logs de la console ; envoi en texte avec `_method=PUT` et contrôle `success:true`.
+- Tests : PHPUnit HTTP annulation (motif requis, succès, double soumission) et Node contrats des surfaces annexes ; aucune migration ni mutation de frais ou de permissions.
+- Les API publiques et CLI conservent leurs transports JSON/FormRequest et leurs autorisations propres.

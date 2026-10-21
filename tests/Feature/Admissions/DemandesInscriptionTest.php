@@ -232,6 +232,29 @@ class DemandesInscriptionTest extends TestCase
         );
     }
 
+
+    public function test_erreur_technique_creer_inscription_ne_divulgue_aucun_detail_sql_en_json(): void
+    {
+        $classe = $this->classe('1A BTS Génie civil', 30);
+        $service = \Mockery::mock(\App\Services\ESBTPInscriptionService::class);
+        $service->shouldReceive('prepareEtudiantData')->once()
+            ->andThrow(new \RuntimeException('SQLSTATE[HY000] clé privée = secret'));
+        $this->app->instance(\App\Services\ESBTPInscriptionService::class, $service);
+
+        $response = $this->actingAs($this->agent)->postJson(route('esbtp.inscriptions.store'), [
+            'nom' => 'KONE', 'prenoms' => 'Aminata', 'sexe' => 'F',
+            'date_naissance' => '2007-03-12', 'telephone' => '0707123456',
+            'classe_id' => $classe->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'duplicate_override' => 0,
+        ]);
+
+        $response->assertStatus(500)->assertJsonPath('ok', false);
+        $this->assertStringNotContainsString('SQLSTATE', $response->getContent());
+        $this->assertStringNotContainsString('secret', $response->getContent());
+        $this->assertSame(0, ESBTPEtudiant::where('nom', 'KONE')->count());
+    }
+
     public function test_la_preparation_propose_le_parent_deja_enregistre_et_les_annees_ouvertes(): void
     {
         $suivante = ESBTPAnneeUniversitaire::factory()->create(['name' => '2027-2028', 'is_current' => false,
