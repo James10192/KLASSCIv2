@@ -36,6 +36,7 @@ class AnnulationInscriptionTest extends TestCase
             'workflow_step' => 'documents_complets',
         ]);
 
+        $niveauTransactionInitial = DB::transactionLevel();
         $this->actingAs($agent)->putJson(route('esbtp.inscriptions.annuler', $inscription), [])
             ->assertUnprocessable()->assertJsonValidationErrors(['motif']);
         $this->assertSame('en_attente', $inscription->fresh()->status);
@@ -48,7 +49,7 @@ class AnnulationInscriptionTest extends TestCase
         $this->actingAs($agent)->put(route('esbtp.inscriptions.annuler', $inscription), [
             'motif' => 'Seconde tentative identique',
         ])->assertRedirect();
-        $this->assertSame(0, DB::transactionLevel(), 'Une annulation refusée ne laisse pas de transaction ouverte');
+        $this->assertSame($niveauTransactionInitial, DB::transactionLevel(), 'Une annulation refusée ne laisse pas de transaction ouverte');
         $this->assertSame(1, substr_count((string) $inscription->fresh()->observations, 'Annulée le'));
     }
 
