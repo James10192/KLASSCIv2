@@ -105,7 +105,8 @@ class McpBridgeTest extends TestCase
           ->assertHeader('Cache-Control', 'no-store');
 
         $this->assertStringStartsWith('kl_', (string) $premier->json('id'));
-        $this->assertStringNotContainsString((string) $user->id, (string) $premier->json('id'));
+        $this->assertMatchesRegularExpression('/^kl_[0-9a-f]{24}$/', (string) $premier->json('id'));
+        $this->assertNotSame((string) $user->id, (string) $premier->json('id'));
 
         $this->demander('auth0|not-linked', [
             'tool' => 'get_connected_profile',
