@@ -26,6 +26,8 @@ export function createSchoolServer(principal, { tenants, issuer, call = callScho
     description: 'Consulter les classes accessibles, les capacités et les effectifs de votre établissement KLASSCI.',
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: [{ type: 'oauth2', scopes: ['mcp:read'] }],
+    // SDK v2 ne sérialise pas toujours le champ top-level : miroir compatible.
+    _meta: { securitySchemes: [{ type: 'oauth2', scopes: ['mcp:read'] }] },
     inputSchema: z.object({
       name: z.string().max(120).optional(),
       filiere: z.string().max(120).optional(),
@@ -41,6 +43,8 @@ export function createSchoolServer(principal, { tenants, issuer, call = callScho
     description: 'Lire les indicateurs agrégés autorisés du tableau de bord KLASSCI ; les chiffres financiers exigent des droits financiers.',
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: [{ type: 'oauth2', scopes: ['mcp:read'] }],
+    // SDK v2 ne sérialise pas toujours le champ top-level : miroir compatible.
+    _meta: { securitySchemes: [{ type: 'oauth2', scopes: ['mcp:read'] }] },
     inputSchema: z.object({
       focus: z.enum(['general', 'academic', 'attendance', 'finance']).optional()
     })
