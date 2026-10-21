@@ -311,6 +311,85 @@ class ValidationGratuiteTest extends TestCase
         ]);
     }
 
+    /**
+     * Régression de création : l'ancienne sauvegarde ignorait systématiquement
+     * les frais obligatoires à 0 FCFA, malgré un barème BTS/LMD explicite.
+     */
+    private function genererLaSouscriptionAbsente(): ESBTPFraisSubscription
+    {
+        // Reproduire une nouvelle inscription, avant toute souscription.
+        // Suppression SQL ciblée pour ne pas dépendre du soft-delete du modèle.
+        \Illuminate\Support\Facades\DB::table('esbtp_frais_subscriptions')
+            ->where('id', $this->souscription->id)
+            ->delete();
+
+        $service = app(\App\Services\ESBTPInscriptionService::class);
+        $frais = $service->generateFeesForInscription(
+            $this->inscription,
+            [],
+            $this->inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS
+        );
+        $service->saveGeneratedFeesAsSubscriptions($this->inscription, $frais);
+
+        return ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)
+            ->where('frais_category_id', $this->categorie->id)
+            ->firstOrFail();
+    }
+
+    public function test_creation_bts_a_zero_cree_la_souscription_et_valide_sans_paiement(): void
+    {
+        $this->baremeReel('BTS', 0);
+        $souscription = $this->genererLaSouscriptionAbsente();
+        $this->assertSame(0.0, (float) $souscription->amount);
+        $this->assertTrue((bool) $souscription->is_active);
+
+        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertOk()->assertJsonPath('eligible', true)
+            ->assertJsonPath('mode', 'configured_free');
+        $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])
+            ->assertOk()->assertJsonPath('success', true);
+        $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
+        $this->assertStringNotContainsString(ExonerationInscription::TRACE, (string) $souscription->fresh()->notes);
+    }
+
+    public function test_creation_lmd_a_zero_respecte_parcours_et_annee_sans_recu(): void
+    {
+        $this->baremeReel('LMD', 0);
+        $souscription = $this->genererLaSouscriptionAbsente();
+        $this->assertSame(0.0, (float) $souscription->amount);
+        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertOk()->assertJsonPath('eligible', true)
+            ->assertJsonPath('mode', 'configured_free');
+        $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])
+            ->assertOk()->assertJsonPath('success', true);
+        $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
+    }
+
+    public function test_creation_a_zero_sans_configuration_reste_interdite(): void
+    {
+        $this->app->forgetInstance(ApplicableFraisResolver::class);
+        $this->categorie->update(['default_amount' => 0]);
+        $souscription = $this->genererLaSouscriptionAbsente();
+        $this->assertSame(0.0, (float) $souscription->amount);
+
+        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertOk()->assertJsonPath('eligible', false);
+        $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])
+            ->assertStatus(422);
+    }
+
+    public function test_creation_zero_necrase_pas_une_souscription_payante_existante(): void
+    {
+        $this->baremeReel('BTS', 0);
+        $service = app(\App\Services\ESBTPInscriptionService::class);
+        $frais = $service->generateFeesForInscription($this->inscription);
+        $service->saveGeneratedFeesAsSubscriptions($this->inscription, $frais);
+
+        $this->assertSame(50000.0, (float) $this->souscription->fresh()->amount);
+        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertJsonPath('eligible', false);
+    }
+
     public function test_lmd_gratuite_effective_parcours_niveau_sans_exoneration_ni_recu(): void
     {
         $configuration = $this->baremeReel('LMD', 0);
