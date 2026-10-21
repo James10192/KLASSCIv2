@@ -25,7 +25,7 @@ app.get('/healthz', (_req, res) => res.status(200).json({ status: 'ok' }));
 function challenge(res) {
   res.set('Cache-Control', 'no-store');
   res.set('WWW-Authenticate',
-    'Bearer resource_metadata="' + new URL(metadataPath, settings.resource).href + '", scope="mcp:read"');
+    'Bearer resource_metadata="' + new URL(metadataPath, settings.resource).href + '", scope="mcp:read", error="invalid_token", error_description="OAuth access token required"');
   return res.status(401).json({ error: 'unauthorized' });
 }
 
