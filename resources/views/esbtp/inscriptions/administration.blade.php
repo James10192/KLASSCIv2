@@ -1418,7 +1418,7 @@
 
         bulkSelectedIds = rows.map(row => row.dataset.inscriptionId);
 
-        const previewPayload = new FormData();
+        const previewPayload = new URLSearchParams();
         previewPayload.append('_token', '{{ csrf_token() }}');
         bulkSelectedIds.forEach(id => previewPayload.append('inscription_ids[]', id));
         let verdicts;
@@ -1426,10 +1426,11 @@
             const response = await fetch("{{ route('esbtp.inscriptions.bulk-validation-preview') }}", {
                 method: 'POST',
                 body: previewPayload,
-                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
             });
-            const json = await response.json();
-            if (!response.ok) throw new Error(json.message || 'Aperçu indisponible');
+            const json = await window.iiLireReponseInscription(response);
+            if (!Array.isArray(json.items)) throw new Error('Aperçu incomplet : aucune validation ne sera lancée.');
             verdicts = new Map((json.items || []).map(item => [String(item.id), item]));
             document.getElementById('bulk-waived-count').textContent = json.waived || 0;
         } catch (error) {
@@ -1636,7 +1637,7 @@
             return;
         }
 
-        const formData = new FormData();
+        const formData = new URLSearchParams();
         formData.append('_token', '{{ csrf_token() }}');
         ids.forEach(id => formData.append('inscription_ids[]', id));
 
@@ -1644,15 +1645,13 @@
             method: 'POST',
             body: formData,
             headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json'
-            }
+            },
+            credentials: 'same-origin'
         })
-        .then(async response => {
-            const data = await response.json();
-            if (!response.ok || !data.success) throw new Error(data.message || 'Validation refusée');
-            return data;
-        })
+        .then(response => window.iiLireReponseInscription(response, 'success'))
         .then(data => {
 
             if (data.message) {

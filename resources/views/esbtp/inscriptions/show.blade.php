@@ -3757,8 +3757,8 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
             const response = await fetch(form.dataset.previewUrl, {
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
             });
-            const preview = await response.json();
-            if (!response.ok || !preview.eligible) {
+            const preview = await window.iiLireReponseInscription(response);
+            if (preview.eligible !== true) {
                 status.textContent = preview.message || 'Cette inscription n’est pas prête pour validation.';
                 status.className = 'alert alert-warning py-2 mb-3';
                 return;
@@ -3786,13 +3786,14 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
         form.dataset.submitting = '1';
         submit.disabled = true;
         try {
+            const payload = window.iiCorpsFormulaireInscription(form);
             const response = await fetch(form.action, {
                 method: 'POST',
-                body: new FormData(form),
-                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                body: payload.body,
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', ...payload.headers },
+                credentials: 'same-origin'
             });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok || !data.success) throw new Error(data.message || 'Validation refusée.');
+            const data = await window.iiLireReponseInscription(response, 'success');
             bootstrap.Modal.getInstance(document.getElementById('validationModal'))?.hide();
             window.showToast?.(data.message || 'Inscription validée.', 'success');
             document.querySelectorAll('[data-bs-target="#validationModal"]').forEach(button => {

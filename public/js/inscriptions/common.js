@@ -134,6 +134,65 @@
     };
 
     /**
+     * Texte seulement : urlencoded évite un multipart inutile devant le proxy.
+     * Un vrai fichier conserve FormData ; un champ fichier vide est omis.
+     */
+    window.iiCorpsFormulaireInscription = function (form) {
+        const donnees = new FormData(form);
+        const texte = new URLSearchParams();
+        for (const [nom, valeur] of donnees.entries()) {
+            if (typeof valeur !== 'string') {
+                if (valeur && valeur.name === '' && valeur.size === 0) continue;
+                return { body: donnees, headers: {} };
+            }
+            texte.append(nom, valeur);
+        }
+        return { body: texte, headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' } };
+    };
+
+    /**
+     * Ne jamais assimiler un 200 HTML de passerelle à une validation réussie.
+     * Les diagnostics techniques sont bornés ; aucun jeton ni données personnelles.
+     */
+    window.iiLireReponseInscription = async function (response, champSucces = null) {
+        const corps = await response.text();
+        let donnees = null;
+        try {
+            const json = corps ? JSON.parse(corps) : null;
+            if (json && typeof json === 'object' && !Array.isArray(json)) donnees = json;
+        } catch (_) { /* HTML de passerelle, session ou corps invalide */ }
+
+        if (response.ok && donnees && (!champSucces || donnees[champSucces] === true)) return donnees;
+
+        const statut = response.status;
+        const messageMetier = donnees && typeof donnees.message === 'string'
+            ? donnees.message.trim().slice(0, 350) : '';
+        const messages = {
+            403: donnees
+                ? "Vous n'avez pas l'autorisation de réaliser cette action (403)."
+                : 'Accès refusé (403) : blocage possible en amont de KLASSCI. Signalez cette erreur au support.',
+            419: 'Session expirée (419). Actualisez la page, puis recommencez.',
+            422: 'Validation refusée (422). Vérifiez les conditions et les paiements du dossier.',
+            429: 'Trop de demandes (429). Réessayez dans un instant.',
+            500: 'Erreur du serveur (500). Contactez le support si elle persiste.',
+            502: 'Passerelle indisponible (502). Réessayez dans un instant.',
+            503: 'Service temporairement indisponible (503).',
+        };
+        let message = (statut < 500 && messageMetier) || messages[statut]
+            || (response.ok ? 'Réponse inattendue du serveur (HTTP ' + statut + ').'
+                : 'Action impossible (HTTP ' + statut + ').');
+        const get = name => response.headers?.get?.(name) || '';
+        const reference = get('edge-request-id') || get('x-request-id') || get('cf-ray');
+        if (statut === 403 && !donnees && /^[a-zA-Z0-9._:-]{1,100}$/.test(reference)) {
+            message += ' Référence technique : ' + reference + '.';
+        }
+        const erreur = new Error(message);
+        erreur.statut = statut;
+        erreur.donnees = donnees;
+        throw erreur;
+    };
+
+    /**
      * Confirmation contextuelle : l'aperçu vient du serveur mais la mutation
      * refait nécessairement ses contrôles en transaction.
      */
@@ -147,8 +206,8 @@
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 credentials: 'same-origin',
             });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok || !data.eligible) {
+            const data = await window.iiLireReponseInscription(response);
+            if (data.eligible !== true) {
                 window.showToast?.(data.message || 'Cette inscription ne peut pas être validée.', 'warning');
                 return false;
             }
@@ -162,7 +221,7 @@
                 confirmLabel: 'Valider l’inscription',
             });
         } catch (error) {
-            window.showToast?.('Impossible de vérifier les conditions de validation. Réessayez.', 'error');
+            window.showToast?.(error.message || 'Impossible de vérifier les conditions de validation. Réessayez.', 'error');
             return false;
         }
     };
@@ -176,16 +235,17 @@
         form.dataset.validationBusy = '1';
         try {
             if (!await window.iiConfirmerValidationInscription(previewUrl)) return false;
+            const payload = window.iiCorpsFormulaireInscription(form);
+            const entetes = { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', ...payload.headers };
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+            if (csrf) entetes['X-CSRF-TOKEN'] = csrf;
             const response = await fetch(form.action, {
                 method: form.method || 'POST',
-                body: new FormData(form),
-                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: payload.body,
+                headers: entetes,
                 credentials: 'same-origin',
             });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok || !data.success) {
-                throw new Error(data.message || 'Validation refusée par le serveur.');
-            }
+            const data = await window.iiLireReponseInscription(response, 'success');
             window.showToast?.(data.message || 'Inscription validée.', 'success');
             window.dispatchEvent(new CustomEvent('inscription:validated', {
                 detail: { inscriptionId: data.inscription_id }
