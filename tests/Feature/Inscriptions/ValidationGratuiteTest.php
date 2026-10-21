@@ -528,4 +528,19 @@ class ValidationGratuiteTest extends TestCase
         $this->assertSame('en_attente', $this->inscription->fresh()->status);
     }
 
+    public function test_validation_effective_reste_un_succes_si_listener_workflow_post_commit_echoue(): void
+    {
+        $this->exonere();
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\WorkflowStepCompleted::class,
+            function (): void {
+                throw new \RuntimeException('Échec simulé de la notification après commit');
+            }
+        );
+        $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])
+            ->assertOk()->assertJsonPath('success', true);
+        $this->assertSame('etudiant_cree', $this->inscription->fresh()->workflow_step);
+        $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
+    }
+
 }

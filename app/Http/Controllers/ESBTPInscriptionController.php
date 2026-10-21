@@ -1585,13 +1585,20 @@ class ESBTPInscriptionController extends Controller
 
             DB::commit();
 
-            // Workflow event : fin du chain (issue #298) — pas de notif (next_perm null)
-            // mais loggé pour audit + permet hook futur (e.g. génération bulletin auto)
-            \App\Support\WorkflowFlash::dispatch(
-                'inscription.validated',
-                Auth::user(),
-                ['inscription' => $inscription->id, 'etudiant_id' => $inscription->etudiant_id],
-            );
+            // Effet secondaire APRÈS commit : un listener de notification en échec
+            // ne doit jamais transformer une inscription persistée en faux 500.
+            try {
+                \App\Support\WorkflowFlash::dispatch(
+                    'inscription.validated',
+                    Auth::user(),
+                    ['inscription' => $inscription->id, 'etudiant_id' => $inscription->etudiant_id],
+                );
+            } catch (\Throwable $e) {
+                Log::warning('Notification de workflow indisponible après validation confirmée', [
+                    'inscription_id' => $inscription->id,
+                    'exception_type' => get_class($e),
+                ]);
+            }
 
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
