@@ -45,7 +45,8 @@ const protocol = createMcpHandler(async (ctx) => {
   // Chaque tools/list ET tools/call doit relire les droits du compte actif
   // dans la base de l'école. Aucun cache OAuth ou rôle décidé par le LLM.
   const authorizedTools = await resolveAuthorizedTools(principal, {
-    tenants, issuer: settings.issuer
+    tenants, issuer: settings.issuer,
+    pairingEnabled: process.env.MCP_PAIRING_ENABLED === 'true'
   });
   return createSchoolServer(principal, {
     tenants, issuer: settings.issuer, authorizedTools

@@ -60,7 +60,7 @@ class LogRequests
      */
     private function corpsJournalisable(Request $request): array
     {
-        if ($request->is('api/public/*', 'api/portail/*', 'api/mcp-bridge')) {
+        if ($request->is('api/public/*', 'api/portail/*', 'api/mcp-bridge', 'nanan/mcp/connections/claim', 'nanan/mcp/connections/approve')) {
             return ['_masque' => 'corps non journalise (route publique)'];
         }
 
