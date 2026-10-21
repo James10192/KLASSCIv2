@@ -2,6 +2,7 @@ import { createMcpExpressApp, requireBearerAuth } from '@modelcontextprotocol/ex
 import { toNodeHandler } from '@modelcontextprotocol/node';
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { createSchoolServer } from './server-factory.mjs';
+import { callSchoolBridge } from './bridge.mjs';
 
 import { requireConfiguration, tenantRegistry } from './security.mjs';
 import { sdkVerifierFor } from './sdk-authorization.mjs';
@@ -34,14 +35,29 @@ const oauthGate = requireBearerAuth({
 
 // Un handler persistant mais une instance métier par requête.
 // Le SDK transmet authInfo depuis le gate, sans variable globale de session.
-const protocol = createMcpHandler((ctx) => {
+const protocol = createMcpHandler(async (ctx) => {
   const principal = ctx.authInfo?.extra?.principal;
   if (!principal || typeof principal.subject !== 'string'
     || typeof principal.organization !== 'string'
     || !tenants.has(principal.organization)) {
     throw new Error('Authenticated principal not available');
   }
-  return createSchoolServer(principal, { tenants, issuer: settings.issuer });
+
+  // Chaque tools/list ET tools/call doit relire les droits du compte actif
+  // dans la base de l'école. Aucun cache OAuth ou rôle décidé par le LLM.
+  const descriptor = await callSchoolBridge(
+    principal, tenants, settings.issuer, 'list_authorized_tools', {}
+  );
+  if (!Array.isArray(descriptor.tools)
+    || descriptor.tools.some((tool) =>
+      !['search_classes', 'get_dashboard_kpis'].includes(tool))) {
+    throw new Error('Réponse de permissions invalide');
+  }
+  return createSchoolServer(principal, {
+    tenants,
+    issuer: settings.issuer,
+    authorizedTools: [...new Set(['get_connected_profile', ...descriptor.tools])]
+  });
 }, { legacy: 'reject' });
 const serve = toNodeHandler(protocol);
 
