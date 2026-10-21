@@ -116,6 +116,25 @@ class McpBridgeTest extends TestCase
         ])->assertStatus(403);
     }
 
+    public function test_le_quota_ne_bloque_pas_les_autres_personnels_derriere_la_meme_passerelle(): void
+    {
+        config()->set('mcp.bridge.requests_per_minute', 1);
+
+        $premier = $this->utilisateur();
+        $second = $this->utilisateur();
+        $this->lier($premier, 'auth0|limit-first');
+        $this->lier($second, 'auth0|limit-second');
+
+        $lecture = ['tool' => 'get_connected_profile', 'arguments' => []];
+
+        $this->demander('auth0|limit-first', $lecture)->assertOk();
+        $limite = $this->demander('auth0|limit-first', $lecture)->assertStatus(429);
+        $this->assertGreaterThanOrEqual(1, (int) $limite->headers->get('Retry-After'));
+
+        // Même IP de sortie du gateway, MAIS autre utilisateur authentifié.
+        $this->demander('auth0|limit-second', $lecture)->assertOk();
+    }
+
     public function test_aucune_liaison_ni_revocation_ne_donnent_acces(): void
     {
         $user = $this->utilisateur();

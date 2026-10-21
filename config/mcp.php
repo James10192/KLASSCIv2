@@ -19,5 +19,6 @@ return [
         'organization' => env('MCP_TENANT_ORGANIZATION', ''),
         // Issuer EXACT tel qu'il figure dans le JWT validé par la passerelle.
         'issuer' => env('MCP_OAUTH_ISSUER', ''),
+        'requests_per_minute' => env('MCP_BRIDGE_REQUESTS_PER_MINUTE', 30),
     ],
 ];

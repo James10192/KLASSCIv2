@@ -12,6 +12,7 @@ on:
       - 'app/Providers/RouteServiceProvider.php'
       - 'tests/Unit/Domain/Assistant/RequetePontSigneeTest.php'
       - 'tests/Feature/Assistant/McpBridgeTest.php'
+      - 'tests/Unit/Domain/Assistant/McpBridgeLogPrivacyTest.php'
       - '.github/workflows/nanan-mcp.yml'
   push:
     branches: [presentation]
@@ -25,12 +26,17 @@ on:
       - 'app/Providers/RouteServiceProvider.php'
       - 'tests/Unit/Domain/Assistant/RequetePontSigneeTest.php'
       - 'tests/Feature/Assistant/McpBridgeTest.php'
+      - 'tests/Unit/Domain/Assistant/McpBridgeLogPrivacyTest.php'
       - '.github/workflows/nanan-mcp.yml'
 
 jobs:
   gateway:
-    name: Tests OAuth MCP et isolation des tenants
+    name: Tests OAuth MCP et isolation des tenants (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
     timeout-minutes: 15
     defaults:
       run:
@@ -39,7 +45,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: ${{ matrix.node }}
       - name: Installer les dépendances du pilote
         run: npm install --no-audit --no-fund
       - name: Syntaxe
@@ -87,7 +93,9 @@ jobs:
           php -l app/Http/Controllers/API/McpBridgeController.php
           php -l tests/Unit/Domain/Assistant/RequetePontSigneeTest.php
           php -l tests/Feature/Assistant/McpBridgeTest.php
+          php -l tests/Unit/Domain/Assistant/McpBridgeLogPrivacyTest.php
       - name: Tests de signature, de permissions et de liaison d'identité
         run: |
           php vendor/bin/phpunit tests/Unit/Domain/Assistant/RequetePontSigneeTest.php --no-coverage
           php vendor/bin/phpunit tests/Feature/Assistant/McpBridgeTest.php --no-coverage
+          php vendor/bin/phpunit tests/Unit/Domain/Assistant/McpBridgeLogPrivacyTest.php --no-coverage
