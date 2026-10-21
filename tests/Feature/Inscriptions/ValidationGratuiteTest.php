@@ -349,7 +349,7 @@ class ValidationGratuiteTest extends TestCase
         $this->baremeReel('LMD', 50000);
         $this->souscription->update(['amount' => 0]);
         $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
-            ->assertJsonPath('eligible', false)->assertSee('exonération individuelle à confirmer');
+            ->assertJsonPath('eligible', false)->assertSee('Exonération individuelle à confirmer');
         $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])->assertStatus(422);
 
         $this->exonere();
@@ -394,7 +394,7 @@ class ValidationGratuiteTest extends TestCase
         $frais = app(ApplicableFraisResolver::class)->resolveMandatoryFeesForInscription($this->inscription)->first();
         $this->assertSame(280000.0, $frais['amount']);
         $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
-            ->assertJsonPath('eligible', false)->assertSee('exonération individuelle à confirmer');
+            ->assertJsonPath('eligible', false)->assertSee('Exonération individuelle à confirmer');
     }
 
     public function test_gratuite_bareme_ne_contourne_pas_doublon_ou_capacite(): void
