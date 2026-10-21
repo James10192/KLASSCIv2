@@ -308,7 +308,9 @@
             display:flex; align-items:center; gap:.6rem; font-size:.88rem; font-weight:500;
             max-width:380px; animation:iiToastSlideIn .25s ease-out;
         `;
-        toast.innerHTML = `<i class="fas ${c.icon}" style="font-size:1.05rem;"></i><span style="flex:1;">${message}</span><button type="button" style="background:transparent; border:none; color:rgba(255,255,255,.85); cursor:pointer; padding:0 .2rem; font-size:1rem;"><i class="fas fa-times"></i></button>`;
+        toast.innerHTML = `<i class="fas ${c.icon}" style="font-size:1.05rem;"></i><span style="flex:1;"></span><button type="button" style="background:transparent; border:none; color:rgba(255,255,255,.85); cursor:pointer; padding:0 .2rem; font-size:1rem;"><i class="fas fa-times"></i></button>`;
+        // Le message peut venir du serveur : ne jamais l'interpréter comme du HTML.
+        toast.querySelector('span').textContent = String(message ?? '');
 
         const closeBtn = toast.querySelector('button');
         const dismiss = () => {
