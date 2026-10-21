@@ -2346,7 +2346,9 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                         @endif
                                                         @if(!$item['is_configured'])
                                                             @can('frais.configure')
-                                                                <a href="{{ route('esbtp.frais.configure') }}?filiere_id={{ $inscription->filiere_id }}&niveau_id={{ $inscription->niveau_id }}" class="btn btn-sm btn-warning" title="Configurer ce frais">
+                                                                <a href="{{ route('esbtp.frais.configure', ($inscription->classe?->systeme_academique === 'LMD')
+                                                            ? ['systeme' => 'LMD', 'parcours_id' => $inscription->classe?->parcours_id, 'niveau_id' => $inscription->classe?->niveau_etude_id]
+                                                            : ['systeme' => 'BTS', 'filiere_id' => $inscription->filiere_id, 'niveau_id' => $inscription->niveau_id]) }}" class="btn btn-sm btn-warning" title="Configurer ce frais">
                                                                     <i class="fas fa-cogs"></i>
                                                                 </a>
                                                             @endcan
@@ -2624,7 +2626,9 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                 @endif
                                                 @if(!$item['is_configured'])
                                                     @can('frais.configure')
-                                                        <a href="{{ route('esbtp.frais.configure') }}?filiere_id={{ $inscription->filiere_id }}&niveau_id={{ $inscription->niveau_id }}" class="btn btn-sm btn-warning">
+                                                        <a href="{{ route('esbtp.frais.configure', ($inscription->classe?->systeme_academique === 'LMD')
+                                                            ? ['systeme' => 'LMD', 'parcours_id' => $inscription->classe?->parcours_id, 'niveau_id' => $inscription->classe?->niveau_etude_id]
+                                                            : ['systeme' => 'BTS', 'filiere_id' => $inscription->filiere_id, 'niveau_id' => $inscription->niveau_id]) }}" class="btn btn-sm btn-warning">
                                                             <i class="fas fa-cogs me-1"></i>Configurer
                                                         </a>
                                                     @endcan
@@ -3138,7 +3142,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                 <input type="hidden" name="_action" value="valider-definitivement">
                 <div class="modal-body" style="padding:20px; max-height:calc(100dvh - 180px); overflow-y:auto;">
                     <p style="font-size:.86rem; color:#475569; margin:0 0 12px;">
-                        La validation active le dossier étudiant. Le paiement validé ou l'exonération à 0 FCFA sera vérifié côté serveur.
+                        La validation active le dossier étudiant. Le paiement validé, la gratuité du barème ou une exonération individuelle auditée seront vérifiés côté serveur.
                     </p>
                     <div id="validationPreviewMessage" class="alert alert-info py-2 mb-3" role="status"
                          style="font-size:.84rem; border-color:#dce3ef; background:#f8fafc; color:#334155;">
@@ -3759,9 +3763,11 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                 status.className = 'alert alert-warning py-2 mb-3';
                 return;
             }
-            status.textContent = preview.mode === 'explicit_waiver'
-                ? 'Exonération à 0 FCFA approuvée : aucun versement ni reçu fictif ne sera créé.'
-                : 'Paiement validé identifié : vous pouvez confirmer.';
+            status.textContent = preview.mode === 'configured_free'
+                ? 'Gratuité configurée dans le barème applicable : aucun versement ni reçu fictif ne sera créé.'
+                : preview.mode === 'explicit_waiver'
+                    ? 'Exonération individuelle auditée et motivée : aucun versement ni reçu fictif ne sera créé.'
+                    : 'Paiement validé identifié : vous pouvez confirmer.';
             submit.disabled = false;
         } catch (error) {
             status.textContent = 'Vérification impossible. Réessayez avant de valider.';

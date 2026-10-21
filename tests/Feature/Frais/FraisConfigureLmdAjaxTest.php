@@ -63,4 +63,34 @@ class FraisConfigureLmdAjaxTest extends TestCase
         $response->assertJson(['success' => true, 'systeme' => 'LMD']);
         $response->assertSee('Scolarite', false);
     }
+
+    public function test_bts_ajax_categories_endpoint_resolves_filiere_niveau_and_displays_zero_amount(): void
+    {
+        $this->withoutMiddleware();
+        $user = User::factory()->create();
+        $niveau = ESBTPNiveauEtude::factory()->create();
+        $filiere = ESBTPFiliere::factory()->create();
+        $category = ESBTPFraisCategory::create([
+            'name' => 'Frais BTS gratuits', 'code' => 'BTS-GRATUIT',
+            'is_mandatory' => true, 'is_active' => true, 'category_type' => 'academic',
+            'sort_order' => 1, 'default_amount' => 12000, 'payment_deadline_days' => 30,
+        ]);
+        ESBTPFraisConfiguration::create([
+            'frais_category_id' => $category->id, 'systeme_academique' => 'BTS',
+            'filiere_id' => $filiere->id, 'parcours_id' => null,
+            'niveau_id' => $niveau->id, 'amount' => 12000,
+            'amount_affecte' => 0, 'amount_reaffecte' => 0, 'amount_non_affecte' => 12000,
+            'payment_deadline_days' => 30, 'effective_date' => now()->toDateString(),
+            'is_active' => true, 'created_by' => $user->id,
+        ]);
+        $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->get(route('esbtp.frais.get-categories', [
+                'systeme' => 'BTS',
+                'filiere_id' => $filiere->id,
+                'niveau_id' => $niveau->id,
+                'type' => 'mandatory',
+            ]))
+            ->assertOk()->assertJson(['success' => true, 'systeme' => 'BTS'])
+            ->assertSee('Frais BTS gratuits', false);
+    }
 }
