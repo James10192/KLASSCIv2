@@ -41,10 +41,14 @@ test('OAuth : un JWT valide exige audience, issuer, scope et organisation correc
   const bearer = 'Bearer ' + await jwt();
   assert.deepEqual(await authenticate(bearer, settings, jwks), {subject:'auth0|staff-1',organization:orgA});
   await assert.rejects(() => authenticate('', settings, jwks), AccessDenied);
-  await assert.rejects(() => authenticate('Bearer ' + await jwt({scope:'openid'}), settings, jwks), AccessDenied);
-  await assert.rejects(() => authenticate('Bearer ' + await jwt({org_id:undefined}), settings, jwks), AccessDenied);
-  await assert.rejects(() => authenticate('Bearer ' + await jwt({}, {audience:'https://other.com'}), settings, jwks), AccessDenied);
-  await assert.rejects(() => authenticate('Bearer ' + await jwt({}, {issuer:'https://evil.test/'}), settings, jwks), AccessDenied);
+  const noScope = await jwt({scope:'openid'});
+  await assert.rejects(() => authenticate('Bearer ' + noScope, settings, jwks), AccessDenied);
+  const noOrg = await jwt({org_id:undefined});
+  await assert.rejects(() => authenticate('Bearer ' + noOrg, settings, jwks), AccessDenied);
+  const wrongAudience = await jwt({}, {audience:'https://other.com'});
+  await assert.rejects(() => authenticate('Bearer ' + wrongAudience, settings, jwks), AccessDenied);
+  const wrongIssuer = await jwt({}, {issuer:'https://evil.test/'});
+  await assert.rejects(() => authenticate('Bearer ' + wrongIssuer, settings, jwks), AccessDenied);
 });
 
 test('un utilisateur sans org_id ou sans mcp:read n’est jamais admis', () => {
