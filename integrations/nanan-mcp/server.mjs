@@ -1,8 +1,7 @@
 import { createMcpExpressApp, requireBearerAuth } from '@modelcontextprotocol/express';
 import { toNodeHandler } from '@modelcontextprotocol/node';
 import { createMcpHandler } from '@modelcontextprotocol/server';
-import { createSchoolServer } from './server-factory.mjs';
-import { callSchoolBridge } from './bridge.mjs';
+import { createSchoolServer, resolveAuthorizedTools } from './server-factory.mjs';
 
 import { requireConfiguration, tenantRegistry } from './security.mjs';
 import { sdkVerifierFor } from './sdk-authorization.mjs';
@@ -45,18 +44,11 @@ const protocol = createMcpHandler(async (ctx) => {
 
   // Chaque tools/list ET tools/call doit relire les droits du compte actif
   // dans la base de l'école. Aucun cache OAuth ou rôle décidé par le LLM.
-  const descriptor = await callSchoolBridge(
-    principal, tenants, settings.issuer, 'list_authorized_tools', {}
-  );
-  if (!Array.isArray(descriptor.tools)
-    || descriptor.tools.some((tool) =>
-      !['search_classes', 'get_dashboard_kpis'].includes(tool))) {
-    throw new Error('Réponse de permissions invalide');
-  }
+  const authorizedTools = await resolveAuthorizedTools(principal, {
+    tenants, issuer: settings.issuer
+  });
   return createSchoolServer(principal, {
-    tenants,
-    issuer: settings.issuer,
-    authorizedTools: [...new Set(['get_connected_profile', ...descriptor.tools])]
+    tenants, issuer: settings.issuer, authorizedTools
   });
 }, { legacy: 'reject' });
 const serve = toNodeHandler(protocol);
