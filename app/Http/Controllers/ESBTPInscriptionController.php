@@ -1565,7 +1565,14 @@ class ESBTPInscriptionController extends Controller
             );
 
             if (! $result['success']) {
-                throw new \Exception($result['message']);
+                DB::rollBack();
+                $statut = ($result['technical_error'] ?? false) ? 500 : 422;
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false, 'message' => $result['message'],
+                    ], $statut);
+                }
+                return redirect()->back()->with('error', $result['message']);
             }
 
             $montantPaye = $request->input("montant_paye", 0);
@@ -1615,20 +1622,15 @@ class ESBTPInscriptionController extends Controller
                 ->with("success", "Inscription validée avec succès.");
         } catch (\Exception $e) {
             DB::rollBack();
-
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json([
-                    "success" => false,
-                    "message" => "Erreur lors de la validation: " . $e->getMessage(),
-                ], 422);
+            Log::error("Erreur technique lors de la validation d'inscription", [
+                'inscription_id' => $inscription->id,
+                'exception_type' => get_class($e),
+            ]);
+            $message = "Erreur technique lors de la validation. Contactez le support si elle persiste.";
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 500);
             }
-
-            return redirect()
-                ->back()
-                ->with(
-                    "error",
-                    "Erreur lors de la validation: " . $e->getMessage(),
-                );
+            return redirect()->back()->with('error', $message);
         }
     }
 

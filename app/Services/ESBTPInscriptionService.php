@@ -521,7 +521,8 @@ class ESBTPInscriptionService
 
             return [
                 'success' => false,
-                'message' => 'Erreur lors de la validation de l\'inscription: ' . $e->getMessage()
+                'message' => "Erreur technique lors de la validation. Contactez le support si elle persiste.",
+                'technical_error' => true,
             ];
         }
     }

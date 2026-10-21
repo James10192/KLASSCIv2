@@ -472,4 +472,28 @@ class ValidationGratuiteTest extends TestCase
             ->assertJsonPath('eligible', false);
         $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])->assertStatus(422);
     }
+    public function test_erreur_métier_de_validation_reste_422_en_json(): void
+    {
+        $service = Mockery::mock(\App\Services\ESBTPInscriptionService::class);
+        $service->shouldReceive('validerInscription')->once()->andReturn([
+            'success' => false, 'message' => 'Versement encore en attente',
+        ]);
+        $this->app->instance(\App\Services\ESBTPInscriptionService::class, $service);
+        $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])
+            ->assertStatus(422)->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Versement encore en attente');
+    }
+
+    public function test_exception_technique_de_validation_reste_500_et_cache_sqlstate(): void
+    {
+        $service = Mockery::mock(\App\Services\ESBTPInscriptionService::class);
+        $service->shouldReceive('validerInscription')->once()
+            ->andThrow(new \RuntimeException('SQLSTATE[HY000] secret interne'));
+        $this->app->instance(\App\Services\ESBTPInscriptionService::class, $service);
+        $reponse = $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), []);
+        $reponse->assertStatus(500)->assertJsonPath('success', false);
+        $this->assertStringNotContainsString('SQLSTATE', $reponse->getContent());
+        $this->assertSame('en_attente', $this->inscription->fresh()->status);
+    }
+
 }
