@@ -1849,12 +1849,15 @@
 
                 fetch(actionUrl, {
                     method: 'POST',
-                    body: formData,
+                    body: new URLSearchParams(formData),
                     headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    },
+                    credentials: 'same-origin',
                 })
-                .then(response => response.json())
+                .then(response => window.iiLireReponseInscription(response))
                 .then(data => {
                     if (data.success) {
                         bootstrap.Modal.getInstance(document.getElementById('paymentModal')).hide();
@@ -1895,12 +1898,15 @@
 
                 fetch(actionUrl, {
                     method: 'POST',
-                    body: formData,
+                    body: new URLSearchParams(formData),
                     headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    },
+                    credentials: 'same-origin',
                 })
-                .then(response => response.json())
+                .then(response => window.iiLireReponseInscription(response))
                 .then(data => {
                     if (data.success) {
                         bootstrap.Modal.getInstance(document.getElementById('modalValiderPaiement')).hide();
@@ -1936,12 +1942,15 @@
 
                 fetch(actionUrl, {
                     method: 'POST',
-                    body: formData,
+                    body: new URLSearchParams(formData),
                     headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    },
+                    credentials: 'same-origin',
                 })
-                .then(response => response.json())
+                .then(response => window.iiLireReponseInscription(response))
                 .then(data => {
                     if (data.success) {
                         bootstrap.Modal.getInstance(document.getElementById('modalChangerClasse')).hide();
@@ -1978,12 +1987,15 @@
 
                 fetch(actionUrl, {
                     method: 'POST',
-                    body: formData,
+                    body: new URLSearchParams(formData),
                     headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    },
+                    credentials: 'same-origin',
                 })
-                .then(response => response.json())
+                .then(response => window.iiLireReponseInscription(response))
                 .then(data => {
                     if (data.success) {
                         bootstrap.Modal.getInstance(document.getElementById('cancelInscriptionModal')).hide();

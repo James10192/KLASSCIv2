@@ -1078,10 +1078,14 @@
 
             fetch(this.action, {
                 method: 'POST',
-                body: new FormData(this),
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: new URLSearchParams(new FormData(this)),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                    'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json',
+                },
+                credentials: 'same-origin',
             })
-                .then((r) => r.json())
+                .then(r => window.iiLireReponseInscription(r))
                 .then((data) => {
                     if (data.success) {
                         bootstrap.Modal.getInstance(modalEl).hide();
