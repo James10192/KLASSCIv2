@@ -133,6 +133,71 @@
         });
     };
 
+
+    // Une passerelle peut retourner du HTML. Le JSON n'est pas une confirmation
+    // tant que la réponse n'est pas parsée et vérifiée explicitement.
+    window.iiLireReponseInscription = async function (response) {
+        const brut = await response.text();
+        let data = null;
+        try {
+            const valeur = brut ? JSON.parse(brut) : null;
+            if (valeur && typeof valeur === 'object' && !Array.isArray(valeur)) data = valeur;
+        } catch (_) { /* HTML / JSON invalide : diagnostic ci-dessous. */ }
+        if (response.ok && data !== null) return data;
+
+        const code = response.status;
+        const reference = String(response.headers?.get('edge-request-id') || '')
+            .slice(0, 96).replace(/[^a-zA-Z0-9._:-]/g, '');
+        const amontPossible = code === 403 && data === null;
+        const defauts = {
+            403: "Vous n'avez pas la permission d'effectuer cette action.",
+            419: 'Session expirée : rechargez la page puis réessayez.',
+            422: "L'inscription ne remplit pas les conditions de validation.",
+            429: 'Trop de demandes : patientez puis réessayez.',
+            500: "Erreur serveur : la validation n'a pas été confirmée.",
+        };
+        const message = amontPossible
+            ? 'HTTP 403 non JSON : refus possible par la passerelle HTTP, à vérifier dans les journaux.'
+                + (reference ? ' Référence technique : ' + reference + '.' : '')
+            : (typeof data?.message === 'string' && data.message.trim())
+                || (response.ok ? 'Réponse serveur inattendue : confirmation JSON absente.'
+                    : defauts[code] || 'Validation impossible (HTTP ' + code + ').');
+        const erreur = new Error(message);
+        erreur.statut = code;
+        erreur.referenceEdge = reference;
+        erreur.donnees = data || {};
+        throw erreur;
+    };
+
+    // Validation sans fichier : POST URL-encodé et _method PUT, jamais de
+    // multipart inutile. La création complète avec photo garde son multipart.
+    window.iiEnvoyerFormulaireInscription = async function (form) {
+        const valeurs = new URLSearchParams();
+        for (const [nom, valeur] of new FormData(form)) {
+            if (typeof valeur !== 'string') {
+                throw new Error('Un fichier ne peut pas être transmis par le formulaire de validation.');
+            }
+            valeurs.append(nom, valeur);
+        }
+        const response = await fetch(form.action, {
+            method: form.method || 'POST',
+            body: valeurs,
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        });
+        const data = await window.iiLireReponseInscription(response);
+        if (data.success !== true || !Number.isSafeInteger(Number(data.inscription_id))
+            || Number(data.inscription_id) <= 0) {
+            throw new Error(typeof data.message === 'string' && data.message.trim()
+                ? data.message : 'La validation n’a pas été confirmée par le serveur.');
+        }
+        return data;
+    };
+
     /**
      * Confirmation contextuelle : l'aperçu vient du serveur mais la mutation
      * refait nécessairement ses contrôles en transaction.
@@ -147,8 +212,8 @@
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 credentials: 'same-origin',
             });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok || !data.eligible) {
+            const data = await window.iiLireReponseInscription(response);
+            if (!data.eligible) {
                 window.showToast?.(data.message || 'Cette inscription ne peut pas être validée.', 'warning');
                 return false;
             }
@@ -162,7 +227,7 @@
                 confirmLabel: 'Valider l’inscription',
             });
         } catch (error) {
-            window.showToast?.('Impossible de vérifier les conditions de validation. Réessayez.', 'error');
+            window.showToast?.(error.message || 'Impossible de vérifier les conditions de validation.', 'error');
             return false;
         }
     };
@@ -176,21 +241,15 @@
         form.dataset.validationBusy = '1';
         try {
             if (!await window.iiConfirmerValidationInscription(previewUrl)) return false;
-            const response = await fetch(form.action, {
-                method: form.method || 'POST',
-                body: new FormData(form),
-                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                credentials: 'same-origin',
-            });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok || !data.success) {
-                throw new Error(data.message || 'Validation refusée par le serveur.');
-            }
+            const data = await window.iiEnvoyerFormulaireInscription(form);
             window.showToast?.(data.message || 'Inscription validée.', 'success');
             window.dispatchEvent(new CustomEvent('inscription:validated', {
                 detail: { inscriptionId: data.inscription_id }
             }));
-            if (typeof onSuccess === 'function') onSuccess(data);
+            if (typeof onSuccess === 'function') {
+                try { onSuccess(data); }
+                catch (_) { console.warn('Inscription validée, mais actualisation de la vue impossible.'); }
+            }
             return true;
         } catch (error) {
             window.showToast?.(error.message || 'Erreur de validation.', 'error');
@@ -248,8 +307,9 @@
             display:flex; align-items:center; gap:.6rem; font-size:.88rem; font-weight:500;
             max-width:380px; animation:iiToastSlideIn .25s ease-out;
         `;
-        toast.innerHTML = `<i class="fas ${c.icon}" style="font-size:1.05rem;"></i><span style="flex:1;">${message}</span><button type="button" style="background:transparent; border:none; color:rgba(255,255,255,.85); cursor:pointer; padding:0 .2rem; font-size:1rem;"><i class="fas fa-times"></i></button>`;
+        toast.innerHTML = `<i class="fas ${c.icon}" style="font-size:1.05rem;"></i><span style="flex:1;"></span><button type="button" style="background:transparent; border:none; color:rgba(255,255,255,.85); cursor:pointer; padding:0 .2rem; font-size:1rem;"><i class="fas fa-times"></i></button>`;
 
+        toast.querySelector('span').textContent = String(message || '');
         const closeBtn = toast.querySelector('button');
         const dismiss = () => {
             toast.style.animation = 'iiToastSlideOut .25s ease-in forwards';

@@ -3757,7 +3757,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
             const response = await fetch(form.dataset.previewUrl, {
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
             });
-            const preview = await response.json();
+            const preview = await window.iiLireReponseInscription(response);
             if (!response.ok || !preview.eligible) {
                 status.textContent = preview.message || 'Cette inscription n’est pas prête pour validation.';
                 status.className = 'alert alert-warning py-2 mb-3';
@@ -3770,7 +3770,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                     : 'Paiement validé identifié : vous pouvez confirmer.';
             submit.disabled = false;
         } catch (error) {
-            status.textContent = 'Vérification impossible. Réessayez avant de valider.';
+            status.textContent = error.message || 'Vérification impossible. Réessayez avant de valider.';
             status.className = 'alert alert-danger py-2 mb-3';
         }
     }
@@ -3786,13 +3786,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
         form.dataset.submitting = '1';
         submit.disabled = true;
         try {
-            const response = await fetch(form.action, {
-                method: 'POST',
-                body: new FormData(form),
-                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-            });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok || !data.success) throw new Error(data.message || 'Validation refusée.');
+            const data = await window.iiEnvoyerFormulaireInscription(form);
             bootstrap.Modal.getInstance(document.getElementById('validationModal'))?.hide();
             window.showToast?.(data.message || 'Inscription validée.', 'success');
             document.querySelectorAll('[data-bs-target="#validationModal"]').forEach(button => {

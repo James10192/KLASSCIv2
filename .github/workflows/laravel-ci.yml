@@ -202,6 +202,10 @@ jobs:
         if: github.event_name == 'pull_request'
         run: node --test tests/js/admissions-demandes-http.test.cjs
 
+      - name: Contrat HTTP AJAX de validation des inscriptions
+        if: github.event_name == 'pull_request'
+        run: node --test tests/js/inscriptions-validation-http.test.cjs
+
 
       - name: Test cohérence des maquettes et filtres pédagogiques AJAX
         if: github.event_name == 'pull_request'
