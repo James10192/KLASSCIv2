@@ -25,7 +25,7 @@ class RecuDeuxExemplairesUnePageTest extends TestCase
         $valeurs['pdf_signature_director'] = '';
         $valeurs['pdf_signature_secretary'] = '';
         $valeurs['school_logo'] = '';
-        $valeurs['school_name'] = 'ISLG';
+        $valeurs['school_name'] = 'Institut Supérieur Louis Le Grand';
         $valeurs['school_address'] = 'Abidjan';
         $valeurs['school_phone'] = '01020304';
         $valeurs['school_email'] = 'contact@example.com';
@@ -58,6 +58,9 @@ class RecuDeuxExemplairesUnePageTest extends TestCase
         $this->assertStringContainsString('EXEMPLAIRE ÉLÈVE / PARENT', $html);
         $this->assertStringContainsString('EXEMPLAIRE CAISSE', $html);
         $this->assertStringContainsString('exempté', $html);
+        $this->assertSame(2, substr_count($html, 'Saisi le 22/10/2026 à 11:21'));
+        $this->assertSame(2, substr_count($html, 'Validé le 22/10/2026 à 11:21'));
+        $this->assertSame(1, substr_count($html, 'EXEMPLAIRE CAISSE — à archiver'));
         $this->assertStringNotContainsString('à définir', $html);
     }
 
@@ -80,13 +83,13 @@ class RecuDeuxExemplairesUnePageTest extends TestCase
         $etudiant->nom = 'TRAORE';
         $etudiant->prenoms = 'YAFOUAN';
         $user = new User;
-        $user->name = 'TRAORE YAFOUAN';
+        $user->name = 'TRAORE ANGE NOELLE RICHMONDE KONAN';
         $etudiant->setRelation('user', $user);
 
         $filiere = new ESBTPFiliere;
         $filiere->name = 'RESSOURCES HUMAINES ET COMMUNICATION';
         $niveau = new ESBTPNiveauEtude;
-        $niveau->name = 'BTS première année';
+        $niveau->name = 'BTS deuxième année';
         $annee = new ESBTPAnneeUniversitaire;
         $annee->name = '2026-2027';
 
@@ -102,7 +105,11 @@ class RecuDeuxExemplairesUnePageTest extends TestCase
         $paiement = new ESBTPPaiement;
         $paiement->numero_recu = 'REC-2026-0008';
         $paiement->montant = 60000;
-        $paiement->date_paiement = Carbon::parse('2026-09-01');
+        $paiement->date_paiement = Carbon::parse('2026-10-22');
+        $paiement->created_at = Carbon::parse('2026-10-22 11:21:00');
+        $paiement->date_validation = Carbon::parse('2026-10-22');
+        $paiement->validation_recorded_at = Carbon::parse('2026-10-22 11:21:00');
+        $paiement->reference_paiement = 'REF-CAISSE-2026-0008';
         $paiement->status = 'validé';
         $paiement->mode_paiement = 'Espèces';
         $paiement->tranche = 'Première tranche';
@@ -117,6 +124,11 @@ class RecuDeuxExemplairesUnePageTest extends TestCase
         $avant->montant = 40000;
         $avant->numero_recu = 'REC-2026-0007';
 
+        $avantSecond = new ESBTPPaiement;
+        $avantSecond->date_paiement = Carbon::parse('2026-10-21');
+        $avantSecond->montant = 123000;
+        $avantSecond->numero_recu = 'REC-2026-0006';
+
         $frais = collect([
             ['name' => 'FRAIS D\'iNSCRIPTION', 'checked' => true, 'in_kind' => false, 'restant' => 0, 'current' => true, 'non_configure' => false],
             ['name' => 'FRAIS DE TENUE', 'checked' => true, 'in_kind' => false, 'restant' => 0, 'current' => false, 'non_configure' => false],
@@ -129,7 +141,7 @@ class RecuDeuxExemplairesUnePageTest extends TestCase
         return [
             'paiement' => $paiement,
             'settings' => [
-                'school_name' => 'ISLG',
+                'school_name' => 'Institut Supérieur Louis Le Grand',
                 'school_address' => 'Abidjan',
                 'school_phone' => '01020304',
                 'school_email' => 'contact@example.com',
@@ -138,7 +150,7 @@ class RecuDeuxExemplairesUnePageTest extends TestCase
             'fraisLignes' => $frais,
             'resteAPayer' => 365000,
             'totalVerse' => 100000,
-            'versementsAvant' => collect([$avant]),
+            'versementsAvant' => collect([$avantSecond, $avant]),
             'versementsApres' => collect(),
             'affectationLabel' => 'Affecté',
         ];

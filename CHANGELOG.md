@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Reçus de paiement — deux exemplaires sur un A4 (#1675) :** les espaces verticaux du reçu PDF sont resserrés pour garder l’exemplaire élève/parent et l’exemplaire caisse sur une seule feuille, sans changement de design, de données ni de montants.
 - **Annulation des inscriptions — permission et transactions corrigées :** l'annulation s'effectue avec le seul droit « annuler une inscription », sans exiger le droit de validation ; les doubles annulations ne laissent pas de transaction ouverte, les erreurs techniques ne divulguent plus de détails SQL et l'API de consultation des classes ne journalise plus les données complètes de la requête.
 - **Souscriptions facultatives — pas de doublon destructeur :** souscrire une seconde fois à une catégorie déjà active ou protégée ne réécrit plus son montant, son motif ni ses audits ; utilisez l'ajustement autorisé et traçable.
 - **Exonérations historiques BTS/LMD — reconfirmation explicite et audit vérifié :** les anciennes souscriptions à 0 FCFA sans audit exploitable peuvent être reconfirmées depuis la fiche étudiant ou inscription par un agent autorisé avec un nouveau motif et un audit signé. Aucune preuve ancienne n'est inventée, aucun paiement fictif ; les régénérations préservent les décisions et versements existants.
