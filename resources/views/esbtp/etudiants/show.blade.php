@@ -3338,13 +3338,13 @@
                     </div>
                     <div class="row g-3">
                         <div class="col-md-4"><label class="form-label">Montant actuel</label><input class="form-control" id="sfr-current" readonly></div>
-                        <div class="col-md-4"><label for="sfr-discount" class="form-label fw-semibold">2. Réduction (FCFA)</label><input class="form-control" type="number" min="1" step="1" id="sfr-discount" required></div>
+                        <div class="col-md-4"><label for="sfr-discount" class="form-label fw-semibold">2. Réduction / reconfirmation (FCFA)</label><input class="form-control" type="number" min="0" step="1" id="sfr-discount" required></div>
                         <div class="col-md-4"><label class="form-label">Nouveau montant</label><input class="form-control fw-bold" id="sfr-new-amount" readonly></div>
                     </div>
                     <div class="small text-muted mt-2" id="sfr-paid"></div>
                     <div class="mt-3"><label for="sfr-reason" class="form-label fw-semibold">3. Motif</label>
                         <textarea class="form-control" id="sfr-reason" rows="2" required minlength="10" maxlength="1000">Réduction exceptionnelle des frais de scolarité accordée à l'étudiant.</textarea>
-                        <div class="form-text">Motif prérempli, modifiable pour préciser la décision.</div>
+                        <div class="form-text">Motif obligatoire. Pour reconfirmer un ancien montant (zéro ou partiellement réduit), saisissez une réduction de 0 et décrivez la décision actuelle. Aucun ancien auteur ne sera inventé.</div>
                     </div>
                     <div class="alert alert-info mt-3 mb-0" id="sfr-summary" role="status">Sélectionnez un frais pour voir le récapitulatif.</div>
                 </div>
@@ -3367,11 +3367,17 @@
             $('sfr-current').value = fee ? fmt(fee.amount) : '';
             $('sfr-paid').textContent = fee ? 'Paiements enregistrés : ' + fmt(fee.paid) : '';
             $('sfr-new-amount').value = fee && Number.isFinite(discount) ? fmt(fee.amount - discount) : '';
-            const valid = fee && Number.isInteger(discount) && discount > 0 && fee.amount - discount >= fee.paid && fee.amount - discount >= 0 && $('sfr-reason').value.trim().length >= 10;
+            const reconfirmation = !!fee && $('sfr-discount').value !== '' && discount === 0;
+            const valid = fee && Number.isInteger(discount) && (discount > 0 || reconfirmation) && fee.amount - discount >= fee.paid && fee.amount - discount >= 0 && $('sfr-reason').value.trim().length >= 10;
             $('sfr-submit').disabled = !valid;
-            $('sfr-summary').textContent = fee && discount > 0
-                ? 'Vous accordez ' + fmt(discount) + ' sur ' + fee.name + '. Nouveau montant : ' + fmt(fee.amount - discount) + '.' + (valid ? '' : ' Vérifiez le solde déjà payé et le motif.')
-                : 'Sélectionnez un frais puis indiquez le montant à déduire.';
+            $('sfr-submit').textContent = reconfirmation
+                ? (fee.amount === 0 ? "Reconfirmer la dispense à 0 FCFA" : "Reconfirmer le montant actuel")
+                : "Confirmer la réduction";
+            $('sfr-summary').textContent = reconfirmation
+                ? "Vous signez une nouvelle confirmation du montant actuel" + (fee.amount === 0 ? " (dispense à 0 FCFA)" : " (remise partielle historique)") + ", avec votre identité, la date du jour et le motif saisi. Aucun ancien audit n'est inventé."
+                : fee && discount > 0
+                    ? 'Vous accordez ' + fmt(discount) + ' sur ' + fee.name + '. Nouveau montant : ' + fmt(fee.amount - discount) + '.' + (valid ? '' : ' Vérifiez le solde déjà payé et le motif.')
+                    : 'Sélectionnez un frais puis indiquez le montant à déduire.';
         }
         window.openStudentFeeReduction = function (button) {
             inscriptionId = button.dataset.inscriptionId;
@@ -3383,13 +3389,22 @@
             $('sfr-reason').value = "Réduction exceptionnelle des frais de scolarité accordée à l'étudiant.";
             update();
         };
+        $('sfr-category').addEventListener('change', function () {
+            const fee = selectedFee();
+            $('sfr-discount').value = fee?.amount === 0 ? '0' : '';
+            $('sfr-reason').value = fee?.amount === 0 ? '' : "Réduction exceptionnelle des frais de scolarité accordée à l'étudiant.";
+            update();
+        });
         ['sfr-category','sfr-discount','sfr-reason'].forEach(id => $(id).addEventListener('input', update));
         form.addEventListener('submit', async function (event) {
             event.preventDefault();
             const fee = selectedFee(), discount = Number($('sfr-discount').value);
             if (!fee || $('sfr-submit').disabled) return;
             const newAmount = fee.amount - discount;
-            if (!confirm('Confirmer la réduction de ' + fmt(discount) + ' ?\\nNouveau montant : ' + fmt(newAmount))) return;
+            const reconfirmer = discount === 0;
+            if (!confirm(reconfirmer
+                ? "Confirmer à nouveau ce montant historique aujourd'hui ?\\nVotre identité et le motif seront enregistrés dans un nouvel audit."
+                : 'Confirmer la réduction de ' + fmt(discount) + ' ?\\nNouveau montant : ' + fmt(newAmount))) return;
             $('sfr-submit').disabled = true;
             try {
                 const response = await fetch('/esbtp/inscriptions/' + encodeURIComponent(inscriptionId) + '/subscriptions/' + encodeURIComponent(fee.id), {

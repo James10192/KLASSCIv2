@@ -88,6 +88,142 @@ class ValidationGratuiteTest extends TestCase
         ])->assertOk()->assertJsonPath('success', true);
     }
 
+
+    public function test_reconfirmation_historique_de_zero_produit_nouvel_audit_et_nouvel_auteur(): void
+    {
+        $this->souscription->update(['amount' => 0, 'notes' => 'Ancienne réduction à zéro sans preuve signée']);
+        $this->assertFalse(app(ExonerationInscription::class)->estApplicable($this->inscription));
+        $avant = \OwenIt\Auditing\Models\Audit::where('auditable_type', ESBTPFraisSubscription::class)
+            ->where('auditable_id', $this->souscription->id)->max('id') ?? 0;
+
+        $this->putJson(route('esbtp.inscriptions.update-subscription', [
+            'inscription' => $this->inscription->id,
+            'subscription' => $this->souscription->id,
+        ]), ['amount' => 0, 'reason' => 'Confirmation actuelle de la dispense précédemment accordée'])
+            ->assertOk()->assertJsonPath('success', true);
+
+        $audit = \OwenIt\Auditing\Models\Audit::where('auditable_type', ESBTPFraisSubscription::class)
+            ->where('auditable_id', $this->souscription->id)->orderByDesc('id')->firstOrFail();
+        $this->assertGreaterThan($avant, $audit->id);
+        $this->assertSame($this->agent->id, (int) $audit->user_id);
+        $this->assertStringContainsString(ESBTPFraisSubscription::TAG_EXONERATION, (string) $audit->tags);
+        $this->assertStringContainsString('Confirmation actuelle', (string) $this->souscription->fresh()->notes);
+        $this->assertTrue(app(ExonerationInscription::class)->estApplicable($this->inscription));
+        $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
+    }
+
+    public function test_audit_desactive_refuse_la_reconfirmation_et_ne_change_aucun_montant(): void
+    {
+        $this->souscription->update(['amount' => 0, 'notes' => 'Montant nul ancien sans preuve']);
+        $avant = $this->souscription->fresh()->notes;
+        config()->set('audit.enabled', false);
+
+        $this->putJson(route('esbtp.inscriptions.update-subscription', [
+            'inscription' => $this->inscription->id,
+            'subscription' => $this->souscription->id,
+        ]), ['amount' => 0, 'reason' => 'Décision de reconfirmation motivée aujourd’hui'])
+            ->assertStatus(422)->assertJsonPath('success', false);
+        $this->assertSame($avant, $this->souscription->fresh()->notes);
+    }
+
+    public function test_suppression_de_preuve_retire_l_eligibilite_sans_creer_de_paiement(): void
+    {
+        $this->exonere();
+        \OwenIt\Auditing\Models\Audit::where('auditable_type', ESBTPFraisSubscription::class)
+            ->where('auditable_id', $this->souscription->id)
+            ->where('event', 'updated')->delete();
+        $this->assertFalse(app(ExonerationInscription::class)->estApplicable($this->inscription));
+        $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])->assertStatus(422);
+    }
+
+    public function test_regeneration_necrase_jamais_une_dispense_reconfirmee(): void
+    {
+        $this->exonere();
+        $notes = (string) $this->souscription->fresh()->notes;
+        app(\App\Services\ESBTPInscriptionService::class)
+            ->regenererFraisInscription($this->inscription->fresh());
+        $this->assertSame(0.0, (float) $this->souscription->fresh()->amount);
+        $this->assertSame($notes, (string) $this->souscription->fresh()->notes);
+        app(\App\Services\ESBTPInscriptionService::class)->saveGeneratedFeesAsSubscriptions(
+            $this->inscription->fresh(),
+            [['category_id' => $this->categorie->id, 'amount' => 50000, 'type' => 'mandatory', 'description' => 'Frais obligatoire']]
+        );
+        $this->assertSame(0.0, (float) $this->souscription->fresh()->amount);
+        $this->assertSame($notes, (string) $this->souscription->fresh()->notes);
+    }
+
+
+    public function test_audit_desactive_refuse_aussi_la_remise_partielle(): void
+    {
+        $avant = (float) $this->souscription->amount;
+        config()->set('audit.enabled', false);
+        $this->putJson(route('esbtp.inscriptions.update-subscription', [
+            'inscription' => $this->inscription->id,
+            'subscription' => $this->souscription->id,
+        ]), ['amount' => 20000, 'reason' => 'Remise partielle approuvée par la direction'])
+            ->assertStatus(422)->assertJsonPath('success', false);
+        $this->assertSame($avant, (float) $this->souscription->fresh()->amount);
+    }
+
+    public function test_regeneration_protege_ancienne_remise_partielle_non_auditee(): void
+    {
+        config()->set('audit.enabled', false);
+        $this->souscription->update([
+            'amount' => 20000, 'notes' => 'Remise de solidarité accordée par la direction avant le journal',
+        ]);
+        config()->set('audit.enabled', true);
+        app(\App\Services\ESBTPInscriptionService::class)
+            ->regenererFraisInscription($this->inscription->fresh());
+        $this->assertSame(20000.0, (float) $this->souscription->fresh()->amount);
+        app(\App\Services\ESBTPInscriptionService::class)->saveGeneratedFeesAsSubscriptions(
+            $this->inscription->fresh(),
+            [['category_id' => $this->categorie->id, 'amount' => 50000, 'type' => 'mandatory', 'description' => 'Frais obligatoire']]
+        );
+        $this->assertSame(20000.0, (float) $this->souscription->fresh()->amount);
+    }
+
+
+    public function test_reconfirmation_partielle_historique_ne_modifie_pas_le_montant_et_audite_auteur(): void
+    {
+        config()->set('audit.enabled', false);
+        $this->souscription->update(['amount' => 20000, 'notes' => 'Remise ancienne de rentrée']);
+        config()->set('audit.enabled', true);
+        $avant = \OwenIt\Auditing\Models\Audit::where('auditable_type', ESBTPFraisSubscription::class)
+            ->where('auditable_id', $this->souscription->id)->max('id') ?? 0;
+
+        $this->putJson(route('esbtp.inscriptions.update-subscription', [
+            'inscription' => $this->inscription->id, 'subscription' => $this->souscription->id,
+        ]), ['amount' => 20000, 'reason' => 'Reconfirmation de la remise de rentrée par la direction'])
+            ->assertOk()->assertJsonPath('success', true);
+
+        $audit = \OwenIt\Auditing\Models\Audit::where('auditable_type', ESBTPFraisSubscription::class)
+            ->where('auditable_id', $this->souscription->id)->orderByDesc('id')->firstOrFail();
+        $this->assertGreaterThan($avant, $audit->id);
+        $this->assertSame($this->agent->id, (int) $audit->user_id);
+        $this->assertSame(20000.0, (float) $this->souscription->fresh()->amount);
+        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertJsonPath('eligible', false);
+    }
+
+
+    public function test_une_resouscription_ne_peut_pas_ecraser_une_dispense_existante(): void
+    {
+        $this->exonere();
+        $notes = (string) $this->souscription->fresh()->notes;
+        try {
+            ESBTPFraisSubscription::subscribe(
+                $this->inscription->id, $this->categorie->id, 50000,
+                $this->agent->id, 'Nouvelle souscription non autorisée'
+            );
+            $this->fail('La souscription protégée aurait dû être refusée.');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('déjà souscrit', $e->getMessage());
+        }
+        $this->assertSame(0.0, (float) $this->souscription->fresh()->amount);
+        $this->assertSame($notes, (string) $this->souscription->fresh()->notes);
+        $this->assertTrue(app(ExonerationInscription::class)->estApplicable($this->inscription));
+    }
+
     public function test_le_zero_motive_et_audite_permet_la_validation_sans_paiement(): void
     {
         $this->exonere();
@@ -149,6 +285,9 @@ class ValidationGratuiteTest extends TestCase
     {
         $this->souscription->update(['amount' => 0]);
         $this->assertFalse(app(ExonerationInscription::class)->estApplicable($this->inscription));
+        $preview = $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))->assertOk();
+        $this->assertStringContainsString((string) $this->categorie->name, $preview->json('message'));
+        $this->assertStringContainsString('reconfirmer', $preview->json('message'));
         $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])->assertStatus(422);
     }
 

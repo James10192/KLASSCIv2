@@ -8,6 +8,7 @@ use App\Models\ESBTPPaiement;
 use App\Services\EcheancierSnapshotService;
 use App\Services\Reinscription\SoldeDeReinscription;
 use Illuminate\Support\Facades\DB;
+use App\Domain\Comptabilite\Souscriptions\PreuveExonerationSouscription;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -161,22 +162,9 @@ final class AjustementMontantSouscription
                 throw new AjustementRefuse('Un versement a été encaissé entre-temps : le nouveau montant passerait sous ce qui est payé.');
             }
 
-            $trace = sprintf(
-                '[%s] Montant dû %s → %s FCFA (utilisateur #%d) : %s',
-                now()->format('Y-m-d H:i'),
-                number_format((float) $souscription->amount, 0, ',', ' '),
-                number_format($examen['apres'], 0, ',', ' '),
-                $auteurId,
-                $motif
+            app(PreuveExonerationSouscription::class)->ajuster(
+                $souscription, (float) $examen['apres'], $motif, $auteurId
             );
-            $souscription->exonerationExplicite = (float) $examen['apres'] === 0.0;
-            $souscription->update([
-                'amount' => $examen['apres'],
-                'notes' => trim(($souscription->notes ? $souscription->notes."\n" : '')
-                    . ($souscription->exonerationExplicite
-                        ? \App\Domain\Inscriptions\ExonerationInscription::TRACE.' ' : '')
-                    . $trace),
-            ]);
 
             return ['souscription_id' => (int) $souscription->id, 'avant' => (float) $examen['avant'], 'apres' => (float) $examen['apres']];
         });

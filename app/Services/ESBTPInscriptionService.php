@@ -875,6 +875,12 @@ class ESBTPInscriptionService
                     // montant par une autre configuration (notamment LMD/BTS).
                     $verifiedAmount = $fee['amount'];
 
+                    $existante = ESBTPFraisSubscription::query()
+                        ->where('inscription_id', $inscription->id)
+                        ->where('frais_category_id', $fee['category_id'])->first();
+                    if ($existante && app(\App\Domain\Comptabilite\Souscriptions\PreuveExonerationSouscription::class)->estProtegee($existante)) {
+                        continue;
+                    }
                     ESBTPFraisSubscription::updateOrCreate(
                         [
                             'inscription_id' => $inscription->id,
@@ -1474,6 +1480,12 @@ class ESBTPInscriptionService
         $affectationStatus = $inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
 
         foreach ($fees as $fee) {
+            $existante = ESBTPFraisSubscription::query()
+                ->where('inscription_id', $inscription->id)
+                ->where('frais_category_id', $fee['category']->id)->first();
+            if ($existante && app(\App\Domain\Comptabilite\Souscriptions\PreuveExonerationSouscription::class)->estProtegee($existante)) {
+                continue;
+            }
             ESBTPFraisSubscription::updateOrCreate(
                 [
                     'inscription_id' => $inscription->id,
@@ -1490,43 +1502,9 @@ class ESBTPInscriptionService
             );
         }
 
-        return;
+        // Le second ancien calcul, inatteignable après return, a été
+        // retiré : ApplicableFraisResolver fait autorité pour BTS/LMD.
 
-        $categoriesObligatoires = ESBTPFraisCategory::where('is_mandatory', true)
-            ->where('is_active', true)
-            ->orderBy('sort_order')
-            ->get();
-
-        $configurations = ESBTPFraisConfiguration::where('is_active', true)
-            ->whereIn('frais_category_id', $categoriesObligatoires->pluck('id'))
-            ->get()
-            ->groupBy(fn($config) => "{$config->frais_category_id}_{$config->filiere_id}_{$config->niveau_id}");
-
-        $affectationStatus = $inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
-
-        foreach ($categoriesObligatoires as $category) {
-            $configKey = "{$category->id}_{$inscription->filiere_id}_{$inscription->niveau_id}";
-            $fraisConfig = $configurations->get($configKey, collect())->first();
-
-            if ($fraisConfig) {
-                $montant = $fraisConfig->getMontantByStatus($affectationStatus);
-
-                ESBTPFraisSubscription::updateOrCreate(
-                    [
-                        'inscription_id' => $inscription->id,
-                        'frais_category_id' => $category->id,
-                    ],
-                    [
-                        'selected_option_id' => null,
-                        'amount' => $montant,
-                        'is_active' => true,
-                        'subscribed_at' => now(),
-                        'created_by' => Auth::id(),
-                        'notes' => 'Régénéré automatiquement après changement de classe/filière/niveau',
-                    ],
-                );
-            }
-        }
     }
 
     /**
