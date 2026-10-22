@@ -14,6 +14,7 @@ Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
 - 2026-10-22 · #1677 · Reçu PDF : 15 mm d’espace pour la signature manuscrite et le cachet sur les exemplaires élève et caisse, tout en conservant une seule feuille A4 ; contrôle visuel sur presentation avant diffusion école.
+- 2026-10-22 · #1674 · Fiche inscription : réinscription en Documents complets validable avec les mêmes contrôles que la fiche étudiant, historique et observations conservés. Recette preview/POST mobile BTS/LMD sur presentation avant diffusion.
 - 2026-10-22 · #1675 · Reçus de paiement PDF : les exemplaires élève/parent et caisse tiennent sur une seule feuille A4 sans changement du contenu ni de l’identité visuelle ; vérifier le rendu imprimé sur presentation avant diffusion.
 - 2026-10-22 · #1653/#1654 · Annulation autorisée sans faux refus 500, droit inscriptions.cancel indépendant, secondes tentatives sans transaction ouverte ; logs API classes minimisés. Recette rôles/HTTP sur presentation requise avant diffusion.
 - 2026-10-22 · #1669 complément · Fiche étudiant : reconfirmation explicite également pour les remises partielles historiques, sans changer le montant dû, avec nouveau motif/auteur et audit effectif ; une remise partielle ne valide pas sans paiement.
