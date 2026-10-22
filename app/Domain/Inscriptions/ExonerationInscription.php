@@ -121,7 +121,7 @@ final class ExonerationInscription
 
                 if (! app(PreuveExonerationSouscription::class)->preuveValide($s, $preuve)) {
                     $nomFrais = $s->fraisCategory?->name ?? ('Catégorie #'.$s->frais_category_id);
-                    return $refus('Exonération à reconfirmer pour « '.$nomFrais.' » : le montant est à 0 FCFA mais la preuve signée est insuffisante. Un utilisateur habilité doit reconfirmer ce montant inchangé avec un nouveau motif depuis la fiche étudiant ou inscription.');
+                    return $refus('Exonération individuelle à confirmer pour « '.$nomFrais.' » : le montant est à 0 FCFA mais la preuve signée est insuffisante. Un utilisateur habilité doit reconfirmer ce montant inchangé avec un nouveau motif depuis la fiche étudiant ou inscription.');
                 }
             }
         }
