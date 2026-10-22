@@ -336,6 +336,77 @@ class ValidationGratuiteTest extends TestCase
             ->firstOrFail();
     }
 
+
+    /**
+     * Les souscriptions gratuites des dossiers antérieurs peuvent manquer.
+     * Le rattrapage ne les crée que pour un barème explicite et applicable.
+     */
+    public function test_regeneration_zero_configure_bts_repare_et_valide_sans_paiement(): void
+    {
+        $this->baremeReel('BTS', 0);
+        \Illuminate\Support\Facades\DB::table('esbtp_frais_subscriptions')
+            ->where('id', $this->souscription->id)->delete();
+
+        $service = app(\App\Services\Frais\SouscriptionsObligatoiresManquantes::class);
+        $apercu = $service->executer(false, null, [$this->inscription->id], true);
+        $this->assertSame(1, $apercu['total_ajouter']);
+        $this->assertSame(0.0, $apercu['lignes'][0]['montant']);
+        $this->assertSame(0, ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)->count());
+        $service->executer(true, null, [$this->inscription->id], true);
+        $souscription = ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)->firstOrFail();
+        $this->assertSame(0.0, (float) $souscription->amount);
+        $this->assertTrue((bool) $souscription->is_active);
+        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertOk()->assertJsonPath('eligible', true)->assertJsonPath('mode', 'configured_free');
+        $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])
+            ->assertOk()->assertJsonPath('success', true);
+        $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
+    }
+
+    public function test_regeneration_zero_configure_lmd_respecte_parcours_et_annee(): void
+    {
+        $this->baremeReel('LMD', 0);
+        \Illuminate\Support\Facades\DB::table('esbtp_frais_subscriptions')
+            ->where('id', $this->souscription->id)->delete();
+
+        $service = app(\App\Services\Frais\SouscriptionsObligatoiresManquantes::class);
+        $apercu = $service->executer(false, null, [$this->inscription->id], true);
+        $this->assertSame(1, $apercu['total_ajouter']);
+        $this->assertSame(0.0, $apercu['lignes'][0]['montant']);
+        $service->executer(true, null, [$this->inscription->id], true);
+        $souscription = ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)->firstOrFail();
+        $this->assertSame(0.0, (float) $souscription->amount);
+        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertOk()->assertJsonPath('eligible', true)->assertJsonPath('mode', 'configured_free');
+    }
+
+    public function test_regeneration_zero_sans_bareme_ne_cree_rien(): void
+    {
+        $this->app->forgetInstance(ApplicableFraisResolver::class);
+        $this->categorie->update(['default_amount' => 0]);
+        \Illuminate\Support\Facades\DB::table('esbtp_frais_subscriptions')
+            ->where('id', $this->souscription->id)->delete();
+
+        $service = app(\App\Services\Frais\SouscriptionsObligatoiresManquantes::class);
+        $apercu = $service->executer(false, null, [$this->inscription->id], true);
+        $this->assertSame(0, $apercu['total_ajouter']);
+        $service->executer(true, null, [$this->inscription->id], true);
+        $this->assertSame(0, ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)->count());
+        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertJsonPath('eligible', false);
+    }
+
+    public function test_regeneration_zero_necrase_pas_un_montant_existant(): void
+    {
+        $this->baremeReel('BTS', 0);
+        $service = app(\App\Services\Frais\SouscriptionsObligatoiresManquantes::class);
+        $apercu = $service->executer(false, null, [$this->inscription->id], true);
+        $this->assertSame(0, $apercu['total_ajouter']);
+        $service->executer(true, null, [$this->inscription->id], true);
+        $this->assertSame(50000.0, (float) $this->souscription->fresh()->amount);
+        $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
+    }
+
     public function test_creation_bts_a_zero_cree_la_souscription_et_valide_sans_paiement(): void
     {
         $this->baremeReel('BTS', 0);
