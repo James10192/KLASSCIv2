@@ -543,6 +543,7 @@ class ESBTPInscriptionService
 
             // Ne pas annuler une inscription déjà annulée
             if ($inscription->status === 'annulée') {
+                DB::rollBack();
                 return [
                     'success' => false,
                     'message' => 'Cette inscription est déjà annulée'
@@ -587,11 +588,15 @@ class ESBTPInscriptionService
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur lors de l\'annulation de l\'inscription: ' . $e->getMessage());
+            Log::error('Echec technique annulation inscription', [
+                'inscription_id' => $inscriptionId,
+                'exception_type' => $e::class,
+            ]);
 
             return [
                 'success' => false,
-                'message' => 'Erreur lors de l\'annulation de l\'inscription: ' . $e->getMessage()
+                'technical_error' => true,
+                'message' => 'Une erreur technique empêche cette annulation.',
             ];
         }
     }

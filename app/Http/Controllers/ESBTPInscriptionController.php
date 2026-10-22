@@ -97,7 +97,7 @@ class ESBTPInscriptionController extends Controller
             "only" => ["destroy"],
         ]);
         $this->middleware("permission:inscriptions.validate", [
-            "only" => ["valider", "annuler"],
+            "only" => ["valider"],
         ]);
     }
 
@@ -1635,50 +1635,40 @@ class ESBTPInscriptionController extends Controller
      */
     public function annuler(AnnulerInscriptionRequest $request, ESBTPInscription $inscription)
     {
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput();
-        }
-
+        // Le FormRequest a déjà vérifié le motif ; la route exige
+        // inscriptions.cancel indépendamment du droit de validation.
         try {
-            $motif = $request->input("motif");
-            $result = $this->inscriptionService->annulerInscription(
-                $inscription->id,
-                $motif,
-                Auth::id(),
+            $resultat = $this->inscriptionService->annulerInscription(
+                $inscription->id, $request->validated('motif'), (int) Auth::id()
             );
 
-            if ($result["success"]) {
-                if ($request->ajax()) {
-                    return response()->json([
-                        "success" => true,
-                        "message" => "Inscription annulée avec succès.",
-                    ]);
+            if (! $resultat['success']) {
+                $technique = (bool) ($resultat['technical_error'] ?? false);
+                $message = $technique
+                    ? 'Une erreur technique empêche cette annulation.'
+                    : ($resultat['message'] ?? 'Cette inscription ne peut pas être annulée.');
+
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => $message], $technique ? 500 : 422);
                 }
-
-                return redirect()
-                    ->route("esbtp.inscriptions.show", $inscription->id)
-                    ->with("success", "Inscription annulée avec succès.");
-            } else {
-                throw new \Exception($result["message"]);
-            }
-        } catch (\Exception $e) {
-            if ($request->ajax()) {
-                return response()->json(
-                    [
-                        "success" => false,
-                        "message" =>
-                            'Erreur lors de l\'annulation: ' . $e->getMessage(),
-                    ],
-                    500,
-                );
+                return redirect()->back()->with('error', $message);
             }
 
-            return redirect()
-                ->back()
-                ->with(
-                    "error",
-                    'Erreur lors de l\'annulation: ' . $e->getMessage(),
-                );
+            if ($request->expectsJson()) {
+                return response()->json(['success' => true, 'message' => 'Inscription annulée avec succès.']);
+            }
+            return redirect()->route('esbtp.inscriptions.show', $inscription->id)
+                ->with('success', 'Inscription annulée avec succès.');
+        } catch (\Throwable $e) {
+            Log::error('Erreur technique annulation inscription', [
+                'inscription_id' => $inscription->id,
+                'exception_type' => $e::class,
+            ]);
+            $message = 'Une erreur technique empêche cette annulation.';
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 500);
+            }
+            return redirect()->back()->with('error', $message);
         }
     }
 
