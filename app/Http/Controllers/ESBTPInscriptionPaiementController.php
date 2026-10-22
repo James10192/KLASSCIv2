@@ -329,48 +329,86 @@ class ESBTPInscriptionPaiementController extends Controller
      * Valider définitivement une inscription (conversion prospect -> étudiant).
      */
     public function validerDefinitivement(
-        Request $request,
+        ValiderDefinitivementRequest $request,
         ESBTPInscription $inscription,
     ) {
+        // Même moteur de validation que la fiche étudiant : le workflow
+        // documents_complets d'une réinscription n'est pas un dossier traité.
         try {
-            $result = $this->workflowService->convertProspectToStudent(
-                $inscription,
-                $request->input("observations"),
-            );
-
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json([
-                    'success' => (bool) $result['success'],
-                    'message' => $result['message'],
-                    'inscription_id' => $inscription->id,
-                ], $result['success'] ? 200 : 422);
-            }
-
-            if ($result["success"]) {
-                return redirect()
-                    ->route("esbtp.inscriptions.show", $inscription->id)
-                    ->with("success", $result["message"]);
-            } else {
-                return redirect()->back()->with("error", $result["message"]);
-            }
-        } catch (\Exception $e) {
-            Log::error(
-                "Erreur lors de la validation finale: " . $e->getMessage(),
-            );
-
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Erreur lors de la validation.'], 500);
-            }
-
-            return redirect()
-                ->back()
-                ->with(
-                    "error",
-                    "Erreur lors de la validation: " . $e->getMessage(),
+            $result = DB::transaction(function () use ($inscription, $request) {
+                $dossier = ESBTPInscription::query()->lockForUpdate()->findOrFail($inscription->id);
+                $etapeAvant = $dossier->workflow_step;
+                $resultat = $this->inscriptionService->validerInscription(
+                    (int) $dossier->id, (int) Auth::id()
                 );
+
+                if (! ($resultat['success'] ?? false)) {
+                    return $resultat;
+                }
+
+                // Les observations de la modale et l'identité de l'auteur
+                // appartiennent à la même transaction que la validation.
+                $paiementValide = $dossier->paiements()->where('status', 'validé')->exists();
+                $dispense = $paiementValide
+                    ? null
+                    : app(\App\Domain\Inscriptions\ExonerationInscription::class)->examiner($dossier);
+                $mode = $paiementValide ? 'paiement_valide'
+                    : (($dispense['mode'] ?? null) === 'configured_free'
+                        ? 'gratuite_bareme' : 'exoneration_sans_paiement');
+
+                \App\Models\ESBTPInscriptionWorkflowHistory::createEntry(
+                    (int) $dossier->id, $etapeAvant, 'etudiant_cree',
+                    'validation_finale', (int) Auth::id(),
+                    $request->validated('observations'),
+                    [
+                        'validated_by' => (int) Auth::id(),
+                        'validation_date' => now(),
+                        'paiement_id' => $dossier->fresh()->paiement_validation_id,
+                        'mode_validation' => $mode,
+                    ]
+                );
+
+                return $resultat;
+            });
+
+            if (! ($result['success'] ?? false)) {
+                $message = $result['message'] ?? "Cette inscription ne peut pas être validée.";
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false, 'message' => $message,
+                        'inscription_id' => $inscription->id,
+                    ], 422);
+                }
+                return redirect()->back()->with('error', $message);
+            }
+
+            \App\Support\WorkflowFlash::dispatch(
+                'inscription.validated', Auth::user(),
+                ['inscription' => $inscription->id, 'etudiant_id' => $inscription->etudiant_id]
+            );
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Inscription validée avec succès.',
+                    'inscription_id' => $inscription->id,
+                ]);
+            }
+
+            return redirect()->route('esbtp.inscriptions.show', $inscription->id)
+                ->with('success', 'Inscription validée avec succès.');
+        } catch (\Throwable $e) {
+            Log::error('Erreur technique lors de la validation définitive', [
+                'inscription_id' => $inscription->id,
+                'exception_type' => $e::class,
+            ]);
+            $message = 'Erreur technique lors de la validation. Contactez le support.';
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 500);
+            }
+            return redirect()->back()->with('error', $message);
         }
     }
-
 
     /**
      * Effectuer un paiement pour une catégorie de frais spécifique.
