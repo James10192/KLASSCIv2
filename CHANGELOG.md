@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Souscriptions facultatives — pas de doublon destructeur :** souscrire une seconde fois à une catégorie déjà active ou protégée ne réécrit plus son montant, son motif ni ses audits ; utilisez l'ajustement autorisé et traçable.
 - **Exonérations historiques BTS/LMD — reconfirmation explicite et audit vérifié :** les anciennes souscriptions à 0 FCFA sans audit exploitable peuvent être reconfirmées depuis la fiche étudiant ou inscription par un agent autorisé avec un nouveau motif et un audit signé. Aucune preuve ancienne n'est inventée, aucun paiement fictif ; les régénérations préservent les décisions et versements existants.
 - **Souscriptions financières BTS et LMD — tarif applicable :** à la création et à la réinscription, le montant conservé suit la configuration déjà résolue pour l'année, le parcours ou la filière et le statut d'affectation ; aucun recalcul secondaire depuis un autre barème. Vérifier la facturation sur présentation avant diffusion.
 - **Sécurité des notifications d’inscription :** les messages de refus et de validation sont affichés comme du texte, jamais comme du HTML interprétable ; le comportement des formulaires, permissions et paiements reste inchangé. Vérifier l’affichage sur présentation avant diffusion.

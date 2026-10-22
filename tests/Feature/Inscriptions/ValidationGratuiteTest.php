@@ -205,6 +205,25 @@ class ValidationGratuiteTest extends TestCase
             ->assertJsonPath('eligible', false);
     }
 
+
+    public function test_une_resouscription_ne_peut_pas_ecraser_une_dispense_existante(): void
+    {
+        $this->exonere();
+        $notes = (string) $this->souscription->fresh()->notes;
+        try {
+            ESBTPFraisSubscription::subscribe(
+                $this->inscription->id, $this->categorie->id, 50000,
+                $this->agent->id, 'Nouvelle souscription non autorisée'
+            );
+            $this->fail('La souscription protégée aurait dû être refusée.');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('déjà souscrit', $e->getMessage());
+        }
+        $this->assertSame(0.0, (float) $this->souscription->fresh()->amount);
+        $this->assertSame($notes, (string) $this->souscription->fresh()->notes);
+        $this->assertTrue(app(ExonerationInscription::class)->estApplicable($this->inscription));
+    }
+
     public function test_le_zero_motive_et_audite_permet_la_validation_sans_paiement(): void
     {
         $this->exonere();

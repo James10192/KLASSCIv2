@@ -176,6 +176,18 @@ class ESBTPFraisSubscription extends Model implements Auditable
 
     public static function subscribe($inscriptionId, $fraisCategoryId, $amount, $userId, $notes = null)
     {
+        // Ne jamais autoriser une seconde souscription à réécrire une
+        // décision de frais (remise, exonération, paiement), ni à écraser
+        // silencieusement une souscription déjà active.
+        $existante = self::query()->where('inscription_id', $inscriptionId)
+            ->where('frais_category_id', $fraisCategoryId)->first();
+        if ($existante && (
+            $existante->is_active
+            || app(\App\Domain\Comptabilite\Souscriptions\PreuveExonerationSouscription::class)->estProtegee($existante)
+        )) {
+            throw new \DomainException('Frais déjà souscrit ou protégé par une décision financière : utilisez un ajustement autorisé et audité.');
+        }
+
         return self::updateOrCreate(
             [
                 'inscription_id' => $inscriptionId,
