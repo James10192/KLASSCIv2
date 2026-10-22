@@ -246,14 +246,16 @@ class ESBTPInscriptionService
         } catch (\Exception $e) {
             DB::rollBack();
 
-            // Ajout de logs pour déboguer
-            Log::error('Erreur lors de la création de l\'inscription', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'etudiantData' => $etudiantData ?? null,
-                'inscriptionData' => $inscriptionData ?? null,
-                'parentsData' => $parentsData ?? null,
-                'paiementData' => $paiementData ?? null
+            // Les données élèves, parents et paiements (y compris les
+            // exceptions SQL qui peuvent les contenir) ne vont jamais
+            // dans les journaux applicatifs. La référence aide le support
+            // à retrouver l'événement sans consulter ces données.
+            Log::error('Echec de création inscription', [
+                'reference' => (string) Str::uuid(),
+                'exception_type' => $e::class,
+                'agent_id' => $userId,
+                'parent_count' => count($parentsData),
+                'payment_present' => ! empty($paiementData),
             ]);
 
             throw $e;
@@ -390,12 +392,16 @@ class ESBTPInscriptionService
                         'is_tuteur' => $isTuteur
                     ]);
                 } else {
-                    Log::warning('Données de parent incomplètes ignorées', ['parentData' => $parentData]);
+                    Log::warning('Parent incomplet ignoré durant inscription', [
+                        'etudiant_id' => $etudiant->id,
+                        'parent_index' => $index,
+                    ]);
                 }
             } catch (\Exception $e) {
-                Log::error('Erreur lors de l\'attachement d\'un parent', [
-                    'message' => $e->getMessage(),
-                    'parentData' => $parentData
+                Log::error('Echec du rattachement parent durant inscription', [
+                    'etudiant_id' => $etudiant->id,
+                    'parent_index' => $index,
+                    'exception_type' => $e::class,
                 ]);
                 // On continue malgré l'erreur pour traiter les autres parents
             }
