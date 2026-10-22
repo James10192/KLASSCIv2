@@ -224,6 +224,73 @@ class ValidationGratuiteTest extends TestCase
         $this->assertTrue(app(ExonerationInscription::class)->estApplicable($this->inscription));
     }
 
+
+    public function test_fiche_inscription_valide_reinscription_lmd_ancien_workflow_avec_exoneration_auditee(): void
+    {
+        $this->inscription->update([
+            'type_inscription' => 'réinscription',
+            'workflow_step' => 'documents_complets',
+            'status' => 'active',
+        ]);
+        $this->exonere();
+        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertOk()->assertJsonPath('eligible', true)->assertJsonPath('mode', 'explicit_waiver');
+
+        $this->postJson(route('esbtp.inscriptions.valider-definitivement', $this->inscription), [
+            'observations' => 'Réinscription historique confirmée depuis la fiche.',
+        ])->assertOk()->assertJsonPath('success', true);
+
+        $validee = $this->inscription->fresh();
+        $this->assertSame('active', $validee->status);
+        $this->assertSame('etudiant_cree', $validee->workflow_step);
+        $this->assertSame($this->agent->id, $validee->validated_by);
+        $this->assertSame(0, ESBTPPaiement::where('inscription_id', $validee->id)->count());
+        $history = \App\Models\ESBTPInscriptionWorkflowHistory::query()
+            ->where('inscription_id', $validee->id)
+            ->where('action', 'validation_finale')->firstOrFail();
+        $this->assertSame('documents_complets', $history->etape_from);
+        $this->assertSame('exoneration_sans_paiement', $history->metadata['mode_validation']);
+        $this->assertStringContainsString('Réinscription historique', (string) $history->commentaires);
+    }
+
+    public function test_route_historique_refuse_zero_non_audite_sans_valider_ni_faux_recu(): void
+    {
+        $this->inscription->update(['type_inscription' => 'réinscription', 'workflow_step' => 'documents_complets']);
+        $this->souscription->update(['amount' => 0, 'notes' => 'Remise historique sans preuve']);
+        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertOk()->assertJsonPath('eligible', false);
+        $this->postJson(route('esbtp.inscriptions.valider-definitivement', $this->inscription), [])
+            ->assertStatus(422)->assertJsonPath('success', false);
+        $this->assertSame('documents_complets', $this->inscription->fresh()->workflow_step);
+        $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
+    }
+
+    public function test_route_historique_refuse_revalidation_et_annulation_sans_autre_historique(): void
+    {
+        $this->exonere();
+        $this->postJson(route('esbtp.inscriptions.valider-definitivement', $this->inscription), [])
+            ->assertOk()->assertJsonPath('success', true);
+        $this->postJson(route('esbtp.inscriptions.valider-definitivement', $this->inscription), [])
+            ->assertStatus(422);
+        $this->assertSame(1, \App\Models\ESBTPInscriptionWorkflowHistory::where('inscription_id', $this->inscription->id)
+            ->where('action', 'validation_finale')->count());
+
+        $this->inscription->update(['status' => 'annulée', 'workflow_step' => 'en_validation']);
+        $this->postJson(route('esbtp.inscriptions.valider-definitivement', $this->inscription), [])
+            ->assertStatus(422);
+        $this->assertSame('annulée', $this->inscription->fresh()->status);
+    }
+
+    public function test_route_historique_ne_valide_pas_un_paiement_en_attente(): void
+    {
+        $this->exonere();
+        $this->inscription->update(['type_inscription' => 'réinscription', 'workflow_step' => 'documents_complets']);
+        ESBTPPaiement::factory()->pour($this->inscription)->create(['status' => 'en_attente']);
+        $this->postJson(route('esbtp.inscriptions.valider-definitivement', $this->inscription), [])
+            ->assertStatus(422)->assertJsonPath('success', false);
+        $this->assertSame('documents_complets', $this->inscription->fresh()->workflow_step);
+    }
+
     public function test_le_zero_motive_et_audite_permet_la_validation_sans_paiement(): void
     {
         $this->exonere();
