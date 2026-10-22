@@ -178,6 +178,10 @@ jobs:
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Views/PaymentReceiptDropdownLayerTest.php --stop-on-failure
 
+      - name: Test PDF reçu A4 deux exemplaires (cas chargé)
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Paiements/RecuDeuxExemplairesUnePageTest.php --stop-on-failure
+
       - name: Test horodatages véridiques des paiements et reçus
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Views/PaymentActualTimestampDisplayTest.php --stop-on-failure
