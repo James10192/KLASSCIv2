@@ -6,6 +6,7 @@ use App\Domain\Inscriptions\ExonerationInscription;
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPPaiement;
 use OwenIt\Auditing\Models\Audit;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Même preuve pour l'écran étudiant, la fiche inscription et la CLI.
@@ -16,16 +17,25 @@ final class PreuveExonerationSouscription
 {
     public function ajuster(ESBTPFraisSubscription $souscription, float $montant, string $motif, int $auteurId): void
     {
-        $zero = $montant === 0.0;
         if (! config('audit.enabled')) {
             throw new \DomainException("Le journal d'audit est désactivé : ajustement financier non enregistré.");
         }
 
-        $dernierId = (int) Audit::query()
-            ->where('auditable_type', ESBTPFraisSubscription::class)
-            ->where('auditable_id', $souscription->id)
-            ->max('id');
+        // Même si un futur appelant oublie sa transaction, aucun montant
+        // modifié ne peut survivre à une preuve d'audit manquante.
+        DB::transaction(function () use ($souscription, $montant, $motif, $auteurId): void {
+            $dernierId = (int) Audit::query()
+                ->where('auditable_type', ESBTPFraisSubscription::class)
+                ->where('auditable_id', $souscription->id)->max('id');
+            $this->ecrireSouscription($souscription, $montant, $motif, $auteurId);
+            $this->verifierNouvelAudit($souscription, $montant, $motif, $auteurId, $dernierId);
+        });
+    }
 
+    private function ecrireSouscription(
+        ESBTPFraisSubscription $souscription, float $montant, string $motif, int $auteurId
+    ): void {
+        $zero = $montant === 0.0;
         $trace = sprintf(
             '[%s] Montant dû %s → %s FCFA (utilisateur #%d) : %s',
             now()->format('Y-m-d H:i'),
@@ -40,9 +50,11 @@ final class PreuveExonerationSouscription
             'notes' => trim(($souscription->notes ? $souscription->notes."\n" : '')
                 . ($zero ? ExonerationInscription::TRACE.' ' : '').$trace),
         ]);
+    }
 
-        // Contrôler l'événement NOUVEAU pour chaque décision financière.
-        // Une remise partielle sans journal serait aussi une perte de preuve.
+    private function verifierNouvelAudit(
+        ESBTPFraisSubscription $souscription, float $montant, string $motif, int $auteurId, int $dernierId
+    ): void {
         $audit = Audit::query()
             ->where('auditable_type', ESBTPFraisSubscription::class)
             ->where('auditable_id', $souscription->id)
@@ -51,7 +63,7 @@ final class PreuveExonerationSouscription
             ->orderByDesc('id')->first();
         $valeurs = $audit?->new_values;
         $notesAudit = is_array($valeurs) ? ($valeurs['notes'] ?? null) : null;
-        $preuve = $zero
+        $preuve = $montant === 0.0
             ? $this->preuveValide($souscription, $audit, $auteurId)
             : ($audit && (int) $audit->user_id === $auteurId
                 && is_string($notesAudit)
