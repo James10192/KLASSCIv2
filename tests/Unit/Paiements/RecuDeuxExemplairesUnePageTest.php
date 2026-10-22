@@ -70,7 +70,7 @@ class RecuDeuxExemplairesUnePageTest extends TestCase
         $css = file_get_contents(resource_path('views/esbtp/paiements/recu.blade.php'));
 
         $this->assertStringContainsString('page-break-inside: avoid', $css);
-        $this->assertMatchesRegularExpression('/\.sign-title\s*\{[^}]*margin-bottom:\s*15mm\s*;/s', $css);
+        $this->assertMatchesRegularExpression('/\.sign-title\s*\{.*?margin-bottom:\s*15mm\s*;.*?\}\s*\.sign-line\s*\{/s', $css);
         $this->assertStringNotContainsString('margin-bottom: 14mm', $css);
         $this->assertStringNotContainsString('height: 128mm', $css);
     }
