@@ -224,6 +224,51 @@ class ValidationGratuiteTest extends TestCase
         $this->assertTrue(app(ExonerationInscription::class)->estApplicable($this->inscription));
     }
 
+
+    public function test_valider_definitivement_reinscription_lmd_gratuite_du_bareme_reel(): void
+    {
+        $config = $this->baremeReel('LMD', 0);
+        $this->inscription->update([
+            'type_inscription' => 'réinscription',
+            'status' => 'active',
+            'workflow_step' => 'documents_complets',
+        ]);
+        $this->souscription->update(['amount' => 0]);
+
+        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertOk()->assertJsonPath('eligible', true)->assertJsonPath('mode', 'configured_free');
+        $this->postJson(route('esbtp.inscriptions.valider-definitivement', $this->inscription), [])
+            ->assertOk()->assertJsonPath('success', true);
+
+        $this->assertSame('etudiant_cree', $this->inscription->fresh()->workflow_step);
+        $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
+        $this->assertSame('gratuite_bareme', \App\Models\ESBTPInscriptionWorkflowHistory::query()
+            ->where('inscription_id', $this->inscription->id)
+            ->where('action', 'validation_finale')->firstOrFail()->metadata['mode_validation']);
+        $this->assertNotNull($config->parcours_id);
+    }
+
+    public function test_valider_definitivement_reinscription_bts_gratuite_du_bareme_reel(): void
+    {
+        $this->baremeReel('BTS', 0);
+        $this->inscription->update([
+            'type_inscription' => 'réinscription',
+            'status' => 'active',
+            'workflow_step' => 'documents_complets',
+        ]);
+        $this->souscription->update(['amount' => 0]);
+
+        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertOk()->assertJsonPath('eligible', true)->assertJsonPath('mode', 'configured_free');
+        $this->postJson(route('esbtp.inscriptions.valider-definitivement', $this->inscription), [])
+            ->assertOk()->assertJsonPath('success', true);
+        $this->assertSame('etudiant_cree', $this->inscription->fresh()->workflow_step);
+        $this->assertSame('gratuite_bareme', \App\Models\ESBTPInscriptionWorkflowHistory::query()
+            ->where('inscription_id', $this->inscription->id)
+            ->where('action', 'validation_finale')->firstOrFail()->metadata['mode_validation']);
+        $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
+    }
+
     public function test_inscriptions_show_reinscription_documents_complets_exoneree_valide_et_auditee(): void
     {
         $this->inscription->update([
