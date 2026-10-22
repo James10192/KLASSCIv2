@@ -120,7 +120,8 @@ final class ExonerationInscription
                 });
 
                 if (! app(PreuveExonerationSouscription::class)->preuveValide($s, $preuve)) {
-                    return $refus('Exonération individuelle à confirmer : ce frais normalement payant est à 0 FCFA sans motif, auteur et preuve d’audit valides.');
+                    $nomFrais = $s->fraisCategory?->name ?? ('Catégorie #'.$s->frais_category_id);
+                    return $refus('Exonération à reconfirmer pour « '.$nomFrais.' » : le montant est à 0 FCFA mais la preuve signée est insuffisante. Un utilisateur habilité doit reconfirmer ce montant inchangé avec un nouveau motif depuis la fiche étudiant ou inscription.');
                 }
             }
         }

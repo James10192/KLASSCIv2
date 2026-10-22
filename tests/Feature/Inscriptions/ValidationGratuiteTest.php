@@ -266,6 +266,9 @@ class ValidationGratuiteTest extends TestCase
     {
         $this->souscription->update(['amount' => 0]);
         $this->assertFalse(app(ExonerationInscription::class)->estApplicable($this->inscription));
+        $preview = $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))->assertOk();
+        $this->assertStringContainsString((string) $this->categorie->name, $preview->json('message'));
+        $this->assertStringContainsString('reconfirmer', $preview->json('message'));
         $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])->assertStatus(422);
     }
 
