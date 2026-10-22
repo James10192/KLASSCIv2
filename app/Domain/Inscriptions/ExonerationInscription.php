@@ -6,6 +6,7 @@ use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
 use App\Services\ApplicableFraisResolver;
 use OwenIt\Auditing\Models\Audit;
+use App\Domain\Comptabilite\Souscriptions\PreuveExonerationSouscription;
 
 /**
  * L'absence de paiement est autorisée si le barème effectif contient une
@@ -102,7 +103,7 @@ final class ExonerationInscription
                 ->where('event', 'updated')
                 ->orderByDesc('created_at')
                 ->orderByDesc('id')
-                ->get(['auditable_id', 'new_values', 'tags']);
+                ->get(['auditable_id', 'auditable_type', 'event', 'new_values', 'tags', 'user_id']);
 
             foreach ($aAuditer as $s) {
                 if ((float) $s->amount !== 0.0) {
@@ -118,10 +119,7 @@ final class ExonerationInscription
                         || str_contains((string) $audit->tags, ESBTPFraisSubscription::TAG_EXONERATION);
                 });
 
-                if (! $preuve
-                    || ! str_contains((string) $preuve->tags, ESBTPFraisSubscription::TAG_EXONERATION)
-                    || ! str_contains((string) $s->notes, self::TRACE)
-                    || ! preg_match('/utilisateur #\\d+/', (string) $s->notes)) {
+                if (! app(PreuveExonerationSouscription::class)->preuveValide($s, $preuve)) {
                     return $refus('Exonération individuelle à confirmer : ce frais normalement payant est à 0 FCFA sans motif, auteur et preuve d’audit valides.');
                 }
             }

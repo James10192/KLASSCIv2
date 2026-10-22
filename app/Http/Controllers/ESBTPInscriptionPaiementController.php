@@ -690,22 +690,9 @@ class ESBTPInscriptionPaiementController extends Controller
 
             // Motif pérenne et audit immuable : seul un ajustement autorisé
             // permet d'exonérer explicitement une souscription à 0 FCFA.
-            $trace = sprintf(
-                '[%s] Montant dû %s → %s FCFA (utilisateur #%d) : %s',
-                now()->format('Y-m-d H:i'),
-                number_format((float) $oldAmount, 0, ',', ' '),
-                number_format((float) $newAmount, 0, ',', ' '),
-                (int) auth()->id(),
-                $validated['reason']
+            app(\App\Domain\Comptabilite\Souscriptions\PreuveExonerationSouscription::class)->ajuster(
+                $subscription, (float) $newAmount, $validated['reason'], (int) auth()->id()
             );
-            $subscription->exonerationExplicite = (float) $newAmount === 0.0;
-            $subscription->update([
-                'amount' => $newAmount,
-                'notes' => trim(($subscription->notes ? $subscription->notes."\n" : '')
-                    . ($subscription->exonerationExplicite
-                        ? \App\Domain\Inscriptions\ExonerationInscription::TRACE.' ' : '')
-                    . $trace),
-            ]);
 
             // Créer un log de l'activité pour audit
             Log::info("Modification de souscription par SuperAdmin", [
@@ -745,6 +732,9 @@ class ESBTPInscriptionPaiementController extends Controller
                     "difference" => $newAmount - $oldAmount,
                 ],
             ]);
+        } catch (\DomainException $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -760,8 +750,7 @@ class ESBTPInscriptionPaiementController extends Controller
                 [
                     "success" => false,
                     "message" =>
-                        "Erreur lors de la mise à jour de la souscription: " .
-                        $e->getMessage(),
+                        "Échec technique lors de la mise à jour de la souscription.",
                 ],
                 500,
             );
