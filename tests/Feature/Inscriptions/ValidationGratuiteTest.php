@@ -182,6 +182,29 @@ class ValidationGratuiteTest extends TestCase
         $this->assertSame(20000.0, (float) $this->souscription->fresh()->amount);
     }
 
+
+    public function test_reconfirmation_partielle_historique_ne_modifie_pas_le_montant_et_audite_auteur(): void
+    {
+        config()->set('audit.enabled', false);
+        $this->souscription->update(['amount' => 20000, 'notes' => 'Remise ancienne de rentrée']);
+        config()->set('audit.enabled', true);
+        $avant = \OwenIt\Auditing\Models\Audit::where('auditable_type', ESBTPFraisSubscription::class)
+            ->where('auditable_id', $this->souscription->id)->max('id') ?? 0;
+
+        $this->putJson(route('esbtp.inscriptions.update-subscription', [
+            'inscription' => $this->inscription->id, 'subscription' => $this->souscription->id,
+        ]), ['amount' => 20000, 'reason' => 'Reconfirmation de la remise de rentrée par la direction'])
+            ->assertOk()->assertJsonPath('success', true);
+
+        $audit = \OwenIt\Auditing\Models\Audit::where('auditable_type', ESBTPFraisSubscription::class)
+            ->where('auditable_id', $this->souscription->id)->orderByDesc('id')->firstOrFail();
+        $this->assertGreaterThan($avant, $audit->id);
+        $this->assertSame($this->agent->id, (int) $audit->user_id);
+        $this->assertSame(20000.0, (float) $this->souscription->fresh()->amount);
+        $this->getJson(route('esbtp.inscriptions.validation-preview', $this->inscription))
+            ->assertJsonPath('eligible', false);
+    }
+
     public function test_le_zero_motive_et_audite_permet_la_validation_sans_paiement(): void
     {
         $this->exonere();

@@ -3344,7 +3344,7 @@
                     <div class="small text-muted mt-2" id="sfr-paid"></div>
                     <div class="mt-3"><label for="sfr-reason" class="form-label fw-semibold">3. Motif</label>
                         <textarea class="form-control" id="sfr-reason" rows="2" required minlength="10" maxlength="1000">Réduction exceptionnelle des frais de scolarité accordée à l'étudiant.</textarea>
-                        <div class="form-text">Motif obligatoire. Pour un ancien montant déjà à zéro, précisez la décision confirmée aujourd'hui : l'ancien auteur ne sera pas recréé.</div>
+                        <div class="form-text">Motif obligatoire. Pour reconfirmer un ancien montant (zéro ou partiellement réduit), saisissez une réduction de 0 et décrivez la décision actuelle. Aucun ancien auteur ne sera inventé.</div>
                     </div>
                     <div class="alert alert-info mt-3 mb-0" id="sfr-summary" role="status">Sélectionnez un frais pour voir le récapitulatif.</div>
                 </div>
@@ -3367,12 +3367,14 @@
             $('sfr-current').value = fee ? fmt(fee.amount) : '';
             $('sfr-paid').textContent = fee ? 'Paiements enregistrés : ' + fmt(fee.paid) : '';
             $('sfr-new-amount').value = fee && Number.isFinite(discount) ? fmt(fee.amount - discount) : '';
-            const reconfirmation = !!fee && fee.amount === 0 && discount === 0;
+            const reconfirmation = !!fee && $('sfr-discount').value !== '' && discount === 0;
             const valid = fee && Number.isInteger(discount) && (discount > 0 || reconfirmation) && fee.amount - discount >= fee.paid && fee.amount - discount >= 0 && $('sfr-reason').value.trim().length >= 10;
             $('sfr-submit').disabled = !valid;
-            $('sfr-submit').textContent = reconfirmation ? "Reconfirmer la dispense à 0 FCFA" : "Confirmer la réduction";
+            $('sfr-submit').textContent = reconfirmation
+                ? (fee.amount === 0 ? "Reconfirmer la dispense à 0 FCFA" : "Reconfirmer le montant actuel")
+                : "Confirmer la réduction";
             $('sfr-summary').textContent = reconfirmation
-                ? "Vous signez une nouvelle confirmation de cette dispense historique, avec votre identité, la date du jour et le motif saisi. Aucun ancien audit n'est inventé."
+                ? "Vous signez une nouvelle confirmation du montant actuel" + (fee.amount === 0 ? " (dispense à 0 FCFA)" : " (remise partielle historique)") + ", avec votre identité, la date du jour et le motif saisi. Aucun ancien audit n'est inventé."
                 : fee && discount > 0
                     ? 'Vous accordez ' + fmt(discount) + ' sur ' + fee.name + '. Nouveau montant : ' + fmt(fee.amount - discount) + '.' + (valid ? '' : ' Vérifiez le solde déjà payé et le motif.')
                     : 'Sélectionnez un frais puis indiquez le montant à déduire.';
@@ -3399,9 +3401,9 @@
             const fee = selectedFee(), discount = Number($('sfr-discount').value);
             if (!fee || $('sfr-submit').disabled) return;
             const newAmount = fee.amount - discount;
-            const reconfirmer = fee.amount === 0 && discount === 0;
+            const reconfirmer = discount === 0;
             if (!confirm(reconfirmer
-                ? "Confirmer à nouveau cette exonération historique aujourd'hui ?\\nVotre identité et le motif seront enregistrés dans un nouvel audit."
+                ? "Confirmer à nouveau ce montant historique aujourd'hui ?\\nVotre identité et le motif seront enregistrés dans un nouvel audit."
                 : 'Confirmer la réduction de ' + fmt(discount) + ' ?\\nNouveau montant : ' + fmt(newAmount))) return;
             $('sfr-submit').disabled = true;
             try {
