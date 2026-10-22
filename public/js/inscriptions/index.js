@@ -67,9 +67,11 @@
         `;
         toast.innerHTML = `
             <i class="fas ${icon}" style="font-size:1rem;flex-shrink:0;"></i>
-            <span style="flex:1;">${String(message).replace(/[<>]/g, '')}</span>
+            <span style="flex:1;"></span>
             <button type="button" aria-label="Fermer" style="position:absolute;top:.4rem;right:.5rem;background:transparent;border:none;color:inherit;opacity:.6;cursor:pointer;font-size:.8rem;"><i class="fas fa-times"></i></button>
         `;
+        // Ne pas insérer le message utilisateur/serveur par innerHTML.
+        toast.querySelector('span').textContent = String(message);
         document.body.appendChild(toast);
         requestAnimationFrame(() => {
             toast.style.opacity = '1';

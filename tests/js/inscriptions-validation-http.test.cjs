@@ -137,3 +137,42 @@ test('les trois parcours AJAX de validation et le lot utilisent un parseur stric
     assert.match(admin, /async function handleInscriptionValidation[\s\S]*?iiLireReponseInscription\(response, 'success'\)/);
     assert.match(create, /form\.enctype = hasFile \? 'multipart\/form-data' : 'application\/x-www-form-urlencoded'/);
 });
+
+
+test('les notifications partagées affichent les réponses serveur en texte, jamais en HTML', () => {
+    const makeNode = () => ({
+        style: {}, children: [], textContent: '', innerHTML: '',
+        appendChild(node) { this.children.push(node); },
+        addEventListener() {},
+        querySelector(selector) {
+            if (selector === 'span') return this.span ||= { textContent: '' };
+            if (selector === 'button') return { addEventListener() {} };
+            return null;
+        },
+    });
+    const document = {
+        getElementById: () => null,
+        createElement: () => makeNode(),
+        head: makeNode(), body: makeNode(),
+        addEventListener() {},
+    };
+    const window = {};
+    vm.runInNewContext(common, {
+        window, document, setTimeout() {}, console,
+        URLSearchParams, FormData: FormDataFake,
+    }, { filename: 'public/js/inscriptions/common.js', timeout: 1000 });
+
+    const payload = '<img src=x onerror=alert(1)><b>Réponse</b>';
+    window.showToast(payload, 'error');
+    const container = document.body.children[0];
+    const toast = container.children[0];
+    assert.ok(container && toast);
+    assert.equal(toast.querySelector('span').textContent, payload);
+    assert.doesNotMatch(toast.innerHTML, /<img|<b>/);
+
+    const index = fs.readFileSync(
+        path.resolve(__dirname, '../../public/js/inscriptions/index.js'), 'utf8'
+    );
+    assert.match(index, /toast\.querySelector\('span'\)\.textContent = String\(message\)/);
+    assert.doesNotMatch(index, /String\(message\)\.replace\(\/\[<>\]\/g, ''\)/);
+});
