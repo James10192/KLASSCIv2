@@ -152,6 +152,36 @@ class ValidationGratuiteTest extends TestCase
         $this->assertSame($notes, (string) $this->souscription->fresh()->notes);
     }
 
+
+    public function test_audit_desactive_refuse_aussi_la_remise_partielle(): void
+    {
+        $avant = (float) $this->souscription->amount;
+        config()->set('audit.enabled', false);
+        $this->putJson(route('esbtp.inscriptions.update-subscription', [
+            'inscription' => $this->inscription->id,
+            'subscription' => $this->souscription->id,
+        ]), ['amount' => 20000, 'reason' => 'Remise partielle approuvée par la direction'])
+            ->assertStatus(422)->assertJsonPath('success', false);
+        $this->assertSame($avant, (float) $this->souscription->fresh()->amount);
+    }
+
+    public function test_regeneration_protege_ancienne_remise_partielle_non_auditee(): void
+    {
+        config()->set('audit.enabled', false);
+        $this->souscription->update([
+            'amount' => 20000, 'notes' => 'Remise de solidarité accordée par la direction avant le journal',
+        ]);
+        config()->set('audit.enabled', true);
+        app(\App\Services\ESBTPInscriptionService::class)
+            ->regenererFraisInscription($this->inscription->fresh());
+        $this->assertSame(20000.0, (float) $this->souscription->fresh()->amount);
+        app(\App\Services\ESBTPInscriptionService::class)->saveGeneratedFeesAsSubscriptions(
+            $this->inscription->fresh(),
+            [['category_id' => $this->categorie->id, 'amount' => 50000, 'type' => 'mandatory', 'description' => 'Frais obligatoire']]
+        );
+        $this->assertSame(20000.0, (float) $this->souscription->fresh()->amount);
+    }
+
     public function test_le_zero_motive_et_audite_permet_la_validation_sans_paiement(): void
     {
         $this->exonere();

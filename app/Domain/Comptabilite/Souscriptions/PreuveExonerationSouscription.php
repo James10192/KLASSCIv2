@@ -17,14 +17,14 @@ final class PreuveExonerationSouscription
     public function ajuster(ESBTPFraisSubscription $souscription, float $montant, string $motif, int $auteurId): void
     {
         $zero = $montant === 0.0;
-        if ($zero && ! config('audit.enabled')) {
-            throw new \DomainException("Le journal d'audit est désactivé : exonération non enregistrée.");
+        if (! config('audit.enabled')) {
+            throw new \DomainException("Le journal d'audit est désactivé : ajustement financier non enregistré.");
         }
 
-        $dernierId = $zero ? (int) Audit::query()
+        $dernierId = (int) Audit::query()
             ->where('auditable_type', ESBTPFraisSubscription::class)
             ->where('auditable_id', $souscription->id)
-            ->max('id') : 0;
+            ->max('id');
 
         $trace = sprintf(
             '[%s] Montant dû %s → %s FCFA (utilisateur #%d) : %s',
@@ -41,18 +41,24 @@ final class PreuveExonerationSouscription
                 . ($zero ? ExonerationInscription::TRACE.' ' : '').$trace),
         ]);
 
-        if ($zero) {
-            // L'audit doit être apparu pendant CETTE décision, pas dans
-            // l'historique d'une dispense précédente.
-            $audit = Audit::query()
-                ->where('auditable_type', ESBTPFraisSubscription::class)
-                ->where('auditable_id', $souscription->id)
-                ->where('event', 'updated')
-                ->where('id', '>', $dernierId)
-                ->orderByDesc('id')->first();
-            if (! $this->preuveValide($souscription, $audit, $auteurId)) {
-                throw new \DomainException("La preuve d'audit n'a pas été enregistrée : l'exonération est annulée.");
-            }
+        // Contrôler l'événement NOUVEAU pour chaque décision financière.
+        // Une remise partielle sans journal serait aussi une perte de preuve.
+        $audit = Audit::query()
+            ->where('auditable_type', ESBTPFraisSubscription::class)
+            ->where('auditable_id', $souscription->id)
+            ->where('event', 'updated')
+            ->where('id', '>', $dernierId)
+            ->orderByDesc('id')->first();
+        $valeurs = $audit?->new_values;
+        $notesAudit = is_array($valeurs) ? ($valeurs['notes'] ?? null) : null;
+        $preuve = $zero
+            ? $this->preuveValide($souscription, $audit, $auteurId)
+            : ($audit && (int) $audit->user_id === $auteurId
+                && is_string($notesAudit)
+                && str_contains($notesAudit, 'utilisateur #'.$auteurId)
+                && str_contains($notesAudit, $motif));
+        if (! $preuve) {
+            throw new \DomainException("La preuve d'audit de l'ajustement n'a pas été enregistrée : modification annulée.");
         }
     }
 
@@ -91,6 +97,13 @@ final class PreuveExonerationSouscription
             || ESBTPPaiement::query()
                 ->where('inscription_id', $souscription->inscription_id)
                 ->where('frais_category_id', $souscription->frais_category_id)->exists()) {
+            return true;
+        }
+
+        // Un motif humain legacy sans audit est également une décision à
+        // préserver ; les préfixes standard de génération sont techniques.
+        $notes = trim((string) $souscription->notes);
+        if ($notes !== '' && ! preg_match('/(?:créé automatiquement|Regenerate automatically|Régénér[ée] automatiquement|Régénération des frais obligatoires)/iu', $notes)) {
             return true;
         }
 
