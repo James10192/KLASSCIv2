@@ -869,21 +869,11 @@ class ESBTPInscriptionService
                     // CORRECTION : Utiliser updateOrCreate comme dans regenererFraisInscription
                     // pour garantir la création même si des problèmes de concurrence existent
 
-                    // VERIFICATION OBLIGATOIRE: Recalculer le montant selon le statut d'affectation
-                    $verifiedAmount = $fee['amount']; // Montant par défaut
-
-                    // Pour les frais obligatoires, vérifier avec la configuration
-                    if ($fee['type'] === 'mandatory') {
-                        $configuration = \App\Models\ESBTPFraisConfiguration::where('frais_category_id', $fee['category_id'])
-                            ->where('filiere_id', $classe->filiere_id)
-                            ->where('niveau_id', $classe->niveau_etude_id)
-                            ->where('is_active', true)
-                            ->first();
-
-                        if ($configuration) {
-                            $verifiedAmount = $configuration->getMontantByStatus($affectationStatus);
-                        }
-                    }
+                    // ApplicableFraisResolver a déjà choisi le barème effectif :
+                    // parcours/filière, niveau, année et statut d'affectation.
+                    // Une seconde recherche moins précise pouvait écraser le bon
+                    // montant par une autre configuration (notamment LMD/BTS).
+                    $verifiedAmount = $fee['amount'];
 
                     ESBTPFraisSubscription::updateOrCreate(
                         [

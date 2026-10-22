@@ -390,6 +390,70 @@ class ValidationGratuiteTest extends TestCase
             ->assertJsonPath('eligible', false);
     }
 
+    public function test_creer_souscription_bts_respecte_la_priorite_du_bareme_annuel(): void
+    {
+        $classe = $this->inscription->classe;
+        // L'ancienne deuxième requête prenait ce premier barème global
+        // au lieu du barème annuel prioritaire réellement sélectionné.
+        ESBTPFraisConfiguration::create([
+            'frais_category_id' => $this->categorie->id,
+            'systeme_academique' => 'BTS',
+            'filiere_id' => $classe->filiere_id,
+            'niveau_id' => $classe->niveau_etude_id,
+            'annee_universitaire_id' => null,
+            'amount' => 99000,
+            'amount_affecte' => 99000,
+            'amount_reaffecte' => 99000,
+            'amount_non_affecte' => 99000,
+            'payment_deadline_days' => 30,
+            'is_active' => true,
+            'created_by' => $this->agent->id,
+        ]);
+        $configuration = $this->baremeReel('BTS', 42000, 42000);
+        $service = app(\App\Services\ESBTPInscriptionService::class);
+        $frais = $service->generateFeesForInscription($this->inscription);
+        $this->assertTrue($configuration->is(
+            app(ApplicableFraisResolver::class)->resolveMandatoryFeesForInscription($this->inscription)->first()['configuration']
+        ));
+        $this->assertSame(42000.0, (float) collect($frais)->firstWhere('category_id', $this->categorie->id)['amount']);
+
+        $service->saveGeneratedFeesAsSubscriptions($this->inscription, $frais);
+        $this->assertSame(42000.0, (float) $this->souscription->fresh()->amount);
+        $this->assertSame(42000.0, (float) $this->souscription->fresh()->chargedAmount());
+    }
+
+    public function test_creer_souscription_lmd_nutilise_pas_un_bareme_bts_de_meme_filiere(): void
+    {
+        $classe = $this->inscription->classe;
+        // Un tarif BTS et un tarif LMD peuvent cohabiter sur la même
+        // filière historique : seule la clé parcours+niveau LMD fait foi.
+        ESBTPFraisConfiguration::create([
+            'frais_category_id' => $this->categorie->id,
+            'systeme_academique' => 'BTS',
+            'filiere_id' => $classe->filiere_id,
+            'niveau_id' => $classe->niveau_etude_id,
+            'annee_universitaire_id' => null,
+            'amount' => 88000,
+            'amount_affecte' => 88000,
+            'amount_reaffecte' => 88000,
+            'amount_non_affecte' => 88000,
+            'payment_deadline_days' => 30,
+            'is_active' => true,
+            'created_by' => $this->agent->id,
+        ]);
+        $configuration = $this->baremeReel('LMD', 39000, 39000);
+        $service = app(\App\Services\ESBTPInscriptionService::class);
+        $frais = $service->generateFeesForInscription($this->inscription);
+        $this->assertTrue($configuration->is(
+            app(ApplicableFraisResolver::class)->resolveMandatoryFeesForInscription($this->inscription)->first()['configuration']
+        ));
+        $this->assertSame(39000.0, (float) collect($frais)->firstWhere('category_id', $this->categorie->id)['amount']);
+
+        $service->saveGeneratedFeesAsSubscriptions($this->inscription, $frais);
+        $this->assertSame(39000.0, (float) $this->souscription->fresh()->amount);
+        $this->assertSame(39000.0, (float) $this->souscription->fresh()->chargedAmount());
+    }
+
     public function test_lmd_gratuite_effective_parcours_niveau_sans_exoneration_ni_recu(): void
     {
         $configuration = $this->baremeReel('LMD', 0);
