@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-22 · #1669 · Reconfirmation des anciennes exonérations à 0 FCFA depuis les deux fiches, avec nouveau motif/auteur et preuve OwenIt contrôlée ; protection des décisions et paiements lors des régénérations BTS/LMD. Test écran et requêtes obligatoires sur présentation avant propagation.
 - 2026-10-22 · #1651 complément · Configuration BTS/LMD : envoi des formulaires de frais et régénération sans multipart inutile, refus HTTP explicites ; recréation sur demande d'une souscription obligatoire absente à 0 FCFA seulement si le barème applicable la justifie. Recette nécessaire sur présentation avant propagation.
 - 2026-10-21 · #1651 complément · Création sans photo / avec photo et validation « tout le filtre » : transport adapté, dérogation de capacité sans contournement métier. Recette sur présentation et cookies/session requise avant propagation.
 - 2026-10-21 · #1651 · Validation des inscriptions sur fiche étudiant, fiche inscription et listes : les requêtes AJAX texte évitent les multipart inutiles, les refus HTTP affichent leur nature, les validations groupées conservent les protections métier. Tester le proxy, les permissions et les paiements sur présentation avant propagation.

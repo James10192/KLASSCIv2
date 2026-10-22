@@ -22,6 +22,8 @@ class GuidedFeeReductionContractTest extends TestCase
         $this->assertStringContainsString("@can('frais.souscriptions.ajuster')", $student);
         $this->assertStringNotContainsString("auth()->user()->can('inscriptions.edit')\n            ? \\App\\Models\\ESBTPFraisSubscription", $student);
         $this->assertStringContainsString('studentFeeReductionModal', $student);
+        $this->assertStringContainsString('Reconfirmer la dispense à 0 FCFA', $student);
+        $this->assertStringContainsString('const reconfirmation =', $student);
         $this->assertSame(1, substr_count($student, 'id="studentFeeReductionModal"'));
         $this->assertStringContainsString("data-inscription-id", $student);
         $this->assertStringContainsString("data-inscription-label", $student);

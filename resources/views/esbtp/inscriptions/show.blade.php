@@ -3559,7 +3559,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                 </label>
                                 <input type="number" class="form-control" id="edit_subscription_new_amount"
                                        name="amount" min="0" step="1" required>
-                                <div class="form-text">Le montant doit être en FCFA (nombre entier)</div>
+                                <div class="form-text">Le montant doit être en FCFA (nombre entier). Pour reconfirmer une ancienne exonération, laissez 0 et expliquez la nouvelle décision dans le motif.</div>
                             </div>
                         </div>
                     </div>
@@ -4724,6 +4724,9 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 
                 // Réinitialiser les champs de saisie
                 elements.reason.value = '';
+                elements.reason.placeholder = Number(currentAmount) === 0
+                    ? "Reconfirmation du montant historique à 0 FCFA : précisez le fondement de la décision actuelle (nouvel audit daté)."
+                    : "Précisez la raison de l'ajustement.";
 
                 // Mettre à jour l'action du formulaire
                 const currentInscriptionId = {{ $inscription->id }};
@@ -4759,8 +4762,8 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                 return;
             }
 
-            if (!reason.trim()) {
-                alert('Veuillez indiquer le motif de la modification');
+            if (reason.trim().length < 10) {
+                alert('Le motif de confirmation doit contenir au moins 10 caractères.');
                 return;
             }
 
@@ -4769,8 +4772,10 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                 return;
             }
 
-            // Ajouter la méthode PUT pour Laravel
-            formData.append('_method', 'PUT');
+            // Champs texte : URL-encodé plutôt que multipart inutilisé.
+            formData.set('_method', 'PUT');
+            const body = new URLSearchParams();
+            formData.forEach((value, key) => body.append(key, value));
 
             // Debug: afficher les données envoyées
             debugLog('📤 Données envoyées:', {
@@ -4784,13 +4789,23 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
             // Soumission via fetch
             fetch(this.action, {
                 method: 'POST',
-                body: formData,
+                body,
+                credentials: 'same-origin',
                 headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json'
                 }
             })
-            .then(response => response.json())
+            .then(async response => {
+                const contentType = response.headers.get('content-type') || '';
+                const json = contentType.includes('application/json') ? await response.json().catch(() => null) : null;
+                if (!response.ok || !json) {
+                    throw new Error(json?.message || ('Échec HTTP ' + response.status + ' : vérifiez votre session et les permissions.'));
+                }
+                return json;
+            })
             .then(data => {
                 if (data.success) {
                     // Fermer le modal
@@ -4805,7 +4820,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
             })
             .catch(error => {
                 debugError('Erreur:', error);
-                alert('Une erreur est survenue lors de la mise à jour');
+                alert(error.message || 'Une erreur est survenue lors de la mise à jour.');
             });
             });
         } else {

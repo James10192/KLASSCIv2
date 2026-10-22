@@ -88,6 +88,70 @@ class ValidationGratuiteTest extends TestCase
         ])->assertOk()->assertJsonPath('success', true);
     }
 
+
+    public function test_reconfirmation_historique_de_zero_produit_nouvel_audit_et_nouvel_auteur(): void
+    {
+        $this->souscription->update(['amount' => 0, 'notes' => 'Ancienne réduction à zéro sans preuve signée']);
+        $this->assertFalse(app(ExonerationInscription::class)->estApplicable($this->inscription));
+        $avant = \OwenIt\Auditing\Models\Audit::where('auditable_type', ESBTPFraisSubscription::class)
+            ->where('auditable_id', $this->souscription->id)->max('id') ?? 0;
+
+        $this->putJson(route('esbtp.inscriptions.update-subscription', [
+            'inscription' => $this->inscription->id,
+            'subscription' => $this->souscription->id,
+        ]), ['amount' => 0, 'reason' => 'Confirmation actuelle de la dispense précédemment accordée'])
+            ->assertOk()->assertJsonPath('success', true);
+
+        $audit = \OwenIt\Auditing\Models\Audit::where('auditable_type', ESBTPFraisSubscription::class)
+            ->where('auditable_id', $this->souscription->id)->orderByDesc('id')->firstOrFail();
+        $this->assertGreaterThan($avant, $audit->id);
+        $this->assertSame($this->agent->id, (int) $audit->user_id);
+        $this->assertStringContainsString(ESBTPFraisSubscription::TAG_EXONERATION, (string) $audit->tags);
+        $this->assertStringContainsString('Confirmation actuelle', (string) $this->souscription->fresh()->notes);
+        $this->assertTrue(app(ExonerationInscription::class)->estApplicable($this->inscription));
+        $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
+    }
+
+    public function test_audit_desactive_refuse_la_reconfirmation_et_ne_change_aucun_montant(): void
+    {
+        $this->souscription->update(['amount' => 0, 'notes' => 'Montant nul ancien sans preuve']);
+        $avant = $this->souscription->fresh()->notes;
+        config()->set('audit.enabled', false);
+
+        $this->putJson(route('esbtp.inscriptions.update-subscription', [
+            'inscription' => $this->inscription->id,
+            'subscription' => $this->souscription->id,
+        ]), ['amount' => 0, 'reason' => 'Décision de reconfirmation motivée aujourd’hui'])
+            ->assertStatus(422)->assertJsonPath('success', false);
+        $this->assertSame($avant, $this->souscription->fresh()->notes);
+    }
+
+    public function test_suppression_de_preuve_retire_l_eligibilite_sans_creer_de_paiement(): void
+    {
+        $this->exonere();
+        \OwenIt\Auditing\Models\Audit::where('auditable_type', ESBTPFraisSubscription::class)
+            ->where('auditable_id', $this->souscription->id)
+            ->where('event', 'updated')->delete();
+        $this->assertFalse(app(ExonerationInscription::class)->estApplicable($this->inscription));
+        $this->putJson(route('esbtp.inscriptions.valider', $this->inscription), [])->assertStatus(422);
+    }
+
+    public function test_regeneration_necrase_jamais_une_dispense_reconfirmee(): void
+    {
+        $this->exonere();
+        $notes = (string) $this->souscription->fresh()->notes;
+        app(\App\Services\ESBTPInscriptionService::class)
+            ->regenererFraisInscription($this->inscription->fresh());
+        $this->assertSame(0.0, (float) $this->souscription->fresh()->amount);
+        $this->assertSame($notes, (string) $this->souscription->fresh()->notes);
+        app(\App\Services\ESBTPInscriptionService::class)->saveGeneratedFeesAsSubscriptions(
+            $this->inscription->fresh(),
+            [['category_id' => $this->categorie->id, 'amount' => 50000, 'type' => 'mandatory', 'description' => 'Frais obligatoire']]
+        );
+        $this->assertSame(0.0, (float) $this->souscription->fresh()->amount);
+        $this->assertSame($notes, (string) $this->souscription->fresh()->notes);
+    }
+
     public function test_le_zero_motive_et_audite_permet_la_validation_sans_paiement(): void
     {
         $this->exonere();

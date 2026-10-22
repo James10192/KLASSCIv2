@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Exonérations historiques BTS/LMD — reconfirmation explicite et audit vérifié :** les anciennes souscriptions à 0 FCFA sans audit exploitable peuvent être reconfirmées depuis la fiche étudiant ou inscription par un agent autorisé avec un nouveau motif et un audit signé. Aucune preuve ancienne n'est inventée, aucun paiement fictif ; les régénérations préservent les décisions et versements existants.
 - **Souscriptions financières BTS et LMD — tarif applicable :** à la création et à la réinscription, le montant conservé suit la configuration déjà résolue pour l'année, le parcours ou la filière et le statut d'affectation ; aucun recalcul secondaire depuis un autre barème. Vérifier la facturation sur présentation avant diffusion.
 - **Sécurité des notifications d’inscription :** les messages de refus et de validation sont affichés comme du texte, jamais comme du HTML interprétable ; le comportement des formulaires, permissions et paiements reste inchangé. Vérifier l’affichage sur présentation avant diffusion.
 - **Création et réinscription BTS/LMD à 0 FCFA :** conservation des souscriptions obligatoires gratuites dans les dossiers nouvellement créés ; les barèmes non configurés et les exonérations non auditées restent bloquants. Aucune transaction ni reçu fictif ; vérifier sur présentation avant diffusion aux établissements.
