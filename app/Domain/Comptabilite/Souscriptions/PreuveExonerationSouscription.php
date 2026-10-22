@@ -4,6 +4,7 @@ namespace App\Domain\Comptabilite\Souscriptions;
 
 use App\Domain\Inscriptions\ExonerationInscription;
 use App\Models\ESBTPFraisSubscription;
+use App\Models\ESBTPPaiement;
 use OwenIt\Auditing\Models\Audit;
 
 /**
@@ -79,4 +80,32 @@ final class PreuveExonerationSouscription
             && (! array_key_exists('amount', $valeurs)
                 || (float) $valeurs['amount'] === 0.0);
     }
+    /**
+     * Un zéro historique, un paiement ou un montant retouché est une décision
+     * qui ne doit jamais disparaître lors d'un recalcul automatique BTS/LMD.
+     */
+    public function estProtegee(ESBTPFraisSubscription $souscription): bool
+    {
+        if ((float) $souscription->amount === 0.0
+            || str_contains((string) $souscription->notes, ExonerationInscription::TRACE)
+            || ESBTPPaiement::query()
+                ->where('inscription_id', $souscription->inscription_id)
+                ->where('frais_category_id', $souscription->frais_category_id)->exists()) {
+            return true;
+        }
+
+        // Anciennes remises partielles sans tag : chercher l'audit de montant
+        // non identifié comme réalignement technique, sans attribuer de motif.
+        return Audit::query()
+            ->where('auditable_type', ESBTPFraisSubscription::class)
+            ->where('auditable_id', $souscription->id)
+            ->where('event', 'updated')
+            ->where('new_values', 'like', '%"amount"%')
+            ->where(function ($query) {
+                $query->whereNull('tags')
+                    ->orWhere('tags', 'not like', '%'.ESBTPFraisSubscription::TAG_REALIGNEMENT.'%');
+            })
+            ->exists();
+    }
+
 }
