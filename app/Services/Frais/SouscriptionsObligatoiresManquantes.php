@@ -141,7 +141,16 @@ class SouscriptionsObligatoiresManquantes
                         continue;
                     }
                     $montant = (float) $fee['amount'];
-                    if ($montant <= 0) {
+                    // Zéro récupérable seulement si une configuration active
+                    // et applicable à cette année, ce système (BTS/LMD),
+                    // filière/parcours, niveau et statut le définit explicitement.
+                    $configuration = $fee['configuration'] ?? null;
+                    if ($montant < 0 || ($montant === 0.0 && (
+                        ! $configuration
+                        || $configuration->getMontantByStatus(
+                            $inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS
+                        ) === null
+                    ))) {
                         continue;
                     }
                     $categorie = $fee['category'];

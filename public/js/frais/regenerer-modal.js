@@ -118,12 +118,37 @@
     }
 
     async function post(url, formData) {
+        // Aucun fichier. Garder l'encodage des tableaux inscription_ids[] et lignes[].
+        const body = new URLSearchParams();
+        formData.forEach((value, key) => body.append(key, value));
         const r = await fetch(url, {
             method: 'POST',
-            body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
+            credentials: 'same-origin',
+            body,
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrf(),
+            },
         });
-        return r.json();
+        const type = r.headers.get('content-type') || '';
+        const data = type.includes('application/json') ? await r.json().catch(() => null) : null;
+        if (!r.ok || !data || data.success !== true) {
+            const ref = ['x-request-id', 'edge-request-id', 'cf-ray']
+                .map(name => r.headers.get(name))
+                .find(value => value && /^[a-zA-Z0-9._:-]{1,80}$/.test(value));
+            const messages = {
+                403: 'Accès refusé (403). Vérifiez vos droits ; si la réponse est HTML, vérifiez le pare-feu.',
+                419: 'Session expirée (419). Actualisez la page.',
+                422: 'Sélection ou données invalides (422).',
+                429: 'Trop de requêtes (429). Réessayez plus tard.',
+            };
+            const detail = data?.message && r.status < 500 ? data.message
+                : messages[r.status] || 'Échec HTTP ' + r.status;
+            throw new Error(detail + (ref ? ' Réf. ' + ref : ''));
+        }
+        return data;
     }
 
     window.KlassciRegenererFrais = {
@@ -161,7 +186,8 @@
             try {
                 preview = await post(opts.previewUrl, formData);
             } catch (e) {
-                term.innerHTML = texte('<span class="rf-line-del">$ impossible de prévisualiser</span>');
+                term.innerHTML = texte('<span class="rf-line-del">$ '
+                    + esc(e.message || 'Impossible de prévisualiser') + '</span>');
                 return;
             }
 
@@ -284,7 +310,8 @@
                         else window.location.reload();
                     }, 700);
                 } catch (e) {
-                    term.insertAdjacentHTML('beforeend', texte('<span class="rf-line-del">$ échec</span>'));
+                    term.insertAdjacentHTML('beforeend', texte('<span class="rf-line-del">$ '
+                        + esc(e.message || 'Échec de la régénération') + '</span>'));
                     ok.disabled = false;
                 }
             };

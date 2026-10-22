@@ -643,24 +643,52 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
+        // Champs texte uniquement : ne pas envoyer de multipart sans fichier.
+        // Les clés categories[ID][...] et les montants 0 restent inchangés.
+        const body = new URLSearchParams();
+        formData.forEach((value, key) => body.append(key, value));
+        const bouton = this;
+        if (bouton.disabled) return;
+        bouton.disabled = true;
+
         fetch(endpoint, {
             method: 'POST',
-            body: formData,
+            body,
+            credentials: 'same-origin',
             headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                'Accept': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                 'X-Requested-With': 'XMLHttpRequest',
             },
         })
-            .then(response => response.json())
-            .then(data => {
-                if (!data.success) {
-                    alert(data.message || 'Impossible d’enregistrer la configuration.');
-                    return;
+            .then(async response => {
+                const type = response.headers.get('content-type') || '';
+                const data = type.includes('application/json')
+                    ? await response.json().catch(() => null)
+                    : null;
+                if (!response.ok || !data || data.success !== true) {
+                    const ref = ['x-request-id', 'edge-request-id', 'cf-ray']
+                        .map(name => response.headers.get(name))
+                        .find(value => value && /^[a-zA-Z0-9._:-]{1,80}$/.test(value));
+                    const messages = {
+                        403: 'Accès refusé (403). Vérifiez la permission frais.configure ; si la réponse est HTML, vérifiez le filtrage serveur.',
+                        419: 'Session expirée (419). Actualisez la page et reconnectez-vous.',
+                        422: 'Données du barème refusées (422). Vérifiez les montants et la portée.',
+                        429: 'Trop de requêtes (429). Réessayez plus tard.',
+                    };
+                    const detail = data?.message && response.status < 500 ? data.message
+                        : messages[response.status] || 'Enregistrement refusé (HTTP ' + response.status + ').';
+                    throw new Error(detail + (ref ? ' Réf. ' + ref : ''));
                 }
+                return data;
+            })
+            .then(data => {
                 modal.hide();
                 refreshCards(data.summary?.affected_targets || [state.activeScope]);
             })
-            .catch(() => alert('Erreur de connexion'));
+            .catch(error => alert(error.message || 'Échec réseau lors de l’enregistrement.'))
+            .finally(() => { bouton.disabled = false; });
     });
 
     setActiveTab('ALL');
