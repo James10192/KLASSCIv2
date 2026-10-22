@@ -242,7 +242,8 @@
             color: {{ $primary }};
             text-transform: uppercase;
             letter-spacing: 0.4px;
-            margin-bottom: 2.2mm;
+            /* Espace manuscrit reserve sur chaque exemplaire, sans changer le gabarit A4. */
+            margin-bottom: 15mm;
         }
         .sign-line {
             border-top: 1.5px solid {{ $primary }};

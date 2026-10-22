@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Reçus de paiement — espace pour la signature et le cachet (#1677) :** zone manuscrite de 15 mm sur les deux exemplaires, sans changer le design ni dépasser une page A4.
 - **Reçus de paiement — deux exemplaires sur un A4 (#1675) :** les espaces verticaux du reçu PDF sont resserrés pour garder l’exemplaire élève/parent et l’exemplaire caisse sur une seule feuille, sans changement de design, de données ni de montants.
 - **Annulation des inscriptions — permission et transactions corrigées :** l'annulation s'effectue avec le seul droit « annuler une inscription », sans exiger le droit de validation ; les doubles annulations ne laissent pas de transaction ouverte, les erreurs techniques ne divulguent plus de détails SQL et l'API de consultation des classes ne journalise plus les données complètes de la requête.
 - **Souscriptions facultatives — pas de doublon destructeur :** souscrire une seconde fois à une catégorie déjà active ou protégée ne réécrit plus son montant, son motif ni ses audits ; utilisez l'ajustement autorisé et traçable.

@@ -61,6 +61,7 @@ class RecuDeuxExemplairesUnePageTest extends TestCase
         $this->assertSame(2, substr_count($html, 'Saisi le 22/10/2026 à 11:21'));
         $this->assertSame(2, substr_count($html, 'Validé le 22/10/2026 à 11:21'));
         $this->assertSame(1, substr_count($html, 'EXEMPLAIRE CAISSE — à archiver'));
+        $this->assertSame(2, substr_count($html, 'Signature et Cachet'));
         $this->assertStringNotContainsString('à définir', $html);
     }
 
@@ -69,6 +70,7 @@ class RecuDeuxExemplairesUnePageTest extends TestCase
         $css = file_get_contents(resource_path('views/esbtp/paiements/recu.blade.php'));
 
         $this->assertStringContainsString('page-break-inside: avoid', $css);
+        $this->assertMatchesRegularExpression('/\.sign-title\s*\{[^}]*margin-bottom:\s*15mm\s*;/s', $css);
         $this->assertStringNotContainsString('margin-bottom: 14mm', $css);
         $this->assertStringNotContainsString('height: 128mm', $css);
     }
