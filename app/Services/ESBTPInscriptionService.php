@@ -768,8 +768,7 @@ class ESBTPInscriptionService
         } catch (\Exception $e) {
             Log::error('Erreur lors de la génération des frais', [
                 'inscription_id' => $inscription->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'exception_type' => $e::class
             ]);
             
             return [];
@@ -911,7 +910,7 @@ class ESBTPInscriptionService
         } catch (\Exception $e) {
             Log::error('Erreur lors de la sauvegarde des frais générés comme subscriptions', [
                 'inscription_id' => $inscription->id,
-                'error' => $e->getMessage(),
+                'exception_type' => $e::class,
                 'generated_fees_count' => count($generatedFees)
             ]);
             throw $e; // Re-lancer l'erreur pour interrompre la transaction
