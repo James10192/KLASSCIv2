@@ -4,6 +4,13 @@
 > Ce projet ne doit pas être exposé à Internet tant que la recette OAuth et
 > inter-tenant (et les contrôles CI) n'a pas été validée.
 
+> **Mutualisé cPanel** : Laravel demeure dans l'hébergement PHP/MySQL
+> de chaque école ; seul le serveur MCP Node 22+ fonctionne à l'extérieur
+> (VPS/Dokploy ou service équivalent). Les signatures HMAC utilisent un
+> nonce à clé primaire MySQL, pas Redis. Lire le
+> [runbook hybride cPanel](../../docs/runbooks/nanan-connect-cpanel-hybride.md)
+> **avant** toute recette ou activation.
+
 ## Fonctionnement
 
 Client ChatGPT/Code MCP -> `https://mcp.klassci.com/mcp` (Streamable HTTP, SDK v2)
@@ -54,8 +61,9 @@ utilisateur le serveur doit choisir. Les écritures et le CRUD restent **fermés
    MCP_BRIDGE_SECRET=<le même secret que dans la passerelle>
    ```
    Contrôler la cohérence de l'issuer exact (slash final inclus).
-   Utiliser un cache partagé avec `Cache::add` atomique, comme Redis ou DB
-   correctement configurée : pas de store `array` en déploiement.
+   Migrer `mcp_bridge_nonces` **avant l'activation** du pont. La clé primaire
+   de cette table locale empêche les rejeux entre les processus PHP cPanel,
+   même si `CACHE_DRIVER=file`. Redis n'est pas requis.
 
 ## Lier un compte de recette
 
