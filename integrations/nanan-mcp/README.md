@@ -212,6 +212,28 @@ Références officielles :
 https://developers.openai.com/plugins/build/auth et
 https://developers.openai.com/plugins/deploy/connect-chatgpt
 
+## Refus de compte et limites réseau — durcissement du 23 octobre 2026
+
+Le pont Laravel ne retourne `code=identity_not_linked` sur
+`list_authorized_tools` **que pour une identité jamais connue localement**,
+sur une requête HMAC valide et si `MCP_PAIRING_ENABLED=true`. Une
+identité **révoquée**, un compte Laravel **inactif**, un accès désactivé,
+une erreur de droits ou un autre refus HTTP 403 n'autorisent **jamais**
+le retour de `start_account_link`. La passerelle ne déduit plus « non lié »
+du seul statut 403 : il faut le code exact, sinon le refus reste fermé.
+
+Chaque réponse HTTP du tenant est décodée par flux sous un plafond de
+**128 Kio** (et **4 Kio** pour identifier un refus d'appairage), y compris
+si le serveur ne fournit pas `Content-Length` ou annonce une longueur
+mensongère. Cela borne l'utilisation mémoire face à une réponse anormale
+et évite de transmettre un rapport scolaire arbitrairement volumineux au
+modèle. Les codes et erreurs internes restent absents des réponses MCP
+publiques.
+
+Ce contrôle ne remplace pas un plafond de requêtes à l'entrée publique
+ni un filtrage de sortie du réseau contre le détournement DNS/SSRF. Les
+deux restent des prérequis à une exposition Internet.
+
 ## Mettre en ligne plus tard
 
 - HTTPS public stable sur `/mcp` derrière proxy, Host/Origin allowlist,

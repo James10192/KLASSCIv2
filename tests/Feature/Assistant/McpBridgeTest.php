@@ -142,6 +142,35 @@ class McpBridgeTest extends TestCase
         ])->assertStatus(403);
     }
 
+    public function test_decouverte_ne_propose_appairage_qu_aux_comptes_jamais_lies(): void
+    {
+        config()->set('mcp.pairing.enabled', true);
+        $userRevoked = $this->utilisateur();
+        $userInactive = $this->utilisateur();
+        $this->lier($userRevoked, 'auth0|revoked-bootstrap', now()->toDateTimeString());
+        $this->lier($userInactive, 'auth0|inactive-bootstrap');
+        $userInactive->update(['is_active' => false]);
+
+        // Seul un sujet OAuth JAMAIS lié reçoit ce code interne.
+        $this->demander('auth0|never-linked', [
+            'tool' => 'list_authorized_tools', 'arguments' => [],
+        ])->assertStatus(403)->assertJson(['code' => 'identity_not_linked']);
+
+        foreach (['auth0|revoked-bootstrap', 'auth0|inactive-bootstrap'] as $subject) {
+            $result = $this->demander($subject, [
+                'tool' => 'list_authorized_tools', 'arguments' => [],
+            ])->assertStatus(403);
+            $this->assertNull($result->json('code'));
+        }
+
+        // L'activation du mode lecture seul ne doit pas signaler
+        // qu'une reconnexion est possible quand l'appairage est coupé.
+        config()->set('mcp.pairing.enabled', false);
+        $this->demander('auth0|never-linked', [
+            'tool' => 'list_authorized_tools', 'arguments' => [],
+        ])->assertStatus(403)->assertJsonMissing(['code' => 'identity_not_linked']);
+    }
+
     public function test_identifiant_profil_reste_identique_lors_de_la_rotation_du_secret_du_pont(): void
     {
         $user = $this->utilisateur();
