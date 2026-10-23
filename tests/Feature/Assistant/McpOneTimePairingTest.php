@@ -219,6 +219,29 @@ class McpOneTimePairingTest extends TestCase
         $this->assertDatabaseHas('mcp_link_challenges', ['code_hash' => hash('sha256', $recent)]);
     }
 
+    public function test_nettoyage_sql_purge_nonces_anciens_sans_toucher_aux_nonces_recents(): void
+    {
+        $older = hash('sha256', 'old-nonce');
+        $recent = hash('sha256', 'recent-nonce');
+        DB::table('mcp_bridge_nonces')->insert([
+            [
+                'nonce_hash' => $older,
+                'expires_at' => now()->subMinutes(20),
+                'created_at' => now()->subMinutes(22),
+            ],
+            [
+                'nonce_hash' => $recent,
+                'expires_at' => now()->addSeconds(120),
+                'created_at' => now(),
+            ],
+        ]);
+
+        \Illuminate\Support\Facades\Artisan::call('nanan:mcp-prune-challenges', ['--limit' => 1]);
+
+        $this->assertDatabaseMissing('mcp_bridge_nonces', ['nonce_hash' => $older]);
+        $this->assertDatabaseHas('mcp_bridge_nonces', ['nonce_hash' => $recent]);
+    }
+
     public function test_approbation_exige_superadmin_distinct_et_verification_explicite(): void
     {
         $code = str_repeat('n', 43);
