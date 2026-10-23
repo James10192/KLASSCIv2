@@ -216,6 +216,40 @@ class McpBridgeTest extends TestCase
         $this->demander('auth0|revoked')->assertStatus(403);
     }
 
+    public function test_rejeu_hmac_reste_interdit_meme_apres_vidage_du_cache_file_ou_array(): void
+    {
+        // Deux requêtes au corps identique, sur deux appels HTTP : le garde
+        // anti-rejeu ne dépend d'aucun cache PHP local.
+        $nonce = (string) Str::uuid();
+        $payload = json_encode([
+            'issuer' => self::ISSUER,
+            'subject' => 'auth0|unknown-replay',
+            'organization' => self::ORG,
+            'tool' => 'get_connected_profile',
+            'arguments' => [],
+            'iat' => time(),
+            'nonce' => $nonce,
+        ], JSON_THROW_ON_ERROR);
+        $server = [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_KLASSCI_MCP_SIGNATURE' => hash_hmac('sha256', $payload, self::SECRET),
+        ];
+
+        // Première demande signée acceptée par le garde, refusée à
+        // l'application car le sujet OAuth n'est pas lié.
+        $this->call('POST', '/api/mcp-bridge', [], [], [], $server, $payload)
+            ->assertStatus(403);
+        $this->assertDatabaseHas('mcp_bridge_nonces', [
+            'nonce_hash' => hash('sha256', self::ORG.'|'.$nonce),
+        ]);
+
+        // Un autre processus PHP peut avoir perdu son cache ; la clé
+        // UNIQUE MySQL demeure la source d'autorité.
+        Cache::store('array')->flush();
+        $this->call('POST', '/api/mcp-bridge', [], [], [], $server, $payload)
+            ->assertStatus(401);
+    }
+
     public function test_un_compte_desactive_et_un_autre_tenant_sont_refuses(): void
     {
         $user = $this->utilisateur();

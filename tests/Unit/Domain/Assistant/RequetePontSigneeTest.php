@@ -4,7 +4,7 @@ namespace Tests\Unit\Domain\Assistant;
 
 use App\Domain\Assistant\Mcp\RequetePontSignee;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -17,8 +17,6 @@ class RequetePontSigneeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config()->set('cache.default', 'array');
-        Cache::store('array')->flush();
         config()->set('mcp.bridge.enabled', true);
         config()->set('mcp.read_only.enabled', true);
         config()->set('mcp.bridge.secret', self::SECRET);
@@ -51,6 +49,24 @@ class RequetePontSigneeTest extends TestCase
     {
         $body = $this->contenu();
         $requete = $this->requete($body);
+        // Simule la contrainte UNIQUE en base, sans migration ni SQL
+        // dans la suite unitaire. La feature suite la teste sur MariaDB.
+        $table = new class {
+            private array $nonces = [];
+
+            public function insert(array $row): bool
+            {
+                if (isset($this->nonces[$row['nonce_hash']])) {
+                    return false;
+                }
+                $this->nonces[$row['nonce_hash']] = true;
+
+                return true;
+            }
+        };
+        DB::shouldReceive('table')->twice()->with('mcp_bridge_nonces')
+            ->andReturn($table);
+
         $garde = new RequetePontSignee();
         $this->assertSame('auth0|prof-8', $garde->extraire($requete)['subject']);
         $this->assertNull($garde->extraire($requete), 'anti-rejeu');
@@ -96,6 +112,15 @@ class RequetePontSigneeTest extends TestCase
         config()->set('mcp.bridge.secret', self::SECRET);
         config()->set('mcp.read_only.enabled', false);
         $this->assertNull((new RequetePontSignee())->extraire($this->requete($body)));
+    }
+
+    public function test_une_panne_sql_ou_migration_absente_refuse_la_requete(): void
+    {
+        DB::shouldReceive('table')->once()->with('mcp_bridge_nonces')
+            ->andThrow(new \RuntimeException('database unavailable'));
+
+        $this->assertNull((new RequetePontSignee())
+            ->extraire($this->requete($this->contenu())));
     }
 
     public function test_hash_lie_ensemble_issuer_sujet_et_organisation(): void

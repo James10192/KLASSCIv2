@@ -3,7 +3,7 @@
 namespace App\Domain\Assistant\Mcp;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 final class RequetePontSignee
 {
@@ -53,11 +53,23 @@ final class RequetePontSignee
             return null;
         }
 
-        // Rejouer la même requête est toujours interdit, même après erreur.
-        // Cache::add est atomique avec les stores distribués compatibles.
-        // Le cache de production DOIT être partagé entre processus/serveurs.
-        $cle = 'mcp-bridge-replay:'.hash('sha256', $organization.'|'.$payload['nonce']);
-        if (! Cache::add($cle, true, 120)) {
+        // Protection anti-rejeu à garantie SQL unique, compatible MySQL
+        // mutualisé cPanel : PAS de Redis ou worker permanent requis.
+        // Ne jamais réutiliser un nonce valide, même si l'exécution métier
+        // a ensuite refusé la demande. La migration doit exister AVANT
+        // l'activation du pont ; toute panne SQL échoue en mode fermé.
+        try {
+            $insere = DB::table('mcp_bridge_nonces')->insert([
+                'nonce_hash' => hash('sha256', $organization.'|'.$payload['nonce']),
+                'expires_at' => now()->addSeconds(120),
+                'created_at' => now(),
+            ]);
+
+            if (! $insere) {
+                return null;
+            }
+        } catch (\Throwable $exception) {
+            // Ni secret ni nonce ne doivent finir dans les logs HTTP.
             return null;
         }
 

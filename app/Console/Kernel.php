@@ -49,10 +49,11 @@ class Kernel extends ConsoleKernel
         // assemblés jamais récupérés). Sans ça, rien ne les reprenait.
         $schedule->command('bulletins:purger-exports')->hourly();
 
-        // Nanan Connect : après 24 h, purger les empreintes des codes
-        // temporaires expirés. No-op tant que la migration n'existe pas.
+        // Nanan Connect sur cPanel : courtes passes bornées en SQL, ni
+        // Redis ni worker permanent. Purgées : empreintes de codes de
+        // liaison expirés et nonces HMAC déjà inutilisables.
         $schedule->command('nanan:mcp-prune-challenges --limit=1000')
-            ->hourlyAt(33)
+            ->everyTenMinutes()
             ->withoutOverlapping()
             ->name('nanan-mcp-purger-challenges');
 
