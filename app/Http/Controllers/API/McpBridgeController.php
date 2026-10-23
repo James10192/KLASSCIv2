@@ -84,11 +84,25 @@ final class McpBridgeController extends Controller
         $lien = DB::table('mcp_external_identities')
             ->where('identity_hash', $hash)
             ->where('organization', $payload['organization'])
-            ->whereNull('revoked_at')
             ->first();
 
         if (! $lien) {
-            return response()->json(['error' => 'Accès refusé.'], 403);
+            // Seul le bootstrap signé et autorisé peut distinguer un compte
+            // jamais lié d'un compte explicitement révoqué ou désactivé.
+            // Sans cette distinction, un simple 403 provoque un nouvel écran
+            // d'appairage même après révocation.
+            $reponse = ['error' => 'Accès refusé.'];
+            if ($payload['tool'] === 'list_authorized_tools'
+                && config('mcp.pairing.enabled') === true) {
+                $reponse['code'] = 'identity_not_linked';
+            }
+
+            return response()->json($reponse, 403)->header('Cache-Control', 'no-store');
+        }
+
+        if ($lien->revoked_at !== null) {
+            return response()->json(['error' => 'Accès refusé.'], 403)
+                ->header('Cache-Control', 'no-store');
         }
 
         $user = User::query()->whereKey($lien->user_id)->where('is_active', true)->first();
