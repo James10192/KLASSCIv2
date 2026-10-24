@@ -148,7 +148,7 @@ class ESBTPRolePermissionConfigController extends Controller
         }
 
         return $ok
-            ? redirect()->route('esbtp.roles-permissions.index', ['role' => $roleName])->with('success', $message)
+            ? redirect()->route('esbtp.personnel.unified.index', ['section' => 'roles'])->with('success', $message)
             : redirect()->back()->with('error', $message);
     }
 }
