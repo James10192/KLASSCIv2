@@ -238,21 +238,30 @@ class CLIPermissionController extends BaseApiController
             return $this->errorResponse("Le role '{$role}' ne se retire pas depuis le CLI.", [], 422);
         }
 
-        $revoquees = [];
-        foreach ($perms as $perm) {
-            if ($roleModel->hasPermissionTo($perm)) {
-                $roleModel->revokePermissionTo($perm);
-                $revoquees[] = $perm;
-            }
-        }
-
         $extensions = app(\App\Services\ExtensionsDeRole::class);
-        $extensions->enregistrer(
-            $role,
-            $roleModel->fresh()->permissions()->pluck('name')->all(),
-            $request->input('motif'),
-            $request->user()->id
-        );
+
+        // Changement de droits et trace durable dans la MEME transaction.
+        // Une migration manquante ou un audit en erreur ne doit jamais laisser
+        // un role modifie a moitie.
+        $revoquees = DB::transaction(function () use ($roleModel, $perms, $extensions, $role, $request) {
+            $existantes = $roleModel->permissions()->pluck('name')->all();
+            $revoquees = [];
+            foreach ($perms as $perm) {
+                if (in_array($perm, $existantes, true)) {
+                    $roleModel->revokePermissionTo($perm);
+                    $revoquees[] = $perm;
+                }
+            }
+
+            $extensions->enregistrer(
+                $role,
+                $roleModel->fresh()->permissions()->pluck('name')->all(),
+                $request->input('motif'),
+                $request->user()->id
+            );
+
+            return $revoquees;
+        });
 
         app()['cache']->forget(config('permission.cache.key', 'spatie.permission.cache'));
 
@@ -281,27 +290,31 @@ class CLIPermissionController extends BaseApiController
             return $this->errorResponse("Role '{$role}' not found", [], 404);
         }
 
-        $granted = [];
-        $missing = [];
-        foreach ($perms as $perm) {
-            $permModel = Permission::where('name', $perm)->where('guard_name', 'web')->first();
-            if (!$permModel) { $missing[] = $perm; continue; }
-            if (!$roleModel->hasPermissionTo($perm)) {
-                $roleModel->givePermissionTo($permModel);
-                $granted[] = $perm;
-            }
-        }
-        // Ce qui sort des defauts du role a ete voulu : on l'inscrit, sinon la
-        // synchronisation des permissions le prendrait pour de la derive et
-        // l'effacerait au prochain deploiement — precisement sur les roles
-        // d'organigramme qu'une ecole a le plus de raisons d'etendre.
         $extensions = app(\App\Services\ExtensionsDeRole::class);
-        $extensions->enregistrer(
-            $role,
-            $roleModel->permissions()->pluck('name')->all(),
-            $request->input('motif'),
-            $request->user()->id
-        );
+        [$granted, $missing] = DB::transaction(function () use ($roleModel, $perms, $extensions, $role, $request) {
+            $granted = [];
+            $missing = [];
+            foreach ($perms as $perm) {
+                $permModel = Permission::where('name', $perm)->where('guard_name', 'web')->first();
+                if (! $permModel) {
+                    $missing[] = $perm;
+                    continue;
+                }
+                if (! $roleModel->hasPermissionTo($perm)) {
+                    $roleModel->givePermissionTo($permModel);
+                    $granted[] = $perm;
+                }
+            }
+
+            $extensions->enregistrer(
+                $role,
+                $roleModel->fresh()->permissions()->pluck('name')->all(),
+                $request->input('motif'),
+                $request->user()->id
+            );
+
+            return [$granted, $missing];
+        });
 
         app()['cache']->forget(config('permission.cache.key', 'spatie.permission.cache'));
 
