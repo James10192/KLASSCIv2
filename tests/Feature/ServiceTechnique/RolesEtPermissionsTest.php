@@ -48,14 +48,11 @@ class RolesEtPermissionsTest extends TestCase
         $this->st->assignRole('serviceTechnique');
     }
 
-    public function test_la_page_se_rend_avec_le_role_demande(): void
+    public function test_ancienne_page_roles_redirige_vers_la_page_unifiee(): void
     {
         $this->actingAs($this->st)
             ->get(route('esbtp.roles-permissions.index', ['role' => 'comptable']))
-            ->assertOk()
-            ->assertSee('Rôles et permissions')
-            ->assertSee('id="rpRoleInput" name="role" value="comptable"', false)
-            ->assertSee('data-role="comptable"', false);
+            ->assertRedirect(route('esbtp.personnel.unified.index', ['section' => 'roles']));
     }
 
     public function test_l_enregistrement_en_json_rend_les_permissions_du_role(): void

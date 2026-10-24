@@ -17,99 +17,11 @@ class ESBTPRolePermissionConfigController extends Controller
         $this->middleware(['auth', 'role:serviceTechnique']);
     }
 
-    public function index(Request $request, PermissionRegistry $registry)
+    public function index()
     {
-        app()[PermissionRegistrar::class]->forgetCachedPermissions();
-
-        $allowedRoles = $registry->rolesVisibleInUi()->keys()->all();
-
-        $roles = Role::with('permissions')
-            ->whereIn('name', $allowedRoles)
-            ->get()
-            ->sortBy(fn ($r) => array_search($r->name, $allowedRoles))
-            ->values();
-
-        // Toutes les permissions canoniques (les aliases sont masqués par défaut)
-        $showLegacy = $request->boolean('show_legacy', false);
-        $registryPerms = $registry->all();
-
-        $permissions = $showLegacy
-            ? Permission::orderBy('name')->get()
-            : Permission::whereIn('name', $registryPerms->keys()->all())->orderBy('name')->get();
-
-        // Group permissions by registry's group + sort
-        $groupOrder = [
-            'Tableau de bord', 'Administration', 'Étudiants', 'Inscriptions',
-            'Académique', 'Notes & Évaluations', 'Bulletins', 'Présences',
-            'Planning', 'Paiements', 'Frais', 'Comptabilité', 'Personnel',
-            'Communication', 'Rapports', 'Résultats', 'Identité',
-            'Modules', 'Sécurité', 'Système',
-        ];
-
-        $groupedPermissions = $permissions->groupBy(function ($permission) use ($registryPerms, $registry) {
-            $canonical = $registry->canonicalize($permission->name);
-            $meta = $registryPerms[$canonical] ?? null;
-            return $meta['group'] ?? 'Autres';
-        });
-
-        $sortedGroups = collect();
-        foreach ($groupOrder as $groupName) {
-            if ($groupedPermissions->has($groupName)) {
-                $sortedGroups[$groupName] = $groupedPermissions[$groupName];
-            }
-        }
-        foreach ($groupedPermissions as $groupName => $items) {
-            if (! $sortedGroups->has($groupName)) {
-                $sortedGroups[$groupName] = $items;
-            }
-        }
-
-        // Catalogue : permission name → [label_fr, group, icon, is_alias, canonical, deprecated_reason]
-        $catalog = [];
-        foreach ($permissions as $perm) {
-            $canonical = $registry->canonicalize($perm->name);
-            $meta = $registryPerms[$canonical] ?? null;
-            $isAlias = $perm->name !== $canonical;
-
-            $catalog[$perm->name] = [
-                'label' => $meta['label'] ?? $perm->name,
-                'group' => $meta['group'] ?? 'Autres',
-                'icon' => $meta['icon'] ?? 'fa-key',
-                'is_alias' => $isAlias,
-                'canonical' => $canonical,
-                'deprecated_reason' => $registry->isDeprecated($perm->name) ? $registry->deprecatedReason($perm->name) : null,
-            ];
-        }
-
-        $rolePermissions = $roles->mapWithKeys(function ($role) {
-            return [$role->name => $role->permissions->pluck('name')->values()];
-        });
-
-        $selectedRoleName = $request->input('role', $roles->first()?->name);
-        if ($selectedRoleName && ! $roles->contains('name', $selectedRoleName)) {
-            $selectedRoleName = $roles->first()?->name;
-        }
-
-        // Métadonnées des rôles (label FR, icône, description) depuis le registry
-        $roleMeta = $registry->roles();
-        $roleLabels = $roleMeta->mapWithKeys(fn ($m, $name) => [$name => $m['label'] ?? $name])->all();
-        $roleDescriptions = $roleMeta->mapWithKeys(fn ($m, $name) => [$name => $m['description'] ?? ''])->all();
-        $roleIcons = $roleMeta->mapWithKeys(fn ($m, $name) => [$name => $m['icon'] ?? 'fa-user'])->all();
-
-        // Groupement des rôles par catégorie (Administration / Pédagogie / etc.)
-        $groupedRoles = $roles->groupBy(fn ($r) => $roleMeta[$r->name]['group'] ?? 'Autres');
-
-        // Matrice de gestion users (qui peut gérer qui) — lecture seule pour info
-        $managementMatrix = collect($allowedRoles)->mapWithKeys(fn ($role) => [
-            $role => $registry->manageableRoles($role),
-        ]);
-
-        return view('esbtp.roles-permissions.index', compact(
-            'roles', 'permissions', 'groupedPermissions', 'groupedRoles',
-            'rolePermissions', 'selectedRoleName', 'catalog', 'sortedGroups',
-            'roleLabels', 'roleDescriptions', 'roleIcons',
-            'managementMatrix', 'showLegacy'
-        ));
+        // La gestion des rôles est intégrée aux modales de Personnel/unified.
+        // Les POST et l'audit techniques restent protégés et disponibles.
+        return redirect()->route('esbtp.personnel.unified.index', ['section' => 'roles']);
     }
 
     /**

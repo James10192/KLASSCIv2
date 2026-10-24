@@ -35,8 +35,9 @@ class ESBTPCustomRoleController extends Controller
 {
     /**
      * Rôles système éditables depuis /esbtp/personnel/unified par les users avec
-     * `personnel.manage` (Lot 17). superAdmin et serviceTechnique restent gérés
-     * exclusivement via /esbtp/roles-permissions (Service Technique).
+     * `personnel.manage` (Lot 17). Les rôles bootstrap superAdmin et
+     * serviceTechnique ne sont pas modifiables depuis les modales : les garder
+     * immuables évite de verrouiller l'administration de l'instance.
      *
      * Pour ces rôles, seuls label_fr / icon / description / permissions sont modifiables.
      * Le `name` interne reste immuable (sinon casse les @can() et le code applicatif).
