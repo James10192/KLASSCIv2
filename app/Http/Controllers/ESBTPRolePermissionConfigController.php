@@ -148,9 +148,9 @@ class ESBTPRolePermissionConfigController extends Controller
         try {
             [$avant, $apres] = $this->appliquer($roleName, $permissionNames, 'Accordé depuis la configuration des rôles.');
         } catch (\Throwable $e) {
-            Log::error('Configuration des rôles : enregistrement refusé', ['role' => $roleName, 'erreur' => $e->getMessage()]);
+            Log::error('Configuration des rôles : enregistrement refusé', ['role' => $roleName, 'exception_type' => get_class($e)]);
 
-            return $this->repondre($request, false, 'Les permissions n\'ont pas été enregistrées : ' . $e->getMessage(), $roleName, null);
+            return $this->repondre($request, false, 'Les permissions n\'ont pas été enregistrées. Contactez le support.', $roleName, null);
         }
 
         Log::info('Configuration des rôles : permissions enregistrées', [
@@ -179,9 +179,9 @@ class ESBTPRolePermissionConfigController extends Controller
             // ce que l'école vient de retirer.
             [, $apres] = $this->appliquer($roleName, $existing, 'Défauts restaurés depuis la configuration des rôles.');
         } catch (\Throwable $e) {
-            Log::error('Configuration des rôles : restauration refusée', ['role' => $roleName, 'erreur' => $e->getMessage()]);
+            Log::error('Configuration des rôles : restauration refusée', ['role' => $roleName, 'exception_type' => get_class($e)]);
 
-            return $this->repondre($request, false, 'Les défauts n\'ont pas été restaurés : ' . $e->getMessage(), $roleName, null);
+            return $this->repondre($request, false, 'La restauration des défauts a échoué. Contactez le support.', $roleName, null);
         }
 
         return $this->repondre($request, true, "Permissions par défaut restaurées pour {$roleName} (" . count($apres) . ' permissions).', $roleName, $apres);
