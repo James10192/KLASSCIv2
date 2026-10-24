@@ -5,6 +5,7 @@ namespace Tests\Feature\ServiceTechnique;
 use App\Models\User;
 use App\Services\ExtensionsDeRole;
 use App\Services\PermissionRegistry;
+use App\Services\PermissionSyncService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -110,6 +111,48 @@ class RolesEtPermissionsTest extends TestCase
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $this->assertTrue(Role::findByName('comptable')->hasPermissionTo($alias));
+    }
+
+    public function test_un_droit_par_defaut_explicitement_revoque_ne_revient_pas_au_deploiement(): void
+    {
+        // paiements.correct_mode figure dans le rattrapage newFeaturePermissions.
+        // Auparavant il était systématiquement réaccordé au prochain sync.
+        $role = Role::findOrCreate('caissier', 'web');
+        Permission::findOrCreate('paiements.correct_mode', 'web');
+        Permission::findOrCreate('paiements.view_own', 'web');
+        $role->syncPermissions(['paiements.correct_mode', 'paiements.view_own']);
+
+        $this->actingAs($this->st)
+            ->postJson(route('esbtp.roles-permissions.update'), [
+                'role' => 'caissier',
+                'permissions' => ['paiements.view_own'],
+            ])
+            ->assertOk();
+
+        $this->assertContains(
+            'paiements.correct_mode',
+            app(ExtensionsDeRole::class)->revoqueesPour('caissier')
+        );
+
+        app(PermissionSyncService::class)->run();
+
+        $this->assertFalse(Role::findByName('caissier', 'web')
+            ->hasPermissionTo('paiements.correct_mode'));
+
+        // Restaurer les paramètres usine supprime la décision de retrait.
+        $this->actingAs($this->st)
+            ->postJson(route('esbtp.roles-permissions.restore-defaults'), [
+                'role' => 'caissier',
+            ])->assertOk();
+
+        $this->assertNotContains(
+            'paiements.correct_mode',
+            app(ExtensionsDeRole::class)->revoqueesPour('caissier')
+        );
+
+        app(PermissionSyncService::class)->run();
+        $this->assertTrue(Role::findByName('caissier', 'web')
+            ->hasPermissionTo('paiements.correct_mode'));
     }
 
     public function test_un_compte_sans_service_technique_est_refuse(): void
