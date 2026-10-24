@@ -329,6 +329,7 @@ class ESBTPCustomRoleController extends Controller
         }
 
         $roleModel = Role::where('name', $role)->firstOrFail();
+        $this->assertStandardRoleManageable($roleModel, $registry);
         $configMeta = config('permissions.roles', [])[$role] ?? [];
 
         $grantablePermissions = $this->grantablePermissionsForActor($registry);
@@ -355,6 +356,7 @@ class ESBTPCustomRoleController extends Controller
         }
 
         $roleModel = Role::where('name', $role)->firstOrFail();
+        $this->assertStandardRoleManageable($roleModel, $registry);
 
         $validated = $request->validate([
             'label_fr' => ['required', 'string', 'max:255'],
@@ -600,6 +602,32 @@ class ESBTPCustomRoleController extends Controller
             'message' => 'Certains comptes ont des rôles hors de votre périmètre ou ne sont pas encore habilités.',
             'forbidden_user_ids' => $interdits,
         ], 403);
+    }
+
+    /**
+     * Un gestionnaire du personnel ne gère pas automatiquement les rôles
+     * de toute l'école : la matrice de gestion s'applique aussi aux rôles
+     * standards. Il ne peut pas non plus supprimer des droits qu'il ne
+     * possède pas lui-même. Le superadmin reste couvert par sa matrice.
+     */
+    private function assertStandardRoleManageable(Role $role, PermissionRegistry $registry): void
+    {
+        abort_unless(
+            in_array($role->name, $this->manageableRolesForActor($registry), true),
+            403,
+            'Ce rôle n’appartient pas à votre périmètre de gestion.'
+        );
+
+        $currentPermissions = array_values(array_unique(array_map(
+            fn (string $nom) => $registry->canonicalize($nom),
+            $role->permissions()->pluck('name')->all()
+        )));
+
+        abort_if(
+            $this->denyIfPermissionsNotGrantable($currentPermissions, $registry) !== null,
+            403,
+            'Ce rôle contient des permissions que vous ne pouvez pas administrer.'
+        );
     }
 
     /**
