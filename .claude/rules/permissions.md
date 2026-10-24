@@ -9,7 +9,10 @@ Quand tu ajoutes/modifies une permission, un rôle, une vérif `@can(...)`, `->c
 La seule page fonctionnelle de gestion du personnel et des rôles est
 `/esbtp/personnel/unified`. Les anciennes routes GET `/esbtp/personnel`,
 `/esbtp/roles`, `/esbtp/roles-permissions` et `/esbtp/custom-roles`
-redirigent vers cette page. Les endpoints AJAX dédiés à la création,
+redirigent vers cette page. Les anciennes routes POST/PUT/PATCH/DELETE
+`/esbtp/personnel` sont fermées : seules les écritures du contrôleur unifié
+restent publiées. Les GET techniques de lecture/export sont maintenus pour
+compatibilité. Les endpoints AJAX dédiés à la création,
 aux modifications et aux affectations restent autorisés par leurs gardes
 serveur : les redirections ne doivent pas affaiblir leur sécurité.
 

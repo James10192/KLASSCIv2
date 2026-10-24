@@ -3187,11 +3187,9 @@ Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|iden
     Route::get('/personnel', [\App\Http\Controllers\ESBTPPersonnelController::class, 'index'])->name('personnel.index');
     Route::get('/personnel/data', [\App\Http\Controllers\ESBTPPersonnelController::class, 'getData'])->name('personnel.data');
     Route::get('/personnel/stats', [\App\Http\Controllers\ESBTPPersonnelController::class, 'getStats'])->name('personnel.stats');
-    Route::post('/personnel', [\App\Http\Controllers\ESBTPPersonnelController::class, 'store'])->name('personnel.store');
-    Route::put('/personnel/{personnel}', [\App\Http\Controllers\ESBTPPersonnelController::class, 'update'])->name('personnel.update');
-    Route::delete('/personnel/{personnel}', [\App\Http\Controllers\ESBTPPersonnelController::class, 'destroy'])->name('personnel.destroy');
-    Route::patch('/personnel/{personnel}/toggle-status', [\App\Http\Controllers\ESBTPPersonnelController::class, 'toggleStatus'])->name('personnel.toggle-status');
-    Route::post('/personnel/bulk-action', [\App\Http\Controllers\ESBTPPersonnelController::class, 'bulkAction'])->name('personnel.bulk-action');
+    // Anciennes écritures retirées : elles contournaient les gardes spécifiques
+    // de /personnel/unified. Conserver les GET de compatibilité et les routes
+    // propres aux profils, mais aucune mutation via ce contrôleur historique.
     Route::get('/personnel/export', [\App\Http\Controllers\ESBTPPersonnelController::class, 'export'])->name('personnel.export');
     // Routes pour les coordinateurs (maintien de la compatibilitÃ©)
     Route::resource('coordinateurs', \App\Http\Controllers\ESBTPCoordinateurController::class);

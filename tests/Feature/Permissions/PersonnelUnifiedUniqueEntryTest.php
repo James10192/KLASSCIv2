@@ -65,6 +65,23 @@ class PersonnelUnifiedUniqueEntryTest extends TestCase
             ->assertRedirect(route('esbtp.personnel.unified.index', ['section' => 'roles']));
     }
 
+    public function test_anciens_endpoints_personnel_ne_proposent_plus_de_mutations(): void
+    {
+        foreach ([
+            'esbtp.personnel.store',
+            'esbtp.personnel.update',
+            'esbtp.personnel.destroy',
+            'esbtp.personnel.toggle-status',
+            'esbtp.personnel.bulk-action',
+        ] as $route) {
+            $this->assertFalse(\Illuminate\Support\Facades\Route::has($route), $route);
+        }
+
+        $this->assertTrue(
+            \Illuminate\Support\Facades\Route::has('esbtp.personnel.unified.store')
+        );
+    }
+
     public function test_api_de_liste_custom_roles_reste_json_sur_la_page_unifiee(): void
     {
         $this->actingAs($this->administrateur());
