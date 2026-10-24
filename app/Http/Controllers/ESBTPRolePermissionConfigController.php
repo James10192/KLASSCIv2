@@ -48,6 +48,10 @@ class ESBTPRolePermissionConfigController extends Controller
         ]);
 
         $roleName = $validated['role'];
+        // Les rôles de secours ne sont jamais modifiables, même via un
+        // ancien endpoint technique ou une requête forgée.
+        abort_if(in_array($roleName, ['superAdmin', 'serviceTechnique'], true), 403,
+            'Les permissions des rôles de secours ne sont pas modifiables.');
         $permissionNames = array_values(array_unique($validated['permissions'] ?? []));
 
         // Anciens noms masqués à l'écran : chaque nom coché garde ses alias,
@@ -79,6 +83,8 @@ class ESBTPRolePermissionConfigController extends Controller
     {
         $validated = $request->validate(['role' => 'required|exists:roles,name']);
         $roleName = $validated['role'];
+        abort_if(in_array($roleName, ['superAdmin', 'serviceTechnique'], true), 403,
+            'Les rôles de secours ne peuvent pas être réinitialisés.');
 
         $expanded = $registry->avecAlias($registry->defaultPermissionsFor($roleName));
 

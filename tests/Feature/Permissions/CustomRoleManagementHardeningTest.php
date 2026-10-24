@@ -249,7 +249,8 @@ class CustomRoleManagementHardeningTest extends TestCase
                 'permissions' => ['inscriptions.validate'],
             ])
             ->assertOk()
-            ->assertJson(['success' => true]);
+            ->assertJson(['success' => true])
+            ->assertJsonPath('role.name', $role->name);
 
         $this->assertContains(
             'inscriptions.validate',

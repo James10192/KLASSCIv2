@@ -152,6 +152,24 @@ class RolesEtPermissionsTest extends TestCase
             ->hasPermissionTo('paiements.correct_mode'));
     }
 
+    public function test_roles_de_secours_immuables_sur_les_endpoints_techniques(): void
+    {
+        foreach (['superAdmin', 'serviceTechnique'] as $roleName) {
+            Role::findOrCreate($roleName, 'web');
+
+            $this->actingAs($this->st)
+                ->postJson(route('esbtp.roles-permissions.update'), [
+                    'role' => $roleName,
+                    'permissions' => [],
+                ])->assertForbidden();
+
+            $this->actingAs($this->st)
+                ->postJson(route('esbtp.roles-permissions.restore-defaults'), [
+                    'role' => $roleName,
+                ])->assertForbidden();
+        }
+    }
+
     public function test_un_compte_sans_service_technique_est_refuse(): void
     {
         $this->actingAs(User::factory()->create())

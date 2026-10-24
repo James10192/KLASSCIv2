@@ -280,6 +280,11 @@ class CLIPermissionController extends BaseApiController
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
 
+        // Le grant suit la même interdiction que roleRevoke.
+        if (in_array($role, ['superAdmin', 'serviceTechnique'], true)) {
+            return $this->errorResponse("Le role '{$role}' n'est pas modifiable depuis le CLI.", [], 422);
+        }
+
         $perms = $request->input('permissions', []);
         if (!is_array($perms) || empty($perms)) {
             return $this->errorResponse('permissions[] requis', [], 422);
