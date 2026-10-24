@@ -450,6 +450,7 @@ class ESBTPCustomRoleController extends Controller
         }
 
         $manageableRoles = $this->manageableRolesForActor($registry);
+        abort_if($manageableRoles === [], 403, 'Aucun périmètre de gestion du personnel.');
         $rolesAdmissibles = array_values(array_unique([...$manageableRoles, $roleModel->name]));
 
         // Une appartenance à un rôle gérable ne suffit pas : un second rôle
@@ -464,12 +465,13 @@ class ESBTPCustomRoleController extends Controller
             ->unique('id')
             ->values();
 
-        // La liste des cases pré-cochées reflète les seuls comptes éditables.
-        // Les autres affectations restent en base et sont refusées côté POST.
-        $currentUserIds = array_values(array_intersect(
-            $roleModel->users()->pluck('users.id')->all(),
-            $assignableUsers->pluck('id')->all()
-        ));
+        $allCurrentIds = $roleModel->users()->pluck('users.id')->all();
+        abort_if(
+            $this->refusAffectation($roleModel, $allCurrentIds, $registry) !== null,
+            403,
+            'Certaines affectations existantes sont hors de votre périmètre.'
+        );
+        $currentUserIds = $allCurrentIds;
 
         return view('esbtp.custom-roles._assign-users-modal', [
             'role' => $roleModel,
@@ -499,40 +501,12 @@ class ESBTPCustomRoleController extends Controller
 
         $requestedUserIds = collect($validated['user_ids'] ?? [])->unique()->values()->all();
 
-        // Le rôle cible ne doit jamais permettre de transmettre une permission
-        // que l'auteur ne possède pas, même par simple affectation d'utilisateurs.
-        if ($denial = $this->denyIfPermissionsNotGrantable(
-            $roleModel->permissions()->pluck('name')->all(), $registry
-        )) {
-            return $denial;
-        }
-
-        $manageableRoles = $this->manageableRolesForActor($registry);
-        if ($manageableRoles === []) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Aucun périmètre de gestion des utilisateurs ne vous est attribué.',
-            ], 403);
-        }
-
-        $rolesAdmissibles = array_values(array_unique([...$manageableRoles, $roleModel->name]));
-        // Vérifier aussi les comptes que l'opération veut DÉTACHER : envoyer
-        // user_ids=[] ne doit pas permettre de désaffecter des comptes protégés.
+        // La liste envoyée est l'état complet : contrôler les ajouts ET les
+        // retraits, sans échapper au contrôle lorsque user_ids est vide.
         $currentIds = $roleModel->users()->pluck('users.id')->all();
         $touchedIds = array_values(array_unique([...$requestedUserIds, ...$currentIds]));
-        $forbidden = User::whereIn('id', $touchedIds)
-            ->where(function ($q) use ($rolesAdmissibles) {
-                $q->whereDoesntHave('roles')
-                    ->orWhereHas('roles', fn ($roles) => $roles->whereNotIn('name', $rolesAdmissibles));
-            })
-            ->pluck('id')->all();
-
-        if ($forbidden !== []) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Certains comptes ont des rôles hors de votre périmètre ou ne sont pas encore habilités.',
-                'forbidden_user_ids' => $forbidden,
-            ], 403);
+        if ($denial = $this->refusAffectation($roleModel, $touchedIds, $registry)) {
+            return $denial;
         }
 
         return $this->runMutation($registry, 'l\'affectation', function () use ($roleModel, $requestedUserIds) {
@@ -572,6 +546,9 @@ class ESBTPCustomRoleController extends Controller
         }
 
         $userModel = User::findOrFail($user);
+        if ($denial = $this->refusAffectation($roleModel, [$userModel->id], $registry)) {
+            return $denial;
+        }
 
         return $this->runMutation($registry, 'le détachement', function () use ($userModel, $roleModel) {
             $userModel->removeRole($roleModel);
@@ -584,6 +561,43 @@ class ESBTPCustomRoleController extends Controller
     }
 
     // ─────────────── Helpers privés ───────────────
+
+    /**
+     * Garde commune aux ajouts, retraits unitaires et synchronisations de
+     * membres. Une permission du rôle cible ou un second rôle non gérable
+     * doit refuser toute l'opération, y compris les listes vides.
+     */
+    private function refusAffectation(Role $role, array $userIds, PermissionRegistry $registry): ?\Illuminate\Http\JsonResponse
+    {
+        if ($denial = $this->denyIfPermissionsNotGrantable(
+            $role->permissions()->pluck('name')->all(), $registry
+        )) {
+            return $denial;
+        }
+
+        $manageable = $this->manageableRolesForActor($registry);
+        if ($manageable === []) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucun périmètre de gestion des utilisateurs ne vous est attribué.',
+            ], 403);
+        }
+
+        $admissibles = array_values(array_unique([...$manageable, $role->name]));
+        $interdits = User::query()
+            ->whereIn('id', $userIds)
+            ->where(function ($q) use ($admissibles) {
+                $q->whereDoesntHave('roles')
+                    ->orWhereHas('roles', fn ($roles) => $roles->whereNotIn('name', $admissibles));
+            })
+            ->pluck('id')->all();
+
+        return $interdits === [] ? null : response()->json([
+            'success' => false,
+            'message' => 'Certains comptes ont des rôles hors de votre périmètre ou ne sont pas encore habilités.',
+            'forbidden_user_ids' => $interdits,
+        ], 403);
+    }
 
     /**
      * Query builder pour les rôles custom uniquement (is_custom = true).
