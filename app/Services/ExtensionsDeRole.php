@@ -38,7 +38,7 @@ class ExtensionsDeRole
     public function enregistrer(string $roleName, array $permissionsAccordees, ?string $motif = null, ?int $parUtilisateur = null): void
     {
         if (! $this->tableExiste()) {
-            return;
+            throw new \RuntimeException('La migration des extensions de rôles doit être exécutée avant toute modification de rôle.');
         }
 
         // Une interface enregistre l'ensemble COMPLET des droits accordés.
