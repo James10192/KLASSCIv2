@@ -570,7 +570,10 @@ class ESBTPCustomRoleController extends Controller
     private function refusAffectation(Role $role, array $userIds, PermissionRegistry $registry): ?\Illuminate\Http\JsonResponse
     {
         if ($denial = $this->denyIfPermissionsNotGrantable(
-            $role->permissions()->pluck('name')->all(), $registry
+            array_values(array_unique(array_map(
+                fn (string $nom) => $registry->canonicalize($nom),
+                $role->permissions()->pluck('name')->all()
+            ))), $registry
         )) {
             return $denial;
         }
