@@ -68,6 +68,9 @@
                                     <span class="cr-user-name">{{ $user->name }}</span>
                                     <span class="cr-user-email">{{ $user->email }}</span>
                                 </span>
+                                @unless($user->is_active)
+                                    <span class="cr-user-role-tag" title="Ce compte est désactivé et conserve son affectation jusqu'au retrait explicite.">Compte désactivé</span>
+                                @endunless
                                 @if($primaryRole)
                                     <span class="cr-user-role-tag">
                                         <i class="fas fa-shield"></i>

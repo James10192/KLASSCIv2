@@ -20,6 +20,8 @@ class ExtensionsDeRole
 {
     public const TABLE = 'role_permission_extensions';
 
+    public const TABLE_REVOQUEES = 'role_permission_revocations';
+
     public function __construct(private readonly PermissionRegistry $registry)
     {
     }
@@ -36,28 +38,52 @@ class ExtensionsDeRole
     public function enregistrer(string $roleName, array $permissionsAccordees, ?string $motif = null, ?int $parUtilisateur = null): void
     {
         if (! $this->tableExiste()) {
-            return;
+            throw new \RuntimeException('La migration des extensions de rôles doit être exécutée avant toute modification de rôle.');
+        }
+
+        // Une interface enregistre l'ensemble COMPLET des droits accordés.
+        // Les ajouts et les retraits explicites sont une seule décision atomique.
+        // Fail closed si le schema n'est pas migré : ne jamais afficher un
+        // succès alors que la synchronisation effacerait cette décision.
+        if (! $this->tableRevocationsExiste()) {
+            throw new \RuntimeException('La migration des révocations de permissions doit être exécutée avant toute modification de rôle.');
         }
 
         $voulues = $this->horsDefauts($roleName, $permissionsAccordees);
+        $accordees = array_flip(array_map(
+            fn (string $nom) => $this->registry->canonicalize($nom),
+            $permissionsAccordees
+        ));
+        $retirees = array_values(array_filter(
+            $this->registry->defaultPermissionsFor($roleName),
+            fn (string $nom) => ! isset($accordees[$this->registry->canonicalize($nom)])
+        ));
 
-        DB::transaction(function () use ($roleName, $voulues, $motif, $parUtilisateur) {
+        DB::transaction(function () use ($roleName, $voulues, $retirees, $motif, $parUtilisateur) {
             DB::table(self::TABLE)->where('role_name', $roleName)->delete();
-
-            if ($voulues === []) {
-                return;
-            }
+            DB::table(self::TABLE_REVOQUEES)->where('role_name', $roleName)->delete();
 
             $maintenant = now();
-
-            DB::table(self::TABLE)->insert(array_map(fn (string $permission) => [
+            $audit = fn (string $nom) => [
                 'role_name' => $roleName,
-                'permission_name' => $permission,
+                'permission_name' => $nom,
                 'motif' => $motif,
-                'accordee_par' => $parUtilisateur,
                 'created_at' => $maintenant,
                 'updated_at' => $maintenant,
-            ], $voulues));
+            ];
+
+            if ($voulues !== []) {
+                DB::table(self::TABLE)->insert(array_map(
+                    fn (string $nom) => $audit($nom) + ['accordee_par' => $parUtilisateur],
+                    $voulues
+                ));
+            }
+            if ($retirees !== []) {
+                DB::table(self::TABLE_REVOQUEES)->insert(array_map(
+                    fn (string $nom) => $audit($nom) + ['retiree_par' => $parUtilisateur],
+                    $retirees
+                ));
+            }
         });
     }
 
@@ -73,6 +99,26 @@ class ExtensionsDeRole
         }
 
         return DB::table(self::TABLE)
+            ->where('role_name', $roleName)
+            ->pluck('permission_name')
+            ->all();
+    }
+
+    /**
+     * Permissions par defaut retirees deliberement par cette instance.
+     * Sur un serveur pas encore migre, la synchronisation peut toujours
+     * tourner avant les migrations. Aucune revocation preexistante n'est alors
+     * possible dans cette nouvelle table.
+     *
+     * @return list<string>
+     */
+    public function revoqueesPour(string $roleName): array
+    {
+        if (! $this->tableRevocationsExiste()) {
+            return [];
+        }
+
+        return DB::table(self::TABLE_REVOQUEES)
             ->where('role_name', $roleName)
             ->pluck('permission_name')
             ->all();
@@ -115,6 +161,13 @@ class ExtensionsDeRole
      * derive au nettoyage suivant. La memoire est aussi tenue par connexion :
      * une table presente ici ne l'est pas forcement ailleurs.
      */
+    private function tableRevocationsExiste(): bool
+    {
+        // Ne pas memoriser une absence (sync avant migrate), et tenir compte
+        // de la connexion de la base de chaque instance.
+        return DB::getSchemaBuilder()->hasTable(self::TABLE_REVOQUEES);
+    }
+
     private function tableExiste(): bool
     {
         static $vue = [];
