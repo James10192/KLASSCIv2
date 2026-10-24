@@ -127,6 +127,40 @@ class CustomRoleManagementHardeningTest extends TestCase
         $this->assertTrue($target->fresh()->hasRole($role->name));
     }
 
+    public function test_un_gestionnaire_ne_peut_pas_modifier_un_role_standard_hors_de_sa_matrice(): void
+    {
+        $actor = $this->acteur('coordinateur');
+        Role::findOrCreate('comptable', 'web');
+
+        $this->actingAs($actor)
+            ->putJson(route('esbtp.custom-roles.standard.update', 'comptable'), [
+                'label_fr' => 'Comptabilité',
+                'permissions' => [],
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($actor)
+            ->get(route('esbtp.custom-roles.standard.edit', 'comptable'))
+            ->assertForbidden();
+    }
+
+    public function test_un_gestionnaire_ne_peut_pas_retirer_un_droit_de_role_standard_qu_il_ne_possede_pas(): void
+    {
+        $actor = $this->acteur('coordinateur');
+        $role = Role::findOrCreate('enseignant', 'web');
+        $permission = Permission::findOrCreate('security.audit.view', 'web');
+        $role->givePermissionTo($permission);
+
+        $this->actingAs($actor)
+            ->putJson(route('esbtp.custom-roles.standard.update', 'enseignant'), [
+                'label_fr' => 'Enseignant',
+                'permissions' => [],
+            ])
+            ->assertForbidden();
+
+        $this->assertTrue($role->fresh()->hasPermissionTo($permission));
+    }
+
     public function test_extension_d_un_role_standard_saisie_via_personnel_survit_a_la_sync(): void
     {
         $actor = $this->acteur('superAdmin', false);
