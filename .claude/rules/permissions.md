@@ -4,6 +4,21 @@
 
 Quand tu ajoutes/modifies une permission, un rôle, une vérif `@can(...)`, `->can(...)`, `middleware('permission:...')`, ou que tu touches `config/permissions.php`.
 
+## Interface unique de gestion du personnel
+
+La seule page fonctionnelle de gestion du personnel et des rôles est
+`/esbtp/personnel/unified`. Les anciennes routes GET `/esbtp/personnel`,
+`/esbtp/roles`, `/esbtp/roles-permissions` et `/esbtp/custom-roles`
+redirigent vers cette page. Les endpoints AJAX dédiés à la création,
+aux modifications et aux affectations restent autorisés par leurs gardes
+serveur : les redirections ne doivent pas affaiblir leur sécurité.
+
+`superAdmin` et `serviceTechnique` demeurent des rôles de secours
+non éditables dans l'interface, l'ancienne API technique et la CLI.
+Le serviceTechnique peut restaurer les droits standards depuis la modale
+d'édition sur la page unifiée. Le tenant garde ses propres décisions
+d'ajout et de retrait de permissions.
+
 ## Source unique de vérité
 
 - **Registry** : `config/permissions.php`
@@ -35,7 +50,7 @@ Les noms non-canoniques restent supportés via le mécanisme d'**aliases** (rét
        'aliases' => [],  // optionnel
    ],
    ```
-2. Attribuer aux rôles via `role_defaults` (ou via UI `/esbtp/roles-permissions`).
+2. Attribuer aux rôles via `role_defaults` (ou via les modales de l'écran unique `/esbtp/personnel/unified`, section Rôles).
 3. Lancer `php bin/deploy/fix_permissions.php` pour propager en DB.
 4. Vérifier `php artisan permissions:audit`.
 
