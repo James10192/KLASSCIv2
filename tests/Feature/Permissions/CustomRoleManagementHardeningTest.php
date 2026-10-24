@@ -36,7 +36,7 @@ class CustomRoleManagementHardeningTest extends TestCase
     private function acteur(string $role, bool $gererPersonnel = true): User
     {
         Role::findOrCreate($role, 'web');
-        $user = User::factory()->create();
+        $user = User::factory()->create(['is_active' => true]);
         $user->assignRole($role);
 
         if ($gererPersonnel) {
@@ -125,6 +125,54 @@ class CustomRoleManagementHardeningTest extends TestCase
             ->assertJson(['success' => true]);
 
         $this->assertTrue($target->fresh()->hasRole($role->name));
+    }
+
+    public function test_superadmin_peut_attribuer_un_role_a_un_compte_actif_sans_role(): void
+    {
+        $actor = $this->acteur('superAdmin', false);
+        $role = $this->rolePersonnalise('roleTestInitialisation');
+        $target = User::factory()->create(['is_active' => true]);
+
+        $this->actingAs($actor)
+            ->postJson(route('esbtp.custom-roles.assign-users', $role->name), [
+                'user_ids' => [$target->id],
+            ])
+            ->assertOk();
+
+        $this->assertTrue($target->fresh()->hasRole($role->name));
+    }
+
+    public function test_compte_inactif_deja_attribue_reste_visible_et_pas_detache_automatiquement(): void
+    {
+        $actor = $this->acteur('superAdmin', false);
+        $role = $this->rolePersonnalise('roleTestInactif');
+        $target = $this->acteur('enseignant', false);
+        $target->assignRole($role);
+        $target->is_active = false;
+        $target->save();
+
+        $this->actingAs($actor)
+            ->get(route('esbtp.custom-roles.assign-users.form', $role->name))
+            ->assertOk()
+            ->assertSee($target->email)
+            ->assertSee('Compte désactivé');
+
+        $this->actingAs($actor)
+            ->postJson(route('esbtp.custom-roles.assign-users', $role->name), [
+                'user_ids' => [$target->id],
+            ])
+            ->assertOk();
+
+        $this->assertTrue($target->fresh()->hasRole($role->name));
+
+        $targetSansRole = User::factory()->create(['is_active' => false]);
+        $this->actingAs($actor)
+            ->postJson(route('esbtp.custom-roles.assign-users', $role->name), [
+                'user_ids' => [$target->id, $targetSansRole->id],
+            ])
+            ->assertForbidden();
+
+        $this->assertFalse($targetSansRole->fresh()->hasRole($role->name));
     }
 
     public function test_un_gestionnaire_ne_peut_pas_modifier_un_role_standard_hors_de_sa_matrice(): void
