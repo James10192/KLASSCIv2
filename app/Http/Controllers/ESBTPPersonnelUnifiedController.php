@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
@@ -616,10 +617,15 @@ class ESBTPPersonnelUnifiedController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Gestion du personnel : échec de création', [
+                'action' => 'store',
+                'exception' => get_class($e),
+                'actor_id' => Auth::id(),
+            ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la création : '.$e->getMessage(),
+                'message' => 'La création du personnel a échoué. Aucune information technique n\'est disponible dans l\'interface.',
             ], 500);
         }
     }
@@ -713,9 +719,15 @@ class ESBTPPersonnelUnifiedController extends Controller
         } catch (ModelNotFoundException) {
             return response()->json(['success' => false, 'message' => 'Personnel introuvable.'], 404);
         } catch (\Exception $e) {
+            Log::error('Gestion du personnel : échec de mise à jour', [
+                'action' => 'update',
+                'exception' => get_class($e),
+                'actor_id' => Auth::id(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la mise à jour : '.$e->getMessage(),
+                'message' => 'La mise à jour du personnel a échoué. Aucune information technique n\'est disponible dans l\'interface.',
             ], 500);
         }
     }
@@ -757,9 +769,15 @@ class ESBTPPersonnelUnifiedController extends Controller
         } catch (ModelNotFoundException) {
             return response()->json(['success' => false, 'message' => 'Personnel introuvable.'], 404);
         } catch (\Exception $e) {
+            Log::error('Gestion du personnel : échec de suppression', [
+                'action' => 'destroy',
+                'exception' => get_class($e),
+                'actor_id' => Auth::id(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la suppression : '.$e->getMessage(),
+                'message' => 'La suppression du personnel a échoué. Aucune information technique n\'est disponible dans l\'interface.',
             ], 500);
         }
     }
