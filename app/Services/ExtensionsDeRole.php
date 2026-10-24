@@ -68,16 +68,21 @@ class ExtensionsDeRole
                 'role_name' => $roleName,
                 'permission_name' => $nom,
                 'motif' => $motif,
-                'accordee_par' => $parUtilisateur,
                 'created_at' => $maintenant,
                 'updated_at' => $maintenant,
             ];
 
             if ($voulues !== []) {
-                DB::table(self::TABLE)->insert(array_map($audit, $voulues));
+                DB::table(self::TABLE)->insert(array_map(
+                    fn (string $nom) => $audit($nom) + ['accordee_par' => $parUtilisateur],
+                    $voulues
+                ));
             }
             if ($retirees !== []) {
-                DB::table(self::TABLE_REVOQUEES)->insert(array_map($audit, $retirees));
+                DB::table(self::TABLE_REVOQUEES)->insert(array_map(
+                    fn (string $nom) => $audit($nom) + ['retiree_par' => $parUtilisateur],
+                    $retirees
+                ));
             }
         });
     }
