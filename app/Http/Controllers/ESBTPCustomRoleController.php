@@ -375,7 +375,7 @@ class ESBTPCustomRoleController extends Controller
             return $denial;
         }
 
-        return $this->runMutation($registry, 'la mise à jour', function () use ($roleModel, $validated, $requestedPerms) {
+        return $this->runMutation($registry, 'la mise à jour', function () use ($roleModel, $validated, $requestedPerms, $registry) {
             // Override DB metadata (le registry config sert de fallback)
             $roleModel->label_fr = $validated['label_fr'];
             $roleModel->icon = $this->normalizeIcon($validated['icon'] ?? null);
@@ -383,7 +383,18 @@ class ESBTPCustomRoleController extends Controller
             // is_custom reste FALSE (rôle système, pas custom)
             $roleModel->save();
 
-            $roleModel->syncPermissions($requestedPerms);
+            // La page technique conserve les alias legacy et consigne les
+            // extensions volontaires. L'UI personnel doit avoir la même règle,
+            // sans quoi le déploiement peut supprimer les droits ajoutés ici.
+            $permissionNames = Permission::whereIn('name', $registry->avecAlias($requestedPerms))
+                ->pluck('name')->all();
+            $roleModel->syncPermissions($permissionNames);
+            app(\App\Services\ExtensionsDeRole::class)->enregistrer(
+                $roleModel->name,
+                $permissionNames,
+                'Configuration du rôle depuis la gestion du personnel.',
+                Auth::id()
+            );
 
             return [
                 'success' => true,
@@ -439,22 +450,26 @@ class ESBTPCustomRoleController extends Controller
         }
 
         $manageableRoles = $this->manageableRolesForActor($registry);
-        $manageableRoles[] = $roleModel->name;  // user déjà attribué = OK
+        $rolesAdmissibles = array_values(array_unique([...$manageableRoles, $roleModel->name]));
 
+        // Une appartenance à un rôle gérable ne suffit pas : un second rôle
+        // protégé rend l'utilisateur hors du périmètre de cet acteur.
         $assignableUsers = User::query()
             ->where('is_active', true)
-            ->where(function ($q) use ($manageableRoles) {
-                $q->whereHas('roles', function ($sub) use ($manageableRoles) {
-                    $sub->whereIn('name', $manageableRoles);
-                })->orWhere('id', Auth::id());
-            })
+            ->whereHas('roles', fn ($q) => $q->whereIn('name', $rolesAdmissibles))
+            ->whereDoesntHave('roles', fn ($q) => $q->whereNotIn('name', $rolesAdmissibles))
             ->with(['roles:id,name,label_fr'])
             ->orderBy('name')
             ->get(['id', 'name', 'email'])
             ->unique('id')
             ->values();
 
-        $currentUserIds = $roleModel->users()->pluck('users.id')->all();
+        // La liste des cases pré-cochées reflète les seuls comptes éditables.
+        // Les autres affectations restent en base et sont refusées côté POST.
+        $currentUserIds = array_values(array_intersect(
+            $roleModel->users()->pluck('users.id')->all(),
+            $assignableUsers->pluck('id')->all()
+        ));
 
         return view('esbtp.custom-roles._assign-users-modal', [
             'role' => $roleModel,
@@ -484,22 +499,40 @@ class ESBTPCustomRoleController extends Controller
 
         $requestedUserIds = collect($validated['user_ids'] ?? [])->unique()->values()->all();
 
-        // Sécurité : vérifier que l'acteur peut gérer ces users
+        // Le rôle cible ne doit jamais permettre de transmettre une permission
+        // que l'auteur ne possède pas, même par simple affectation d'utilisateurs.
+        if ($denial = $this->denyIfPermissionsNotGrantable(
+            $roleModel->permissions()->pluck('name')->all(), $registry
+        )) {
+            return $denial;
+        }
+
         $manageableRoles = $this->manageableRolesForActor($registry);
-        if (! empty($requestedUserIds) && ! empty($manageableRoles)) {
-            $forbidden = User::whereIn('id', $requestedUserIds)
-                ->whereDoesntHave('roles', function ($q) use ($manageableRoles, $roleModel) {
-                    $q->whereIn('name', array_merge($manageableRoles, [$roleModel->name]));
-                })
-                ->pluck('id')
-                ->all();
-            if (! empty($forbidden)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Vous ne pouvez pas gérer certains utilisateurs sélectionnés (rôle hors de votre périmètre).',
-                    'forbidden_user_ids' => $forbidden,
-                ], 403);
-            }
+        if ($manageableRoles === []) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucun périmètre de gestion des utilisateurs ne vous est attribué.',
+            ], 403);
+        }
+
+        $rolesAdmissibles = array_values(array_unique([...$manageableRoles, $roleModel->name]));
+        // Vérifier aussi les comptes que l'opération veut DÉTACHER : envoyer
+        // user_ids=[] ne doit pas permettre de désaffecter des comptes protégés.
+        $currentIds = $roleModel->users()->pluck('users.id')->all();
+        $touchedIds = array_values(array_unique([...$requestedUserIds, ...$currentIds]));
+        $forbidden = User::whereIn('id', $touchedIds)
+            ->where(function ($q) use ($rolesAdmissibles) {
+                $q->whereDoesntHave('roles')
+                    ->orWhereHas('roles', fn ($roles) => $roles->whereNotIn('name', $rolesAdmissibles));
+            })
+            ->pluck('id')->all();
+
+        if ($forbidden !== []) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Certains comptes ont des rôles hors de votre périmètre ou ne sont pas encore habilités.',
+                'forbidden_user_ids' => $forbidden,
+            ], 403);
         }
 
         return $this->runMutation($registry, 'l\'affectation', function () use ($roleModel, $requestedUserIds) {
@@ -725,11 +758,12 @@ class ESBTPCustomRoleController extends Controller
             return Role::pluck('name')->all();
         }
 
-        $primaryRole = $actor->getRoleNames()->first();
-        if (! $primaryRole) {
-            return [];
-        }
-
-        return $registry->manageableRoles($primaryRole);
+        // Une personne peut cumuler plusieurs fonctions : le périmètre est
+        // l'union des rôles attribués, jamais le premier rôle arbitraire.
+        return $actor->getRoleNames()
+            ->flatMap(fn (string $roleName) => $registry->manageableRoles($roleName))
+            ->unique()
+            ->values()
+            ->all();
     }
 }
