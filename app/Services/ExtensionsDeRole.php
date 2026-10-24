@@ -60,6 +60,13 @@ class ExtensionsDeRole
         ));
 
         DB::transaction(function () use ($roleName, $voulues, $retirees, $motif, $parUtilisateur) {
+            // L'ancien état est capturé avant le remplacement : les tables
+            // d'extensions et de révocations contiennent uniquement l'état
+            // courant, pas l'historique de chaque décision.
+            $avant = [
+                'extensions' => DB::table(self::TABLE)->where('role_name', $roleName)->pluck('permission_name')->all(),
+                'revocations' => DB::table(self::TABLE_REVOQUEES)->where('role_name', $roleName)->pluck('permission_name')->all(),
+            ];
             DB::table(self::TABLE)->where('role_name', $roleName)->delete();
             DB::table(self::TABLE_REVOQUEES)->where('role_name', $roleName)->delete();
 
@@ -84,6 +91,16 @@ class ExtensionsDeRole
                     $retirees
                 ));
             }
+
+            $role = \Spatie\Permission\Models\Role::where('name', $roleName)
+                ->where('guard_name', 'web')->firstOrFail();
+            app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeRole(
+                $role,
+                $avant,
+                ['extensions' => $voulues, 'revocations' => $retirees],
+                $parUtilisateur,
+                $motif
+            );
         });
     }
 

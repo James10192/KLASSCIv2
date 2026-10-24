@@ -232,6 +232,11 @@ class ESBTPCustomRoleController extends Controller
                 $role->syncPermissions($requestedPerms);
             }
 
+            app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeRole(
+                $role, ['permissions' => []], ['permissions' => $requestedPerms], Auth::id(),
+                'Création du rôle personnalisé depuis personnel/unified'
+            );
+
             return [
                 'success' => true,
                 'message' => "Rôle « {$validated['label_fr']} » créé avec succès.",
@@ -302,6 +307,7 @@ class ESBTPCustomRoleController extends Controller
         }
 
         return $this->runMutation($registry, 'la mise à jour', function () use ($roleModel, $validated, $requestedPerms) {
+            $anciennesPermissions = $roleModel->permissions()->pluck('name')->all();
             $roleModel->label_fr = $validated['label_fr'];
             $roleModel->icon = $this->normalizeIcon($validated['icon'] ?? null);
             $roleModel->description = $validated['description'] ?? null;
@@ -309,6 +315,11 @@ class ESBTPCustomRoleController extends Controller
             $roleModel->save();
 
             $roleModel->syncPermissions($requestedPerms);
+            app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeRole(
+                $roleModel, ['permissions' => $anciennesPermissions],
+                ['permissions' => $requestedPerms], Auth::id(),
+                'Modification du rôle personnalisé depuis personnel/unified'
+            );
 
             return [
                 'success' => true,
@@ -553,6 +564,13 @@ class ESBTPCustomRoleController extends Controller
                 $roleModel->users()->detach($toDetach);
             }
 
+            app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeRole(
+                $roleModel,
+                ['user_ids' => $currentIds],
+                ['user_ids' => $requestedUserIds],
+                Auth::id(), 'Affectation des utilisateurs du rôle personnalisé'
+            );
+
             return [
                 'success' => true,
                 'message' => 'Affectations mises à jour.',
@@ -582,7 +600,13 @@ class ESBTPCustomRoleController extends Controller
         }
 
         return $this->runMutation($registry, 'le détachement', function () use ($userModel, $roleModel) {
+            $avant = $roleModel->users()->pluck('users.id')->all();
             $userModel->removeRole($roleModel);
+            $apres = array_values(array_diff($avant, [$userModel->id]));
+            app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeRole(
+                $roleModel, ['user_ids' => $avant], ['user_ids' => $apres],
+                Auth::id(), 'Retrait individuel d\'un rôle personnalisé'
+            );
 
             return [
                 'success' => true,

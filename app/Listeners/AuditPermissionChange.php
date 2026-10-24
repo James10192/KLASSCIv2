@@ -77,6 +77,56 @@ class AuditPermissionChange
     }
 
     /**
+     * Journal durable d'une décision de rôle : ne dépend PAS d'un événement
+     * pivot que Laravel 9 ne publie pas nativement.
+     *
+     * Cette méthode est appelée DANS la transaction de la mutation :
+     * l'échec de la trace annule la modification de permissions/affectations.
+     */
+    public function enregistrerDecisionDeRole(
+        Role $role,
+        array $avant,
+        array $apres,
+        ?int $auteur,
+        ?string $motif = null
+    ): void {
+        // Ordre et doublons n'ont pas de sens dans un ensemble de permissions.
+        $normaliser = static function (array $etat): array {
+            foreach ($etat as &$valeurs) {
+                if (is_array($valeurs)) {
+                    $valeurs = array_values(array_unique($valeurs));
+                    sort($valeurs);
+                }
+            }
+            unset($valeurs);
+            ksort($etat);
+
+            return $etat;
+        };
+        $avant = $normaliser($avant);
+        $apres = $normaliser($apres);
+
+        if ($avant === $apres) {
+            return;
+        }
+
+        $request = request();
+        Audit::create([
+            'user_type' => \App\Models\User::class,
+            'user_id' => $auteur,
+            'event' => 'updated',
+            'auditable_type' => Role::class,
+            'auditable_id' => $role->getKey(),
+            'old_values' => json_encode($avant, JSON_UNESCAPED_UNICODE),
+            'new_values' => json_encode($apres + ['motif' => $motif], JSON_UNESCAPED_UNICODE),
+            'url' => $request?->fullUrl(),
+            'ip_address' => $request?->ip(),
+            'user_agent' => $request?->userAgent(),
+            'tags' => 'permissions',
+        ]);
+    }
+
+    /**
      * Routine commune attach/detach.
      */
     private function handlePivot(string $event, $model, array $payload): void

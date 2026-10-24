@@ -235,6 +235,43 @@ class CustomRoleManagementHardeningTest extends TestCase
         $this->assertDatabaseMissing('roles', ['name' => 'nouveauRole']);
     }
 
+    public function test_audit_des_roles_persiste_les_differences_de_permissions_et_les_assignations(): void
+    {
+        $actor = $this->acteur('superAdmin', false);
+        $role = $this->rolePersonnalise('roleTestAuditPivot');
+        Permission::findOrCreate('inscriptions.validate', 'web');
+        $cible = User::factory()->create(['is_active' => true]);
+
+        $this->actingAs($actor)
+            ->putJson(route('esbtp.custom-roles.update', $role->name), [
+                'label_fr' => 'Rôle audité',
+                'permissions' => ['inscriptions.validate'],
+            ])->assertOk();
+
+        $this->actingAs($actor)
+            ->postJson(route('esbtp.custom-roles.assign-users', $role->name), [
+                'user_ids' => [$cible->id],
+            ])->assertOk();
+
+        $audits = \OwenIt\Auditing\Models\Audit::query()
+            ->where('auditable_type', Role::class)
+            ->where('auditable_id', $role->id)
+            ->where('tags', 'permissions')
+            ->where('user_id', $actor->id)
+            ->get();
+
+        $valeurs = static fn ($audit) => is_array($audit->new_values)
+            ? json_encode($audit->new_values)
+            : (string) $audit->new_values;
+
+        $this->assertTrue($audits->contains(fn ($audit) => str_contains(
+            $valeurs($audit), 'inscriptions.validate'
+        )));
+        $this->assertTrue($audits->contains(fn ($audit) => str_contains(
+            $valeurs($audit), 'user_ids'
+        )));
+    }
+
     public function test_extension_d_un_role_standard_saisie_via_personnel_survit_a_la_sync(): void
     {
         $actor = $this->acteur('superAdmin', false);
