@@ -125,9 +125,12 @@ class ESBTPPersonnelUnifiedController extends Controller
             abort(403, 'Accès non autorisé');
         }
 
-        // Rôle principal de l'utilisateur connecté — on cache le tab de son propre rôle
-        // (un secretaire ne gère pas d'autres secretaires, idem coordinateur).
-        $userRole = auth()->user()->getRoleNames()->first();
+        // La restriction d'auto-gestion d'un poste vise les titulaires d'un
+        // unique rôle métier. Ne jamais choisir arbitrairement le premier
+        // rôle Spatie d'un compte à plusieurs fonctions : l'ordre DB varie
+        // et masquerait des onglets pourtant autorisés par la matrice.
+        $userRoles = auth()->user()->getRoleNames()->all();
+        $userRole = count($userRoles) === 1 ? $userRoles[0] : null;
 
         // Coordinateurs/secrétaires masqués si l'utilisateur a ce rôle lui-même.
         $personnelAccess = $this->personnelAccessMatrix();

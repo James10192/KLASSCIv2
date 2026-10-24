@@ -2054,7 +2054,7 @@
                                     <button type="button"
                                             class="pu-action-btn {{ $teacher->status === 'active' ? 'pu-act-danger' : 'pu-act-success' }}"
                                             title="{{ $teacher->status === 'active' ? 'Désactiver' : 'Activer' }}"
-                                            onclick="toggleTeacherStatus({{ $teacher->id }})">
+                                            onclick="toggleTeacherStatus({{ $teacher->id }}, this)">
                                         <i class="fas fa-{{ $teacher->status === 'active' ? 'pause' : 'play' }}"></i>
                                     </button>
                                     @endif
@@ -2139,7 +2139,7 @@
                                     <button type="button"
                                             class="pu-action-btn {{ $secretaire->is_active ? 'pu-act-danger' : 'pu-act-success' }}"
                                             title="{{ $secretaire->is_active ? 'Désactiver' : 'Activer' }}"
-                                            onclick="toggleSecretaireStatus({{ $secretaire->id }})">
+                                            onclick="toggleSecretaireStatus({{ $secretaire->id }}, this)">
                                         <i class="fas fa-{{ $secretaire->is_active ? 'pause' : 'play' }}"></i>
                                     </button>
                                     @endif
@@ -2408,7 +2408,7 @@
                                     <button type="button"
                                             class="pu-action-btn {{ $comptable->is_active ? 'pu-act-danger' : 'pu-act-success' }}"
                                             title="{{ $comptable->is_active ? 'Désactiver' : 'Activer' }}"
-                                            onclick="toggleComptableStatus({{ $comptable->id }})">
+                                            onclick="toggleComptableStatus({{ $comptable->id }}, this)">
                                         <i class="fas fa-{{ $comptable->is_active ? 'pause' : 'play' }}"></i>
                                     </button>
                                     @endif
@@ -2490,7 +2490,7 @@
                                     <button type="button"
                                             class="pu-action-btn {{ $caissier->is_active ? 'pu-act-danger' : 'pu-act-success' }}"
                                             title="{{ $caissier->is_active ? 'Désactiver' : 'Activer' }}"
-                                            onclick="toggleCaissierStatus({{ $caissier->id }})">
+                                            onclick="toggleCaissierStatus({{ $caissier->id }}, this)">
                                         <i class="fas fa-{{ $caissier->is_active ? 'pause' : 'play' }}"></i>
                                     </button>
                                     @endif
@@ -2732,55 +2732,87 @@ $(document).ready(function() {
     });
 });
 
-// ═══ Toggle Status Functions ═══
-function toggleTeacherStatus(teacherId) {
-    if (confirm('Changer le statut de cet enseignant ?')) {
-        fetch({{ Js::from(route('esbtp.enseignants.toggleStatus', ['teacher' => '__ID__'])) }}.replace('__ID__', teacherId), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' }
-        })
-        .then(r => r.json())
-        .then(d => { if (d.success) { alert(d.message); location.reload(); } else alert('Erreur'); })
-        .catch(() => alert('Erreur'));
+// ═══ Toggle Status — une seule implémentation, quatre types ═══
+// Conserver le scroll, les recherches et les autres onglets ; aucun reload.
+async function togglePersonnelStatus(button, url, method, panel, label) {
+    if (!button || button.disabled || !confirm('Changer le statut de ce ' + label + ' ?')) return;
+
+    button.disabled = true;
+    try {
+        const response = await fetch(url, {
+            method,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        const contentType = response.headers.get('content-type') || '';
+        // En cas de refus, plusieurs anciens contrôleurs renvoient du HTML :
+        // ne pas le prendre pour un succès ni inverser le badge localement.
+        const data = contentType.includes('application/json')
+            ? await response.json()
+            : null;
+        if (!response.ok || !data || data.success !== true) {
+            throw new Error(data?.message || 'Modification refusée. Veuillez réessayer.');
+        }
+        const active = typeof data.is_active === 'boolean'
+            ? data.is_active
+            : (data.new_status === 'active' ? true : data.new_status === 'inactive' ? false : null);
+        if (active === null) {
+            throw new Error('Le serveur ne confirme pas le nouveau statut.');
+        }
+
+        const card = button.closest('.personnel-card');
+        const badge = card?.querySelector('.pu-status');
+        if (badge) {
+            badge.classList.toggle('pu-status-active', active);
+            badge.classList.toggle('pu-status-inactive', !active);
+            badge.textContent = active ? 'Actif' : 'Inactif';
+        }
+        button.classList.toggle('pu-act-danger', active);
+        button.classList.toggle('pu-act-success', !active);
+        button.title = active ? 'Désactiver' : 'Activer';
+        const icon = button.querySelector('i');
+        if (icon) icon.className = 'fas fa-' + (active ? 'pause' : 'play');
+
+        // Même événement que le filtre premium existant : un membre masqué
+        // par "Actifs/Inactifs" disparaît ou réapparaît sans perdre le contexte.
+        document.getElementById('filter-' + panel + '-status')
+            ?.dispatchEvent(new Event('change', { bubbles: true }));
+
+        window.dispatchEvent(new CustomEvent('toast', {
+            detail: { type: 'success', message: data.message || 'Statut mis à jour.' }
+        }));
+    } catch (error) {
+        window.dispatchEvent(new CustomEvent('toast', {
+            detail: { type: 'error', message: error.message }
+        }));
+    } finally {
+        button.disabled = false;
     }
 }
 
-function toggleComptableStatus(comptableId) {
-    if (confirm('Changer le statut de ce comptable ?')) {
-        fetch({{ Js::from(route('esbtp.comptables.toggle-status', ['user' => '__ID__'])) }}.replace('__ID__', comptableId), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' }
-        })
-        .then(r => r.json())
-        .then(d => { if (d.success) { alert(d.message); location.reload(); } else alert('Erreur'); })
-        .catch(() => alert('Erreur'));
-    }
+function toggleTeacherStatus(id, button) {
+    return togglePersonnelStatus(button,
+        {{ Js::from(route('esbtp.enseignants.toggleStatus', ['teacher' => '__ID__'])) }}.replace('__ID__', id),
+        'POST', 'enseignants', 'enseignant');
 }
-
-function toggleSecretaireStatus(secretaireId) {
-    if (confirm('Changer le statut de ce secrétaire ?')) {
-        // Cette route ne vit pas sous /esbtp : on la demande au routeur plutot que de la deviner.
-        fetch({{ Js::from(route('secretaires.toggle-status', ['id' => '__ID__'])) }}.replace('__ID__', secretaireId), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' }
-        })
-        .then(r => r.json())
-        .then(d => { if (d.success) { alert(d.message); location.reload(); } else alert('Erreur'); })
-        .catch(() => alert('Erreur'));
-    }
+function toggleComptableStatus(id, button) {
+    return togglePersonnelStatus(button,
+        {{ Js::from(route('esbtp.comptables.toggle-status', ['user' => '__ID__'])) }}.replace('__ID__', id),
+        'POST', 'comptables', 'comptable');
 }
-
-// Lot 18e — toggle status caissier (route PATCH dediee)
-function toggleCaissierStatus(caissierId) {
-    if (confirm('Changer le statut de ce caissier ?')) {
-        fetch({{ Js::from(route('esbtp.caissiers.toggle-status', ['caissier' => '__ID__'])) }}.replace('__ID__', caissierId), {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' }
-        })
-        .then(r => r.json())
-        .then(d => { if (d.success) { alert(d.message); location.reload(); } else alert('Erreur'); })
-        .catch(() => alert('Erreur'));
-    }
+function toggleSecretaireStatus(id, button) {
+    // Route non préfixée par /esbtp : toujours utiliser la route nommée.
+    return togglePersonnelStatus(button,
+        {{ Js::from(route('secretaires.toggle-status', ['id' => '__ID__'])) }}.replace('__ID__', id),
+        'POST', 'secretaires', 'secrétaire');
+}
+function toggleCaissierStatus(id, button) {
+    return togglePersonnelStatus(button,
+        {{ Js::from(route('esbtp.caissiers.toggle-status', ['caissier' => '__ID__'])) }}.replace('__ID__', id),
+        'PATCH', 'caissiers', 'caissier');
 }
 
 // ═══ Bulk Availability Modal ═══
