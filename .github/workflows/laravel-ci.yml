@@ -90,17 +90,6 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      # Étape temporaire de génération : la migration est créée par Artisan,
-      # jamais rédigée de zéro. Sa sortie sera reportée dans le commit suivant.
-      - name: Générer le squelette de révocations via Artisan (lot 1)
-        if: github.event_name == 'pull_request'
-        run: |
-          php artisan make:migration create_role_permission_revocations_table --no-interaction
-          fichier=$(find database/migrations -name '*_create_role_permission_revocations_table.php' | sort | tail -1)
-          test -n "$fichier"
-          echo "MIGRATION_ARTISAN_GENEREE=$fichier"
-          cat "$fichier"
-
       - name: Check PHP syntax errors
         run: find app config routes -name "*.php" -print0 | xargs -0 -n1 php -l
 
