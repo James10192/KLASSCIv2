@@ -8,6 +8,7 @@ use App\Services\PermissionRegistry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Permission;
@@ -745,10 +746,14 @@ class ESBTPCustomRoleController extends Controller
             return response()->json($payload);
         } catch (\Throwable $e) {
             DB::rollBack();
+            Log::error('Gestion des rôles : mutation annulée', [
+                'action' => $action,
+                'exception_type' => get_class($e),
+            ]);
 
             return response()->json([
                 'success' => false,
-                'message' => "Erreur lors de {$action} : " . $e->getMessage(),
+                'message' => "Erreur lors de {$action}. Aucune modification n'a été enregistrée. Contactez le support.",
             ], 500);
         }
     }
