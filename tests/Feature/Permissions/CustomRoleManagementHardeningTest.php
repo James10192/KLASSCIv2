@@ -161,6 +161,32 @@ class CustomRoleManagementHardeningTest extends TestCase
         $this->assertTrue($role->fresh()->hasPermissionTo($permission));
     }
 
+    public function test_ancien_controleur_roles_ne_peut_ni_creer_ni_renommer_ni_supprimer_un_role_standard(): void
+    {
+        $actor = $this->acteur('superAdmin', false);
+        $role = Role::findOrCreate('directeurEtudes', 'web');
+        $this->actingAs($actor);
+
+        $this->get(route('esbtp.roles.edit', $role->id))
+            ->assertRedirect(route('esbtp.personnel.unified.index'));
+
+        $this->post(route('esbtp.roles.store'), [
+            'name' => 'nouveauRole',
+            'permissions' => [],
+        ])->assertForbidden();
+
+        $this->put(route('esbtp.roles.update', $role->id), [
+            'name' => 'ancienNomDangereux',
+            'permissions' => [],
+        ])->assertForbidden();
+
+        $this->delete(route('esbtp.roles.destroy', $role->id))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('roles', ['id' => $role->id, 'name' => 'directeurEtudes']);
+        $this->assertDatabaseMissing('roles', ['name' => 'nouveauRole']);
+    }
+
     public function test_extension_d_un_role_standard_saisie_via_personnel_survit_a_la_sync(): void
     {
         $actor = $this->acteur('superAdmin', false);
