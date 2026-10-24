@@ -1672,6 +1672,13 @@
                         <button type="button" class="cr-btn cr-btn-primary" data-cr-create-trigger>
                             <i class="fas fa-plus"></i> Créer un rôle personnalisé
                         </button>
+                        @role('serviceTechnique')
+                            <button type="button" class="cr-btn cr-btn-ghost"
+                                    data-cr-audit-trigger
+                                    data-cr-audit-url="{{ route('esbtp.roles-permissions.audit') }}">
+                                <i class="fas fa-shield-alt"></i> Auditer les permissions
+                            </button>
+                        @endrole
                     </div>
                 </div>
             </div>
@@ -2927,6 +2934,41 @@ function toggleCaissierStatus(caissierId) {
             alert('Erreur de chargement du modal : ' + e.message);
         }
     }
+
+    // Rapport réservé au Service Technique, rendu en texte brut (jamais innerHTML
+    // avec les valeurs du rapport). Une seule page : Personnel/unified.
+    document.querySelector('[data-cr-audit-trigger]')?.addEventListener('click', async function () {
+        const btn = this;
+        btn.disabled = true;
+        try {
+            const response = await fetch(btn.dataset.crAuditUrl, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const report = await response.json();
+            if (!response.ok || !report || typeof report !== 'object') {
+                throw new Error('Rapport indisponible (' + response.status + ')');
+            }
+
+            modalEl.innerHTML =
+                '<div class="modal-dialog modal-lg cr-modal-dialog">' +
+                '<div class="modal-content cr-modal">' +
+                '<div class="modal-header cr-modal-header">' +
+                '<h2 class="cr-modal-title">Audit des permissions</h2>' +
+                '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>' +
+                '</div><div class="modal-body cr-modal-body">' +
+                '<pre data-cr-audit-report style="white-space:pre-wrap;overflow:auto;max-height:60vh"></pre>' +
+                '</div></div></div>';
+            modalEl.querySelector('[data-cr-audit-report]').textContent =
+                JSON.stringify(report, null, 2);
+            getModal().show();
+        } catch (e) {
+            window.dispatchEvent(new CustomEvent('toast', {
+                detail: { type: 'error', message: e.message }
+            }));
+        } finally {
+            btn.disabled = false;
+        }
+    });
 
     function showError(msg) {
         const z = modalEl.querySelector('[data-cr-error]');
