@@ -93,6 +93,24 @@ class CustomRoleManagementHardeningTest extends TestCase
         $this->assertTrue($target->fresh()->hasRole($role->name));
     }
 
+    public function test_attribution_d_un_role_plus_privilegie_que_l_acteur_est_refusee(): void
+    {
+        $actor = $this->acteur('coordinateur');
+        $role = $this->rolePersonnalise('roleTestPrivilege');
+        Permission::findOrCreate('security.audit.view', 'web');
+        $role->givePermissionTo('security.audit.view');
+
+        $target = $this->acteur('enseignant', false);
+
+        $this->actingAs($actor)
+            ->postJson(route('esbtp.custom-roles.assign-users', $role->name), [
+                'user_ids' => [$target->id],
+            ])
+            ->assertForbidden();
+
+        $this->assertFalse($target->fresh()->hasRole($role->name));
+    }
+
     public function test_le_superadmin_peut_affecter_un_role_personnalise_autorise(): void
     {
         $actor = $this->acteur('superAdmin', false);
