@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Rôles et permissions — gestion du personnel (lot 1, vérifications en cours) :** les droits supplémentaires définis sur les rôles standards sont consignés pour survivre aux synchronisations ; les affectations et retraits de rôles personnalisés contrôlent les droits délégués ainsi que tous les rôles du compte cible. Aucune permission nouvelle accordée automatiquement et aucune modification des profils d'établissement.
 - **Reçus de paiement — espace pour la signature et le cachet (#1677) :** zone manuscrite de 15 mm sur les deux exemplaires, sans changer le design ni dépasser une page A4.
 - **Validation des réinscriptions depuis la fiche inscription :** le bouton « Valider définitivement » réutilise le moteur de validation de la fiche étudiant pour une réinscription en « Documents complets ». Observations, auteur et historique conservés ; aucun paiement ni exonération artificiels.
 - **Reçus de paiement — deux exemplaires sur un A4 (#1675) :** les espaces verticaux du reçu PDF sont resserrés pour garder l’exemplaire élève/parent et l’exemplaire caisse sur une seule feuille, sans changement de design, de données ni de montants.
