@@ -42,7 +42,7 @@
                     <i class="fas fa-shield-alt"></i>
                     <div>
                         <strong>Rôle système — modifications préservées</strong>
-                        <p>Vous modifiez un rôle standard de KLASSCI. Le <strong>nom interne</strong> (<code>{{ $role->name }}</code>) est figé. Le label, l'icône, la description et les permissions sont customisables. Pour des modifications avancées (création/suppression de rôle système, rôles superAdmin/serviceTechnique), contactez le Service Technique.</p>
+                        <p>Vous modifiez un rôle standard de KLASSCI. Le <strong>nom interne</strong> (<code>{{ $role->name }}</code>) est figé. Le label, l'icône, la description et les permissions sont customisables. Les rôles bootstrap superAdmin/serviceTechnique ne sont pas modifiables afin de préserver les accès de secours. Toutes les modifications autorisées se font depuis Gestion du personnel.</p>
                     </div>
                 </div>
 

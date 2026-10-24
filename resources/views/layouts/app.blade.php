@@ -2322,7 +2322,7 @@
                                     <span class="menu-dot"></span>
                                     <span><i class="fas fa-id-card me-2"></i>Matricule</span>
                                 </a>
-                                <a href="{{ route('esbtp.roles-permissions.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.roles-permissions.*') ? 'active' : '' }}">
+                                <a href="{{ route('esbtp.personnel.unified.index', ['section' => 'roles']) }}" class="menu-sublink {{ Request::routeIs('esbtp.personnel.unified.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span><i class="fas fa-user-shield me-2"></i>Rôles & Permissions</span>
                                 </a>

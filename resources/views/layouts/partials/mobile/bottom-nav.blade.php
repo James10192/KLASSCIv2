@@ -70,7 +70,7 @@
                     ['label' => 'Accueil', 'icon' => 'home', 'href' => $r('dashboard') ? route('dashboard') : null, 'on' => $on('dashboard'), 'show' => true],
                     ['label' => 'Abonnement', 'icon' => 'lock', 'href' => $mTech('esbtp.paywall-config.index') ? route('esbtp.paywall-config.index') : null, 'on' => $on('esbtp.paywall-config.*'), 'show' => true],
                     ['label' => 'Matricules', 'icon' => 'qr', 'href' => $mTech('esbtp.matricule-config.index') ? route('esbtp.matricule-config.index') : null, 'on' => $on('esbtp.matricule-config.*'), 'show' => true],
-                    ['label' => 'Rôles', 'icon' => 'users', 'href' => $mTech('esbtp.roles-permissions.index') ? route('esbtp.roles-permissions.index') : null, 'on' => $on('esbtp.roles-permissions.*'), 'show' => true],
+                    ['label' => 'Rôles', 'icon' => 'users', 'href' => $mTech('esbtp.personnel.unified.index') ? route('esbtp.personnel.unified.index', ['section' => 'roles']) : null, 'on' => $on('esbtp.personnel.unified.*'), 'show' => true],
                     ['label' => 'Plus', 'icon' => 'menu', 'sheet' => 'm-plus', 'on' => false, 'show' => true],
                 ];
                 break;

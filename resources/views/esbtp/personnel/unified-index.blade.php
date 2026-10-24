@@ -1638,7 +1638,7 @@
         {{-- ═══ Lot 8 — Rôles personnalisés (collapsible) ═══ --}}
         @can('personnel.manage')
             @php $crCount = isset($customRoles) ? $customRoles->count() : 0; @endphp
-            <div class="cr-section-bar pu-animate pu-delay-1 {{ $crCount > 0 ? 'cr-open' : '' }}" data-cr-section>
+            <div class="cr-section-bar pu-animate pu-delay-1 {{ ($crCount > 0 || request('section') === 'roles') ? 'cr-open' : '' }}" data-cr-section>
                 <button type="button" class="cr-section-toggle" data-cr-section-toggle>
                     <div class="cr-section-toggle-left">
                         <div class="cr-section-toggle-icon"><i class="fas fa-id-badge"></i></div>
@@ -1661,7 +1661,7 @@
                             <p class="cr-info-note-text">
                                 Créez, modifiez, supprimez et assignez des utilisateurs à des rôles métiers sur mesure.
                                 Vous pouvez aussi modifier le label, l'icône, la description et les permissions des <strong>rôles standards</strong> ci-dessous.
-                                Les rôles <strong>superAdmin</strong> et <strong>Service Technique</strong> restent gérés exclusivement par le Service Technique (page <code>/esbtp/roles-permissions</code>).
+                                Les rôles bootstrap <strong>superAdmin</strong> et <strong>Service Technique</strong> restent protégés contre les modifications. Toute la gestion courante se fait ici, depuis <strong>Personnel &gt; Gestion du personnel</strong>.
                             </p>
                         </div>
                     </div>
@@ -1684,7 +1684,7 @@
             {{-- ═══ Lot 17c — Rôles standards éditables (collapsible) ═══ --}}
             @if(isset($standardRoles) && $standardRoles->isNotEmpty())
                 @php $stdCount = $standardRoles->count(); @endphp
-                <div class="cr-section-bar pu-animate pu-delay-1" data-cr-section>
+                <div class="cr-section-bar pu-animate pu-delay-1 {{ request('section') === 'roles' ? 'cr-open' : '' }}" data-cr-section>
                     <button type="button" class="cr-section-toggle" data-cr-section-toggle>
                         <div class="cr-section-toggle-left">
                             <div class="cr-section-toggle-icon"><i class="fas fa-shield-halved"></i></div>
@@ -1701,7 +1701,7 @@
                     <div class="cr-section-content">
                         <div class="cr-roles-list">
                             @foreach($standardRoles as $std)
-                                <article class="cr-role-card cr-role-card--standard">
+                                <article class="cr-role-card cr-role-card--standard" data-cr-standard-role="{{ $std['name'] }}">
                                     <div class="cr-role-card-icon"><i class="fas {{ $std['icon'] }}"></i></div>
                                     <div class="cr-role-card-body">
                                         <div class="cr-role-card-head">
@@ -2990,6 +2990,24 @@ function toggleCaissierStatus(caissierId) {
             </div>`).join('')}</div>`;
     }
 
+    function updateStandardCard(role) {
+        if (!role || !role.name) return;
+        const card = Array.from(document.querySelectorAll('[data-cr-standard-role]'))
+            .find(el => el.dataset.crStandardRole === role.name);
+        if (!card) return;
+        const label = card.querySelector('.cr-role-card-label');
+        const desc = card.querySelector('.cr-role-card-desc');
+        const icon = card.querySelector('.cr-role-card-icon i');
+        const count = card.querySelectorAll('.cr-role-card-stat')[1];
+        if (label) label.textContent = role.label;
+        if (desc) {
+            desc.textContent = role.description || '';
+            desc.hidden = !role.description;
+        }
+        if (icon) icon.className = 'fas ' + (role.icon || 'fa-user-tag');
+        if (count) count.textContent = role.permissions_count + ' perm' + (role.permissions_count > 1 ? 's' : '');
+    }
+
     /* ── Form submission générique ── */
     function wireModalForm() {
         const form = modalEl.querySelector('#cr-create-form, #cr-edit-form, #cr-edit-standard-form, #cr-assign-form');
@@ -3022,7 +3040,9 @@ function toggleCaissierStatus(caissierId) {
                 // Succès
                 getModal().hide();
                 if (form.id === 'cr-edit-standard-form') {
-                    await refreshList();
+                    // La liste custom ne contient pas les rôles standards :
+                    // actualiser la carte concernée avec la réponse du serveur.
+                    updateStandardCard(data.role);
                     return;
                 }
                 await refreshList();

@@ -403,6 +403,13 @@ class ESBTPCustomRoleController extends Controller
             return [
                 'success' => true,
                 'message' => "Rôle système « {$validated['label_fr']} » mis à jour.",
+                'role' => [
+                    'name' => $roleModel->name,
+                    'label' => $roleModel->label_fr,
+                    'icon' => $roleModel->icon,
+                    'description' => $roleModel->description,
+                    'permissions_count' => $roleModel->permissions()->count(),
+                ],
             ];
         });
     }
