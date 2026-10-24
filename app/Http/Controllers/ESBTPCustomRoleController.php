@@ -455,15 +455,25 @@ class ESBTPCustomRoleController extends Controller
         abort_if($manageableRoles === [], 403, 'Aucun périmètre de gestion du personnel.');
         $rolesAdmissibles = array_values(array_unique([...$manageableRoles, $roleModel->name]));
 
-        // Une appartenance à un rôle gérable ne suffit pas : un second rôle
-        // protégé rend l'utilisateur hors du périmètre de cet acteur.
+        // Un rôle protégé additionnel exclut le compte. Le superadmin peut
+        // initialiser un compte sans rôle. Un compte désactivé déjà affecté
+        // reste visible, faute de quoi la soumission le détacherait en silence.
+        $peutInitialiser = Auth::user()->hasAnyRole(['superAdmin', 'serviceTechnique']);
         $assignableUsers = User::query()
-            ->where('is_active', true)
-            ->whereHas('roles', fn ($q) => $q->whereIn('name', $rolesAdmissibles))
+            ->where(function ($q) use ($roleModel) {
+                $q->where('is_active', true)
+                    ->orWhereHas('roles', fn ($roles) => $roles->where('name', $roleModel->name));
+            })
+            ->where(function ($q) use ($rolesAdmissibles, $peutInitialiser) {
+                $q->whereHas('roles', fn ($roles) => $roles->whereIn('name', $rolesAdmissibles));
+                if ($peutInitialiser) {
+                    $q->orWhereDoesntHave('roles');
+                }
+            })
             ->whereDoesntHave('roles', fn ($q) => $q->whereNotIn('name', $rolesAdmissibles))
             ->with(['roles:id,name,label_fr'])
             ->orderBy('name')
-            ->get(['id', 'name', 'email'])
+            ->get(['id', 'name', 'email', 'is_active'])
             ->unique('id')
             ->values();
 
@@ -506,6 +516,16 @@ class ESBTPCustomRoleController extends Controller
         // La liste envoyée est l'état complet : contrôler les ajouts ET les
         // retraits, sans échapper au contrôle lorsque user_ids est vide.
         $currentIds = $roleModel->users()->pluck('users.id')->all();
+        $nouveauxIds = array_values(array_diff($requestedUserIds, $currentIds));
+        $inactifs = User::whereIn('id', $nouveauxIds)->where('is_active', false)->pluck('id')->all();
+        if ($inactifs !== []) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Un compte désactivé ne peut pas recevoir de nouveau rôle.',
+                'forbidden_user_ids' => $inactifs,
+            ], 403);
+        }
+
         $touchedIds = array_values(array_unique([...$requestedUserIds, ...$currentIds]));
         if ($denial = $this->refusAffectation($roleModel, $touchedIds, $registry)) {
             return $denial;
@@ -589,11 +609,15 @@ class ESBTPCustomRoleController extends Controller
         }
 
         $admissibles = array_values(array_unique([...$manageable, $role->name]));
+        $peutInitialiser = Auth::user()->hasAnyRole(['superAdmin', 'serviceTechnique']);
         $interdits = User::query()
             ->whereIn('id', $userIds)
-            ->where(function ($q) use ($admissibles) {
-                $q->whereDoesntHave('roles')
-                    ->orWhereHas('roles', fn ($roles) => $roles->whereNotIn('name', $admissibles));
+            ->where(function ($q) use ($admissibles, $peutInitialiser) {
+                if (! $peutInitialiser) {
+                    $q->whereDoesntHave('roles');
+                }
+                $methode = $peutInitialiser ? 'whereHas' : 'orWhereHas';
+                $q->{$methode}('roles', fn ($roles) => $roles->whereNotIn('name', $admissibles));
             })
             ->pluck('id')->all();
 
