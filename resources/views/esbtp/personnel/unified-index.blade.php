@@ -2918,6 +2918,7 @@ function toggleCaissierStatus(caissierId) {
             injectHtmlWithScripts(modalEl, html);
             getModal().show();
             wireModalForm();
+            wireRestoreRoleDefaults();
             wireModalIcons();
             wireModalPicker();
             wireModalUserPicker();
@@ -2996,16 +2997,67 @@ function toggleCaissierStatus(caissierId) {
             .find(el => el.dataset.crStandardRole === role.name);
         if (!card) return;
         const label = card.querySelector('.cr-role-card-label');
-        const desc = card.querySelector('.cr-role-card-desc');
+        let desc = card.querySelector('.cr-role-card-desc');
         const icon = card.querySelector('.cr-role-card-icon i');
-        const count = card.querySelectorAll('.cr-role-card-stat')[1];
         if (label) label.textContent = role.label;
+        if (!desc && role.description) {
+            desc = document.createElement('p');
+            desc.className = 'cr-role-card-desc';
+            card.querySelector('.cr-role-card-stats')?.before(desc);
+        }
         if (desc) {
             desc.textContent = role.description || '';
             desc.hidden = !role.description;
         }
         if (icon) icon.className = 'fas ' + (role.icon || 'fa-user-tag');
-        if (count) count.textContent = role.permissions_count + ' perm' + (role.permissions_count > 1 ? 's' : '');
+        updateStandardPermissionCount(role.name, role.permissions_count);
+    }
+
+    function updateStandardPermissionCount(name, total) {
+        const card = Array.from(document.querySelectorAll('[data-cr-standard-role]'))
+            .find(el => el.dataset.crStandardRole === name);
+        const count = card?.querySelectorAll('.cr-role-card-stat')[1];
+        if (!count || !Number.isFinite(Number(total))) return;
+        // Garder l'icône et actualiser le compteur, sans recréer la carte.
+        count.replaceChildren();
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-key';
+        count.append(icon, ' ' + total + ' perm' + (Number(total) > 1 ? 's' : ''));
+    }
+
+    function wireRestoreRoleDefaults() {
+        const btn = modalEl.querySelector('[data-cr-restore-defaults]');
+        if (!btn) return;
+        btn.addEventListener('click', async () => {
+            if (!confirm('Restaurer les permissions par défaut de ce rôle ? Les personnalisations de ses droits seront effacées.')) return;
+            btn.disabled = true;
+            try {
+                const payload = new FormData();
+                payload.set('role', btn.dataset.crRoleName);
+                const response = await fetch(btn.dataset.crRestoreUrl, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                    body: payload
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || !data.success || !Array.isArray(data.permissions)) {
+                    showError(data.message || 'La restauration a échoué.');
+                    return;
+                }
+                const names = new Set(data.permissions);
+                const checks = modalEl.querySelectorAll('[data-cr-perm]');
+                checks.forEach(check => { check.checked = names.has(check.value); });
+                if (checks.length) checks[0].dispatchEvent(new Event('change', { bubbles: true }));
+                updateStandardPermissionCount(btn.dataset.crRoleName, data.permissions.length);
+                window.dispatchEvent(new CustomEvent('toast', {
+                    detail: { type: 'success', message: 'Permissions par défaut restaurées.' }
+                }));
+            } catch (e) {
+                showError('Erreur réseau : ' + e.message);
+            } finally {
+                btn.disabled = false;
+            }
+        });
     }
 
     /* ── Form submission générique ── */

@@ -127,6 +127,15 @@
             </div>
 
             <div class="modal-footer cr-modal-footer">
+                @role('serviceTechnique')
+                    <button type="button" class="cr-btn cr-btn-ghost"
+                            data-cr-restore-defaults
+                            data-cr-role-name="{{ $role->name }}"
+                            data-cr-restore-url="{{ route('esbtp.roles-permissions.restore-defaults') }}"
+                            title="Cette opération conserve la traçabilité et rétablit les droits du registre">
+                        <i class="fas fa-rotate-left"></i> Restaurer les permissions d'origine
+                    </button>
+                @endrole
                 <button type="button" class="cr-btn cr-btn-ghost" data-bs-dismiss="modal">
                     <i class="fas fa-times"></i> Annuler
                 </button>
