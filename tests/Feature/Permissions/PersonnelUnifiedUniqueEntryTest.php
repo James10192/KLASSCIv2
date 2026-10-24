@@ -82,6 +82,33 @@ class PersonnelUnifiedUniqueEntryTest extends TestCase
         );
     }
 
+    public function test_un_compte_inactif_avec_deux_roles_personnalises_figure_dans_les_deux_onglets(): void
+    {
+        $roleA = Role::findOrCreate('roleTestPersonnelAlpha', 'web');
+        $roleA->is_custom = true;
+        $roleA->label_fr = 'Métier Alpha';
+        $roleA->save();
+
+        $roleB = Role::findOrCreate('roleTestPersonnelBeta', 'web');
+        $roleB->is_custom = true;
+        $roleB->label_fr = 'Métier Beta';
+        $roleB->save();
+
+        $personne = User::factory()->create([
+            'name' => 'Personnel Inactif Multi Role',
+            'is_active' => false,
+        ]);
+        $personne->assignRole([$roleA, $roleB]);
+
+        $this->actingAs($this->administrateur());
+        $page = $this->get(route('esbtp.personnel.unified.index'));
+        $page->assertOk()->assertSee('Métier Alpha')->assertSee('Métier Beta');
+
+        // Le même compte doit figurer sur chacune des deux cartes de rôle.
+        $this->assertGreaterThanOrEqual(2, substr_count($page->getContent(), $personne->email));
+        $page->assertSee('Inactif');
+    }
+
     public function test_api_de_liste_custom_roles_reste_json_sur_la_page_unifiee(): void
     {
         $this->actingAs($this->administrateur());

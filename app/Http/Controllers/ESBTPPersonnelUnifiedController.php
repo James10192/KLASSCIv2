@@ -171,7 +171,9 @@ class ESBTPPersonnelUnifiedController extends Controller
 
         $enseignants = in_array('enseignants', $visiblePersonnelTabs, true)
             ? ESBTPTeacher::with(['user'])
-                ->whereHas('user', fn ($q) => $q->where('is_active', true))
+                // Ne pas masquer les enseignants désactivés : ils doivent
+                // rester consultables et réactivables depuis cette liste.
+                ->whereHas('user')
                 ->orderBy('created_at', 'desc')
                 ->get()
             : collect();
@@ -213,19 +215,23 @@ class ESBTPPersonnelUnifiedController extends Controller
                 $customRoles = $customRolesQuery
                     ->map(fn (Role $role) => $this->buildRoleCardData($role, $registry));
 
-                // Lot 19 — Charger les users de TOUS les rôles custom en une seule requête
-                // (évite le N+1 d'une query par rôle).
+                // Une seule requête de personnes + eager loading des rôles.
+                // Un compte à plusieurs rôles personnalisés doit figurer
+                // dans CHACUN de ses onglets, y compris s'il est inactif.
                 $customRoleNames = $customRolesQuery->pluck('name')->all();
                 $usersByRole = collect();
-                if (! empty($customRoleNames)) {
-                    $usersByRole = User::role($customRoleNames)
-                        ->where('is_active', true)
+                if ($customRoleNames !== []) {
+                    $customUsers = User::role($customRoleNames)
                         ->with(['roles:id,name'])
                         ->orderBy('name')
-                        ->get(['id', 'name', 'email', 'phone', 'is_active', 'created_at'])
-                        ->groupBy(fn ($u) => $u->roles
+                        ->get(['id', 'name', 'email', 'phone', 'is_active', 'created_at']);
+
+                    $usersByRole = $customUsers
+                        ->flatMap(fn (User $personne) => $personne->roles
                             ->whereIn('name', $customRoleNames)
-                            ->first()?->name);
+                            ->map(fn (Role $role) => ['role' => $role->name, 'user' => $personne]))
+                        ->groupBy('role')
+                        ->map(fn ($lignes) => $lignes->pluck('user'));
                 }
 
                 foreach ($customRolesQuery as $role) {
@@ -405,8 +411,8 @@ class ESBTPPersonnelUnifiedController extends Controller
     }
 
     /**
-     * Charge tous les utilisateurs actifs d'un rôle, retourne collect() vide
-     * si le rôle n'existe pas (degrade silencieusement).
+     * Charge actifs ET inactifs : sinon le filtre « Inactifs » est inutile
+     * et la réactivation depuis l'écran est impossible.
      */
     private function loadActiveByRole(string $roleName)
     {
@@ -417,7 +423,6 @@ class ESBTPPersonnelUnifiedController extends Controller
 
             return User::role($roleName)
                 ->with(['roles'])
-                ->where('is_active', true)
                 ->orderBy('name')
                 ->get();
         } catch (\Exception $e) {

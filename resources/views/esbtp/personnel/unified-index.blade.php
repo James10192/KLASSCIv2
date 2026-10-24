@@ -2555,7 +2555,7 @@
                                             <span class="pu-meta-item"><i class="fas fa-calendar"></i>{{ $u->created_at->format('d/m/Y') }}</span>
                                         </div>
                                     </div>
-                                    <span class="pu-status pu-status-active">Actif</span>
+                                    <span class="pu-status {{ $u->is_active ? 'pu-status-active' : 'pu-status-inactive' }}">{{ $u->is_active ? 'Actif' : 'Inactif' }}</span>
                                     <div class="pu-actions">
                                         <a href="{{ route('esbtp.custom-roles.assign-users.form', $roleName) }}" class="pu-action-btn" title="Gérer les assignations">
                                             <i class="fas fa-user-cog"></i>
