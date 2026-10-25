@@ -31,16 +31,17 @@ return new class extends Migration
 
         // 2. Drop l'ancienne contrainte (MySQL peut maintenant utiliser le nouvel index pour la FK)
         Schema::table('esbtp_inscriptions', function (Blueprint $table) {
-            $sm = Schema::getConnection()->getDoctrineSchemaManager();
-            $indexes = $sm->listTableIndexes('esbtp_inscriptions');
-
-            foreach ($indexes as $name => $index) {
-                $columns = $index->getColumns();
+            // Ne plus utiliser Doctrine (API supprimee des connexions Laravel 12).
+            foreach (Schema::getIndexes('esbtp_inscriptions') as $index) {
+                $columns = $index['columns'] ?? [];
+                if (! ($index['unique'] ?? false)) {
+                    continue;
+                }
                 if (count($columns) === 3
-                    && in_array('etudiant_id', $columns)
-                    && in_array('annee_universitaire_id', $columns)
-                    && in_array('status', $columns)) {
-                    $table->dropUnique($name);
+                    && in_array('etudiant_id', $columns, true)
+                    && in_array('annee_universitaire_id', $columns, true)
+                    && in_array('status', $columns, true)) {
+                    $table->dropUnique($index['name']);
                     break;
                 }
             }

@@ -69,11 +69,6 @@ return new class extends Migration
      */
     private function indexExiste(string $nom): bool
     {
-        return collect(Schema::getConnection()
-            ->getDoctrineSchemaManager()
-            ->listTableIndexes('esbtp_matiere_filiere_niveau'))
-            ->keys()
-            ->map(fn ($cle) => strtolower((string) $cle))
-            ->contains(strtolower($nom));
+        return Schema::hasIndex('esbtp_matiere_filiere_niveau', $nom);
     }
 };
