@@ -72,6 +72,25 @@ class AccesTemporairesTest extends TestCase
         return $user->fresh()->can($ability);
     }
 
+    public function test_un_simple_nom_superadmin_ne_permet_ni_delegation_ni_acces_definitif(): void
+    {
+        $sansDroits = User::factory()->create();
+        $sansDroits->assignRole('superAdmin');
+        $cible = User::factory()->create();
+
+        $this->assertFalse($this->service()->peutGererPermanents($sansDroits));
+        try {
+            $this->service()->accorder($cible, 'notes.edit', now(), now()->addDay(),
+                'Tentative d’octroi sans droit réel', $sansDroits);
+            $this->fail('Le nom du rôle ne suffit pas à accorder un droit.');
+        } catch (AccesTemporaireRefuse $e) {
+            $this->assertStringContainsString('ne détenez pas', $e->getMessage());
+        }
+        $this->assertDatabaseMissing('temporary_permission_grants', [
+            'user_id' => $cible->id, 'permission' => 'notes.edit',
+        ]);
+    }
+
     public function test_l_acces_ouvre_la_permission_puis_tombe_a_l_echeance(): void
     {
         $coord = User::factory()->create();

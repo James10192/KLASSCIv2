@@ -44,6 +44,9 @@ class AccesTemporaires
         'identity.',   // lues par hasAnyPermission
         'system.',     // configuration et acces de secours
         'paywall.',    // abonnement de l'instance
+        'personnel.roles.', // attribution et modification durable des rôles
+        'personnel.users.', // opérations sur identifiants et cycle de vie des comptes
+        'superadmin.accounts.', // création de comptes privilégiés
         'module.',     // couche abonnement : un module non souscrit ne s'ouvre pas ainsi
     ];
 
@@ -228,7 +231,7 @@ class AccesTemporaires
         // temporaire servirait a s'elever soi-meme par personne interposee.
         // Et on ne redistribue pas un acces qu'on tient soi-meme pour un temps :
         // il survivrait a sa propre echeance chez le beneficiaire.
-        if (! $auteur->hasRole('superAdmin') && ! $this->detientDeFaconPermanente($auteur, $permission)) {
+        if (! $this->detientDeFaconPermanente($auteur, $permission)) {
             throw new AccesTemporaireRefuse('Vous ne pouvez pas accorder une permission que vous ne détenez pas.');
         }
         // Le compte etudiant est partage avec les parents : on n'y ouvre rien.
@@ -306,10 +309,9 @@ class AccesTemporaires
     public function peutGererPermanents(User $auteur): bool
     {
         // Une delegation individuelle ne peut pas en engendrer une autre.
-        return $auteur->hasRole('superAdmin')
-            || ($this->detientDeFaconPermanente($auteur, 'permissions.individuels.permanents.manage')
-                && $this->detientDeFaconPermanente($auteur, 'permissions.temporaires.manage')
-                && $this->detientDeFaconPermanente($auteur, 'personnel.manage'));
+        return $this->detientDeFaconPermanente($auteur, 'permissions.individuels.permanents.manage')
+            && $this->detientDeFaconPermanente($auteur, 'permissions.temporaires.manage')
+            && $this->detientDeFaconPermanente($auteur, 'personnel.manage');
     }
 
     private function detientDeFaconPermanente(User $user, string $permission): bool

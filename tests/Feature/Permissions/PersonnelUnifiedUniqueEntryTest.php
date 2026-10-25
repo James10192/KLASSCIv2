@@ -160,7 +160,8 @@ class PersonnelUnifiedUniqueEntryTest extends TestCase
     {
         $role = Role::findOrCreate('coordinateur', 'web');
         $acteur = User::factory()->create(['is_active' => true]);
-        foreach (['personnel.manage', 'personnel.roles.assign'] as $permission) {
+        // La route historique coordinateurs.create exige aussi la porte admin.
+        foreach (['personnel.manage', 'personnel.roles.assign', 'admin.access'] as $permission) {
             $acteur->givePermissionTo(Permission::findOrCreate($permission, 'web'));
         }
 
