@@ -2302,8 +2302,8 @@
                     @endcan
                     @endcan
 
-                    <!-- Service Technique Section - ADC Only (role-gated, not permission) -->
-                    @role('serviceTechnique')
+                    <!-- Menu technique visible par permissions effectives, sans gate sur rôle. -->
+                    @canany(['paywall.manage', 'system.technical_access', 'personnel.view', 'personnel.manage'])
                         <div class="menu-category">Service Technique ADC</div>
 
                         <!-- Configuration System -->
@@ -2314,25 +2314,33 @@
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
                             <div class="menu-accordion-content {{ Request::routeIs('esbtp.paywall-config.*') || Request::routeIs('esbtp.matricule-config.*') ? 'show' : '' }}">
+                                @can('paywall.manage')
                                 <a href="{{ route('esbtp.paywall-config.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.paywall-config.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span><i class="fas fa-shield-alt me-2"></i>Paywall</span>
                                 </a>
+                                @endcan
+                                @can('system.technical_access')
                                 <a href="{{ route('esbtp.matricule-config.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.matricule-config.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span><i class="fas fa-id-card me-2"></i>Matricule</span>
                                 </a>
+                                @endcan
+                                @canany(['personnel.view', 'personnel.manage'])
                                 <a href="{{ route('esbtp.personnel.unified.index', ['section' => 'roles']) }}" class="menu-sublink {{ Request::routeIs('esbtp.personnel.unified.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span><i class="fas fa-user-shield me-2"></i>Rôles & Permissions</span>
                                 </a>
+                                @endcanany
+                                @can('system.technical_access')
                                 <a href="{{ route('esbtp.bulletin-style.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.bulletin-style.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span><i class="fas fa-file-alt me-2"></i>Style Bulletin</span>
                                 </a>
+                                @endcan
                             </div>
                         </div>
-                    @endrole
+                    @endcanany
 
                     <!-- Security & Audit Section - permission-gated (superAdmin + serviceTechnique by default via *) -->
                     @canany(['security.audit.view', 'comptabilite.audit.view'])
