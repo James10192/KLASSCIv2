@@ -532,6 +532,7 @@ jobs:
             tests/Feature/Permissions/AccesTemporairesTest.php \
             tests/Feature/Permissions/AccesTemporairesNonAccordablesTest.php \
             tests/Feature/API/CLI/AccesIndividuelsCliTest.php \
+            tests/Feature/API/CLI/UserDeletionGuardTest.php \
             tests/Feature/API/CLI/CustomRoleCliTest.php \
             tests/Feature/Permissions/CustomRoleManagementHardeningTest.php \
             tests/Feature/Permissions/PersonnelUnifiedUniqueEntryTest.php \
