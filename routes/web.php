@@ -304,19 +304,19 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     }
 
     // Routes spÃ©cifiques pour chaque type de tableau de bord
-    Route::middleware(['role:superAdmin'])->group(function () {
+    Route::middleware(['permission:system.manage'])->group(function () {
         Route::get('/dashboard/superadmin', [DashboardController::class, 'superadmin'])->name('dashboard.superadmin');
     });
 
-    Route::middleware(['role:secretaire'])->group(function () {
+    Route::middleware(['permission:identity.school_manager'])->group(function () {
         Route::get('/dashboard/secretaire', [DashboardController::class, 'secretaire'])->name('dashboard.secretaire');
     });
 
-    Route::middleware(['role:etudiant'])->group(function () {
+    Route::middleware(['permission:identity.student'])->group(function () {
         Route::get('/dashboard/etudiant', [DashboardController::class, 'etudiant'])->name('dashboard.etudiant');
     });
 
-    Route::middleware(['role:enseignant|teacher'])->group(function () {
+    Route::middleware(['permission:identity.teach'])->group(function () {
         Route::get('/dashboard/teacher', [TeacherDashboardController::class, 'index'])->name('teacher.dashboard');
         Route::get('/dashboard/teacher/timetable', [TeacherDashboardController::class, 'showTimetable'])->name('teacher.timetable');
         Route::get('/dashboard/teacher/grades', [TeacherDashboardController::class, 'showGrades'])->name('teacher.grades');
@@ -353,7 +353,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     });
 
     // Routes pour la gestion du profil coordinateur
-    Route::middleware(['role:coordinateur'])->group(function () {
+    Route::middleware(['permission:identity.coordinate'])->group(function () {
         Route::get('/coordinateur/profile', [AdminProfileController::class, 'index'])->name('coordinateur.profile');
         Route::put('/coordinateur/profile/update', [AdminProfileController::class, 'update'])->name('coordinateur.profile.update');
         Route::put('/coordinateur/profile/update-professional', [AdminProfileController::class, 'updateProfessionalInfo'])->name('coordinateur.profile.update.professional');
@@ -365,7 +365,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     });
 
     // Tableau de bord des prÃ©sences â€” accessible coordinateur, secrÃ©taire, superAdmin
-    Route::middleware(['auth', 'role:coordinateur|secretaire|superAdmin|directeurEtudes', 'permission:module.presences.access'])->group(function () {
+    Route::middleware(['auth', 'permission:module.presences.access'])->group(function () {
         Route::get('/coordinateur/attendance-dashboard', [App\Http\Controllers\CoordinateurDashboardController::class, 'attendanceDashboard'])->name('coordinateur.attendance-dashboard');
         Route::get('/coordinateur/attendance-dashboard/data', [App\Http\Controllers\CoordinateurDashboardController::class, 'attendanceDashboardData'])->name('coordinateur.attendance-dashboard.data')->middleware('throttle:120,1');
         Route::get('/coordinateur/recent-activities', [App\Http\Controllers\CoordinateurDashboardController::class, 'getRecentActivities'])->name('coordinateur.recent-activities');
@@ -547,7 +547,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
 
             // Routes pour les rÃ´les et permissions
-            Route::resource('roles', \App\Http\Controllers\ESBTP\RoleController::class)->middleware(['role:superAdmin']);
+            Route::resource('roles', \App\Http\Controllers\ESBTP\RoleController::class)->middleware('permission:personnel.view|personnel.manage');
         });
 
         Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer', 'paywall'])->group(function () {
@@ -1676,7 +1676,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         });
 
         // Espace Ã©tudiant - routes accessibles pour les Ã©tudiants
-        Route::middleware(['auth', 'role:etudiant'])->group(function () {
+        Route::middleware(['auth', 'permission:identity.student'])->group(function () {
             Route::get('/mon-profil', [ESBTPEtudiantController::class, 'profile'])
                 ->name('mon-profil.index')
                 ->middleware(['permission:profile.view_own|students.view']);
@@ -1750,7 +1750,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             if (app()->environment('local')) {
                 Route::get('/mes-absences/debug', [ESBTPAttendanceController::class, 'studentAttendance'])
                     ->name('mes-absences.debug')
-                    ->middleware(['role:etudiant'])
+                    ->middleware(['permission:identity.student'])
                     ->defaults('debug', true);
             }
 
@@ -1952,7 +1952,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         });
 
     // Configuration des matricules - accÃ¨s direct sans sidebar
-    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:serviceTechnique'])->group(function () {
+    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'permission:system.technical_access'])->group(function () {
         Route::get('/matricule-config', [ESBTPMatriculeConfigController::class, 'index'])->name('matricule-config.index');
         Route::post('/matricule-config', [ESBTPMatriculeConfigController::class, 'store'])->name('matricule-config.store');
         Route::delete('/matricule-config/{id}', [ESBTPMatriculeConfigController::class, 'destroy'])->name('matricule-config.destroy');
@@ -2047,21 +2047,21 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::post('/{prolongation}/refuser', [App\Http\Controllers\ESBTP\ProlongationSeanceController::class, 'refuser'])->whereNumber('prolongation')->middleware('throttle:30,1')->name('refuser');
     });
 
-    Route::prefix('esbtp/teacher/attendance')->name('esbtp.teacher.attendance.')->middleware(['auth', 'role:enseignant'])->group(function () {
+    Route::prefix('esbtp/teacher/attendance')->name('esbtp.teacher.attendance.')->middleware(['auth', 'permission:identity.teach'])->group(function () {
         Route::get('/', [App\Http\Controllers\ESBTP\TeacherAttendanceController::class, 'index'])->name('index')->middleware('permission:attendances.view_own');
         Route::get('/history', [App\Http\Controllers\ESBTP\TeacherAttendanceController::class, 'history'])->name('history')->middleware('permission:attendances.view_own');
         Route::post('/sign', [App\Http\Controllers\ESBTP\TeacherAttendanceController::class, 'sign'])->name('sign')->middleware('permission:attendances.sign');
     });
 
     // Routes d'Ã©margement pour les enseignants
-    Route::middleware(['role:enseignant'])->group(function () {
+    Route::middleware(['permission:identity.teach'])->group(function () {
         Route::get('/attendance/mark', [ESBTPTeacherAttendanceController::class, 'index'])->name('attendance.mark');
         Route::post('/attendance/mark', [ESBTPTeacherAttendanceController::class, 'mark'])->name('attendance.mark.submit');
     });
 });
 
 // Routes pour les enseignants
-Route::middleware(['auth', 'role:enseignant'])->group(function () {
+Route::middleware(['auth', 'permission:identity.teach'])->group(function () {
     // Routes pour l'Ã©margement - Enseignants
     Route::prefix('attendance')->name('teacher.attendance.')->group(function () {
         Route::get('/', 'ESBTP\TeacherAttendanceController@index')->name('index');
@@ -2073,7 +2073,7 @@ Route::middleware(['auth', 'role:enseignant'])->group(function () {
 // Ce bloc de routes est commentÃ© car il est redondant avec les routes dÃ©finies dans le prÃ©fixe 'esbtp'
 // Route::middleware(['auth', 'verified'])->group(function () {
 //     // Routes pour les Ã©tudiants
-//     Route::middleware(['role:etudiant'])->group(function () {
+//     Route::middleware(['permission:identity.student'])->group(function () {
 //         // Mes notes
 //         Route::get('/mes-notes', [App\Http\Controllers\ESBTPNoteController::class, 'studentGrades'])
 //             ->name('mes-notes.index');
@@ -2226,7 +2226,7 @@ Route::middleware(['auth', 'paywall', 'permission:evaluations.notes.export'])->g
 });
 
 // Routes pour les notifications des Ã©tudiants
-Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:etudiant'])->group(function () {
+Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'permission:identity.student'])->group(function () {
     Route::get('/mes-notifications', [ESBTPNotificationController::class, 'index'])->name('mes-notifications.index');
     Route::post('/mes-notifications/{id}/read', [ESBTPNotificationController::class, 'markAsRead'])->name('mes-notifications.read');
     Route::post('/mes-notifications/mark-all-read', [ESBTPNotificationController::class, 'markAllAsRead'])->name('mes-notifications.markAllAsRead');
@@ -2348,7 +2348,7 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'permission:admin.ac
 });
 
 // Routes pour l'espace enseignant et coordinateur
-Route::middleware(['auth', 'role:enseignant|coordinateur|directeurEtudes'])->group(function () {
+Route::middleware(['auth', 'permission:identity.teach|identity.coordinate|identity.direct_studies'])->group(function () {
     // Notes routes already defined in main group (line 910-924) with role:superAdmin|secretaire|coordinateur|enseignant|teacher
 
     // Gestion des prÃ©sences
@@ -2636,7 +2636,7 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth'])->group(function () 
     });
 
     // Routes pour l'Ã©margement des enseignants
-    Route::prefix('teacher-attendance')->name('teacher-attendance.')->middleware(['auth', 'role:enseignant'])->group(function () {
+    Route::prefix('teacher-attendance')->name('teacher-attendance.')->middleware(['auth', 'permission:identity.teach'])->group(function () {
         Route::get('/', [TeacherAttendanceController::class, 'index'])->name('index');
         Route::get('/history', [TeacherAttendanceController::class, 'history'])->name('history');
         Route::post('/sign', [TeacherAttendanceController::class, 'sign'])->name('sign');
