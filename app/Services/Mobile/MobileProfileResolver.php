@@ -181,6 +181,24 @@ class MobileProfileResolver
             return null;
         }
 
+        // La fonction explicitement choisie prime la cascade des autres droits
+        // du compte. Ce choix n'est PAS une preuve d'autorisation ; chaque
+        // écran et action conserve ses vérifications de permissions.
+        $choisi = \App\Support\ProfilActif::courant(request());
+        if (in_array($choisi, ['enseignant', 'teacher'], true) && $user->can('identity.teach')) {
+            return self::ENSEIGNANT;
+        }
+        if ($choisi === 'coordinateur' && $user->can('identity.coordinate')) {
+            return self::SCOLARITE;
+        }
+        if ($choisi !== null) {
+            $roleChoisi = $user->roles->firstWhere('name', $choisi);
+            $profilChoisi = $roleChoisi?->getAttribute('mobile_profile');
+            if (is_string($profilChoisi) && self::estDeclarable($profilChoisi)) {
+                return $profilChoisi;
+            }
+        }
+
         // Exceptions tolerees a l'interdiction de hasRole() : le superAdmin
         // possede toutes les permissions, la cascade ci-dessous le rangerait
         // toujours en caisse.

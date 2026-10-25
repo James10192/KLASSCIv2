@@ -68,6 +68,8 @@ class Kernel extends HttpKernel
             // presente. Ne concerne QUE les comptes qui en ont deja confirme
             // un : activer le reglage n'enferme personne dehors.
             \App\Http\Middleware\ExigerDoubleAuthentification::class,
+            // Après le second facteur, sans bypass métier.
+            \App\Http\Middleware\ExigerChoixProfil::class,
         ],
 
         'api' => [
