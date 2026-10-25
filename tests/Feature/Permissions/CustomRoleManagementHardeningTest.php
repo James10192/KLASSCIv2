@@ -402,6 +402,20 @@ class CustomRoleManagementHardeningTest extends TestCase
         )));
     }
 
+    public function test_la_sync_ne_distribue_pas_creation_superadmin_au_role_superadmin(): void
+    {
+        $super = Role::findOrCreate('superAdmin', 'web');
+        $service = Role::findOrCreate('serviceTechnique', 'web');
+        $permission = Permission::findOrCreate('superadmin.accounts.create', 'web');
+        // Etat hérité : le joker du rôle superAdmin a déjà attribué ce droit.
+        $super->givePermissionTo($permission);
+
+        app(PermissionSyncService::class)->run();
+
+        $this->assertFalse($super->fresh()->hasPermissionTo($permission));
+        $this->assertTrue($service->fresh()->hasPermissionTo($permission));
+    }
+
     public function test_extension_d_un_role_standard_saisie_via_personnel_survit_a_la_sync(): void
     {
         $actor = $this->acteur('superAdmin', false);

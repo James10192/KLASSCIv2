@@ -1,5 +1,7 @@
 # Changelog KLASSCI
 
+- Sécurité : création d'un compte Superadmin réservée par défaut à la permission du Service Technique, sans droit implicite via le rôle Superadmin ; migration douce des attributions historiques, décisions explicitement accordées conservées.
+
 - Sécurité (PR #1685) : gestion globale des rôles et initialisation des comptes sans rôle sous permissions explicites `personnel.roles.manage_all` et `personnel.users.initialize`, avec tests de permissions directes, de refus sans habilitation et de repli 403 lorsque la permission manque en base.
 
 Toutes les évolutions notables de la plateforme KLASSCI, regroupées par mois.

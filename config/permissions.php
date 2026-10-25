@@ -2387,6 +2387,12 @@ return [
     | Lecture via PermissionRegistry::defaultPermissionsFor($role).
     */
 
+    'role_default_exclusions' => [
+        // Le service technique reçoit seul par défaut la création de Superadmin.
+        // Une attribution explicite et auditée peut toujours être décidée par tenant.
+        'superAdmin' => ['superadmin.accounts.create'],
+    ],
+
     'role_defaults' => [
         'superAdmin' => ['*'],
 

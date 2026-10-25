@@ -173,6 +173,30 @@ class PermissionSyncService
             }
         }
 
+        // Un ancien joker pouvait avoir distribué des capacités sensibles.
+        // Nettoyer uniquement cette dérive par défaut ; une extension locale
+        // explicitement enregistrée reste une décision du tenant.
+        $exclusionsAppliquees = [];
+        foreach ($roles->keys() as $roleName) {
+            $excluded = array_diff(
+                $this->registry->excludedDefaultPermissionsFor($roleName),
+                $decisions->pour($roleName)
+            );
+            if ($excluded === []) {
+                continue;
+            }
+            $role = $roleModels[$roleName];
+            $aRetirer = $role->permissions()->pluck('name')->filter(
+                fn (string $nom) => in_array($this->registry->canonicalize($nom), $excluded, true)
+            )->all();
+            foreach ($aRetirer as $nom) {
+                $role->revokePermissionTo($nom);
+            }
+            if ($aRetirer !== []) {
+                $exclusionsAppliquees[] = ['role' => $roleName, 'permissions_count' => count($aRetirer)];
+            }
+        }
+
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $this->registry->clearCache();
 
@@ -185,6 +209,7 @@ class PermissionSyncService
             'dependencies_healed' => $dependenciesHealed,
             'missing_defaults_healed' => $missingDefaultsHealed,
             'revocations_appliquees' => $retireesAppliquees,
+            'exclusions_appliquees' => $exclusionsAppliquees,
         ];
     }
 
