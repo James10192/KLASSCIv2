@@ -92,9 +92,13 @@ class SaisieGroupeeNotesLmdTest extends TestCase
     {
         $this->withoutMiddleware(PaywallMiddleware::class);
         Role::findOrCreate('superAdmin', 'web');
+        Permission::findOrCreate('lmd.notes.manage', 'web');
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $user = User::withoutEvents(fn () => User::factory()->create());
         $user->assignRole('superAdmin');
+        // Le rôle superAdmin n'accorde aucun passe-droit implicite : ce
+        // scénario de saisie autorisée doit porter sa permission métier.
+        $user->givePermissionTo('lmd.notes.manage');
         $this->actingAs($user);
 
         $annee = ESBTPAnneeUniversitaire::factory()->create();
