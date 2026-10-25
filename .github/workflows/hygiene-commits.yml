@@ -534,6 +534,7 @@ jobs:
             tests/Feature/API/CLI/AccesIndividuelsCliTest.php \
             tests/Feature/Permissions/NoImplicitSuperAdminGateTest.php \
             tests/Feature/Permissions/LegacyRoleMiddlewarePermissionOnlyTest.php \
+            tests/Feature/Permissions/UserManagementPermissionOnlyTest.php \
             tests/Feature/Auth/ChoixProfilTest.php \
             tests/Feature/Enseignant/TeacherEvaluationAuthorizationTest.php \
             tests/Feature/API/CLI/UserDeletionGuardTest.php \
