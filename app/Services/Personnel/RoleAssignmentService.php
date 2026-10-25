@@ -63,9 +63,14 @@ final class RoleAssignmentService
             if ($roleName === 'serviceTechnique') {
                 throw new AuthorizationException('Attribution du rôle technique indisponible depuis cette API.');
             }
-            if ($roleName === 'superAdmin' && ($mode !== 'add'
-                || ! $operator->checkPermissionTo('superadmin.accounts.create', 'web'))) {
-                throw new AuthorizationException('Permission de création Superadmin absente.');
+            if ($roleName === 'superAdmin') {
+                // Ajouter superAdmin à un compte existant est une promotion,
+                // PAS une création initiale. Le droit de créer un compte
+                // ne remplace pas l'approbation indépendante maker-checker.
+                // En l'absence du workflow, cette API échoue fermée.
+                throw new AuthorizationException(
+                    'Promotion Superadministrateur : approbation distincte obligatoire.'
+                );
             }
             if ($mode === 'replace') {
                 if (collect($expectedRoles)->unique()->sort()->values()->all() !== $before) {

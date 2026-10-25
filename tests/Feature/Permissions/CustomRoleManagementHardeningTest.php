@@ -630,6 +630,31 @@ class CustomRoleManagementHardeningTest extends TestCase
         )));
     }
 
+    public function test_creation_superadmin_ne_sert_pas_de_passe_droit_pour_promouvoir_un_compte(): void
+    {
+        $acteur = $this->acteur('superAdmin', false);
+        $acteur->givePermissionTo(Permission::findOrCreate('superadmin.accounts.create', 'web'));
+        $cible = User::factory()->create(['is_active' => true]);
+        $role = Role::findOrCreate('superAdmin', 'web');
+
+        try {
+            app(\App\Services\Personnel\RoleAssignmentService::class)->change(
+                $acteur, $cible->id, 'add', $role->name,
+                'Tentative de promotion sans seconde validation'
+            );
+            $this->fail('Une promotion en Superadmin sans approbation distincte doit échouer.');
+        } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
+            $this->assertStringContainsString('approbation distincte', $exception->getMessage());
+        }
+
+        $this->assertFalse($cible->fresh()->hasRole('superAdmin'));
+        $this->assertDatabaseMissing('audits', [
+            'auditable_type' => User::class,
+            'auditable_id' => $cible->id,
+            'tags' => 'permissions',
+        ]);
+    }
+
     public function test_la_sync_ne_distribue_pas_creation_superadmin_au_role_superadmin(): void
     {
         $super = Role::findOrCreate('superAdmin', 'web');

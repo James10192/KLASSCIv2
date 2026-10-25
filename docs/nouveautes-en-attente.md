@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-25 · #1687 sécurité · La permission de création d'un compte Superadmin ne permet plus de promouvoir directement un utilisateur existant via le service générique de changement de rôles ; cette opération exige une seconde approbation indépendante, encore indisponible.
 - 2026-10-25 · #1687 sécurité · Suppression d'un rôle personnalisé : état vide revérifié sous verrou au moment de la suppression pour éviter le détachement silencieux d'un utilisateur ajouté en parallèle ; trace d'audit explicite et test de non-régression.
 - 2026-10-25 · #1687 sécurité · Édition des permissions d'un rôle custom/standard refusée si ce rôle est aussi porté par un compte Superadmin ou Service Technique ; refus revalidé sous verrou transactionnel, évitant le déclassement indirect avant double approbation. Recette obligatoire.
 - 2026-10-25 · #1687 sécurité · L'identifiant utilisateur transmis par formulaire HTML est normalisé avant le contrôle d'auto-attribution des rôles, évitant un contournement par différence de type numérique/chaîne. Test de formulaire ajouté.
