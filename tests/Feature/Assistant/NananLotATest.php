@@ -667,9 +667,10 @@ class NananLotATest extends TestCase
         app(\App\Services\Frais\PoseDeBareme::class)->appliquer($bareme, $this->admin->id);
         $this->assertSame('ancien', \Illuminate\Support\Facades\Cache::get($cle), 'pas avant la fin de la transaction');
         \Illuminate\Support\Facades\DB::commit();
-        // Sous DatabaseTransactions (Laravel 9), la transaction du test ne se valide
-        // jamais : on joue ce que la vraie validation jouerait.
-        app('db.transactions')->getTransactions()->each->executeCallbacks();
+        // Laravel 12 déclenche les callbacks afterCommit de la transaction
+        // imbriquée au commit, même sous DatabaseTransactions : aucune
+        // simulation manuelle des callbacks n'est nécessaire.
+        $this->assertSame(1, \Illuminate\Support\Facades\DB::transactionLevel());
         $this->assertNull(\Illuminate\Support\Facades\Cache::get($cle));
     }
 
