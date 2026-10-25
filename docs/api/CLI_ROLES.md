@@ -1,24 +1,74 @@
-# API CLI Rôles
+# API CLI — rôles et comptes (PR #1685, NON FUSIONNÉE)
 
-## POST `/api/cli/roles`
+La base de données utilisée est toujours celle de l'établissement courant. Une
+ability Sanctum cli:admin ne suffit pas : la permission Spatie effective de
+l'auteur est nécessaire. Les autorisations serveur ne reposent pas sur les noms
+des rôles détenus par l'auteur.
 
-Crée un **rôle custom** (Spatie `is_custom=true`). Les noms canoniques (`config/permissions.php` → `roles`) sont refusés.
+## POST /api/cli/roles
 
-Auth : Bearer token, ability `cli:admin`.
+Créer un rôle personnalisé. Conditions : cli:admin ET personnel.roles.create.
+Un rôle custom ne peut recevoir que des permissions réellement détenues par
+son créateur. Les rôles canoniques sont réservés et ne sont pas créés implicitement.
 
-```json
-{
-  "name": "informaticien",
-  "label_fr": "Informaticien",
-  "description": "Valide inscriptions, notes, maquettes, PV",
-  "permissions": ["inscriptions.validate", "notes.create"]
-}
-```
+Exemple de requête :
 
-## POST `/api/cli/user/{id}/role`
+    {"name":"informaticien","label_fr":"Informaticien","permissions":["inscriptions.validate"]}
 
-Assigne un rôle existant (canonique **ou custom**). Body : `{ "role": "secretaire_inscriptions", "mode": "replace" }`.
+## POST /api/cli/user/{id}/role
 
-## Historique
+Mutations d'un compte existant via RoleAssignmentService : transaction, audit
+avant/après et motif obligatoire. Rôles inconnus = 422 ; permission absente = 403.
 
-- 2026-08-31 : `roleStore` + assignation des rôles custom existants (plus seulement `VALID_ROLES`).
+Ajout non destructif (par défaut : mode add) :
+
+    {"role":"coordinateur","mode":"add","motif":"Enseignant et coordinateur"}
+
+Retrait ciblé :
+
+    {"role":"coordinateur","mode":"remove","motif":"Fin de mission"}
+
+Remplacement ciblé : remplace seulement old_role, conserve les autres rôles.
+expected_roles est la liste complète des rôles de la cible AVANT modification,
+et protège contre l'écrasement d'une autre affectation récente :
+
+    {
+      "role":"secretaire",
+      "mode":"replace",
+      "old_role":"coordinateur",
+      "expected_roles":["enseignant","coordinateur"],
+      "motif":"Changement de poste validé"
+    }
+
+La réponse contient roles_before et roles_after. Etat attendu périmé = 422.
+Le remplacement sans old_role ou expected_roles = 422.
+
+Gouvernance : l'attribution de superAdmin nécessite
+superadmin.accounts.create en plus de personnel.roles.assign. La modification
+d'un compte possédant déjà superAdmin ou serviceTechnique est refusée (403)
+tant que le processus de double approbation n'est pas livré. L'attribution
+de serviceTechnique est interdite par ce parcours.
+
+## POST /api/cli/user/create
+
+Création + premier rôle + audit dans une même transaction. Conditions :
+cli:admin, users.manage et personnel.roles.assign. Champ motif obligatoire.
+Rôle existant obligatoire. Création superAdmin : permission supplémentaire
+superadmin.accounts.create. Création serviceTechnique interdite par cette API.
+
+Le champ historique password_hash reste admis : les flux d'export et de
+réinitialisation d'empreintes demandent une revue de sécurité indépendante.
+
+## Historique et compatibilité
+
+- 25/10/2026 (PR #1685, EN ATTENTE) : BREAKING CHANGE. Pour toute mutation de rôle
+  et création de compte via la CLI, motif devient obligatoire. Le mode implicite
+  est maintenant add et non replace ; replace exige old_role et expected_roles.
+  Un ancien appel {"role":"x","mode":"replace"} reçoit 422 au lieu de supprimer
+  tous les autres rôles. Adapter les clients avant le déploiement.
+- 31/08/2026 : création et affectation de rôles custom introduites.
+
+Aucune migration de base de données propre à ces changements. Les permissions
+sont enregistrées dans le registry et synchronisées via le service existant.
+Ne pas propager la PR tant que le Composer Security Audit échoue sur
+GHSA-f9x3-7vq9-cph6.
