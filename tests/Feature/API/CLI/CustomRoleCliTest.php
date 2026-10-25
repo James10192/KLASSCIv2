@@ -18,6 +18,13 @@ class CustomRoleCliTest extends TestCase
     {
         parent::setUp();
 
+        // Ce lot éprouve des droits individuels sur des comptes sans rôle.
+        // CheckInstalled redirige l'ensemble des API vers /install lorsqu'aucun
+        // compte superAdmin n'a été créé dans la DB de test. Cela produit des
+        // 302 sans atteindre l'autorisation CLI testée ici. L'installation est
+        // couverte séparément ; elle ne doit pas masquer les refus 403/422.
+        $this->withoutMiddleware(\App\Http\Middleware\CheckInstalled::class);
+
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         Permission::findOrCreate('dashboard.view', 'web');
         Permission::findOrCreate('inscriptions.validate', 'web');
