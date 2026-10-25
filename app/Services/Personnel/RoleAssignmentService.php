@@ -45,7 +45,10 @@ final class RoleAssignmentService
             $target = User::query()->with('roles')->whereKey($targetId)->lockForUpdate()->firstOrFail();
 
             // checkPermissionTo ne consulte pas le Gate::before historique.
-            if (! $operator->checkPermissionTo('personnel.roles.'.$mode, 'web')) {
+            // Le contrat HTTP appelle l'ajout « add », mais la permission
+            // canonique du registry s'appelle bien « assign ».
+            $actionPermission = $mode === 'add' ? 'assign' : $mode;
+            if (! $operator->checkPermissionTo('personnel.roles.'.$actionPermission, 'web')) {
                 throw new AuthorizationException('Permission de changement de rôle absente.');
             }
             $role = Role::query()->where('name', $roleName)->where('guard_name', 'web')->first();
