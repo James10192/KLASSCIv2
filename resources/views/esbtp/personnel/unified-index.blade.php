@@ -1670,16 +1670,18 @@
                         @include('esbtp.custom-roles._role-card', ['customRoles' => $customRoles ?? collect()])
                     </div>
                     <div class="cr-section-actions">
+                        @can('personnel.roles.create')
                         <button type="button" class="cr-btn cr-btn-primary" data-cr-create-trigger>
                             <i class="fas fa-plus"></i> Créer un rôle personnalisé
                         </button>
-                        @role('serviceTechnique')
+                        @endcan
+                        @can('system.technical_access')
                             <button type="button" class="cr-btn cr-btn-ghost"
                                     data-cr-audit-trigger
                                     data-cr-audit-url="{{ route('esbtp.roles-permissions.audit') }}">
                                 <i class="fas fa-shield-alt"></i> Auditer les permissions
                             </button>
-                        @endrole
+                        @endcan
                     </div>
                 </div>
             </div>
@@ -3033,15 +3035,15 @@ function toggleCaissierStatus(id, button) {
         return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
+    const canCreateCustomRole = @json(auth()->user()->can('personnel.roles.create'));
+
     function renderList(roles) {
         if (!roles.length) {
             return `<div class="cr-empty">
                 <div class="cr-empty-icon"><i class="fas fa-id-badge"></i></div>
                 <h3>Aucun rôle personnalisé</h3>
                 <p>Créez votre premier rôle métier sur mesure (ex: Agent Inscriptions, Surveillant)</p>
-                <button type="button" class="cr-empty-btn" data-cr-create-trigger>
-                    <i class="fas fa-plus"></i> Créer un rôle personnalisé
-                </button>
+                ${canCreateCustomRole ? `<button type="button" class="cr-empty-btn" data-cr-create-trigger><i class="fas fa-plus"></i> Créer un rôle personnalisé</button>` : ``}
             </div>`;
         }
         return `<div class="cr-roles-list">${roles.map(r => `

@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-25 · #1687 sécurité · Création des rôles personnalisés : bouton, écran et endpoint exigent désormais personnel.roles.create ; l'audit technique est visible avec la permission system.technical_access plutôt qu'un nom de rôle figé. Recette de visibilité/403 requise.
 - 2026-10-25 · #1687 sécurité · Rôles personnalisés : un droit de périmètre manage_all n'autorise plus, à lui seul, l'ajout ou le retrait d'une affectation ; vérification séparée des droits assign/remove et refus systématique de mutation des comptes Superadmin/service technique. Vérification de non-régression et recette obligatoire.
 - 2026-10-25 · #1687 sécurité · Accès individuels : impossible de déléguer temporairement les permissions de mutation de rôles et de comptes ; le seul libellé Superadmin n'accorde plus la délégation ou la gestion des accès permanents sans habilitation effective. Les anciennes délégations devenues interdites sont également ignorées à la lecture. Contrôles tenant et recette sécurité avant propagation.
 - 2026-10-25 · #1687 complément · Création du personnel : vérification de la permission d'affectation et du périmètre de délégation avant d'attribuer le rôle ; refus clair si ce droit manque, avec audit transactionnel avant/après pour toute création autorisée. Recette sur présentation avant propagation.

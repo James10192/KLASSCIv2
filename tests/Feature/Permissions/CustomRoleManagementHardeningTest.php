@@ -99,6 +99,34 @@ class CustomRoleManagementHardeningTest extends TestCase
         $this->assertFalse($cible->fresh()->hasRole($role->name));
     }
 
+    public function test_creer_un_role_custom_exige_permission_create_specifique(): void
+    {
+        $actor = $this->acteur('coordinateur');
+        $this->actingAs($actor)
+            ->get(route('esbtp.custom-roles.create'))
+            ->assertForbidden();
+        $this->actingAs($actor)
+            ->postJson(route('esbtp.custom-roles.store'), [
+                'name' => 'role_test_creation_interdite',
+                'label_fr' => 'Rôle sans droit de création',
+                'permissions' => [],
+            ])->assertForbidden();
+        $this->assertDatabaseMissing('roles', ['name' => 'role_test_creation_interdite']);
+
+        $actor->givePermissionTo(Permission::findOrCreate('personnel.roles.create', 'web'));
+        $this->actingAs($actor->fresh())
+            ->get(route('esbtp.custom-roles.create'))
+            ->assertOk();
+        $this->actingAs($actor->fresh())
+            ->postJson(route('esbtp.custom-roles.store'), [
+                'name' => 'role_test_creation_autorisee',
+                'label_fr' => 'Rôle créé avec habilitation',
+                'permissions' => [],
+            ])->assertOk()->assertJsonPath('success', true);
+
+        $this->assertDatabaseHas('roles', ['name' => 'role_test_creation_autorisee', 'is_custom' => true]);
+    }
+
     public function test_manage_all_sans_assign_ne_peut_pas_ajouter_un_role_custom(): void
     {
         $actor = User::factory()->create(['is_active' => true]);

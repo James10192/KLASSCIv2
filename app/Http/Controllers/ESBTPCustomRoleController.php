@@ -167,6 +167,9 @@ class ESBTPCustomRoleController extends Controller
      */
     public function create(PermissionRegistry $registry)
     {
+        abort_unless(Auth::user()->checkPermissionTo('personnel.roles.create', 'web'),
+            403, 'Permission de création de rôles absente.');
+
         $grantablePermissions = $this->grantablePermissionsForActor($registry);
 
         return view('esbtp.custom-roles._create-modal', [
@@ -179,6 +182,9 @@ class ESBTPCustomRoleController extends Controller
      */
     public function store(Request $request, PermissionRegistry $registry)
     {
+        abort_unless(Auth::user()->checkPermissionTo('personnel.roles.create', 'web'),
+            403, 'Permission de création de rôles absente.');
+
         $validated = $request->validate([
             'name' => [
                 'required',
