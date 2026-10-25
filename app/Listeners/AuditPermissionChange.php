@@ -3,6 +3,7 @@
 namespace App\Listeners;
 
 use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Model;
 use OwenIt\Auditing\Models\Audit;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -90,6 +91,30 @@ class AuditPermissionChange
         ?int $auteur,
         ?string $motif = null
     ): void {
+        $this->enregistrerDecision($role, $avant, $apres, $auteur, $motif);
+    }
+
+    /**
+     * Mutation de rôles d'un compte par le CLI — mêmes garanties d'audit
+     * durable, sur la fiche User plutôt qu'un rôle arbitrairement choisi.
+     */
+    public function enregistrerDecisionDeCompte(
+        \App\Models\User $user,
+        array $avant,
+        array $apres,
+        ?int $auteur,
+        ?string $motif = null
+    ): void {
+        $this->enregistrerDecision($user, $avant, $apres, $auteur, $motif);
+    }
+
+    private function enregistrerDecision(
+        Model $cible,
+        array $avant,
+        array $apres,
+        ?int $auteur,
+        ?string $motif
+    ): void {
         // Ordre et doublons n'ont pas de sens dans un ensemble de permissions.
         $normaliser = static function (array $etat): array {
             foreach ($etat as &$valeurs) {
@@ -115,8 +140,8 @@ class AuditPermissionChange
             'user_type' => \App\Models\User::class,
             'user_id' => $auteur,
             'event' => 'updated',
-            'auditable_type' => Role::class,
-            'auditable_id' => $role->getKey(),
+            'auditable_type' => get_class($cible),
+            'auditable_id' => $cible->getKey(),
             'old_values' => json_encode($avant, JSON_UNESCAPED_UNICODE),
             'new_values' => json_encode($apres + ['motif' => $motif], JSON_UNESCAPED_UNICODE),
             'url' => $request?->fullUrl(),

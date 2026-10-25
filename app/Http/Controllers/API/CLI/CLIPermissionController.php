@@ -158,40 +158,66 @@ class CLIPermissionController extends BaseApiController
             return $this->errorResponse('Ce nom est réservé à un rôle système.', [], 422);
         }
 
-        $existing = Role::where('name', $validated['name'])->first();
-        if ($existing) {
-            $emptyWrongGuard = $existing->guard_name !== 'web'
-                && $existing->permissions()->count() === 0;
-            if (! $emptyWrongGuard) {
-                return $this->errorResponse("Role '{$validated['name']}' already exists", [], 422);
-            }
-            $existing->guard_name = 'web';
-            $existing->label_fr = $validated['label_fr'];
-            $existing->description = $validated['description'] ?? $existing->description;
-            $existing->is_custom = true;
-            $existing->save();
-            $role = $existing;
-        } else {
-            $role = new Role();
-            $role->name = $validated['name'];
-            $role->guard_name = 'web';
-            $role->label_fr = $validated['label_fr'];
-            $role->description = $validated['description'] ?? null;
-            $role->is_custom = true;
-            $role->created_by_user_id = $request->user()->id;
-            $role->save();
+        // Validation hors mutation, puis rôle + droits + audit dans une transaction.
+        // En cas d'échec, pas de rôle créé à moitié ni de permissions non tracées.
+        try {
+            [$role, $granted, $missing] = DB::transaction(function () use ($validated, $request) {
+                $existing = Role::where('name', $validated['name'])->first();
+                if ($existing) {
+                    $emptyWrongGuard = $existing->guard_name !== 'web'
+                        && $existing->permissions()->count() === 0;
+                    if (! $emptyWrongGuard) {
+                        return [null, [], []];
+                    }
+                    $existing->guard_name = 'web';
+                    $existing->label_fr = $validated['label_fr'];
+                    $existing->description = $validated['description'] ?? $existing->description;
+                    $existing->is_custom = true;
+                    $existing->save();
+                    $role = $existing;
+                } else {
+                    $role = new Role();
+                    $role->name = $validated['name'];
+                    $role->guard_name = 'web';
+                    $role->label_fr = $validated['label_fr'];
+                    $role->description = $validated['description'] ?? null;
+                    $role->is_custom = true;
+                    $role->created_by_user_id = $request->user()->id;
+                    $role->save();
+                }
+
+                $granted = [];
+                $missing = [];
+                foreach (array_unique($validated['permissions'] ?? []) as $perm) {
+                    $permModel = Permission::where('name', $perm)->where('guard_name', 'web')->first();
+                    if (! $permModel) {
+                        $missing[] = $perm;
+                        continue;
+                    }
+                    $role->givePermissionTo($permModel);
+                    $granted[] = $perm;
+                }
+
+                app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeRole(
+                    $role,
+                    ['permissions' => []],
+                    ['permissions' => $granted],
+                    $request->user()->id,
+                    'Création du rôle personnalisé depuis la CLI'
+                );
+
+                return [$role, $granted, $missing];
+            });
+        } catch (\Throwable $e) {
+            Log::error('CLI: creation role annulee (transaction/audit)', [
+                'type' => get_class($e),
+                'role' => $validated['name'],
+            ]);
+            return $this->errorResponse('Création impossible : aucune modification enregistrée.', [], 500);
         }
 
-        $granted = [];
-        $missing = [];
-        foreach ($validated['permissions'] ?? [] as $perm) {
-            $permModel = Permission::where('name', $perm)->where('guard_name', 'web')->first();
-            if (! $permModel) {
-                $missing[] = $perm;
-                continue;
-            }
-            $role->givePermissionTo($permModel);
-            $granted[] = $perm;
+        if ($role === null) {
+            return $this->errorResponse("Role '{$validated['name']}' already exists", [], 422);
         }
 
         app()['cache']->forget(config('permission.cache.key', 'spatie.permission.cache'));

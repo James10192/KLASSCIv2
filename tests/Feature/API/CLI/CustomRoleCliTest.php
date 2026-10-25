@@ -51,6 +51,20 @@ class CustomRoleCliTest extends TestCase
 
         $this->assertTrue($target->fresh()->hasRole('informaticien'));
         $this->assertFalse($target->fresh()->hasRole('agentInscription'));
+
+        $auditsCompte = \OwenIt\Auditing\Models\Audit::query()
+            ->where('auditable_type', User::class)->where('auditable_id', $target->id)
+            ->where('user_id', $actor->id)->where('tags', 'permissions')->get();
+        $this->assertTrue($auditsCompte->contains(fn ($audit) => str_contains(
+            json_encode($audit->new_values), 'informaticien'
+        )));
+        $role = Role::findByName('informaticien', 'web');
+        $auditsRole = \OwenIt\Auditing\Models\Audit::query()
+            ->where('auditable_type', Role::class)->where('auditable_id', $role->id)
+            ->where('user_id', $actor->id)->where('tags', 'permissions')->get();
+        $this->assertTrue($auditsRole->contains(fn ($audit) => str_contains(
+            json_encode($audit->new_values), 'inscriptions.validate'
+        )));
     }
 
     public function test_cli_rejects_unknown_role_assignment(): void

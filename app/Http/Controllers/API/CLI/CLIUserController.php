@@ -14,6 +14,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Spatie\Permission\Models\Role;
 
@@ -401,9 +402,28 @@ class CLIUserController extends BaseApiController
             }
         }
 
-        $mode === 'replace' ? $user->syncRoles([$role]) : $user->assignRole($role);
-
-        $apres = $user->fresh()->getRoleNames()->toArray();
+        try {
+            $apres = DB::transaction(function () use ($user, $role, $mode, $caller, $avant) {
+                // Éviter les écritures concurrentes sur le même compte.
+                $cible = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+                $rolesAvant = $cible->getRoleNames()->toArray();
+                $mode === 'replace' ? $cible->syncRoles([$role]) : $cible->assignRole($role);
+                $rolesApres = $cible->fresh()->getRoleNames()->toArray();
+                app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeCompte(
+                    $cible,
+                    ['roles' => $rolesAvant],
+                    ['roles' => $rolesApres],
+                    $caller->id,
+                    'CLI userSetRole: '.$mode
+                );
+                return $rolesApres;
+            });
+        } catch (\Throwable $e) {
+            Log::error('CLI: set-role transaction/audit failed', [
+                'user_id' => $user->id, 'exception' => get_class($e),
+            ]);
+            return $this->errorResponse('Modification refusée ou non enregistrée.', [], 500);
+        }
 
         Log::info('CLI: role changed', [
             'target_user_id' => $user->id,
