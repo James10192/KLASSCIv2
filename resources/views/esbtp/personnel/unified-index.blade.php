@@ -1463,17 +1463,11 @@
 
 @section('content')
 @php
-    // Tabs cachés selon le rôle de l'utilisateur connecté
+    // L'affichage des onglets dépend des permissions effectives transmises par le contrôleur.
+    // Aucun onglet n'est interdit parce que son titulaire exerce lui-même cette fonction.
     $hiddenTabs = [];
-    $visiblePersonnelTabs = $visiblePersonnelTabs ?? ['directeurs_etudes', 'coordinateurs', 'enseignants', 'secretaires', 'responsables_scolarite', 'services_scolarite', 'agents_inscription', 'comptables', 'caissiers'];
+    $visiblePersonnelTabs = $visiblePersonnelTabs ?? [];
     $personnelAccess = $personnelAccess ?? [];
-    $ur = $userRole ?? '';
-    if ($ur === 'directeurEtudes') $hiddenTabs[] = 'directeurs_etudes';
-    if ($ur === 'coordinateur') $hiddenTabs[] = 'coordinateurs';
-    if ($ur === 'secretaire') $hiddenTabs[] = 'secretaires';
-    if ($ur === 'responsableScolarite') $hiddenTabs[] = 'responsables_scolarite';
-    if ($ur === 'serviceScolarite') $hiddenTabs[] = 'services_scolarite';
-    if ($ur === 'agentInscription') $hiddenTabs[] = 'agents_inscription';
     // Premier tab visible = actif par défaut
     $tabOrder = ['directeurs_etudes', 'coordinateurs', 'enseignants', 'secretaires', 'responsables_scolarite', 'services_scolarite', 'agents_inscription', 'comptables', 'caissiers'];
     $canAnyCreatePersonnel = collect($tabOrder)->contains(fn($t) => $personnelAccess[$t]['create'] ?? false);
@@ -1510,12 +1504,12 @@
                             <i class="fas fa-plus"></i>Nouveau Personnel
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            @if(($personnelAccess['directeurs_etudes']['create'] ?? false) && ($userRole ?? '') !== 'directeurEtudes')
+                            @if($personnelAccess['directeurs_etudes']['create'] ?? false)
                             <li><a class="dropdown-item" href="{{ route('esbtp.directeurs-etudes.create') }}">
                                 <i class="fas fa-graduation-cap"></i>Directeur des études
                             </a></li>
                             @endif
-                            @if(($personnelAccess['coordinateurs']['create'] ?? false) && ($userRole ?? '') !== 'coordinateur')
+                            @if($personnelAccess['coordinateurs']['create'] ?? false)
                             <li><a class="dropdown-item" href="{{ route('esbtp.coordinateurs.create') }}">
                                 <i class="fas fa-user-tie"></i>Coordinateur
                             </a></li>
@@ -1525,22 +1519,22 @@
                                 <i class="fas fa-person-chalkboard"></i>Enseignant
                             </a></li>
                             @endif
-                            @if(($personnelAccess['secretaires']['create'] ?? false) && ($userRole ?? '') !== 'secretaire')
+                            @if($personnelAccess['secretaires']['create'] ?? false)
                             <li><a class="dropdown-item" href="{{ route('esbtp.secretaires.create') }}">
                                 <i class="fas fa-user-shield"></i>Secrétaire
                             </a></li>
                             @endif
-                            @if(($personnelAccess['responsables_scolarite']['create'] ?? false) && ($userRole ?? '') !== 'responsableScolarite')
+                            @if($personnelAccess['responsables_scolarite']['create'] ?? false)
                             <li><a class="dropdown-item" href="{{ route('esbtp.responsables-scolarite.create') }}">
                                 <i class="fas fa-user-check"></i>Responsable scolarité
                             </a></li>
                             @endif
-                            @if(($personnelAccess['services_scolarite']['create'] ?? false) && ($userRole ?? '') !== 'serviceScolarite')
+                            @if($personnelAccess['services_scolarite']['create'] ?? false)
                             <li><a class="dropdown-item" href="{{ route('esbtp.services-scolarite.create') }}">
                                 <i class="fas fa-print"></i>Service scolarité
                             </a></li>
                             @endif
-                            @if(($personnelAccess['agents_inscription']['create'] ?? false) && ($userRole ?? '') !== 'agentInscription')
+                            @if($personnelAccess['agents_inscription']['create'] ?? false)
                             <li><a class="dropdown-item" href="{{ route('esbtp.agents-inscription.create') }}">
                                 <i class="fas fa-user-plus"></i>Agent d'inscription
                             </a></li>

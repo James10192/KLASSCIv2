@@ -54,6 +54,23 @@ class PersonnelUnifiedUniqueEntryTest extends TestCase
             ->assertOk();
     }
 
+    public function test_un_coordinateur_habilite_peut_consulter_l_onglet_de_sa_propre_fonction(): void
+    {
+        Role::findOrCreate('coordinateur', 'web');
+        foreach (['personnel.view', 'coordinateurs.view'] as $permission) {
+            Permission::findOrCreate($permission, 'web');
+        }
+        $acteur = User::factory()->create(['is_active' => true]);
+        $acteur->assignRole('coordinateur');
+        $acteur->givePermissionTo(['personnel.view', 'coordinateurs.view']);
+
+        // L'identité coordinateur n'est jamais un motif pour masquer cet onglet.
+        $this->actingAs($acteur)
+            ->get(route('esbtp.personnel.unified.index'))
+            ->assertOk()
+            ->assertSee('data-tab="coordinateurs"', false);
+    }
+
     public function test_lecteur_du_personnel_peut_consulter_sans_pouvoir_ecrire(): void
     {
         $role = Role::findOrCreate('roleTestPersonnelLectureSeule', 'web');

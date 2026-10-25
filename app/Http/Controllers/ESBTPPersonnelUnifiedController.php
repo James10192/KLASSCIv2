@@ -130,23 +130,12 @@ class ESBTPPersonnelUnifiedController extends Controller
             'Accès non autorisé'
         );
 
-        // La restriction d'auto-gestion d'un poste vise les titulaires d'un
-        // unique rôle métier. Ne jamais choisir arbitrairement le premier
-        // rôle Spatie d'un compte à plusieurs fonctions : l'ordre DB varie
-        // et masquerait des onglets pourtant autorisés par la matrice.
-        $userRoles = auth()->user()->getRoleNames()->all();
-        $userRole = count($userRoles) === 1 ? $userRoles[0] : null;
-
-        // Coordinateurs/secrétaires masqués si l'utilisateur a ce rôle lui-même.
+        // Une section de personnel est visible selon les permissions effectives,
+        // jamais selon le rôle que l'opérateur porte lui-même.
+        // L'interdiction de modifier son propre compte reste dans les gardes serveur.
         $personnelAccess = $this->personnelAccessMatrix();
         $visiblePersonnelTabs = collect(array_keys(self::TAB_PERMISSIONS))
-            ->filter(fn ($tab) => ($personnelAccess[$tab]['view'] ?? false)
-                && ! ($tab === 'directeurs_etudes' && $userRole === 'directeurEtudes')
-                && ! ($tab === 'coordinateurs' && $userRole === 'coordinateur')
-                && ! ($tab === 'secretaires' && $userRole === 'secretaire')
-                && ! ($tab === 'responsables_scolarite' && $userRole === 'responsableScolarite')
-                && ! ($tab === 'services_scolarite' && $userRole === 'serviceScolarite')
-                && ! ($tab === 'agents_inscription' && $userRole === 'agentInscription'))
+            ->filter(fn ($tab) => $personnelAccess[$tab]['view'] ?? false)
             ->values()
             ->all();
 
@@ -203,8 +192,6 @@ class ESBTPPersonnelUnifiedController extends Controller
                 $agentsInscription->pluck('id'),
             ])->flatten()->unique()->count(),
         ];
-
-        $isCoordinateur = ($userRole === 'coordinateur');
 
         // Lot 8/17 — Rôles custom + standards éditables (visibles si users.manage)
         $customRoles = collect();
@@ -302,8 +289,6 @@ class ESBTPPersonnelUnifiedController extends Controller
             'caissiers',
             'agentsInscription',
             'stats',
-            'isCoordinateur',
-            'userRole',
             'personnelAccess',
             'visiblePersonnelTabs',
             'customRoles',
