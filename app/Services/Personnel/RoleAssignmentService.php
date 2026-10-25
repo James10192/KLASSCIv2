@@ -76,10 +76,21 @@ final class RoleAssignmentService
                 throw ValidationException::withMessages(['role' => 'Rôle non attribué.']);
             }
 
-            if ($mode !== 'remove') {
-                foreach ($role->permissions()->pluck('name') as $permission) {
+            // Contrôler aussi les privilèges RETIRÉS : une permission de
+            // retrait ne doit pas permettre de dégrader un rôle hors périmètre.
+            // Lors d'un remplacement, les deux côtés sont vérifiés.
+            $rolesAControler = [$role];
+            if ($mode === 'replace') {
+                $ancien = Role::query()->where('name', $oldRole)->where('guard_name', 'web')->first();
+                if (! $ancien) {
+                    throw ValidationException::withMessages(['old_role' => 'Ancien rôle introuvable.']);
+                }
+                $rolesAControler[] = $ancien;
+            }
+            foreach ($rolesAControler as $roleControle) {
+                foreach ($roleControle->permissions()->pluck('name') as $permission) {
                     if (! $operator->checkPermissionTo($permission, 'web')) {
-                        throw new AuthorizationException('Rôle contenant une permission non délégable.');
+                        throw new AuthorizationException('Une permission de ce rôle est hors de votre périmètre.');
                     }
                 }
             }

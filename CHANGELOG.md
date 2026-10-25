@@ -13,6 +13,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Sécurité délégation CLI :** le retrait et le remplacement vérifient également les permissions contenues dans le rôle retiré ; aucun gestionnaire ne peut retirer des pouvoirs qu'il ne détient pas lui-même.
+
 - **Sécurité suppression CLI (PR #1685) :** désactivation conditionnée par personnel.users.deactivate, motif obligatoire, audit transactionnel et blocage des comptes sensibles tant que le double accord n'existe pas.
 
 - **CLI (PR #1685, validation en cours) :** création de compte et gestion de rôles personnalisés désormais conditionnées par des permissions effectives ; assignation via RoleAssignmentService avec motif, validation d'état et refus des transformations Superadmin non approuvées.

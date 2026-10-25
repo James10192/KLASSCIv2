@@ -221,4 +221,25 @@ class CustomRoleCliTest extends TestCase
 
 
 
+    public function test_cli_refuse_de_retirer_un_role_plus_privilegie_que_l_acteur(): void
+    {
+        $actor = User::factory()->create();
+        $this->grantCliPermissions($actor);
+        Sanctum::actingAs($actor, ['cli:admin']);
+        $special = Role::findOrCreate('role_test_sensitive', 'web');
+        $permission = Permission::findOrCreate('security.audit.view', 'web');
+        $special->givePermissionTo($permission);
+        $target = User::factory()->create();
+        $target->assignRole($special);
+
+        $this->postJson("/api/cli/user/{$target->id}/role", [
+            'role' => $special->name,
+            'mode' => 'remove',
+            'motif' => 'Tentative de retrait sans la permission détenue',
+        ])->assertForbidden();
+
+        $this->assertTrue($target->fresh()->hasRole($special->name));
+    }
+
+
 }
