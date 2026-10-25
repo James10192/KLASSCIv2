@@ -416,6 +416,23 @@ class CustomRoleManagementHardeningTest extends TestCase
         $this->assertTrue($service->fresh()->hasPermissionTo($permission));
     }
 
+    public function test_sync_retire_les_droits_de_maintenance_herites_du_joker_superadmin(): void
+    {
+        $super = Role::findOrCreate('superAdmin', 'web');
+        $service = Role::findOrCreate('serviceTechnique', 'web');
+        $permissions = ['paywall.manage', 'system.technical_access'];
+        foreach ($permissions as $name) {
+            $super->givePermissionTo(Permission::findOrCreate($name, 'web'));
+        }
+
+        app(PermissionSyncService::class)->run();
+
+        foreach ($permissions as $name) {
+            $this->assertFalse($super->fresh()->hasPermissionTo($name), $name);
+            $this->assertTrue($service->fresh()->hasPermissionTo($name), $name);
+        }
+    }
+
     public function test_extension_d_un_role_standard_saisie_via_personnel_survit_a_la_sync(): void
     {
         $actor = $this->acteur('superAdmin', false);
