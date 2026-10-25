@@ -10,7 +10,7 @@ La sidebar a **deux niveaux de sections** pour certains modules :
 1. **Section plate** (caissier) : items directs sous un `menu-category`
 2. **Section complète** (admin) : `menu-category` + accordion `menu-accordion` avec sous-items
 
-Le superAdmin a TOUTES les permissions via `Gate::before()`. Si les deux sections sont visibles sans guard, il voit des doublons.
+Il n'existe plus de passe-droit global `Gate::before()` pour `superAdmin` ou `serviceTechnique` : les droits effectifs de chaque compte gouvernent les liens visibles. Si les sections plate et complète sont affichées simultanément, un utilisateur multi-rôles peut voir des doublons. Le profil actif ne change jamais ses autorisations.
 
 ## Pattern anti-doublon (OBLIGATOIRE)
 
@@ -41,10 +41,10 @@ Quand une section plate coexiste avec une section complète pour le même domain
 
 ## Règles
 
-1. **JAMAIS `@can()` pour Service Technique** — toujours `@role('serviceTechnique')` car superAdmin a toutes les permissions
+1. **Toujours `@can()` pour les liens et actions techniques** (`paywall.manage`, `system.technical_access`, etc.) : le nom `serviceTechnique` identifie un état protégé, il ne confère aucun droit et ne doit pas autoriser l'accès.
 2. **JAMAIS ajouter un item dans les DEUX sections** — choisir la section plate OU complète
 3. **Toujours vérifier** si l'item existe déjà dans une autre section avant d'ajouter
-4. **Tester avec superAdmin** après modification — c'est le rôle qui révèle les doublons
+4. **Tester avec superAdmin, serviceTechnique, rôle custom et compte multi-rôles** après modification ; une révocation explicite de permission doit masquer le lien correspondant.
 5. **Module toggles** : `@can('module.XXX.access')` = couche abonnement instance, `@can('specific_perm')` = permission métier
 
 ## Structure des modules toggles
@@ -62,7 +62,7 @@ module.etudiants.access          (étudiants, inscriptions, réinscriptions)
 module.comptabilite.access       (frais, paiements, relances, dashboard comptable)
 module.caisse.access             (rôle caissier — pré-inscription + encaissement)
 module.communication.access      (annonces, messages)
-module.technical_support.access  (Service Technique uniquement)
+module.technical_support.access  (selon permission effective attribuée par l'instance)
 ```
 
 Pour ajouter un module : éditer `config/permissions.php` et déployer via `php bin/deploy/fix_permissions.php`. Voir [.claude/rules/permissions.md](permissions.md).
