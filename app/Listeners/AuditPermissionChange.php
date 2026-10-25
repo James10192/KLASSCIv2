@@ -16,12 +16,15 @@ use Spatie\Permission\Models\Role;
  * pivot (`model_has_roles`, `model_has_permissions`, `role_has_permissions`),
  * pas seulement les CRUD sur les modèles Role/Permission eux-mêmes.
  *
- * Spatie 5.11 (version installée) ne dispatche pas d'événements natifs
- * `RoleAttached` / `PermissionAttached`. On s'appuie donc sur les Eloquent
- * pivot events `eloquent.pivotAttached` / `pivotDetached` pour les couvrir.
+ * Laravel 9 ne garantit pas les événements Eloquent `pivotAttached` /
+ * `pivotDetached` pour les appels Spatie utilisés ici. Ces listeners
+ * historiques restent compatibles mais NE sont PAS la source de vérité.
+ * Les mutations dans personnel/unified, la CLI et les extensions de rôle
+ * appellent explicitement `enregistrerDecisionDeRole/Compte`, à l'intérieur
+ * de leur transaction ; une écriture d'audit manquante annule la mutation.
  *
- * Inscription : voir `EventServiceProvider::boot()` qui appelle
- * `Event::listen('eloquent.pivotAttached: App\Models\User', ...)`.
+ * La couverture des autres `assignRole()` de l'application reste à auditer.
+ * Voir `EventServiceProvider::boot()` pour les listeners historiques.
  */
 class AuditPermissionChange
 {

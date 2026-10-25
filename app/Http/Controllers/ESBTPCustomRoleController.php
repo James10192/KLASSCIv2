@@ -262,6 +262,7 @@ class ESBTPCustomRoleController extends Controller
         if (! ($roleModel->is_custom ?? false)) {
             abort(403, 'Les rôles système ne peuvent pas être modifiés ici.');
         }
+        $this->assertCustomRolePermissionsManageable($roleModel, $registry);
 
         $grantablePermissions = $this->grantablePermissionsForActor($registry);
         $assignedPermissions = $roleModel->permissions->pluck('name')->all();
@@ -286,6 +287,7 @@ class ESBTPCustomRoleController extends Controller
                 'message' => 'Les rôles système ne peuvent pas être modifiés ici.',
             ], 403);
         }
+        $this->assertCustomRolePermissionsManageable($roleModel, $registry);
 
         $validated = $request->validate([
             'label_fr' => ['required', 'string', 'max:255'],
@@ -438,6 +440,7 @@ class ESBTPCustomRoleController extends Controller
                 'message' => 'Les rôles système ne peuvent pas être supprimés.',
             ], 403);
         }
+        $this->assertCustomRolePermissionsManageable($roleModel, $registry);
 
         $usersCount = $roleModel->users()->count();
         if ($usersCount > 0) {
@@ -470,6 +473,7 @@ class ESBTPCustomRoleController extends Controller
         if (! ($roleModel->is_custom ?? false)) {
             abort(403, 'L\'assignation se fait via les outils dédiés pour les rôles système.');
         }
+        $this->assertCustomRolePermissionsManageable($roleModel, $registry);
 
         $manageableRoles = $this->manageableRolesForActor($registry);
         abort_if($manageableRoles === [], 403, 'Aucun périmètre de gestion du personnel.');
@@ -659,6 +663,26 @@ class ESBTPCustomRoleController extends Controller
             'message' => 'Certains comptes ont des rôles hors de votre périmètre ou ne sont pas encore habilités.',
             'forbidden_user_ids' => $interdits,
         ], 403);
+    }
+
+    /**
+     * Même invariant pour les rôles personnalisés : contrôler les droits
+     * ACTUELS du rôle, pas uniquement les droits proposés. Sans ce garde,
+     * un gestionnaire peut retirer des permissions privilégiées qu'il n'a
+     * pas lui-même, voire supprimer entièrement le rôle.
+     */
+    private function assertCustomRolePermissionsManageable(Role $role, PermissionRegistry $registry): void
+    {
+        $courantes = array_values(array_unique(array_map(
+            fn (string $nom) => $registry->canonicalize($nom),
+            $role->permissions()->pluck('name')->all()
+        )));
+
+        abort_if(
+            $this->denyIfPermissionsNotGrantable($courantes, $registry) !== null,
+            403,
+            'Ce rôle personnalisé contient des permissions hors de votre périmètre.'
+        );
     }
 
     /**

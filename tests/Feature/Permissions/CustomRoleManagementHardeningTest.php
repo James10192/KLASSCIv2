@@ -209,6 +209,35 @@ class CustomRoleManagementHardeningTest extends TestCase
         $this->assertTrue($role->fresh()->hasPermissionTo($permission));
     }
 
+    public function test_un_gestionnaire_ne_peut_pas_editer_vider_ou_supprimer_un_role_custom_plus_privilegie(): void
+    {
+        $acteur = $this->acteur('coordinateur');
+        $role = $this->rolePersonnalise('roleTestCustomHorsPerimetre');
+        $permission = Permission::findOrCreate('security.audit.view', 'web');
+        $role->givePermissionTo($permission);
+
+        $this->actingAs($acteur)
+            ->get(route('esbtp.custom-roles.edit', $role->name))
+            ->assertForbidden();
+
+        $this->actingAs($acteur)
+            ->putJson(route('esbtp.custom-roles.update', $role->name), [
+                'label_fr' => 'Effacement interdit',
+                'permissions' => [],
+            ])->assertForbidden();
+
+        $this->actingAs($acteur)
+            ->get(route('esbtp.custom-roles.assign-users.form', $role->name))
+            ->assertForbidden();
+
+        $this->actingAs($acteur)
+            ->deleteJson(route('esbtp.custom-roles.destroy', $role->name))
+            ->assertForbidden();
+
+        $this->assertTrue($role->fresh()->hasPermissionTo($permission));
+        $this->assertDatabaseHas('roles', ['id' => $role->id, 'name' => $role->name]);
+    }
+
     public function test_ancien_controleur_roles_ne_peut_ni_creer_ni_renommer_ni_supprimer_un_role_standard(): void
     {
         $actor = $this->acteur('superAdmin', false);
