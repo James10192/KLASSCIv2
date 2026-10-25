@@ -2771,6 +2771,11 @@
                                     </a>
                                 @endrole
                             </li>
+                            @if(auth()->user()->getRoleNames()->unique()->count() > 1)
+                                <li><a class="dropdown-item" href="{{ route('profil.choisir') }}">
+                                    <i class="fas fa-arrows-rotate"></i> Changer de profil
+                                </a></li>
+                            @endif
                             <x-support.entrees-menu variante="bureau" />
                             <li>
                                 {{-- Une securite qu'on ne trouve pas n'est activee par personne. --}}
