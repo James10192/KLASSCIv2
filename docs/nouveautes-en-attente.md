@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-25 · #1687 sécurité · Les synchronisations et détachements de rôles personnalisés verrouillent et revalident rôle/utilisateurs pendant l'écriture, refusent une modification concurrente et renvoient un 403 clair après refus d'autorisation. Recette et tests d'intégration requis.
 - 2026-10-25 · #1687 sécurité · Les affectations de rôles personnalisés refusent l'ajout/retrait de son propre rôle ; une délégation explicite de retrait fonctionne sans droit d'ajout. Tests de séparation des capacités.
 - 2026-10-25 · #1687 sécurité · Création des rôles personnalisés : bouton, écran et endpoint exigent désormais personnel.roles.create ; l'audit technique est visible avec la permission system.technical_access plutôt qu'un nom de rôle figé. Recette de visibilité/403 requise.
 - 2026-10-25 · #1687 sécurité · Rôles personnalisés : un droit de périmètre manage_all n'autorise plus, à lui seul, l'ajout ou le retrait d'une affectation ; vérification séparée des droits assign/remove et refus systématique de mutation des comptes Superadmin/service technique. Vérification de non-régression et recette obligatoire.

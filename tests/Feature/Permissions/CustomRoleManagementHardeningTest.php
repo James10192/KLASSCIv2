@@ -169,7 +169,7 @@ class CustomRoleManagementHardeningTest extends TestCase
             $acteur->givePermissionTo(Permission::findOrCreate($nom, 'web'));
         }
         $role = $this->rolePersonnalise('roleTestRemoveOnly');
-        $cible = $this->acteur('enseignant', false);
+        $cible = User::factory()->create(['is_active' => true]);
         $cible->assignRole($role);
 
         $this->actingAs($acteur)

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Services\Mobile\MobileProfileResolver;
 use App\Services\PermissionRegistry;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -587,10 +588,41 @@ class ESBTPCustomRoleController extends Controller
             return $denial;
         }
 
-        return $this->runMutation($registry, 'l\'affectation', function () use ($roleModel, $requestedUserIds) {
-            $currentIds = $roleModel->users()->pluck('users.id')->all();
-            $toAttach = array_diff($requestedUserIds, $currentIds);
-            $toDetach = array_diff($currentIds, $requestedUserIds);
+        return $this->runMutation($registry, 'l\'affectation', function () use ($roleModel, $requestedUserIds, $registry, $currentIds) {
+            $this->lockCustomRoleMutation($roleModel);
+            $currentLocked = $roleModel->users()->pluck('users.id')->all();
+            sort($currentLocked);
+            $previous = $currentIds;
+            sort($previous);
+            if ($previous !== $currentLocked) {
+                throw new AuthorizationException('Affectations modifiées par une autre opération : actualisez la liste.');
+            }
+            $affected = array_values(array_unique([...$requestedUserIds, ...$currentLocked]));
+            sort($affected);
+            if ($affected !== []) {
+                User::query()->whereIn('id', $affected)->orderBy('id')->lockForUpdate()->get();
+            }
+            // Les contrôles de périmètre sont revérifiés SOUS verrou : une
+            // promotion concomitante en Superadmin interdit tout changement.
+            $freshActor = User::query()->findOrFail(Auth::id());
+            $freshAdded = array_values(array_diff($requestedUserIds, $currentLocked));
+            $freshRemoved = array_values(array_diff($currentLocked, $requestedUserIds));
+            if (($freshAdded !== [] && ! $freshActor->checkPermissionTo('personnel.roles.assign', 'web'))
+                || ($freshRemoved !== [] && ! $freshActor->checkPermissionTo('personnel.roles.remove', 'web'))
+                || in_array(Auth::id(), [...$freshAdded, ...$freshRemoved], true)) {
+                throw new AuthorizationException('Droit de mutation absent ou auto-modification interdite.');
+            }
+            if ($freshAdded !== [] && User::query()->whereIn('id', $freshAdded)
+                ->where('is_active', false)->exists()) {
+                throw new AuthorizationException('Un compte désactivé ne peut recevoir un rôle.');
+            }
+            if ($denial = $this->refusAffectation($roleModel, $affected, $registry)) {
+                throw new AuthorizationException((string) ($denial->getData()->message
+                    ?? 'Mutation de rôle refusée après revalidation.'));
+            }
+            $currentIds = $currentLocked;
+            $toAttach = $freshAdded;
+            $toDetach = $freshRemoved;
 
             // Batch operations : 2 queries au lieu de 2*N (cf revue perf simplify)
             if (! empty($toAttach)) {
@@ -639,7 +671,18 @@ class ESBTPCustomRoleController extends Controller
             return $denial;
         }
 
-        return $this->runMutation($registry, 'le détachement', function () use ($userModel, $roleModel) {
+        return $this->runMutation($registry, 'le détachement', function () use ($userModel, $roleModel, $registry) {
+            $this->lockCustomRoleMutation($roleModel);
+            User::query()->whereKey($userModel->id)->lockForUpdate()->firstOrFail();
+            $freshActor = User::query()->findOrFail(Auth::id());
+            if (! $freshActor->checkPermissionTo('personnel.roles.remove', 'web')
+                || $freshActor->id === $userModel->id) {
+                throw new AuthorizationException('Permission de retrait absente ou auto-retrait interdit.');
+            }
+            if ($denial = $this->refusAffectation($roleModel, [$userModel->id], $registry)) {
+                throw new AuthorizationException((string) ($denial->getData()->message
+                    ?? 'Mutation de rôle refusée après revalidation.'));
+            }
             $avant = $roleModel->users()->pluck('users.id')->all();
             $userModel->removeRole($roleModel);
             $apres = array_values(array_diff($avant, [$userModel->id]));
@@ -656,6 +699,21 @@ class ESBTPCustomRoleController extends Controller
     }
 
     // ─────────────── Helpers privés ───────────────
+
+    /**
+     * Même ordre de verrous que RoleAssignmentService : rôle bootstrap de
+     * secours, puis rôle custom, puis utilisateurs triés par identifiant.
+     * Ainsi les validations sensibles se refont après la sérialisation.
+     */
+    private function lockCustomRoleMutation(Role $role): void
+    {
+        Role::query()->where('name', 'superAdmin')->where('guard_name', 'web')
+            ->lockForUpdate()->first();
+        $courant = Role::query()->whereKey($role->id)->lockForUpdate()->firstOrFail();
+        if (! $courant->is_custom) {
+            throw new AuthorizationException('Un rôle système ne peut pas être modifié par cette action.');
+        }
+    }
 
     /**
      * Garde commune aux ajouts, retraits unitaires et synchronisations de
@@ -850,6 +908,12 @@ class ESBTPCustomRoleController extends Controller
             $registry->clearCache();
 
             return response()->json($payload);
+        } catch (AuthorizationException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 403);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Gestion des rôles : mutation annulée', [
