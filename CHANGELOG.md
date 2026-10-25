@@ -13,6 +13,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Gestion des rôles custom** : périmètre des affectations basé sur `personnel.roles.assign` et le droit effectif de déléguer les permissions du rôle ciblé ; aucune habilitation déduite du poste coordinateur, secrétaire ou autre.
+
 - **Autorisations (PR #1685) :** suppression de l'ancien joker `Gate::before` fondé sur le nom du rôle superAdmin. Les permissions révocables du tenant sont désormais nécessaires y compris pour ce rôle, sans impacter les restrictions d'état de paiement. Couverture Feature des permissions directes et des retraits effectifs.
 
 - **CI permissions CLI** : tests Feature isolés du garde d'installation `CheckInstalled` ; les autorisations directes sans rôle sont testées sans redirection artificielle /install (la logique de protection en production reste inchangée).

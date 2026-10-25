@@ -67,6 +67,38 @@ class CustomRoleManagementHardeningTest extends TestCase
         return $role;
     }
 
+    public function test_compte_sans_role_avec_permissions_directes_peut_affecter_un_role_vide(): void
+    {
+        $actor = User::factory()->create(['is_active' => true]);
+        foreach (['personnel.manage', 'personnel.roles.assign'] as $name) {
+            $actor->givePermissionTo(Permission::findOrCreate($name, 'web'));
+        }
+        $role = $this->rolePersonnalise('roleTestDirectPrivilege');
+        $cible = $this->acteur('enseignant', false);
+
+        $this->actingAs($actor)->postJson(
+            route('esbtp.custom-roles.assign-users', $role->name),
+            ['user_ids' => [$cible->id]]
+        )->assertOk();
+
+        $this->assertTrue($cible->fresh()->hasRole('enseignant'));
+        $this->assertTrue($cible->fresh()->hasRole($role->name));
+    }
+
+    public function test_role_de_coordinateur_sans_permission_assign_ne_peut_pas_modifier_les_membres(): void
+    {
+        $actor = $this->acteur('coordinateur');
+        $role = $this->rolePersonnalise('roleTestSansAssign');
+        $cible = $this->acteur('enseignant', false);
+
+        $this->actingAs($actor)->postJson(
+            route('esbtp.custom-roles.assign-users', $role->name),
+            ['user_ids' => [$cible->id]]
+        )->assertForbidden();
+
+        $this->assertFalse($cible->fresh()->hasRole($role->name));
+    }
+
     public function test_sans_perimetre_un_envoi_vide_ne_peut_pas_detacher_les_autres(): void
     {
         $actor = $this->acteur('agentInscription');

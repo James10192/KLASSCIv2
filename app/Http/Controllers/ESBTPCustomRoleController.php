@@ -28,7 +28,7 @@ use Spatie\Permission\PermissionRegistrar;
  * - Un acteur non-superAdmin ne peut donner que les permissions QU'IL POSSÈDE
  *   (Gate::before couvre superAdmin pour l'octroi total)
  * - Un acteur ne peut assigner un rôle qu'à des utilisateurs qu'il peut gérer
- *   (matrice role_management — Lot 5)
+ *   (permissions explicites de gestion et délégation du rôle cible)
  * - Modification/suppression interdite sur les rôles système (is_custom = false)
  */
 class ESBTPCustomRoleController extends Controller
@@ -816,8 +816,7 @@ class ESBTPCustomRoleController extends Controller
 
     /**
      * Permissions que l'acteur peut accorder à un nouveau rôle.
-     * - superAdmin (via Gate::before) → toutes
-     * - autre → uniquement celles qu'il possède
+     * - tous les utilisateurs → uniquement leurs permissions effectives
      *
      * Retourne un Collection groupée par "group" du registry.
      */
@@ -830,7 +829,7 @@ class ESBTPCustomRoleController extends Controller
         $dbPerms = Permission::query()->orderBy('name')->get();
 
         $grantable = $dbPerms->filter(function (Permission $p) use ($actor) {
-            // superAdmin via Gate::before passe toujours
+            // Aucun passe-droit pour un simple nom de rôle
             return $actor->can($p->name);
         });
 
@@ -877,24 +876,42 @@ class ESBTPCustomRoleController extends Controller
     }
 
     /**
-     * Liste des rôles que l'acteur peut gérer (matrice Lot 5).
+     * Périmètre calculé depuis les permissions réelles, pas depuis une matrice
+     * de noms de rôles. Une permission directe fonctionne comme une permission
+     * provenant d'un rôle personnalisé.
+     *
+     * Le pouvoir d'affecter un rôle ne permet jamais de transmettre un pouvoir
+     * que l'opérateur ne possède pas : vérifier également son contenu Spatie.
      */
     private function manageableRolesForActor(PermissionRegistry $registry): array
     {
         $actor = Auth::user();
-
-        // Droit explicite, attribuable directement : jamais de passe-droit
-        // fondé sur le nom d'un rôle de l'acteur.
-        if ($actor->checkPermissionTo('personnel.roles.manage_all', 'web')) {
-            return Role::pluck('name')->all();
+        if (! $actor) {
+            return [];
         }
 
-        // Une personne peut cumuler plusieurs fonctions : le périmètre est
-        // l'union des rôles attribués, jamais le premier rôle arbitraire.
-        return $actor->getRoleNames()
-            ->flatMap(fn (string $roleName) => $registry->manageableRoles($roleName))
-            ->unique()
-            ->values()
+        if ($actor->checkPermissionTo('personnel.roles.manage_all', 'web')) {
+            return Role::query()->where('guard_name', 'web')->pluck('name')->all();
+        }
+
+        if (! $actor->checkPermissionTo('personnel.roles.assign', 'web')) {
+            return [];
+        }
+
+        return Role::query()
+            ->where('guard_name', 'web')
+            ->whereNotIn('name', ['superAdmin', 'serviceTechnique'])
+            ->with('permissions')
+            ->get()
+            ->filter(static function (Role $role) use ($actor): bool {
+                foreach ($role->permissions as $permission) {
+                    if (! $actor->checkPermissionTo($permission->name, 'web')) {
+                        return false;
+                    }
+                }
+                return true;
+            })
+            ->pluck('name')
             ->all();
     }
 }
