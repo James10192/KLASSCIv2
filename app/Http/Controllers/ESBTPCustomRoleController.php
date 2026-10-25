@@ -479,10 +479,10 @@ class ESBTPCustomRoleController extends Controller
         abort_if($manageableRoles === [], 403, 'Aucun périmètre de gestion du personnel.');
         $rolesAdmissibles = array_values(array_unique([...$manageableRoles, $roleModel->name]));
 
-        // Un rôle protégé additionnel exclut le compte. Le superadmin peut
-        // initialiser un compte sans rôle. Un compte désactivé déjà affecté
+        // Un rôle protégé additionnel exclut le compte. Une permission dédiée
+        // permet d'initialiser un compte sans rôle. Un compte désactivé déjà affecté
         // reste visible, faute de quoi la soumission le détacherait en silence.
-        $peutInitialiser = Auth::user()->hasAnyRole(['superAdmin', 'serviceTechnique']);
+        $peutInitialiser = Auth::user()->hasPermissionTo('personnel.users.initialize', 'web');
         $assignableUsers = User::query()
             ->where(function ($q) use ($roleModel) {
                 $q->where('is_active', true)
@@ -646,7 +646,7 @@ class ESBTPCustomRoleController extends Controller
         }
 
         $admissibles = array_values(array_unique([...$manageable, $role->name]));
-        $peutInitialiser = Auth::user()->hasAnyRole(['superAdmin', 'serviceTechnique']);
+        $peutInitialiser = Auth::user()->hasPermissionTo('personnel.users.initialize', 'web');
         $interdits = User::query()
             ->whereIn('id', $userIds)
             ->where(function ($q) use ($admissibles, $peutInitialiser) {
@@ -883,8 +883,9 @@ class ESBTPCustomRoleController extends Controller
     {
         $actor = Auth::user();
 
-        // superAdmin / serviceTechnique → tous les rôles existants
-        if ($actor->hasAnyRole(['superAdmin', 'serviceTechnique'])) {
+        // Droit explicite, attribuable directement : jamais de passe-droit
+        // fondé sur le nom d'un rôle de l'acteur.
+        if ($actor->hasPermissionTo('personnel.roles.manage_all', 'web')) {
             return Role::pluck('name')->all();
         }
 

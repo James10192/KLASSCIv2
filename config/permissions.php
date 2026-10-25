@@ -1462,6 +1462,18 @@ return [
             'icon' => 'fa-users-cog',
             'aliases' => ['manage_personnel'],
         ],
+        'personnel.roles.manage_all' => [
+            'label' => 'Administrer le périmètre complet des rôles du personnel',
+            'description' => 'Gérer les rôles existants sans dépendre du nom du rôle porté par le gestionnaire.',
+            'group' => 'Personnel',
+            'icon' => 'fa-user-shield',
+        ],
+        'personnel.users.initialize' => [
+            'label' => 'Affecter le premier rôle à un compte existant',
+            'description' => 'Autorise à sélectionner un compte sans rôle lors des affectations contrôlées.',
+            'group' => 'Personnel',
+            'icon' => 'fa-user-plus',
+        ],
         'profile.view_own' => [
             'label' => 'Voir son propre profil',
             'group' => 'Personnel',

@@ -44,6 +44,15 @@ class CustomRoleManagementHardeningTest extends TestCase
             $user->givePermissionTo('personnel.manage');
         }
 
+        // Les scénarios historiques d'administrateur doivent explicitement
+        // détenir leurs capacités : le libellé du rôle n'autorise plus ces actions.
+        if ($role === 'superAdmin') {
+            foreach (['personnel.manage', 'personnel.roles.manage_all', 'personnel.users.initialize'] as $permission) {
+                Permission::findOrCreate($permission, 'web');
+                $user->givePermissionTo($permission);
+            }
+        }
+
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         return $user;
@@ -173,6 +182,46 @@ class CustomRoleManagementHardeningTest extends TestCase
             ->assertForbidden();
 
         $this->assertFalse($targetSansRole->fresh()->hasRole($role->name));
+    }
+
+    public function test_permissions_directes_sans_role_privilegie_autorisent_initialisation_personnel(): void
+    {
+        $actor = User::factory()->create(['is_active' => true]);
+        foreach (['personnel.manage', 'personnel.roles.manage_all', 'personnel.users.initialize'] as $name) {
+            $actor->givePermissionTo(Permission::findOrCreate($name, 'web'));
+        }
+
+        $role = $this->rolePersonnalise('roleTestPermissionDirecte');
+        $target = User::factory()->create(['is_active' => true]);
+
+        $this->actingAs($actor)
+            ->postJson(route('esbtp.custom-roles.assign-users', $role->name), [
+                'user_ids' => [$target->id],
+            ])
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $this->assertTrue($target->fresh()->hasRole($role->name));
+    }
+
+    public function test_role_prestigieux_sans_permissions_effectives_ne_permet_pas_affectation(): void
+    {
+        config()->set('permissions.superadmin_gate_before', false);
+        $actor = User::factory()->create(['is_active' => true]);
+        Role::findOrCreate('superAdmin', 'web');
+        $actor->assignRole('superAdmin');
+        $actor->givePermissionTo(Permission::findOrCreate('personnel.manage', 'web'));
+
+        $role = $this->rolePersonnalise('roleTestSansPermission');
+        $target = User::factory()->create(['is_active' => true]);
+
+        $this->actingAs($actor)
+            ->postJson(route('esbtp.custom-roles.assign-users', $role->name), [
+                'user_ids' => [$target->id],
+            ])
+            ->assertForbidden();
+
+        $this->assertFalse($target->fresh()->hasRole($role->name));
     }
 
     public function test_un_gestionnaire_ne_peut_pas_modifier_un_role_standard_hors_de_sa_matrice(): void

@@ -213,6 +213,11 @@ class PermissionSyncService
             // Nouvelle : la correction d une erreur de mode au guichet, qui
             // n avait pour seule issue qu une session de reconciliation.
             'paiements.correct_mode',
+            // Délégation sensible bornée à l'administration du personnel.
+            // Seuls les rôles dont les defaults les contiennent la reçoivent ;
+            // les retraits explicites par tenant restent prioritaires.
+            'personnel.roles.manage_all',
+            'personnel.users.initialize',
             'identity.direct_studies',
             'identity.registrar',
             'identity.registrar_clerk',
