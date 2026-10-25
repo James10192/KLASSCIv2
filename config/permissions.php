@@ -1462,6 +1462,31 @@ return [
             'icon' => 'fa-users-cog',
             'aliases' => ['manage_personnel'],
         ],
+        'personnel.roles.assign' => [
+            'label' => 'Ajouter un rôle au compte',
+            'group' => 'Personnel',
+            'icon' => 'fa-user-plus',
+        ],
+        'personnel.roles.remove' => [
+            'label' => 'Retirer un rôle du compte',
+            'group' => 'Personnel',
+            'icon' => 'fa-user-minus',
+        ],
+        'personnel.roles.replace' => [
+            'label' => 'Remplacer un rôle précis',
+            'group' => 'Personnel',
+            'icon' => 'fa-user-cog',
+        ],
+        'personnel.roles.create' => [
+            'label' => 'Créer un rôle personnalisé',
+            'group' => 'Personnel',
+            'icon' => 'fa-users-cog',
+        ],
+        'superadmin.accounts.create' => [
+            'label' => 'Créer ou promouvoir un compte Superadmin',
+            'group' => 'Sécurité',
+            'icon' => 'fa-user-shield',
+        ],
         'personnel.roles.manage_all' => [
             'label' => 'Administrer le périmètre complet des rôles du personnel',
             'description' => 'Gérer les rôles existants sans dépendre du nom du rôle porté par le gestionnaire.',

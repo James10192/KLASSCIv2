@@ -216,6 +216,11 @@ class PermissionSyncService
             // Délégation sensible bornée à l'administration du personnel.
             // Seuls les rôles dont les defaults les contiennent la reçoivent ;
             // les retraits explicites par tenant restent prioritaires.
+            'personnel.roles.assign',
+            'personnel.roles.remove',
+            'personnel.roles.replace',
+            'personnel.roles.create',
+            'superadmin.accounts.create',
             'personnel.roles.manage_all',
             'personnel.users.initialize',
             'identity.direct_studies',
