@@ -64,9 +64,13 @@ return [
     |
     */
 
+    // Sanctum v4 : noms attendus par EnsureFrontendRequestsAreStateful.
+    // Conserver le middleware CSRF propre à KLASSCI, et ajouter la session
+    // authentifiée pour les clients first-party sans changer les API bearer.
     'middleware' => [
-        'verify_csrf_token' => App\Http\Middleware\VerifyCsrfToken::class,
+        'authenticate_session' => Laravel\Sanctum\Http\Middleware\AuthenticateSession::class,
         'encrypt_cookies' => App\Http\Middleware\EncryptCookies::class,
+        'validate_csrf_token' => App\Http\Middleware\VerifyCsrfToken::class,
     ],
 
 ];
