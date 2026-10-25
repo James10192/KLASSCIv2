@@ -52,10 +52,8 @@ class AdministrateurInstancePermissionsTest extends TestCase
         $this->assertNotContains('superAdmin', $cibles);
     }
 
-    public function test_le_joker_superadmin_est_un_drapeau_d_instance(): void
+    public function test_les_permissions_ne_permettent_pas_de_joker_superadmin_par_configuration(): void
     {
-        $this->assertTrue(config('permissions.superadmin_gate_before'));
-        config(['permissions.superadmin_gate_before' => false]);
-        $this->assertFalse(config('permissions.superadmin_gate_before'));
+        $this->assertArrayNotHasKey('superadmin_gate_before', config('permissions'));
     }
 }

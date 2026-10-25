@@ -110,5 +110,5 @@ Lue par `App\Services\UserManagementService`. Configurable via UI admin.
 1. **Pas d'espaces, pas de kebab-case** dans les nouveaux noms de permission
 2. **Toujours via le registry** — jamais hardcodé dans un seeder Laravel
 3. **Toujours via `PermissionRegistry`** — jamais `config('permissions.xxx')` direct
-4. **`Gate::before` couvre superAdmin** — ne pas dupliquer `if (hasRole('superAdmin'))` dans le code
+4. **Aucun passe-droit global par nom de rôle** : même `superAdmin`/`serviceTechnique` sont soumis aux permissions effectives. `Gate::before` ne doit jamais retourner `true` à partir de `hasRole` ; le contrôle d'un état protégé n'est pas une permission.
 5. **Avant de supprimer un alias** : `php artisan permissions:audit` pour vérifier qu'aucun code ne le référence

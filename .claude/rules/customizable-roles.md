@@ -83,9 +83,9 @@ if (auth()->user()->hasRole('directeur_financier')) {  // ❌ NON
 
 'role_defaults' => [
     // Laisser VIDE pour ces perms → l'école attribue à qui elle veut.
-    // OU pré-grant au superAdmin uniquement (couverture par Gate::before quoi qu'il arrive).
+    // OU pré-grant au superAdmin (révocable dans chaque instance).
     'superAdmin' => [
-        // pas besoin d'expliciter, Gate::before couvre tout
+        // droits explicitement synchronisés depuis le registry, révocables par instance
     ],
 ],
 ```

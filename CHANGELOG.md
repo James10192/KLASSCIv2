@@ -13,6 +13,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Autorisations (PR #1685) :** suppression de l'ancien joker `Gate::before` fondé sur le nom du rôle superAdmin. Les permissions révocables du tenant sont désormais nécessaires y compris pour ce rôle, sans impacter les restrictions d'état de paiement. Couverture Feature des permissions directes et des retraits effectifs.
+
 - **CI permissions CLI** : tests Feature isolés du garde d'installation `CheckInstalled` ; les autorisations directes sans rôle sont testées sans redirection artificielle /install (la logique de protection en production reste inchangée).
 
 - **Sécurité CLI identifiants (PR #1685) :** permissions séparées pour réinitialisation et export de credentials ; aucun rôle de l'auteur ne sert de passe-droit sur les mots de passe des Superadmin ou Service Technique.

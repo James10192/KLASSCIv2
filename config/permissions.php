@@ -2930,11 +2930,4 @@ return [
         'teacher'                 => ['since' => '2026-04', 'reason' => 'Rôle doublon de enseignant — à fusionner Lot 6j'],
     ],
 
-    /*
-    | superAdmin Gate::before. Défaut true = CI inchangé. Une instance
-    | (UCAO) pose PERMISSIONS_SUPERADMIN_GATE_BEFORE=false dans son .env :
-    | le rôle reste, mais il n'a plus le joker. Pas de if (tenant).
-    */
-    'superadmin_gate_before' => env('PERMISSIONS_SUPERADMIN_GATE_BEFORE', true),
-
 ];
