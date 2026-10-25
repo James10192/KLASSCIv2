@@ -872,6 +872,18 @@ class ESBTPPersonnelUnifiedController extends Controller
      */
     private function roleStats(string $roleName): array
     {
+        // Un tenant neuf ou partiellement migré n'a pas nécessairement tous
+        // les rôles de l'organigramme. User::role() lève RoleDoesNotExist dans
+        // ce cas : une consultation des statistiques ne doit pas faire 500.
+        if (! Role::query()->where('name', $roleName)->where('guard_name', 'web')->exists()) {
+            return [
+                'total' => 0,
+                'actifs' => 0,
+                'inactifs' => 0,
+                'nouveau_ce_mois' => 0,
+            ];
+        }
+
         return [
             'total' => User::role($roleName)->count(),
             'actifs' => User::role($roleName)->where('is_active', true)->count(),

@@ -83,6 +83,21 @@ class PersonnelUnifiedUniqueEntryTest extends TestCase
             ]))->assertForbidden();
     }
 
+    public function test_stats_repondent_zero_si_le_role_standard_n_existe_pas(): void
+    {
+        $this->actingAs($this->administrateur());
+
+        $resultat = $this->getJson(route('esbtp.personnel.unified.stats'))
+            ->assertOk();
+
+        foreach (['directeurs_etudes', 'coordinateurs', 'secretaires'] as $groupe) {
+            $this->assertIsArray($resultat->json($groupe));
+            foreach (['total', 'actifs', 'inactifs', 'nouveau_ce_mois'] as $cle) {
+                $this->assertIsInt($resultat->json("{$groupe}.{$cle}"));
+            }
+        }
+    }
+
     public function test_anciennes_pages_personnel_et_roles_redirigent_vers_unified(): void
     {
         $this->actingAs($this->administrateur());
