@@ -468,7 +468,27 @@ class ESBTPCustomRoleController extends Controller
         }
 
         return $this->runMutation($registry, 'la suppression', function () use ($roleModel) {
+            // L'absence de membres doit être revérifiée sous le verrou commun
+            // des affectations : un autre opérateur a pu attribuer le rôle
+            // après la première vérification HTTP.
+            $this->lockCustomRoleMutation($roleModel);
+            $this->assertNoSensitiveRoleMembers($roleModel);
+            if ($roleModel->users()->exists()) {
+                throw new AuthorizationException(
+                    'Ce rôle a reçu de nouvelles affectations. Actualisez la liste avant suppression.'
+                );
+            }
+
             $label = $roleModel->label_fr ?? $roleModel->name;
+            $permissionsAvant = $roleModel->permissions()->pluck('name')->all();
+            // La suppression d'un rôle vide reste une décision de sécurité
+            // traçable, même lorsqu'il n'avait aucune permission.
+            app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeRole(
+                $roleModel,
+                ['role' => [$roleModel->name], 'permissions' => $permissionsAvant],
+                ['role' => [], 'permissions' => []],
+                Auth::id(), 'Suppression du rôle personnalisé depuis personnel/unified'
+            );
             $roleModel->syncPermissions([]);
             $roleModel->delete();
 

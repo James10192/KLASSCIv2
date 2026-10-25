@@ -501,6 +501,40 @@ class CustomRoleManagementHardeningTest extends TestCase
         $this->assertTrue($role->fresh()->hasPermissionTo($permission));
     }
 
+    public function test_suppression_role_custom_avec_membre_refuse_sans_retrait_ni_audit_de_suppression(): void
+    {
+        $acteur = $this->acteur('superAdmin', false);
+        $role = $this->rolePersonnalise('roleTestConserveMembres');
+        $cible = User::factory()->create(['is_active' => true]);
+        $cible->assignRole($role);
+
+        $this->actingAs($acteur)
+            ->deleteJson(route('esbtp.custom-roles.destroy', $role->name))
+            ->assertStatus(422);
+
+        $this->assertDatabaseHas('roles', ['id' => $role->id, 'name' => $role->name]);
+        $this->assertTrue($cible->fresh()->hasRole($role->name));
+    }
+
+    public function test_suppression_role_custom_vide_genere_une_decision_auditee(): void
+    {
+        $acteur = $this->acteur('superAdmin', false);
+        $role = $this->rolePersonnalise('roleTestSuppressionAuditee');
+        $roleId = $role->id;
+
+        $this->actingAs($acteur)
+            ->deleteJson(route('esbtp.custom-roles.destroy', $role->name))
+            ->assertOk()->assertJsonPath('success', true);
+
+        $this->assertDatabaseMissing('roles', ['id' => $roleId]);
+        $this->assertDatabaseHas('audits', [
+            'auditable_type' => Role::class,
+            'auditable_id' => $roleId,
+            'user_id' => $acteur->id,
+            'tags' => 'permissions',
+        ]);
+    }
+
     public function test_un_gestionnaire_ne_peut_pas_editer_vider_ou_supprimer_un_role_custom_plus_privilegie(): void
     {
         $acteur = $this->acteur('coordinateur');
