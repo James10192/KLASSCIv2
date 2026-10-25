@@ -155,6 +155,28 @@ class RolesEtPermissionsTest extends TestCase
             ->hasPermissionTo('paiements.correct_mode'));
     }
 
+    public function test_endpoint_technique_refuse_mutation_indirecte_d_un_compte_superadmin(): void
+    {
+        $sensible = User::factory()->create(['is_active' => true]);
+        Role::findOrCreate('superAdmin', 'web');
+        $sensible->assignRole(['superAdmin', 'comptable']);
+        $role = Role::findByName('comptable', 'web');
+        $avant = $role->permissions()->pluck('name')->sort()->values()->all();
+
+        $this->actingAs($this->st)
+            ->postJson(route('esbtp.roles-permissions.update'), [
+                'role' => 'comptable', 'permissions' => [$this->horsDefaut],
+            ])->assertForbidden();
+
+        $this->actingAs($this->st)
+            ->postJson(route('esbtp.roles-permissions.restore-defaults'), [
+                'role' => 'comptable',
+            ])->assertForbidden();
+
+        $this->assertSame($avant, $role->fresh()->permissions()->pluck('name')->sort()->values()->all());
+        $this->assertTrue($sensible->fresh()->hasRole('comptable'));
+    }
+
     public function test_roles_de_secours_immuables_sur_les_endpoints_techniques(): void
     {
         foreach (['superAdmin', 'serviceTechnique'] as $roleName) {

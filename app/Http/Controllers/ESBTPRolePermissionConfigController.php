@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Services\PermissionRegistry;
+use App\Services\Personnel\RolePermissionMutationGuard;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -58,11 +60,13 @@ class ESBTPRolePermissionConfigController extends Controller
         // sinon enregistrer retirerait l'accès aux écrans qui testent encore
         // l'ancien nom, jusqu'au déploiement suivant.
         if (! $request->boolean('show_legacy')) {
-            $permissionNames = Permission::whereIn('name', $registry->avecAlias($permissionNames))->pluck('name')->all();
+            $permissionNames = Permission::where('guard_name', 'web')->whereIn('name', $registry->avecAlias($permissionNames))->pluck('name')->all();
         }
 
         try {
             [$avant, $apres] = $this->appliquer($roleName, $permissionNames, 'Accordé depuis la configuration des rôles.');
+        } catch (AuthorizationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             Log::error('Configuration des rôles : enregistrement refusé', ['role' => $roleName, 'exception_type' => get_class($e)]);
 
@@ -89,13 +93,15 @@ class ESBTPRolePermissionConfigController extends Controller
         $expanded = $registry->avecAlias($registry->defaultPermissionsFor($roleName));
 
         // Filtrer pour ne garder que les permissions qui existent en DB
-        $existing = Permission::whereIn('name', $expanded)->pluck('name')->all();
+        $existing = Permission::where('guard_name', 'web')->whereIn('name', $expanded)->pluck('name')->all();
 
         try {
             // Revenir aux défauts vide aussi les ajouts inscrits pour ce rôle :
             // sans cela, la synchronisation du prochain déploiement remettrait
             // ce que l'école vient de retirer.
             [, $apres] = $this->appliquer($roleName, $existing, 'Défauts restaurés depuis la configuration des rôles.');
+        } catch (AuthorizationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             Log::error('Configuration des rôles : restauration refusée', ['role' => $roleName, 'exception_type' => get_class($e)]);
 
@@ -116,10 +122,16 @@ class ESBTPRolePermissionConfigController extends Controller
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         $resultat = DB::transaction(function () use ($roleName, $permissionNames, $motif) {
-            $role = Role::findByName($roleName);
-            $avant = DB::table('role_has_permissions')->where('role_id', $role->id)->count();
+            $role = Role::findByName($roleName, 'web');
+            app(RolePermissionMutationGuard::class)->lockAndAssertSafe($role);
+            $avantPermissions = $role->permissions()->pluck('name')->all();
+            $avant = count($avantPermissions);
 
             $role->syncPermissions($permissionNames);
+            app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeRole(
+                $role, ['permissions' => $avantPermissions], ['permissions' => $permissionNames],
+                auth()->id(), $motif
+            );
             app(\App\Services\ExtensionsDeRole::class)->enregistrer($role->name, $permissionNames, $motif, auth()->id());
 
             return [$avant, $role->id];

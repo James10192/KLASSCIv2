@@ -91,6 +91,32 @@ class CustomRoleCliTest extends TestCase
         )));
     }
 
+    public function test_cli_edition_second_role_superadmin_et_service_technique_est_interdite(): void
+    {
+        $actor = User::factory()->create();
+        $this->grantCliPermissions($actor);
+        $actor->givePermissionTo('users.manage');
+        Permission::findOrCreate('security.audit.view', 'web');
+        $actor->givePermissionTo('security.audit.view');
+        Sanctum::actingAs($actor, ['cli:admin']);
+
+        $role = Role::findOrCreate('role_test_shared_sensitive_cli', 'web');
+        foreach (['superAdmin', 'serviceTechnique'] as $sensible) {
+            Role::findOrCreate($sensible, 'web');
+            $target = User::factory()->create();
+            $target->assignRole([$sensible, $role->name]);
+
+            $this->postJson("/api/cli/roles/{$role->name}/grant", [
+                'permissions' => ['security.audit.view'],
+            ])->assertForbidden();
+            $this->postJson("/api/cli/roles/{$role->name}/revoke", [
+                'permissions' => ['security.audit.view'],
+            ])->assertForbidden();
+
+            $this->assertFalse($role->fresh()->hasPermissionTo('security.audit.view'));
+        }
+    }
+
     public function test_cli_rejects_unknown_role_assignment(): void
     {
         $actor = User::factory()->create();

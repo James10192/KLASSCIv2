@@ -47,6 +47,10 @@ class AccesIndividuelsCliTest extends TestCase
     public function test_cli_definitif_ne_s_appuie_pas_sur_une_date_de_fin_implicite(): void
     {
         $auteur = $this->auteur();
+        $auteur->givePermissionTo([
+            'notes.edit', 'personnel.manage', 'permissions.temporaires.manage',
+            'permissions.individuels.permanents.manage',
+        ]);
         $cible = User::factory()->create();
 
         $this->postJson("/api/cli/user/{$cible->id}/acces-temporaires", [
@@ -118,7 +122,8 @@ class AccesIndividuelsCliTest extends TestCase
 
     public function test_cli_ancien_client_sans_mode_conserve_un_acces_temporaire(): void
     {
-        $this->auteur();
+        $auteur = $this->auteur();
+        $auteur->givePermissionTo(['notes.edit', 'personnel.manage', 'permissions.temporaires.manage']);
         $cible = User::factory()->create();
 
         $this->postJson("/api/cli/user/{$cible->id}/acces-temporaires", [

@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-25 · #1687 stabilisation · Les mutations de permissions sur les anciens points d'entrée technique et CLI refusent désormais tout rôle partagé avec Superadmin/Service technique et leurs décisions sont auditées. La CLI respecte les permissions effectives de l'opérateur, conserve les guards séparés ; correction des fixtures de délégation individuelle (les refus réels restent inchangés).
 - 2026-10-25 · #1687 sécurité · Les affectations unitaires de rôles appliquent maintenant le même contrôle des permissions effectives de la cible que la gestion du personnel ; une permission de rôle seule ne permet plus de changer un compte plus privilégié. Extension explicite manage_all testée.
 - 2026-10-25 · #1687 sécurité · Le module de gestion des rôles sélectionne uniquement les rôles et permissions du guard web ; les homonymes des guards API ne sont ni présentés ni modifiés. La création autorise un homonyme sur un autre guard, avec tests de régression.
 - 2026-10-25 · #1687 sécurité · La permission de création d'un compte Superadmin ne permet plus de promouvoir directement un utilisateur existant via le service générique de changement de rôles ; cette opération exige une seconde approbation indépendante, encore indisponible.

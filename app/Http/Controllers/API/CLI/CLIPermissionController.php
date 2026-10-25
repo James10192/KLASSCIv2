@@ -172,29 +172,22 @@ class CLIPermissionController extends BaseApiController
         // En cas d'échec, pas de rôle créé à moitié ni de permissions non tracées.
         try {
             [$role, $granted, $missing] = DB::transaction(function () use ($validated, $request) {
-                $existing = Role::where('name', $validated['name'])->first();
+                $existing = Role::query()->where('name', $validated['name'])
+                    ->where('guard_name', 'web')->first();
                 if ($existing) {
-                    $emptyWrongGuard = $existing->guard_name !== 'web'
-                        && $existing->permissions()->count() === 0;
-                    if (! $emptyWrongGuard) {
-                        return [null, [], []];
-                    }
-                    $existing->guard_name = 'web';
-                    $existing->label_fr = $validated['label_fr'];
-                    $existing->description = $validated['description'] ?? $existing->description;
-                    $existing->is_custom = true;
-                    $existing->save();
-                    $role = $existing;
-                } else {
-                    $role = new Role();
-                    $role->name = $validated['name'];
-                    $role->guard_name = 'web';
-                    $role->label_fr = $validated['label_fr'];
-                    $role->description = $validated['description'] ?? null;
-                    $role->is_custom = true;
-                    $role->created_by_user_id = $request->user()->id;
-                    $role->save();
+                    return [null, [], []];
                 }
+
+                // Jamais convertir un rôle d'un autre guard : les homonymes
+                // web/api peuvent légitimement coexister.
+                $role = new Role();
+                $role->name = $validated['name'];
+                $role->guard_name = 'web';
+                $role->label_fr = $validated['label_fr'];
+                $role->description = $validated['description'] ?? null;
+                $role->is_custom = true;
+                $role->created_by_user_id = $request->user()->id;
+                $role->save();
 
                 $granted = [];
                 $missing = [];
@@ -274,12 +267,23 @@ class CLIPermissionController extends BaseApiController
             return $this->errorResponse("Le role '{$role}' ne se retire pas depuis le CLI.", [], 422);
         }
 
+        if (! $request->user()->checkPermissionTo('personnel.manage', 'web')) {
+            return $this->errorResponse('Permission personnel.manage absente.', [], 403);
+        }
+        // Le token d'administration ne donne aucun droit Spatie de plus.
+        foreach ($perms as $permission) {
+            if (! is_string($permission) || ! $request->user()->checkPermissionTo($permission, 'web')) {
+                return $this->errorResponse('Permission hors du périmètre de l opérateur.', [], 403);
+            }
+        }
+
         $extensions = app(\App\Services\ExtensionsDeRole::class);
 
         // Changement de droits et trace durable dans la MEME transaction.
         // Une migration manquante ou un audit en erreur ne doit jamais laisser
         // un role modifie a moitie.
         $revoquees = DB::transaction(function () use ($roleModel, $perms, $extensions, $role, $request) {
+            app(\App\Services\Personnel\RolePermissionMutationGuard::class)->lockAndAssertSafe($roleModel);
             $existantes = $roleModel->permissions()->pluck('name')->all();
             $revoquees = [];
             foreach ($perms as $perm) {
@@ -289,11 +293,13 @@ class CLIPermissionController extends BaseApiController
                 }
             }
 
+            $apres = $roleModel->fresh()->permissions()->pluck('name')->all();
+            app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeRole(
+                $roleModel, ['permissions' => $existantes], ['permissions' => $apres],
+                $request->user()->id, $request->input('motif') ?: 'Révocation CLI'
+            );
             $extensions->enregistrer(
-                $role,
-                $roleModel->fresh()->permissions()->pluck('name')->all(),
-                $request->input('motif'),
-                $request->user()->id
+                $role, $apres, $request->input('motif'), $request->user()->id
             );
 
             return $revoquees;
@@ -331,8 +337,20 @@ class CLIPermissionController extends BaseApiController
             return $this->errorResponse("Role '{$role}' not found", [], 404);
         }
 
+        if (! $request->user()->checkPermissionTo('personnel.manage', 'web')) {
+            return $this->errorResponse('Permission personnel.manage absente.', [], 403);
+        }
+        // Le token d'administration ne donne aucun droit Spatie de plus.
+        foreach ($perms as $permission) {
+            if (! is_string($permission) || ! $request->user()->checkPermissionTo($permission, 'web')) {
+                return $this->errorResponse('Permission hors du périmètre de l opérateur.', [], 403);
+            }
+        }
+
         $extensions = app(\App\Services\ExtensionsDeRole::class);
         [$granted, $missing] = DB::transaction(function () use ($roleModel, $perms, $extensions, $role, $request) {
+            app(\App\Services\Personnel\RolePermissionMutationGuard::class)->lockAndAssertSafe($roleModel);
+            $avant = $roleModel->permissions()->pluck('name')->all();
             $granted = [];
             $missing = [];
             foreach ($perms as $perm) {
@@ -347,11 +365,13 @@ class CLIPermissionController extends BaseApiController
                 }
             }
 
+            $apres = $roleModel->fresh()->permissions()->pluck('name')->all();
+            app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeRole(
+                $roleModel, ['permissions' => $avant], ['permissions' => $apres],
+                $request->user()->id, $request->input('motif') ?: 'Attribution CLI'
+            );
             $extensions->enregistrer(
-                $role,
-                $roleModel->fresh()->permissions()->pluck('name')->all(),
-                $request->input('motif'),
-                $request->user()->id
+                $role, $apres, $request->input('motif'), $request->user()->id
             );
 
             return [$granted, $missing];
