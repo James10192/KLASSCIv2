@@ -58,6 +58,17 @@ return new class extends Migration
         $nullable = strtoupper((string) ($colonne->is_nullable ?? $colonne->IS_NULLABLE ?? 'NO')) === 'YES';
         $defaut = $colonne->column_default ?? $colonne->COLUMN_DEFAULT ?? null;
 
+        // MariaDB 10.11 renvoie les valeurs ENUM littérales déjà entourées
+        // de quotes SQL ('present'), contrairement à MySQL 8 (present).
+        // PDO::quote() sur cette chaîne brute produisait DEFAULT '\\'present\\''.
+        if (is_string($defaut) && strlen($defaut) >= 2 && $defaut[0] === "'" && substr($defaut, -1) === "'") {
+            $defaut = substr($defaut, 1, -1);
+        }
+        // Les migrations ne doivent jamais inventer une autre valeur par défaut.
+        if ($defaut !== null && $defaut !== '' && ! in_array($defaut, self::VALEURS, true)) {
+            throw new \UnexpectedValueException('Valeur par défaut inattendue pour esbtp_attendances.statut');
+        }
+
         $definition = sprintf(
             "ENUM(%s) %s%s",
             implode(',', array_map(fn (string $v) => "'{$v}'", self::VALEURS)),
