@@ -58,4 +58,15 @@ class NoImplicitSuperAdminGateTest extends TestCase
 
         $this->assertFalse(Gate::forUser($actor)->allows('users.manage'));
     }
+    public function test_permission_non_encore_synchronisee_se_ferme_sans_erreur_500(): void
+    {
+        Permission::query()->where('name', 'users.manage')->where('guard_name', 'web')->delete();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $actor = User::factory()->create();
+        $actor->assignRole('superAdmin');
+
+        $this->assertFalse(Gate::forUser($actor)->allows('users.manage'));
+    }
+
+
 }

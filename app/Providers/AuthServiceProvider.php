@@ -182,7 +182,9 @@ class AuthServiceProvider extends ServiceProvider
         // `users.manage` : exposé en Gate explicite pour éviter toute ambiguïté
         // entre les routes qui consomment Gate::* et le résolveur Spatie.
         Gate::define('users.manage', function ($user) {
-            return $user && $user->hasPermissionTo('users.manage');
+            // Dans un tenant pas encore synchronisé, renvoyer 403 plutôt que
+            // PermissionDoesNotExist -> 500.
+            return $user && $user->checkPermissionTo('users.manage', 'web');
         });
 
         // W5 : workflow justification d'absence (3 abilities sur ESBTPAttendance).
