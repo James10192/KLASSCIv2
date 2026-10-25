@@ -270,6 +270,7 @@ class ESBTPCustomRoleController extends Controller
             abort(403, 'Les rôles système ne peuvent pas être modifiés ici.');
         }
         $this->assertCustomRolePermissionsManageable($roleModel, $registry);
+        $this->assertNoSensitiveRoleMembers($roleModel);
 
         $grantablePermissions = $this->grantablePermissionsForActor($registry);
         $assignedPermissions = $roleModel->permissions->pluck('name')->all();
@@ -295,6 +296,7 @@ class ESBTPCustomRoleController extends Controller
             ], 403);
         }
         $this->assertCustomRolePermissionsManageable($roleModel, $registry);
+        $this->assertNoSensitiveRoleMembers($roleModel);
 
         $validated = $request->validate([
             'label_fr' => ['required', 'string', 'max:255'],
@@ -316,6 +318,8 @@ class ESBTPCustomRoleController extends Controller
         }
 
         return $this->runMutation($registry, 'la mise à jour', function () use ($roleModel, $validated, $requestedPerms) {
+            $this->lockCustomRoleMutation($roleModel);
+            $this->assertNoSensitiveRoleMembers($roleModel);
             $anciennesPermissions = $roleModel->permissions()->pluck('name')->all();
             $roleModel->label_fr = $validated['label_fr'];
             $roleModel->icon = $this->normalizeIcon($validated['icon'] ?? null);
@@ -352,6 +356,7 @@ class ESBTPCustomRoleController extends Controller
 
         $roleModel = Role::where('name', $role)->firstOrFail();
         $this->assertStandardRoleManageable($roleModel, $registry);
+        $this->assertNoSensitiveRoleMembers($roleModel);
         $configMeta = config('permissions.roles', [])[$role] ?? [];
 
         $grantablePermissions = $this->grantablePermissionsForActor($registry);
@@ -379,6 +384,7 @@ class ESBTPCustomRoleController extends Controller
 
         $roleModel = Role::where('name', $role)->firstOrFail();
         $this->assertStandardRoleManageable($roleModel, $registry);
+        $this->assertNoSensitiveRoleMembers($roleModel);
 
         $validated = $request->validate([
             'label_fr' => ['required', 'string', 'max:255'],
@@ -400,6 +406,8 @@ class ESBTPCustomRoleController extends Controller
         }
 
         return $this->runMutation($registry, 'la mise à jour', function () use ($roleModel, $validated, $requestedPerms, $registry) {
+            $this->lockRoleEditMutation($roleModel);
+            $this->assertNoSensitiveRoleMembers($roleModel);
             // Override DB metadata (le registry config sert de fallback)
             $roleModel->label_fr = $validated['label_fr'];
             $roleModel->icon = $this->normalizeIcon($validated['icon'] ?? null);
@@ -448,6 +456,7 @@ class ESBTPCustomRoleController extends Controller
             ], 403);
         }
         $this->assertCustomRolePermissionsManageable($roleModel, $registry);
+        $this->assertNoSensitiveRoleMembers($roleModel);
 
         $usersCount = $roleModel->users()->count();
         if ($usersCount > 0) {
@@ -481,6 +490,7 @@ class ESBTPCustomRoleController extends Controller
             abort(403, 'L\'assignation se fait via les outils dédiés pour les rôles système.');
         }
         $this->assertCustomRolePermissionsManageable($roleModel, $registry);
+        $this->assertNoSensitiveRoleMembers($roleModel);
         // Le périmètre manage_all ne remplace jamais le droit d'ajouter/retirer.
         abort_unless(
             Auth::user()->checkPermissionTo('personnel.roles.assign', 'web')
@@ -700,6 +710,29 @@ class ESBTPCustomRoleController extends Controller
     }
 
     // ─────────────── Helpers privés ───────────────
+
+    /**
+     * Modifier un rôle attribué à un compte privilégié change indirectement
+     * ses droits. Ce chemin doit rester fermé avant le workflow maker-checker.
+     */
+    private function assertNoSensitiveRoleMembers(Role $role): void
+    {
+        $protege = User::query()
+            ->whereHas('roles', fn ($query) => $query->where('roles.id', $role->id))
+            ->whereHas('roles', fn ($query) => $query->whereIn('name', ['superAdmin', 'serviceTechnique']))
+            ->exists();
+        if ($protege) {
+            throw new AuthorizationException('Rôle attribué à un compte sensible : approbation distincte obligatoire.');
+        }
+    }
+
+    /** Verrouille le rôle sensible de référence puis le rôle effectivement modifié. */
+    private function lockRoleEditMutation(Role $role): void
+    {
+        Role::query()->where('name', 'superAdmin')->where('guard_name', 'web')
+            ->lockForUpdate()->first();
+        Role::query()->whereKey($role->id)->lockForUpdate()->firstOrFail();
+    }
 
     /**
      * Même ordre de verrous que RoleAssignmentService : rôle bootstrap de

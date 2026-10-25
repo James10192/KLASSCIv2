@@ -425,6 +425,46 @@ class CustomRoleManagementHardeningTest extends TestCase
         $this->assertFalse($target->fresh()->hasRole($role->name));
     }
 
+    public function test_edition_des_permissions_custom_est_fermee_si_superadmin_detient_ce_role(): void
+    {
+        $acteur = $this->acteur('superAdmin', false);
+        $role = $this->rolePersonnalise('roleTestMutationIndirecteSuperAdmin');
+        $cible = User::factory()->create(['is_active' => true]);
+        $cible->assignRole(['superAdmin', $role->name]);
+        $acteur->givePermissionTo(Permission::findOrCreate('inscriptions.validate', 'web'));
+
+        $this->actingAs($acteur)
+            ->get(route('esbtp.custom-roles.edit', $role->name))
+            ->assertForbidden();
+        $this->actingAs($acteur)
+            ->putJson(route('esbtp.custom-roles.update', $role->name), [
+                'label_fr' => 'Rôle protégé',
+                'permissions' => ['inscriptions.validate'],
+            ])->assertForbidden();
+
+        $this->assertFalse($role->fresh()->hasPermissionTo('inscriptions.validate'));
+    }
+
+    public function test_edition_du_role_standard_refuse_une_mutation_indirecte_du_service_technique(): void
+    {
+        $acteur = $this->acteur('superAdmin', false);
+        $role = Role::findOrCreate('coordinateur', 'web');
+        $cible = User::factory()->create(['is_active' => true]);
+        $cible->assignRole(['serviceTechnique', 'coordinateur']);
+        $acteur->givePermissionTo(Permission::findOrCreate('inscriptions.validate', 'web'));
+
+        $this->actingAs($acteur)
+            ->get(route('esbtp.custom-roles.standard.edit', $role->name))
+            ->assertForbidden();
+        $this->actingAs($acteur)
+            ->putJson(route('esbtp.custom-roles.standard.update', $role->name), [
+                'label_fr' => 'Coordinateur protégé',
+                'permissions' => ['inscriptions.validate'],
+            ])->assertForbidden();
+
+        $this->assertFalse($role->fresh()->hasPermissionTo('inscriptions.validate'));
+    }
+
     public function test_un_gestionnaire_ne_peut_pas_modifier_un_role_standard_hors_de_sa_matrice(): void
     {
         $actor = $this->acteur('coordinateur');
