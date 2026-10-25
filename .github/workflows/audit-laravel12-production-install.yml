@@ -35,5 +35,10 @@ jobs:
         run: |
           cp .env.example .env
           php artisan --version
-          php artisan route:list --json > /tmp/klassci-routes-production.json
+          if ! php artisan route:list --json > /tmp/klassci-routes-production.json 2> /tmp/klassci-route-errors.log; then
+            echo '::error::artisan route:list a échoué en contexte sans dev'
+            sed -n '1,150p' /tmp/klassci-route-errors.log
+            head -c 12000 /tmp/klassci-routes-production.json || true
+            exit 1
+          fi
           php -r '$routes = json_decode(file_get_contents("/tmp/klassci-routes-production.json"), true); if (!is_array($routes) || count($routes) < 20) { fwrite(STDERR, "Routes manquantes ou JSON invalide\n"); exit(1); } echo "Routes: " . count($routes) . "\n";'
