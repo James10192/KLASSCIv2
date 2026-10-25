@@ -402,6 +402,17 @@ class UserDeletionGuardTest extends TestCase
         return $actor;
     }
 
+    public function test_cli_suppression_sans_motif_repond_422_et_non_500(): void
+    {
+        $target = User::factory()->create(['is_active' => true]);
+        $actor = User::factory()->create();
+        $actor->givePermissionTo('personnel.users.deactivate');
+        Sanctum::actingAs($actor, ['cli:admin']);
+        $this->postJson("/api/cli/user/{$target->id}/delete", [])
+            ->assertStatus(422)->assertJsonValidationErrors(['motif']);
+        $this->assertNotSoftDeleted('users', ['id' => $target->id]);
+    }
+
     public function test_cli_token_admin_sans_permission_ne_desactive_pas_un_compte(): void
     {
         $target = User::factory()->create(['is_active' => true]);

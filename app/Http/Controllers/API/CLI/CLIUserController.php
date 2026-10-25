@@ -268,6 +268,9 @@ class CLIUserController extends BaseApiController
             return $this->errorResponse($e->getMessage(), [], 403);
         } catch (ModelNotFoundException) {
             return $this->errorResponse("User #{$id} not found", [], 404);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Une donnée invalide ne doit jamais devenir une erreur 500.
+            throw $e;
         } catch (\Exception $e) {
             Log::error('CLI: user deletion failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);
