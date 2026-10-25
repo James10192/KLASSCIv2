@@ -151,8 +151,16 @@ class AccesTemporaires
             $noms = [];
         }
 
-        return $this->memo[$user->id] = array_values(array_unique(
-            array_map(fn (string $n) => $this->registry->canonicalize($n), $noms)
+        // Une ancienne délégation stockée avant durcissement des règles ne
+        // redevient jamais utilisable à la lecture. Également valable pour les
+        // droits définitifs déjà enregistrés : aucun effet permanent déguisé.
+        $canoniques = array_unique(array_map(
+            fn (string $n) => $this->registry->canonicalize($n), $noms
+        ));
+
+        return $this->memo[$user->id] = array_values(array_filter(
+            $canoniques,
+            fn (string $nom) => $this->estAccordable($nom)
         ));
     }
 

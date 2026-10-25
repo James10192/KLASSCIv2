@@ -72,6 +72,33 @@ class AccesTemporairesTest extends TestCase
         return $user->fresh()->can($ability);
     }
 
+    public function test_une_ancienne_delegation_privilegiee_stockee_ne_donne_plus_acces(): void
+    {
+        Permission::findOrCreate('personnel.roles.assign', 'web');
+        $cible = User::factory()->create();
+        TemporaryPermissionGrant::create([
+            'user_id' => $cible->id,
+            'permission' => 'personnel.roles.assign',
+            'starts_at' => now()->subMinute(),
+            'expires_at' => now()->addDay(),
+            'is_permanent' => false,
+            'motif' => 'Ancienne délégation devenue interdite',
+            'granted_by' => $this->admin->id,
+        ]);
+        TemporaryPermissionGrant::create([
+            'user_id' => $cible->id,
+            'permission' => 'notes.edit',
+            'starts_at' => now()->subMinute(),
+            'expires_at' => now()->addDay(),
+            'is_permanent' => false,
+            'motif' => 'Correction pédagogique toujours permise',
+            'granted_by' => $this->admin->id,
+        ]);
+
+        $this->assertFalse($this->peut($cible, 'personnel.roles.assign'));
+        $this->assertTrue($this->peut($cible, 'notes.edit'));
+    }
+
     public function test_un_simple_nom_superadmin_ne_permet_ni_delegation_ni_acces_definitif(): void
     {
         $sansDroits = User::factory()->create();
