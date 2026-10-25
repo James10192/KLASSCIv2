@@ -212,6 +212,19 @@ class CustomRoleManagementHardeningTest extends TestCase
         $role = $this->rolePersonnalise('roleTestInterditAutoRetrait');
         $acteur->assignRole($role);
 
+        // Ce compte est devenu multi-fonctions : le 409 avant sélection est
+        // intentionnel, ce n'est pas une autorisation métier.
+        $this->actingAs($acteur)
+            ->deleteJson(route('esbtp.custom-roles.detach-user', [$role->name, $acteur->id]))
+            ->assertStatus(409)
+            ->assertJsonPath('redirect', route('profil.choisir'));
+
+        // Choisir un profil n'accorde AUCUN droit supplémentaire : avec un
+        // profil valide, le contrôleur doit refuser l'auto-retrait en 403.
+        $this->actingAs($acteur)
+            ->post(route('profil.activer'), ['role' => 'superAdmin'])
+            ->assertRedirect();
+
         $this->actingAs($acteur)
             ->deleteJson(route('esbtp.custom-roles.detach-user', [$role->name, $acteur->id]))
             ->assertForbidden();
