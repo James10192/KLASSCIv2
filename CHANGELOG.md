@@ -13,6 +13,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Sécurité suppression CLI (PR #1685) :** désactivation conditionnée par personnel.users.deactivate, motif obligatoire, audit transactionnel et blocage des comptes sensibles tant que le double accord n'existe pas.
+
 - **CLI (PR #1685, validation en cours) :** création de compte et gestion de rôles personnalisés désormais conditionnées par des permissions effectives ; assignation via RoleAssignmentService avec motif, validation d'état et refus des transformations Superadmin non approuvées.
 
 - **Sécurité API CLI en préparation (#1685) :** opérations de rôles ciblées et audit atomique ; permissions de gestion explicites ; aucune modification d'instance scolaire.

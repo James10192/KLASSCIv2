@@ -247,7 +247,8 @@ class CLIUserController extends BaseApiController
         }
 
         try {
-            $result = $deletion->delete((int) $id, $request->user());
+            $motif = $request->validate(['motif' => 'required|string|min:3|max:1000'])['motif'];
+            $result = $deletion->delete((int) $id, $request->user(), $motif);
 
             return $result['status'] === 200
                 ? $this->successResponse($result['data'], $result['message'])

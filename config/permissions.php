@@ -1462,6 +1462,11 @@ return [
             'icon' => 'fa-users-cog',
             'aliases' => ['manage_personnel'],
         ],
+        'personnel.users.deactivate' => [
+            'label' => 'Désactiver un compte du personnel',
+            'group' => 'Personnel',
+            'icon' => 'fa-user-slash',
+        ],
         'personnel.roles.assign' => [
             'label' => 'Ajouter un rôle au compte',
             'group' => 'Personnel',

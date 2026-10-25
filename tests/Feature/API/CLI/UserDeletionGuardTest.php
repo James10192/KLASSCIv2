@@ -30,6 +30,7 @@ class UserDeletionGuardTest extends TestCase
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         Permission::findOrCreate('admin.access', 'web');
         Permission::findOrCreate('users.manage', 'web');
+        Permission::findOrCreate('personnel.users.deactivate', 'web');
         Role::findOrCreate('superAdmin', 'web')->givePermissionTo('admin.access');
         Role::findOrCreate('secretaire', 'web')->givePermissionTo(['admin.access', 'users.manage']);
         Role::findOrCreate('serviceTechnique', 'web')->givePermissionTo(['admin.access', 'users.manage']);
@@ -59,7 +60,7 @@ class UserDeletionGuardTest extends TestCase
 
         $response = $this->deleteUser($superAdmin, $actor);
 
-        $this->assertSame(422, $response->getStatusCode());
+        $this->assertSame(403, $response->getStatusCode());
         $this->assertNotSoftDeleted('users', ['id' => $superAdmin->id]);
         $this->assertDatabaseHas('users', ['id' => $superAdmin->id, 'is_active' => true]);
     }
@@ -73,8 +74,8 @@ class UserDeletionGuardTest extends TestCase
 
         $response = $this->deleteUser($first, $second);
 
-        $response->assertOk();
-        $this->assertSoftDeleted('users', ['id' => $first->id]);
+        $response->assertForbidden();
+        $this->assertNotSoftDeleted('users', ['id' => $first->id]);
         $this->assertDatabaseHas('users', ['id' => $second->id, 'is_active' => true]);
         $this->assertSame(1, User::role('superAdmin')->count());
     }
@@ -112,7 +113,7 @@ class UserDeletionGuardTest extends TestCase
 
         $response = $this->deleteUser($active, $inactive);
 
-        $response->assertStatus(422);
+        $response->assertForbidden();
         $this->assertNotSoftDeleted('users', ['id' => $active->id]);
         $this->assertDatabaseHas('users', ['id' => $active->id, 'is_active' => true]);
     }
@@ -123,7 +124,7 @@ class UserDeletionGuardTest extends TestCase
         $support = User::factory()->create(['is_active' => true]);
         $support->assignRole('serviceTechnique');
 
-        $this->deleteUser($support)->assertStatus(422);
+        $this->deleteUser($support)->assertForbidden();
 
         $this->assertNotSoftDeleted('users', ['id' => $support->id]);
     }
@@ -134,7 +135,7 @@ class UserDeletionGuardTest extends TestCase
         $actor = User::factory()->create(['is_active' => true]);
         Sanctum::actingAs($actor, ['cli:admin']);
 
-        $this->postJson("/api/cli/user/{$actor->id}/delete")->assertStatus(422);
+        $this->postJson("/api/cli/user/{$actor->id}/delete", ['motif' => 'Test auto suppression'])->assertStatus(422);
 
         $this->assertNotSoftDeleted('users', ['id' => $actor->id]);
     }
@@ -399,10 +400,23 @@ class UserDeletionGuardTest extends TestCase
         return $actor;
     }
 
+    public function test_cli_token_admin_sans_permission_ne_desactive_pas_un_compte(): void
+    {
+        $target = User::factory()->create(['is_active' => true]);
+        Sanctum::actingAs(User::factory()->create(), ['cli:admin']);
+        $this->postJson("/api/cli/user/{$target->id}/delete", [
+            'motif' => 'Test permission absente',
+        ])->assertForbidden();
+        $this->assertNotSoftDeleted('users', ['id' => $target->id]);
+    }
+
     private function deleteUser(User $target, ?User $actor = null): \Illuminate\Testing\TestResponse
     {
-        Sanctum::actingAs($actor ?? User::factory()->create(), ['cli:admin']);
+        $actor = $actor ?? User::factory()->create();
+        $actor->givePermissionTo('personnel.users.deactivate');
+        Sanctum::actingAs($actor, ['cli:admin']);
 
-        return $this->postJson("/api/cli/user/{$target->id}/delete");
+        return $this->postJson("/api/cli/user/{$target->id}/delete", ['motif' => 'Contrôle de désactivation']);
+
     }
 }
