@@ -449,6 +449,7 @@ class CustomRoleManagementHardeningTest extends TestCase
     {
         $acteur = $this->acteur('superAdmin', false);
         $role = Role::findOrCreate('coordinateur', 'web');
+        $avant = $role->permissions()->pluck('name')->sort()->values()->all();
         Role::findOrCreate('serviceTechnique', 'web');
         $cible = User::factory()->create(['is_active' => true]);
         $cible->assignRole(['serviceTechnique', 'coordinateur']);
@@ -463,7 +464,7 @@ class CustomRoleManagementHardeningTest extends TestCase
                 'permissions' => ['inscriptions.validate'],
             ])->assertForbidden();
 
-        $this->assertFalse($role->fresh()->hasPermissionTo('inscriptions.validate'));
+        $this->assertSame($avant, $role->fresh()->permissions()->pluck('name')->sort()->values()->all());
     }
 
     public function test_un_gestionnaire_ne_peut_pas_modifier_un_role_standard_hors_de_sa_matrice(): void
