@@ -224,6 +224,26 @@ class CustomRoleManagementHardeningTest extends TestCase
         $this->assertFalse($target->fresh()->hasRole($role->name));
     }
 
+    public function test_permission_d_initialisation_absente_ne_provoque_pas_500(): void
+    {
+        $actor = $this->acteur('coordinateur');
+        // Sur un tenant non synchronisé, le droit récemment créé est absent :
+        // la vérification ne doit jamais déclencher PermissionDoesNotExist.
+        Permission::where('name', 'personnel.users.initialize')->delete();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $role = $this->rolePersonnalise('roleTestPermAbsente');
+        $target = User::factory()->create(['is_active' => true]);
+
+        $this->actingAs($actor)
+            ->postJson(route('esbtp.custom-roles.assign-users', $role->name), [
+                'user_ids' => [$target->id],
+            ])
+            ->assertForbidden();
+
+        $this->assertFalse($target->fresh()->hasRole($role->name));
+    }
+
     public function test_un_gestionnaire_ne_peut_pas_modifier_un_role_standard_hors_de_sa_matrice(): void
     {
         $actor = $this->acteur('coordinateur');

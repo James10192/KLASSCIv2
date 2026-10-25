@@ -1,6 +1,6 @@
 # Changelog KLASSCI
 
-- Sécurité (PR #1685) : gestion globale des rôles et initialisation des comptes sans rôle sous permissions explicites `personnel.roles.manage_all` et `personnel.users.initialize`, avec tests de permissions directes et de refus sans habilitation.
+- Sécurité (PR #1685) : gestion globale des rôles et initialisation des comptes sans rôle sous permissions explicites `personnel.roles.manage_all` et `personnel.users.initialize`, avec tests de permissions directes, de refus sans habilitation et de repli 403 lorsque la permission manque en base.
 
 Toutes les évolutions notables de la plateforme KLASSCI, regroupées par mois.
 Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).

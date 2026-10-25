@@ -482,7 +482,7 @@ class ESBTPCustomRoleController extends Controller
         // Un rôle protégé additionnel exclut le compte. Une permission dédiée
         // permet d'initialiser un compte sans rôle. Un compte désactivé déjà affecté
         // reste visible, faute de quoi la soumission le détacherait en silence.
-        $peutInitialiser = Auth::user()->hasPermissionTo('personnel.users.initialize', 'web');
+        $peutInitialiser = Auth::user()->checkPermissionTo('personnel.users.initialize', 'web');
         $assignableUsers = User::query()
             ->where(function ($q) use ($roleModel) {
                 $q->where('is_active', true)
@@ -646,7 +646,7 @@ class ESBTPCustomRoleController extends Controller
         }
 
         $admissibles = array_values(array_unique([...$manageable, $role->name]));
-        $peutInitialiser = Auth::user()->hasPermissionTo('personnel.users.initialize', 'web');
+        $peutInitialiser = Auth::user()->checkPermissionTo('personnel.users.initialize', 'web');
         $interdits = User::query()
             ->whereIn('id', $userIds)
             ->where(function ($q) use ($admissibles, $peutInitialiser) {
@@ -885,7 +885,7 @@ class ESBTPCustomRoleController extends Controller
 
         // Droit explicite, attribuable directement : jamais de passe-droit
         // fondé sur le nom d'un rôle de l'acteur.
-        if ($actor->hasPermissionTo('personnel.roles.manage_all', 'web')) {
+        if ($actor->checkPermissionTo('personnel.roles.manage_all', 'web')) {
             return Role::pluck('name')->all();
         }
 
