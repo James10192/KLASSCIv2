@@ -2390,7 +2390,13 @@ return [
     'role_default_exclusions' => [
         // Le service technique reçoit seul par défaut la création de Superadmin.
         // Une attribution explicite et auditée peut toujours être décidée par tenant.
-        'superAdmin' => ['superadmin.accounts.create'],
+        'superAdmin' => [
+            'superadmin.accounts.create',
+            // Maintenance ADC uniquement par défaut ; l'école peut accorder
+            // explicitement ces droits, avec audit et sans rôle obligatoire.
+            'paywall.manage',
+            'system.technical_access',
+        ],
     ],
 
     'role_defaults' => [
