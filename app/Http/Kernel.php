@@ -10,7 +10,6 @@ use Illuminate\Routing\Router;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
-use Spatie\Permission\Middlewares\PermissionMiddleware;
 
 class Kernel extends HttpKernel
 {
