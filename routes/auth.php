@@ -30,6 +30,13 @@ Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login')->
 Route::post('/login', [LoginController::class, 'login'])->middleware(['guest', 'throttle:login']);
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
+// Multi-fonctions : choisir à la connexion et changer sans déconnexion.
+Route::middleware('auth')->prefix('profil')->name('profil.')->group(function () {
+    Route::get('/choisir', [\App\Http\Controllers\Auth\ChoixProfilController::class, 'index'])->name('choisir');
+    Route::post('/activer', [\App\Http\Controllers\Auth\ChoixProfilController::class, 'activer'])
+        ->middleware('throttle:30,1')->name('activer');
+});
+
 // Connexion par e-mail + code court, alternative au mot de passe.
 // Le second facteur TOTP configuré reste obligatoire après Auth::login.
 Route::post('/login/email-code', [EmailCodeLoginController::class, 'envoyer'])
