@@ -84,22 +84,35 @@ Catégories du rapport :
 - **Orphelines en DB** : jamais référencées → à supprimer
 - **Deprecated en DB** : marquées deprecated encore assignées
 
-## Matrice "qui peut gérer qui"
+## Gestion du personnel : permissions effectives exclusivement
 
-`config/permissions.php` clé `role_management` :
+`UserManagementService`, `UserManagementPolicy` et les services d'affectation
+ne doivent **jamais** autoriser une personne d'après le nom de son rôle.
 
-```php
-'role_management' => [
-    'superAdmin'   => ['secretaire', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
-    'directeurEtudes' => ['coordinateur', 'enseignant', 'etudiant'],
-    'secretaire'   => ['enseignant', 'etudiant', 'caissier'],
-    'caissier'     => ['etudiant'],          // pré-inscription
-    'comptable'    => [],                     // ne gère personne
-    'coordinateur' => ['enseignant', 'etudiant'],
-],
-```
+- Consulter : `personnel.view` ou permission de gestion adaptée.
+- Modifier / désactiver : `personnel.manage` ou `users.manage`, hors auto-gestion,
+  avec périmètre de permissions de la cible. La capacité explicite
+  `personnel.roles.manage_all` peut élargir ce périmètre, mais ne permet pas
+  de modifier le cycle de vie d'un compte sensible.
+- Attribuer un rôle ordinaire : `personnel.roles.assign`, plus les permissions
+  contenues dans le rôle cible. Les autres mutations exigent leur droit
+  spécifique. Ne jamais autoriser par `hasRole()` de l'opérateur.
+- Comptes `superAdmin` et `serviceTechnique` : noms utilisés seulement pour
+  **identifier un état protégé**, jamais pour autoriser l'acteur. Leur
+  transformation et déclassement passent par un workflow de validation
+  distincte ; en attendant, refuser sans side-effect.
+- `superadmin.accounts.create`, `paywall.manage` et
+  `system.technical_access` sont accordés par défaut au service technique,
+  PAS au joker `superAdmin`. Un tenant peut attribuer explicitement ces
+  permissions, avec audit. La synchronisation doit respecter les extensions et
+  révocations déclarées par l'établissement.
+- Multi-rôles : le profil de session sélectionné n'est que **l'espace de
+  travail affiché**. Il ne modifie pas l'identité et ne peut donner de droits.
 
-Lue par `App\Services\UserManagementService`. Configurable via UI admin.
+`config/permissions.php.role_management` subsiste pour compatibilité
+historique mais **n'est pas une source d'autorisation** ; ne pas y réintroduire
+une matrice « quel rôle peut gérer quel rôle ». L'unique interface est
+`/esbtp/personnel/unified`.
 
 ## Rôles canoniques
 
