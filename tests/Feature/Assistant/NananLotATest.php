@@ -76,6 +76,9 @@ class NananLotATest extends TestCase
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $this->admin = $this->utilisateur();
         $this->admin->assignRole('superAdmin');
+        // Le rôle n'accorde plus de passe-droit Gate implicite : cet acteur
+        // doit explicitement posséder chacune des capacités des outils testés.
+        $this->admin->givePermissionTo(self::DROITS);
 
         ESBTPAnneeUniversitaire::query()->update(['is_current' => false]);
         $this->annee = (int) ESBTPAnneeUniversitaire::factory()->create(['is_current' => true])->id;
@@ -313,6 +316,7 @@ class NananLotATest extends TestCase
     private function classePleine(string $code): ESBTPClasse
     {
         Permission::findOrCreate('inscriptions.override_capacity', 'web');
+        $this->admin->givePermissionTo('inscriptions.override_capacity');
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $classe = $this->classe($code);
         $classe->update(['places_totales' => 1]);
@@ -336,7 +340,7 @@ class NananLotATest extends TestCase
         $this->assertArrayHasKey('inscriptions.override_capacity', config('permissions.permissions'));
 
         $this->actingAs($this->admin);
-        $this->assertTrue(app(\App\Services\InscriptionWorkflowService::class)->checkClassAvailability($classe->id)['available'], 'superAdmin passe');
+        $this->assertTrue(app(\App\Services\InscriptionWorkflowService::class)->checkClassAvailability($classe->id)['available'], 'la permission inscriptions.override_capacity donne accès');
     }
 
     /** Les comptes dont la colonne héritée autorisait le dépassement le gardent, par la migration. */
