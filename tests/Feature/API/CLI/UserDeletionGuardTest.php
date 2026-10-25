@@ -65,7 +65,7 @@ class UserDeletionGuardTest extends TestCase
         $this->assertDatabaseHas('users', ['id' => $superAdmin->id, 'is_active' => true]);
     }
 
-    public function test_one_of_two_super_admins_can_be_deleted(): void
+    public function test_even_two_super_admins_cannot_be_reduced_without_approval(): void
     {
         $first = User::factory()->create(['is_active' => true]);
         $second = User::factory()->create(['is_active' => true]);
@@ -77,7 +77,7 @@ class UserDeletionGuardTest extends TestCase
         $response->assertForbidden();
         $this->assertNotSoftDeleted('users', ['id' => $first->id]);
         $this->assertDatabaseHas('users', ['id' => $second->id, 'is_active' => true]);
-        $this->assertSame(1, User::role('superAdmin')->count());
+        $this->assertSame(2, User::role('superAdmin')->count());
     }
 
     public function test_non_super_admin_cli_actor_cannot_delete_super_admin_target(): void

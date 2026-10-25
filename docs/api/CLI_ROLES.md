@@ -59,6 +59,17 @@ superadmin.accounts.create. Création serviceTechnique interdite par cette API.
 Le champ historique password_hash reste admis : les flux d'export et de
 réinitialisation d'empreintes demandent une revue de sécurité indépendante.
 
+## POST /api/cli/user/{id}/delete
+
+Désactive et supprime logiquement un compte ordinaire. Nécessite cli:admin,
+personnel.users.deactivate et un champ motif obligatoire (3–1000 caractères).
+La modification, la révocation des tokens et la trace avant/après sont
+transactionnelles. Un compte Superadmin ou Service Technique ne peut pas être
+désactivé par ce parcours sans le circuit de double validation, même si
+plusieurs Superadmin actifs existent : 403 sans modification.
+
+    {"motif":"Fin de contrat confirmée"}
+
 ## Historique et compatibilité
 
 - 25/10/2026 (PR #1685, EN ATTENTE) : BREAKING CHANGE. Pour toute mutation de rôle
