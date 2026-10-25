@@ -67,64 +67,88 @@ class CLIUserPermissionController extends BaseApiController
             'permissions.*' => 'required|string|max:191',
             'mode' => 'nullable|in:grant,revoke',
         ]);
-
-        $user = User::find($id);
-        if (! $user) {
-            return $this->errorResponse("Utilisateur {$id} introuvable.", ['code' => 'USER_NOT_FOUND'], 404);
-        }
-
-        $protege = array_intersect($user->getRoleNames()->all(), self::ROLES_PROTEGES);
-        if ($protege !== []) {
-            return $this->errorResponse(
-                'Compte '.implode(' et ', $protege).' : ses permissions ne se modifient pas depuis le CLI.',
-                ['code' => 'PROTECTED_ROLE'],
-                422
-            );
-        }
-
         $mode = $valide['mode'] ?? 'grant';
         $demandees = array_values(array_unique($valide['permissions']));
 
-        // Une permission inconnue est signalee, jamais creee : inventer un nom
-        // donnerait un acces qui ne correspond a aucune garde du code.
-        $connues = Permission::whereIn('name', $demandees)->pluck('name')->all();
-        $inconnues = array_values(array_diff($demandees, $connues));
+        // Les droits directs sont permanents : un token CLI et le seul droit
+        // personnel.manage ne sauraient octroyer ce type de délégation.
+        $acteur = User::query()->findOrFail($request->user()->id);
+        foreach (['personnel.manage', 'permissions.individuels.permanents.manage'] as $nom) {
+            if (! $acteur->checkPermissionTo($nom, 'web')) {
+                return $this->errorResponse('Délégation permanente non autorisée.', ['code' => 'ACCES_REFUSE'], 403);
+            }
+        }
 
-        if ($connues === []) {
-            return $this->errorResponse(
-                'Aucune de ces permissions n existe : '.implode(', ', $inconnues),
-                ['code' => 'UNKNOWN_PERMISSIONS', 'inconnues' => $inconnues],
-                422
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($acteur, $id, $mode, $demandees): JsonResponse {
+            // Même ordre de verrous que les mutations du personnel.
+            \Spatie\Permission\Models\Role::query()
+                ->where('name', 'superAdmin')->where('guard_name', 'web')
+                ->lockForUpdate()->first();
+
+            $user = User::query()->with('roles')->whereKey($id)->lockForUpdate()->first();
+            if (! $user) {
+                return $this->errorResponse("Utilisateur {$id} introuvable.", ['code' => 'USER_NOT_FOUND'], 404);
+            }
+            if (! app(\App\Services\UserManagementService::class)->canManage($acteur, $user)) {
+                return $this->errorResponse(
+                    'Compte protégé ou hors du périmètre de gestion.',
+                    ['code' => 'PROTECTED_ROLE'], 403
+                );
+            }
+            if ($mode === 'grant' && ! $user->is_active) {
+                return $this->errorResponse('Un compte inactif ne peut recevoir de nouveaux droits.', [], 403);
+            }
+
+            $connues = Permission::query()->where('guard_name', 'web')
+                ->whereIn('name', $demandees)->pluck('name')->all();
+            $inconnues = array_values(array_diff($demandees, $connues));
+            if ($connues === []) {
+                return $this->errorResponse(
+                    'Aucune permission connue pour le guard web.',
+                    ['code' => 'UNKNOWN_PERMISSIONS', 'inconnues' => $inconnues], 422
+                );
+            }
+            foreach ($connues as $nom) {
+                if (! $acteur->checkPermissionTo($nom, 'web')) {
+                    return $this->errorResponse(
+                        'Vous ne pouvez modifier une permission hors de votre périmètre.',
+                        ['code' => 'ACCES_REFUSE', 'permission' => $nom], 403
+                    );
+                }
+            }
+
+            $avant = $user->getDirectPermissions()->pluck('name')->sort()->values()->all();
+            foreach ($connues as $nom) {
+                $mode === 'revoke'
+                    ? $user->revokePermissionTo($nom)
+                    : $user->givePermissionTo($nom);
+            }
+            $user->forgetCachedPermissions();
+            $apres = $user->fresh()->getDirectPermissions()->pluck('name')->sort()->values()->all();
+
+            // Trace durable dans la MEME transaction que les pivots.
+            app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeCompte(
+                $user, ['permissions_directes' => $avant],
+                ['permissions_directes' => $apres], $acteur->id,
+                'Modification individuelle des droits depuis la CLI ('.$mode.')'
             );
-        }
 
-        $avant = $user->getDirectPermissions()->pluck('name')->sort()->values()->all();
+            Log::warning('CLI: permissions directes modifiees sur un compte', [
+                'user_id' => $user->id,
+                'mode' => $mode,
+                'permissions' => $connues,
+                'par' => $acteur->id,
+            ]);
 
-        foreach ($connues as $nom) {
-            $mode === 'revoke'
-                ? $user->revokePermissionTo($nom)
-                : $user->givePermissionTo($nom);
-        }
-
-        $user->forgetCachedPermissions();
-        $apres = $user->fresh()->getDirectPermissions()->pluck('name')->sort()->values()->all();
-
-        Log::warning('CLI: permissions directes modifiees sur un compte', [
-            'user_id' => $user->id,
-            'username' => $user->username,
-            'mode' => $mode,
-            'permissions' => $connues,
-            'par' => $request->user()->id,
-        ]);
-
-        return $this->successResponse([
-            'user_id' => $user->id,
-            'username' => $user->username,
-            'mode' => $mode,
-            'appliquees' => $connues,
-            'inconnues' => $inconnues,
-            'permissions_directes_avant' => $avant,
-            'permissions_directes_apres' => $apres,
-        ], count($connues).' permission(s) '.($mode === 'revoke' ? 'retiree(s)' : 'accordee(s)').'.');
+            return $this->successResponse([
+                'user_id' => $user->id,
+                'username' => $user->username,
+                'mode' => $mode,
+                'appliquees' => $connues,
+                'inconnues' => $inconnues,
+                'permissions_directes_avant' => $avant,
+                'permissions_directes_apres' => $apres,
+            ], count($connues).' permission(s) '.($mode === 'revoke' ? 'retiree(s)' : 'accordee(s)').'.');
+        }, 3);
     }
 }

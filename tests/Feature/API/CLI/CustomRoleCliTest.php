@@ -95,7 +95,8 @@ class CustomRoleCliTest extends TestCase
     {
         $actor = User::factory()->create();
         $this->grantCliPermissions($actor);
-        $actor->givePermissionTo('users.manage');
+        Permission::findOrCreate('personnel.manage', 'web');
+        $actor->givePermissionTo(['users.manage', 'personnel.manage']);
         Permission::findOrCreate('security.audit.view', 'web');
         $actor->givePermissionTo('security.audit.view');
         Sanctum::actingAs($actor, ['cli:admin']);
