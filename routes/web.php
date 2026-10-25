@@ -3157,14 +3157,23 @@ Route::middleware(['auth', 'permission:personnel.manage', 'permission:permission
         ->middleware('throttle:30,1')->name('acces-temporaires.destroy');
 });
 
-Route::middleware(['auth', 'permission:personnel.manage', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
-    Route::get('/personnel/unified', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'index'])->name('personnel.unified.index');
-    Route::get('/personnel/unified/data', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'getData'])->name('personnel.unified.data');
-    Route::get('/personnel/unified/stats', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'getStats'])->name('personnel.unified.stats');
-    Route::post('/personnel/unified', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'store'])->name('personnel.unified.store');
-    Route::put('/personnel/unified/{type}/{id}', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'update'])->name('personnel.unified.update');
-    Route::delete('/personnel/unified/{type}/{id}', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'destroy'])->name('personnel.unified.destroy');
-    Route::patch('/personnel/unified/{type}/{id}/toggle-status', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'toggleStatus'])->name('personnel.unified.toggle-status');
+// Un comptable / auditeur en lecture seule doit pouvoir consulter l'unique
+// écran de personnel ; les écritures ne gagnent JAMAIS ce périmètre.
+Route::middleware(['auth', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
+    Route::get('/personnel/unified', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'index'])
+        ->middleware('permission:personnel.view|personnel.manage')->name('personnel.unified.index');
+    Route::get('/personnel/unified/data', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'getData'])
+        ->middleware('permission:personnel.view|personnel.manage')->name('personnel.unified.data');
+    Route::get('/personnel/unified/stats', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'getStats'])
+        ->middleware('permission:personnel.view|personnel.manage')->name('personnel.unified.stats');
+    Route::post('/personnel/unified', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'store'])
+        ->middleware('permission:personnel.manage')->name('personnel.unified.store');
+    Route::put('/personnel/unified/{type}/{id}', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'update'])
+        ->middleware('permission:personnel.manage')->name('personnel.unified.update');
+    Route::delete('/personnel/unified/{type}/{id}', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'destroy'])
+        ->middleware('permission:personnel.manage')->name('personnel.unified.destroy');
+    Route::patch('/personnel/unified/{type}/{id}/toggle-status', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'toggleStatus'])
+        ->middleware('permission:personnel.manage')->name('personnel.unified.toggle-status');
 });
 
 Route::middleware(['auth', 'permission:personnel.manage', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {

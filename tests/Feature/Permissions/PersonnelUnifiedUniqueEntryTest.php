@@ -40,6 +40,35 @@ class PersonnelUnifiedUniqueEntryTest extends TestCase
         return $user;
     }
 
+    public function test_lecteur_du_personnel_peut_consulter_sans_pouvoir_ecrire(): void
+    {
+        $role = Role::findOrCreate('roleTestPersonnelLectureSeule', 'web');
+        Permission::findOrCreate('personnel.view', 'web');
+        $role->givePermissionTo('personnel.view');
+
+        $lecteur = User::factory()->create(['is_active' => true]);
+        $lecteur->assignRole($role);
+
+        $this->actingAs($lecteur)
+            ->get(route('esbtp.personnel.unified.index'))
+            ->assertOk();
+
+        $this->actingAs($lecteur)
+            ->get(route('esbtp.personnel.unified.stats'))
+            ->assertOk();
+
+        $this->actingAs($lecteur)
+            ->postJson(route('esbtp.personnel.unified.store'), [
+                'type' => 'secretaire',
+                'name' => 'Ne doit pas passer',
+            ])->assertForbidden();
+
+        $this->actingAs($lecteur)
+            ->deleteJson(route('esbtp.personnel.unified.destroy', [
+                'type' => 'secretaire', 'id' => $lecteur->id,
+            ]))->assertForbidden();
+    }
+
     public function test_anciennes_pages_personnel_et_roles_redirigent_vers_unified(): void
     {
         $this->actingAs($this->administrateur());
