@@ -143,6 +143,21 @@ class CustomRoleManagementHardeningTest extends TestCase
         $this->assertFalse($acteur->fresh()->hasRole($role->name));
     }
 
+    public function test_formulaire_html_ne_permet_pas_auto_attribution_avec_identifiant_string(): void
+    {
+        $acteur = User::factory()->create(['is_active' => true]);
+        foreach (['personnel.manage', 'personnel.roles.assign', 'personnel.users.initialize'] as $permission) {
+            $acteur->givePermissionTo(Permission::findOrCreate($permission, 'web'));
+        }
+        $role = $this->rolePersonnalise('roleTestAutoAttributionFormulaire');
+
+        $this->actingAs($acteur)
+            ->post(route('esbtp.custom-roles.assign-users', $role->name), [
+                'user_ids' => [(string) $acteur->id],
+            ])->assertForbidden();
+        $this->assertFalse($acteur->fresh()->hasRole($role->name));
+    }
+
     public function test_retrait_personnalise_refuse_la_suppression_de_son_propre_role(): void
     {
         $acteur = $this->acteur('superAdmin', false);

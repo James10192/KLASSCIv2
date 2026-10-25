@@ -548,11 +548,12 @@ class ESBTPCustomRoleController extends Controller
             'user_ids.*' => ['integer', 'exists:users,id'],
         ]);
 
-        $requestedUserIds = collect($validated['user_ids'] ?? [])->unique()->values()->all();
+        $requestedUserIds = collect($validated['user_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)->unique()->values()->all();
 
         // La liste envoyée est l'état complet : contrôler les ajouts ET les
         // retraits, sans échapper au contrôle lorsque user_ids est vide.
-        $currentIds = $roleModel->users()->pluck('users.id')->all();
+        $currentIds = $roleModel->users()->pluck('users.id')->map(fn ($id) => (int) $id)->all();
         $nouveauxIds = array_values(array_diff($requestedUserIds, $currentIds));
         $retraits = array_values(array_diff($currentIds, $requestedUserIds));
         // Une mutation de ses propres rôles ne peut jamais servir de raccourci
@@ -590,7 +591,7 @@ class ESBTPCustomRoleController extends Controller
 
         return $this->runMutation($registry, 'l\'affectation', function () use ($roleModel, $requestedUserIds, $registry, $currentIds) {
             $this->lockCustomRoleMutation($roleModel);
-            $currentLocked = $roleModel->users()->pluck('users.id')->all();
+            $currentLocked = $roleModel->users()->pluck('users.id')->map(fn ($id) => (int) $id)->all();
             sort($currentLocked);
             $previous = $currentIds;
             sort($previous);
