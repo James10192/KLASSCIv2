@@ -224,7 +224,8 @@ class UserDeletionGuardTest extends TestCase
             app(SuperAdminLifecycleGuard::class),
         );
 
-        $this->assertSame(422, $response->getStatusCode());
+        // Un compte Superadmin reste verrouillé jusqu'au workflow maker-checker.
+        $this->assertSame(403, $response->getStatusCode());
         $this->assertDatabaseHas('users', ['id' => $target->id, 'is_active' => true]);
     }
 
@@ -245,7 +246,8 @@ class UserDeletionGuardTest extends TestCase
             app(SuperAdminLifecycleGuard::class),
         );
 
-        $this->assertSame(422, $response->getStatusCode());
+        // Un compte Superadmin reste verrouillé jusqu'au workflow maker-checker.
+        $this->assertSame(403, $response->getStatusCode());
         $this->assertSame(2, User::role('superAdmin')->where('users.is_active', true)->count());
     }
 

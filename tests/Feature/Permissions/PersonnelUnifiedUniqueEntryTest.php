@@ -117,6 +117,7 @@ class PersonnelUnifiedUniqueEntryTest extends TestCase
         Role::findOrCreate('serviceTechnique', 'web');
         $user = User::factory()->create(['is_active' => true]);
         $user->assignRole('serviceTechnique');
+        $user->givePermissionTo(Permission::findOrCreate('system.technical_access', 'web'));
         $this->actingAs($user);
 
         $this->get(route('esbtp.roles-permissions.index'))

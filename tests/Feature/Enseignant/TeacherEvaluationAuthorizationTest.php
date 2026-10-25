@@ -6,6 +6,7 @@ use App\Http\Middleware\CheckInstalled;
 use App\Http\Middleware\EnsureInstalled;
 use App\Http\Middleware\ForcePasswordChange;
 use App\Http\Middleware\PaywallMiddleware;
+use App\Models\ESBTPClasse;
 use App\Models\ESBTPEvaluation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -51,7 +52,10 @@ final class TeacherEvaluationAuthorizationTest extends TestCase
     public function test_enseignant_sans_droit_de_gestion_est_refuse_sur_ses_propres_notes(): void
     {
         $actor = $this->utilisateur();
-        $evaluation = ESBTPEvaluation::factory()->create(['created_by' => $actor->id]);
+        $evaluation = ESBTPEvaluation::factory()->create([
+            'classe_id' => ESBTPClasse::factory(),
+            'created_by' => $actor->id,
+        ]);
 
         $this->actingAs($actor)->get(route('teacher.grades.note-modal', $evaluation))->assertForbidden();
         $this->actingAs($actor)->postJson(route('teacher.grades.note-store', $evaluation), [
@@ -64,6 +68,7 @@ final class TeacherEvaluationAuthorizationTest extends TestCase
         $actor = $this->utilisateur(true);
         $owner = $this->utilisateur(true);
         $evaluation = ESBTPEvaluation::factory()->create([
+            'classe_id' => ESBTPClasse::factory(),
             'created_by' => $owner->id, 'enseignant_id' => $owner->id,
         ]);
 

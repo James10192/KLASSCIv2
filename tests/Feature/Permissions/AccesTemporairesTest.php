@@ -44,6 +44,11 @@ class AccesTemporairesTest extends TestCase
 
         $this->admin = User::factory()->create();
         $this->admin->assignRole('superAdmin');
+        // Le nom superAdmin n'accorde aucun droit implicite depuis la suppression du Gate global.
+        $this->admin->givePermissionTo([
+            'notes.edit', 'paiements.view', 'permissions.temporaires.manage',
+            'permissions.individuels.permanents.manage', 'personnel.manage', 'users.manage',
+        ]);
     }
 
     protected function tearDown(): void

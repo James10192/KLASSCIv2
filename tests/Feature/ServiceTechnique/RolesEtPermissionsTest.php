@@ -46,6 +46,9 @@ class RolesEtPermissionsTest extends TestCase
 
         $this->st = User::factory()->create();
         $this->st->assignRole('serviceTechnique');
+        $this->st->givePermissionTo(Permission::findOrCreate('system.technical_access', 'web'));
+        // Les capacités explicites sont nécessaires, même au Service Technique.
+        $this->st->givePermissionTo(Permission::findOrCreate('personnel.manage', 'web'));
     }
 
     public function test_ancienne_page_roles_redirige_vers_la_page_unifiee(): void

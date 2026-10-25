@@ -47,7 +47,7 @@ class CustomRoleManagementHardeningTest extends TestCase
         // Les scénarios historiques d'administrateur doivent explicitement
         // détenir leurs capacités : le libellé du rôle n'autorise plus ces actions.
         if ($role === 'superAdmin') {
-            foreach (['personnel.manage', 'personnel.roles.manage_all', 'personnel.users.initialize'] as $permission) {
+            foreach (['personnel.manage', 'personnel.roles.manage_all', 'personnel.users.initialize', 'personnel.roles.assign'] as $permission) {
                 Permission::findOrCreate($permission, 'web');
                 $user->givePermissionTo($permission);
             }
@@ -345,8 +345,10 @@ class CustomRoleManagementHardeningTest extends TestCase
         $role = Role::findOrCreate('directeurEtudes', 'web');
         $this->actingAs($actor);
 
+        // L'ancien écran technique exige system.technical_access ;
+        // superAdmin sans cette permission ne peut pas emprunter cette URL.
         $this->get(route('esbtp.roles.edit', $role->id))
-            ->assertRedirect(route('esbtp.personnel.unified.index'));
+            ->assertForbidden();
 
         $this->post(route('esbtp.roles.store'), [
             'name' => 'nouveauRole',
@@ -370,6 +372,7 @@ class CustomRoleManagementHardeningTest extends TestCase
         $actor = $this->acteur('superAdmin', false);
         $role = $this->rolePersonnalise('roleTestAuditPivot');
         Permission::findOrCreate('inscriptions.validate', 'web');
+        $actor->givePermissionTo('inscriptions.validate');
         $cible = User::factory()->create(['is_active' => true]);
 
         $this->actingAs($actor)
@@ -438,6 +441,7 @@ class CustomRoleManagementHardeningTest extends TestCase
         $actor = $this->acteur('superAdmin', false);
         $role = Role::findOrCreate('directeurEtudes', 'web');
         Permission::findOrCreate('inscriptions.validate', 'web');
+        $actor->givePermissionTo('inscriptions.validate');
 
         $this->actingAs($actor)
             ->putJson(route('esbtp.custom-roles.standard.update', $role->name), [

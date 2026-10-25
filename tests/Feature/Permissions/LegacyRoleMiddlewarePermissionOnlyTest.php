@@ -26,13 +26,21 @@ final class LegacyRoleMiddlewarePermissionOnlyTest extends TestCase
         Role::findOrCreate('enseignant', 'web');
     }
 
+    private function requestFor(User $user): Request
+    {
+        $request = Request::create('/legacy-role-test', 'GET');
+        $request->setUserResolver(static fn () => $user);
+
+        return $request;
+    }
+
     public function test_le_nom_superadmin_seul_ne_passe_plus_le_middleware_legacy(): void
     {
         $user = User::factory()->create();
         $user->assignRole('superAdmin');
         Auth::login($user);
         $this->expectException(HttpException::class);
-        app(CheckRole::class)->handle(request(), fn () => response('autorise'), 'superAdmin');
+        app(CheckRole::class)->handle($this->requestFor($user), fn () => response('autorise'), 'superAdmin');
     }
 
     public function test_la_permission_permet_l_acces_sans_le_role_correspondant(): void
@@ -40,7 +48,7 @@ final class LegacyRoleMiddlewarePermissionOnlyTest extends TestCase
         $user = User::factory()->create();
         $user->givePermissionTo('identity.teach');
         Auth::login($user);
-        $response = app(CheckRole::class)->handle(request(), fn () => response('autorise'), 'enseignant|teacher');
+        $response = app(CheckRole::class)->handle($this->requestFor($user), fn () => response('autorise'), 'enseignant|teacher');
         $this->assertSame('autorise', $response->getContent());
         $this->assertFalse($user->hasRole('enseignant'));
     }
@@ -51,7 +59,7 @@ final class LegacyRoleMiddlewarePermissionOnlyTest extends TestCase
         $user->assignRole('enseignant');
         Auth::login($user);
         $this->expectException(HttpException::class);
-        app(CheckRole::class)->handle(request(), fn () => response('autorise'), 'enseignant');
+        app(CheckRole::class)->handle($this->requestFor($user), fn () => response('autorise'), 'enseignant');
     }
 
     public function test_aucune_route_web_active_n_exige_le_nom_d_un_role(): void
