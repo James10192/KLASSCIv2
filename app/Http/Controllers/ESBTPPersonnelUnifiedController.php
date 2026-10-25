@@ -122,9 +122,13 @@ class ESBTPPersonnelUnifiedController extends Controller
      */
     public function index(Request $request)
     {
-        if (! auth()->user()->can('personnel.view')) {
-            abort(403, 'Accès non autorisé');
-        }
+        // 'personnel.manage' implique la consultation de la page sans exiger
+        // une seconde permission DB explicitement attachée au compte.
+        abort_unless(
+            auth()->user()->can('personnel.view') || auth()->user()->can('personnel.manage'),
+            403,
+            'Accès non autorisé'
+        );
 
         // La restriction d'auto-gestion d'un poste vise les titulaires d'un
         // unique rôle métier. Ne jamais choisir arbitrairement le premier
@@ -491,7 +495,7 @@ class ESBTPPersonnelUnifiedController extends Controller
     private function ensureCanViewPersonnel(): void
     {
         $user = auth()->user();
-        if ($user && $user->can('personnel.view')) {
+        if ($user && ($user->can('personnel.view') || $user->can('personnel.manage'))) {
             return;
         }
 

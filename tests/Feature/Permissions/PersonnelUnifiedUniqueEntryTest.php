@@ -40,6 +40,20 @@ class PersonnelUnifiedUniqueEntryTest extends TestCase
         return $user;
     }
 
+    public function test_gestionnaire_avec_personnel_manage_sans_personnel_view_peut_ouvrir_unified(): void
+    {
+        Role::findOrCreate('roleTestPersonnelGestionSeule', 'web');
+        Permission::findOrCreate('personnel.manage', 'web');
+
+        $user = User::factory()->create(['is_active' => true]);
+        $user->assignRole('roleTestPersonnelGestionSeule');
+        $user->givePermissionTo('personnel.manage');
+
+        $this->actingAs($user)
+            ->get(route('esbtp.personnel.unified.index'))
+            ->assertOk();
+    }
+
     public function test_lecteur_du_personnel_peut_consulter_sans_pouvoir_ecrire(): void
     {
         $role = Role::findOrCreate('roleTestPersonnelLectureSeule', 'web');
