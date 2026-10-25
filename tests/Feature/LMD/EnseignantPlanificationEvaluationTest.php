@@ -50,7 +50,7 @@ class EnseignantPlanificationEvaluationTest extends TestCase
 
         Role::findOrCreate('enseignant', 'web');
         Role::findOrCreate('superAdmin', 'web');
-        foreach (['module.lmd.access', 'lmd.planning.edit', 'lmd.planning.view'] as $permission) {
+        foreach (['admin.access', 'module.lmd.access', 'lmd.planning.edit', 'lmd.planning.view'] as $permission) {
             Permission::findOrCreate($permission, 'web');
         }
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -82,7 +82,9 @@ class EnseignantPlanificationEvaluationTest extends TestCase
 
         $this->admin = $this->user('admin');
         $this->admin->assignRole('superAdmin');
-        $this->admin->givePermissionTo(['module.lmd.access', 'lmd.planning.edit', 'lmd.planning.view']);
+        // La route LMD exige aussi un droit d'identité. Le nom superAdmin seul
+        // ne doit plus contourner cette garde (ancien Gate::before supprimé).
+        $this->admin->givePermissionTo(['admin.access', 'module.lmd.access', 'lmd.planning.edit', 'lmd.planning.view']);
 
         $this->enseignantPlanning = $this->user('planning');
         $this->enseignantPlanning->assignRole('enseignant');
