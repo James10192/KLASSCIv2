@@ -449,6 +449,7 @@ class CustomRoleManagementHardeningTest extends TestCase
     {
         $acteur = $this->acteur('superAdmin', false);
         $role = Role::findOrCreate('coordinateur', 'web');
+        Role::findOrCreate('serviceTechnique', 'web');
         $cible = User::factory()->create(['is_active' => true]);
         $cible->assignRole(['serviceTechnique', 'coordinateur']);
         $acteur->givePermissionTo(Permission::findOrCreate('inscriptions.validate', 'web'));
