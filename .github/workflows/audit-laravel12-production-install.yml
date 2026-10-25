@@ -1,0 +1,39 @@
+name: Audit Laravel 12 - installation production PHP 8.3 (recette)
+
+# Recette temporaire : ne travaille ni sur presentation ni sur un tenant.
+on:
+  pull_request:
+    branches: [presentation]
+
+permissions:
+  contents: read
+
+jobs:
+  cpanel-production-deps:
+    if: github.head_ref == 'audit/integration-rbac-laravel12-20261025'
+    name: Dépendances production et boot Artisan (PHP 8.3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, dom, curl, zip, gd, intl, bcmath, pdo_mysql, sodium, openssl, exif, iconv, ctype, fileinfo
+          tools: composer:v2
+          coverage: none
+
+      - name: Installer exactement les dépendances runtime
+        run: composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader
+
+      - name: Vérifier les extensions PHP réellement requises
+        run: composer check-platform-reqs --no-dev
+
+      - name: Boot CLI sans paquet de développement
+        shell: bash
+        run: |
+          cp .env.example .env
+          php artisan --version
+          php artisan route:list --json > /tmp/klassci-routes-production.json
+          php -r '$routes = json_decode(file_get_contents("/tmp/klassci-routes-production.json"), true); if (!is_array($routes) || count($routes) < 20) { fwrite(STDERR, "Routes manquantes ou JSON invalide\n"); exit(1); } echo "Routes: " . count($routes) . "\n";'
