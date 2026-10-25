@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-25 · #1687 complément · Création du personnel : vérification de la permission d'affectation et du périmètre de délégation avant d'attribuer le rôle ; refus clair si ce droit manque, avec audit transactionnel avant/après pour toute création autorisée. Recette sur présentation avant propagation.
 - 2026-10-25 · #1687 complément · Personnel/unified : les onglets et actions « Nouveau Personnel » sont désormais visibles selon les droits attribués, y compris pour un agent exerçant lui-même cette fonction ; plus de restriction d'affichage par nom de rôle. Contrôles serveur inchangés et recette visuelle avant propagation.
 - 2026-10-25 · #1687 · Maintenance : les liens Paywall, Matricule, Rôles & permissions et Style Bulletin sont désormais affichés selon leurs permissions effectives. Les droits réservés par défaut au service technique ne sont plus acquis au simple nom Superadmin. Attribution explicite et auditée possible par instance ; recette visuelle sur présentation requise avant propagation.
 - 2026-10-25 · #1685 (successeur audité) · Comptes à plusieurs fonctions : sélecteur de profil après chaque connexion par mot de passe, e-mail ou SSO ; changement de profil sans déconnexion sur ordinateur et mobile, tableau de bord adapté à la fonction choisie, aucune élévation de permissions. Vérification interactive sur présentation avant information aux écoles.

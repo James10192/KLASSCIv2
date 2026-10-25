@@ -141,6 +141,46 @@ class PersonnelUnifiedUniqueEntryTest extends TestCase
             ->assertRedirect(route('esbtp.personnel.unified.index', ['section' => 'roles']));
     }
 
+    public function test_creation_unifiee_refuse_un_role_sans_permission_d_affectation(): void
+    {
+        $acteur = User::factory()->create(['is_active' => true]);
+        $acteur->givePermissionTo(Permission::findOrCreate('personnel.manage', 'web'));
+        Role::findOrCreate('coordinateur', 'web');
+
+        $this->actingAs($acteur)
+            ->postJson(route('esbtp.personnel.unified.store'), [
+                'type' => 'coordinateur',
+                'name' => 'Agent Permission Absente',
+                'email' => 'role-non-autorise@example.test',
+            ])->assertForbidden();
+        $this->assertDatabaseMissing('users', ['email' => 'role-non-autorise@example.test']);
+    }
+
+    public function test_creation_unifiee_attribue_role_et_audit_dans_la_meme_transaction(): void
+    {
+        $role = Role::findOrCreate('coordinateur', 'web');
+        $acteur = User::factory()->create(['is_active' => true]);
+        foreach (['personnel.manage', 'personnel.roles.assign'] as $permission) {
+            $acteur->givePermissionTo(Permission::findOrCreate($permission, 'web'));
+        }
+
+        $this->actingAs($acteur)
+            ->postJson(route('esbtp.personnel.unified.store'), [
+                'type' => 'coordinateur',
+                'name' => 'Agent Role Audite',
+                'email' => 'role-audite@example.test',
+            ])->assertOk()->assertJsonPath('success', true);
+
+        $cible = User::query()->where('email', 'role-audite@example.test')->firstOrFail();
+        $this->assertTrue($cible->hasRole($role->name));
+        $this->assertDatabaseHas('audits', [
+            'auditable_type' => User::class,
+            'auditable_id' => $cible->id,
+            'user_id' => $acteur->id,
+            'tags' => 'permissions',
+        ]);
+    }
+
     public function test_anciens_endpoints_personnel_ne_proposent_plus_de_mutations(): void
     {
         foreach ([

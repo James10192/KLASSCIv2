@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Rules\MotDePasseChoisi;
 use App\Services\PermissionRegistry;
 use App\Services\UserService;
+use App\Services\Personnel\RoleAssignmentService;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use App\Support\PorteDeRoute;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -562,10 +563,13 @@ class ESBTPPersonnelUnifiedController extends Controller
     /**
      * Store a newly created personnel in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request, RoleAssignmentService $roleAssignments)
     {
         $type = $request->get('type');
         $this->ensureCanManagePersonnelType($type, 'create');
+        // La capacité de créer une fiche n'autorise pas implicitement à attribuer un rôle.
+        abort_unless($request->user()?->can('personnel.roles.assign'), 403,
+            'Permission d\'affectation de rôle absente.');
 
         $rules = [
             'name' => 'required|string|max:255',
@@ -606,7 +610,11 @@ class ESBTPPersonnelUnifiedController extends Controller
                 'email_verified_at' => now(),
             ]));
 
-            $user->assignRole($validated['type']);
+            // Attribution contrôlée et audit avant/après dans la transaction du compte.
+            $roleAssignments->change(
+                $request->user(), $user->id, 'add', $validated['type'],
+                'Création du personnel depuis personnel/unified'
+            );
 
             if ($type === 'enseignant') {
                 ESBTPTeacher::create([
@@ -629,6 +637,12 @@ class ESBTPPersonnelUnifiedController extends Controller
                     'must_change_password' => true,
                 ],
             ]);
+        } catch (AuthorizationException $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 403);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Gestion du personnel : échec de création', [
