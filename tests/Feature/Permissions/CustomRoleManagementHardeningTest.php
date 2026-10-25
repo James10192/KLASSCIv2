@@ -677,6 +677,62 @@ class CustomRoleManagementHardeningTest extends TestCase
         )));
     }
 
+    public function test_affectation_generique_refuse_un_compte_deja_plus_privilegie_que_l_operateur(): void
+    {
+        $acteur = User::factory()->create(['is_active' => true]);
+        foreach (['personnel.manage', 'personnel.roles.assign'] as $nom) {
+            $acteur->givePermissionTo(Permission::findOrCreate($nom, 'web'));
+        }
+
+        $permissionFinance = Permission::findOrCreate('security.audit.view', 'web');
+        $roleFinance = Role::findOrCreate('roleTestCibleHorsPerimetre', 'web');
+        $roleFinance->givePermissionTo($permissionFinance);
+        $roleNeutre = Role::findOrCreate('roleTestAjoutNeutre', 'web');
+
+        $cible = User::factory()->create(['is_active' => true]);
+        $cible->assignRole($roleFinance);
+
+        try {
+            app(\App\Services\Personnel\RoleAssignmentService::class)->change(
+                $acteur, $cible->id, 'add', $roleNeutre->name,
+                'Affectation sur un compte plus privilégié'
+            );
+            $this->fail('Une affectation hors périmètre doit être refusée.');
+        } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
+            $this->assertStringContainsString('périmètre', $exception->getMessage());
+        }
+
+        $this->assertTrue($cible->fresh()->hasRole($roleFinance->name));
+        $this->assertFalse($cible->fresh()->hasRole($roleNeutre->name));
+        $this->assertDatabaseMissing('audits', [
+            'auditable_type' => User::class,
+            'auditable_id' => $cible->id,
+            'tags' => 'permissions',
+        ]);
+    }
+
+    public function test_manage_all_explicite_autorise_une_affectation_de_role_neutre_a_un_compte_non_sensible(): void
+    {
+        $acteur = User::factory()->create(['is_active' => true]);
+        foreach (['personnel.manage', 'personnel.roles.assign', 'personnel.roles.manage_all'] as $nom) {
+            $acteur->givePermissionTo(Permission::findOrCreate($nom, 'web'));
+        }
+
+        $finance = Permission::findOrCreate('security.audit.view', 'web');
+        $roleFinance = Role::findOrCreate('roleTestCibleFinanceManageAll', 'web');
+        $roleFinance->givePermissionTo($finance);
+        $roleNeutre = Role::findOrCreate('roleTestNeutreManageAll', 'web');
+        $cible = User::factory()->create(['is_active' => true]);
+        $cible->assignRole($roleFinance);
+
+        $resultat = app(\App\Services\Personnel\RoleAssignmentService::class)->change(
+            $acteur, $cible->id, 'add', $roleNeutre->name,
+            'Ajout d un rôle neutre avec périmètre total'
+        );
+        $this->assertContains($roleNeutre->name, $resultat['after']);
+        $this->assertTrue($cible->fresh()->hasRole($roleNeutre->name));
+    }
+
     public function test_creation_superadmin_ne_sert_pas_de_passe_droit_pour_promouvoir_un_compte(): void
     {
         $acteur = $this->acteur('superAdmin', false);

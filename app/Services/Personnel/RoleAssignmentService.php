@@ -4,6 +4,7 @@ namespace App\Services\Personnel;
 
 use App\Listeners\AuditPermissionChange;
 use App\Models\User;
+use App\Services\UserManagementService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -16,8 +17,10 @@ use Spatie\Permission\Models\Role;
  */
 final class RoleAssignmentService
 {
-    public function __construct(private readonly AuditPermissionChange $audit)
-    {
+    public function __construct(
+        private readonly AuditPermissionChange $audit,
+        private readonly UserManagementService $userManagement,
+    ) {
     }
 
     /** @return array{before: array<int,string>, after: array<int,string>} */
@@ -59,6 +62,14 @@ final class RoleAssignmentService
             if (array_intersect($before, ['superAdmin', 'serviceTechnique']) !== []) {
                 // La double validation de transformation n'est pas encore livrée.
                 throw new AuthorizationException('Compte sensible : approbation distincte obligatoire.');
+            }
+            // La permission d'ajout/retrait n'accorde pas le contrôle d'une
+            // personne plus privilégiée. Conserver l'invariant de la policy
+            // UserManagementPolicy pour l'ensemble des points d'entrée.
+            if (! $this->userManagement->canManage($operator, $target)) {
+                throw new AuthorizationException(
+                    'Les permissions de ce compte dépassent votre périmètre de gestion.'
+                );
             }
             if ($roleName === 'serviceTechnique') {
                 throw new AuthorizationException('Attribution du rôle technique indisponible depuis cette API.');
