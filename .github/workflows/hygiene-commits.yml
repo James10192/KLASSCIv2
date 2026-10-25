@@ -533,6 +533,7 @@ jobs:
             tests/Feature/Permissions/AccesTemporairesTest.php \
             tests/Feature/Permissions/AccesTemporairesNonAccordablesTest.php \
             tests/Feature/API/CLI/AccesIndividuelsCliTest.php \
+            tests/Feature/API/CLI/DirectPermissionCliHardeningTest.php \
             tests/Feature/Permissions/NoImplicitSuperAdminGateTest.php \
             tests/Feature/Permissions/LegacyRoleMiddlewarePermissionOnlyTest.php \
             tests/Feature/Permissions/UserManagementPermissionOnlyTest.php \
