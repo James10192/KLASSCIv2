@@ -53,6 +53,7 @@ class NananLotATest extends TestCase
     use DatabaseTransactions;
 
     private const DROITS = [
+        'admin.access', // garde parent des routes web d'inscription (plus de bypass superAdmin)
         'inscriptions.validate', 'students.edit', 'paiements.avoir', 'trash.view', 'paiements.restore',
         'inscriptions.in_kind.mark', 'paiements.reventiler', 'frais.configure', 'frais.create', 'frais.edit', 'system.manage',
     ];
