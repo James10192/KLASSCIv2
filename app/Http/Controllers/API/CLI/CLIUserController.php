@@ -382,31 +382,40 @@ class CLIUserController extends BaseApiController
             );
         }
 
-        $avant = $user->getRoleNames()->toArray();
-
-        // Retirer le dernier superAdmin actif fermerait le tenant a clef.
-        // Meme definition que SuperAdminLifecycleGuard : un autre superAdmin
-        // actif doit subsister ailleurs.
-        if ($mode === 'replace' && in_array('superAdmin', $avant, true) && ! $grantIsPrivileged) {
-            $autreSuperAdminActif = User::role('superAdmin')
-                ->where('users.is_active', true)
-                ->where('users.id', '!=', $user->id)
-                ->exists();
-
-            if (! $autreSuperAdminActif) {
-                return $this->errorResponse(
-                    "Refus : #{$user->id} est le dernier superAdmin actif du tenant. Promouvoir un autre compte avant de lui retirer ce role.",
-                    [],
-                    422
-                );
-            }
-        }
-
+        // Le même verrou global que SuperAdminLifecycleGuard sérialise les
+        // modifications de comptes privilégiés et évite la course où deux
+        // requêtes retirent simultanément les deux derniers superAdmin.
         try {
-            $apres = DB::transaction(function () use ($user, $role, $mode, $caller, $avant) {
-                // Éviter les écritures concurrentes sur le même compte.
-                $cible = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            [$avant, $apres] = DB::transaction(function () use ($user, $role, $mode, $caller, $callerIsSuperAdmin) {
+                Role::query()->where('name', 'superAdmin')->where('guard_name', 'web')
+                    ->lockForUpdate()->first();
+                $cible = User::query()->with('roles')->whereKey($user->id)
+                    ->lockForUpdate()->firstOrFail();
                 $rolesAvant = $cible->getRoleNames()->toArray();
+
+                // Réévaluer les interdictions SOUS verrou, après une éventuelle
+                // promotion concurrente du compte ciblé.
+                if (!$callerIsSuperAdmin && (
+                    $cible->hasAnyRole(['superAdmin', 'serviceTechnique'])
+                    || in_array($role, ['superAdmin', 'serviceTechnique'], true)
+                )) {
+                    throw new AuthorizationException();
+                }
+
+                if ($mode === 'replace'
+                    && $role !== 'superAdmin'
+                    && $cible->is_active
+                    && in_array('superAdmin', $rolesAvant, true)) {
+                    $autreSuperAdminActif = User::role('superAdmin')
+                        ->where('users.is_active', true)
+                        ->where('users.id', '!=', $cible->id)
+                        ->exists();
+
+                    if (!$autreSuperAdminActif) {
+                        throw new LastActiveSuperAdminException();
+                    }
+                }
+
                 $mode === 'replace' ? $cible->syncRoles([$role]) : $cible->assignRole($role);
                 $rolesApres = $cible->fresh()->getRoleNames()->toArray();
                 app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeCompte(
@@ -416,8 +425,14 @@ class CLIUserController extends BaseApiController
                     $caller->id,
                     'CLI userSetRole: '.$mode
                 );
-                return $rolesApres;
-            });
+                return [$rolesAvant, $rolesApres];
+            }, 3);
+        } catch (LastActiveSuperAdminException) {
+            return $this->errorResponse(
+                'Refus : retirer le dernier rôle superAdmin actif verrouillerait le tenant.', [], 422
+            );
+        } catch (AuthorizationException) {
+            return $this->errorResponse('Mutation d’un compte privilégié non autorisée.', [], 403);
         } catch (\Throwable $e) {
             Log::error('CLI: set-role transaction/audit failed', [
                 'user_id' => $user->id, 'exception' => get_class($e),

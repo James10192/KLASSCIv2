@@ -80,6 +80,22 @@ class CustomRoleCliTest extends TestCase
         ])->assertStatus(422);
     }
 
+    public function test_cli_ne_permet_pas_de_remplacer_le_dernier_superadmin_par_service_technique(): void
+    {
+        Role::findOrCreate('serviceTechnique', 'web');
+        $actor = User::factory()->create(['is_active' => true]);
+        $actor->assignRole('superAdmin');
+        Sanctum::actingAs($actor, ['cli:admin']);
+
+        $this->postJson("/api/cli/user/{$actor->id}/role", [
+            'role' => 'serviceTechnique',
+            'mode' => 'replace',
+        ])->assertStatus(422);
+
+        $this->assertTrue($actor->fresh()->hasRole('superAdmin'));
+        $this->assertFalse($actor->fresh()->hasRole('serviceTechnique'));
+    }
+
     public function test_cli_rejects_reserved_canonical_role_name(): void
     {
         $actor = User::factory()->create();
