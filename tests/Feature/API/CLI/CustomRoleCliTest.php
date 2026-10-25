@@ -21,14 +21,28 @@ class CustomRoleCliTest extends TestCase
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         Permission::findOrCreate('dashboard.view', 'web');
         Permission::findOrCreate('inscriptions.validate', 'web');
+        foreach (['users.manage', 'personnel.roles.assign', 'personnel.roles.remove',
+            'personnel.roles.replace', 'personnel.roles.create', 'superadmin.accounts.create'] as $name) {
+            Permission::findOrCreate($name, 'web');
+        }
         Role::findOrCreate('superAdmin', 'web');
         Role::findOrCreate('agentInscription', 'web');
+    }
+
+    private function grantCliPermissions(User $actor): void
+    {
+        foreach (['users.manage', 'personnel.roles.assign', 'personnel.roles.remove',
+            'personnel.roles.replace', 'personnel.roles.create',
+            'dashboard.view', 'inscriptions.validate'] as $name) {
+            $actor->givePermissionTo($name);
+        }
     }
 
     public function test_cli_can_create_custom_role_and_assign_it(): void
     {
         $actor = User::factory()->create();
         $actor->assignRole('superAdmin');
+        $this->grantCliPermissions($actor);
         Sanctum::actingAs($actor, ['cli:admin']);
 
         $this->postJson('/api/cli/roles', [
@@ -46,6 +60,9 @@ class CustomRoleCliTest extends TestCase
         $this->postJson("/api/cli/user/{$target->id}/role", [
             'role' => 'informaticien',
             'mode' => 'replace',
+            'old_role' => 'agentInscription',
+            'expected_roles' => ['agentInscription'],
+            'motif' => 'Remplacement ciblé validé',
         ])->assertOk()
             ->assertJsonPath('data.roles_after.0', 'informaticien');
 
@@ -71,12 +88,14 @@ class CustomRoleCliTest extends TestCase
     {
         $actor = User::factory()->create();
         $actor->assignRole('superAdmin');
+        $this->grantCliPermissions($actor);
         Sanctum::actingAs($actor, ['cli:admin']);
 
         $target = User::factory()->create();
 
         $this->postJson("/api/cli/user/{$target->id}/role", [
             'role' => 'does_not_exist',
+            'motif' => 'Vérification de rôle inconnu',
         ])->assertStatus(422);
     }
 
@@ -85,12 +104,16 @@ class CustomRoleCliTest extends TestCase
         Role::findOrCreate('serviceTechnique', 'web');
         $actor = User::factory()->create(['is_active' => true]);
         $actor->assignRole('superAdmin');
+        $this->grantCliPermissions($actor);
         Sanctum::actingAs($actor, ['cli:admin']);
 
         $this->postJson("/api/cli/user/{$actor->id}/role", [
             'role' => 'serviceTechnique',
             'mode' => 'replace',
-        ])->assertStatus(422);
+            'old_role' => 'superAdmin',
+            'expected_roles' => ['superAdmin'],
+            'motif' => 'Tentative refusée',
+        ])->assertForbidden();
 
         $this->assertTrue($actor->fresh()->hasRole('superAdmin'));
         $this->assertFalse($actor->fresh()->hasRole('serviceTechnique'));
@@ -100,6 +123,7 @@ class CustomRoleCliTest extends TestCase
     {
         $actor = User::factory()->create();
         $actor->assignRole('superAdmin');
+        $this->grantCliPermissions($actor);
         Sanctum::actingAs($actor, ['cli:admin']);
 
         $this->postJson('/api/cli/roles', [
@@ -107,4 +131,94 @@ class CustomRoleCliTest extends TestCase
             'label_fr' => 'Fake',
         ])->assertStatus(422);
     }
+    public function test_cli_remplacement_ne_supprime_pas_un_autre_profil(): void
+    {
+        $actor = User::factory()->create();
+        $this->grantCliPermissions($actor);
+        Sanctum::actingAs($actor, ['cli:admin']);
+        foreach (['enseignant', 'coordinateur', 'secretaire'] as $name) {
+            Role::findOrCreate($name, 'web');
+        }
+        $target = User::factory()->create();
+        $target->assignRole(['enseignant', 'coordinateur']);
+
+        $this->postJson("/api/cli/user/{$target->id}/role", [
+            'role' => 'secretaire', 'mode' => 'replace', 'old_role' => 'coordinateur',
+            'expected_roles' => ['coordinateur', 'enseignant'],
+            'motif' => 'Remplacement ciblé contrôlé',
+        ])->assertOk();
+        $this->assertEqualsCanonicalizing(['enseignant', 'secretaire'], $target->fresh()->getRoleNames()->all());
+
+        $this->postJson("/api/cli/user/{$target->id}/role", [
+            'role' => 'coordinateur', 'motif' => 'Deuxième fonction',
+        ])->assertOk();
+        $this->postJson("/api/cli/user/{$target->id}/role", [
+            'role' => 'secretaire', 'mode' => 'remove', 'motif' => 'Fin de fonction',
+        ])->assertOk();
+        $this->assertEqualsCanonicalizing(['coordinateur', 'enseignant'], $target->fresh()->getRoleNames()->all());
+    }
+
+    public function test_cli_remplacement_exige_le_ciblage_et_un_etat_a_jour(): void
+    {
+        $actor = User::factory()->create();
+        $this->grantCliPermissions($actor);
+        Sanctum::actingAs($actor, ['cli:admin']);
+        Role::findOrCreate('enseignant', 'web');
+        Role::findOrCreate('coordinateur', 'web');
+        $target = User::factory()->create();
+        $target->assignRole('enseignant');
+
+        $this->postJson("/api/cli/user/{$target->id}/role", [
+            'role' => 'coordinateur', 'mode' => 'replace', 'motif' => 'Sans état',
+        ])->assertStatus(422);
+        $this->postJson("/api/cli/user/{$target->id}/role", [
+            'role' => 'coordinateur', 'mode' => 'replace', 'old_role' => 'enseignant',
+            'expected_roles' => ['enseignant', 'secretaire'], 'motif' => 'État périmé',
+        ])->assertStatus(422);
+        $this->assertEquals(['enseignant'], $target->fresh()->getRoleNames()->all());
+    }
+
+    public function test_cli_interdit_de_modifier_un_superadmin_existant(): void
+    {
+        $actor = User::factory()->create();
+        $this->grantCliPermissions($actor);
+        Sanctum::actingAs($actor, ['cli:admin']);
+        Role::findOrCreate('enseignant', 'web');
+        $target = User::factory()->create(['is_active' => true]);
+        $target->assignRole('superAdmin');
+
+        $this->postJson("/api/cli/user/{$target->id}/role", [
+            'role' => 'enseignant', 'mode' => 'add', 'motif' => 'Sans double approbation',
+        ])->assertForbidden();
+        $this->assertTrue($target->fresh()->hasRole('superAdmin'));
+    }
+
+    public function test_cli_token_seul_ne_confere_pas_de_permission_de_roles(): void
+    {
+        $actor = User::factory()->create();
+        Sanctum::actingAs($actor, ['cli:admin']);
+        Role::findOrCreate('enseignant', 'web');
+        $target = User::factory()->create();
+
+        $this->postJson("/api/cli/user/{$target->id}/role", [
+            'role' => 'enseignant', 'mode' => 'add', 'motif' => 'Non habilité',
+        ])->assertForbidden();
+        $this->assertEmpty($target->fresh()->getRoleNames()->all());
+    }
+
+    public function test_cli_ne_permet_pas_de_promouvoir_superadmin_sans_permission_specifique(): void
+    {
+        $actor = User::factory()->create();
+        $this->grantCliPermissions($actor);
+        Sanctum::actingAs($actor, ['cli:admin']);
+        $target = User::factory()->create();
+
+        $this->postJson("/api/cli/user/{$target->id}/role", [
+            'role' => 'superAdmin', 'mode' => 'add', 'motif' => 'Promotion non habilitée',
+        ])->assertForbidden();
+        $this->assertFalse($target->fresh()->hasRole('superAdmin'));
+    }
+
+
+
 }
