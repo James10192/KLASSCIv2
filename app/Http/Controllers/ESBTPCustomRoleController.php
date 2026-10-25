@@ -25,8 +25,8 @@ use Spatie\Permission\PermissionRegistrar;
  * - assignation d'utilisateurs au rôle
  *
  * Sécurité :
- * - Un acteur non-superAdmin ne peut donner que les permissions QU'IL POSSÈDE
- *   (Gate::before couvre superAdmin pour l'octroi total)
+ * - Tout acteur ne peut donner que les permissions QU'IL POSSÈDE,
+ *   sans passe-droit implicite lié au nom de rôle.
  * - Un acteur ne peut assigner un rôle qu'à des utilisateurs qu'il peut gérer
  *   (permissions explicites de gestion et délégation du rôle cible)
  * - Modification/suppression interdite sur les rôles système (is_custom = false)
@@ -474,6 +474,12 @@ class ESBTPCustomRoleController extends Controller
             abort(403, 'L\'assignation se fait via les outils dédiés pour les rôles système.');
         }
         $this->assertCustomRolePermissionsManageable($roleModel, $registry);
+        // Le périmètre manage_all ne remplace jamais le droit d'ajouter/retirer.
+        abort_unless(
+            Auth::user()->checkPermissionTo('personnel.roles.assign', 'web')
+                || Auth::user()->checkPermissionTo('personnel.roles.remove', 'web'),
+            403, 'Permission d’affectation ou de retrait absente.'
+        );
 
         $manageableRoles = $this->manageableRolesForActor($registry);
         abort_if($manageableRoles === [], 403, 'Aucun périmètre de gestion du personnel.');
@@ -541,6 +547,18 @@ class ESBTPCustomRoleController extends Controller
         // retraits, sans échapper au contrôle lorsque user_ids est vide.
         $currentIds = $roleModel->users()->pluck('users.id')->all();
         $nouveauxIds = array_values(array_diff($requestedUserIds, $currentIds));
+        $retraits = array_values(array_diff($currentIds, $requestedUserIds));
+        $operateur = Auth::user();
+        $peutAjouter = $operateur->checkPermissionTo('personnel.roles.assign', 'web');
+        $peutRetirer = $operateur->checkPermissionTo('personnel.roles.remove', 'web');
+        if ((! $peutAjouter && ! $peutRetirer)
+            || ($nouveauxIds !== [] && ! $peutAjouter)
+            || ($retraits !== [] && ! $peutRetirer)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Permission explicite d’ajout ou de retrait de rôle absente.',
+            ], 403);
+        }
         $inactifs = User::whereIn('id', $nouveauxIds)->where('is_active', false)->pluck('id')->all();
         if ($inactifs !== []) {
             return response()->json([
@@ -598,6 +616,9 @@ class ESBTPCustomRoleController extends Controller
             ], 403);
         }
 
+        abort_unless(Auth::user()->checkPermissionTo('personnel.roles.remove', 'web'),
+            403, 'Permission de retrait de rôle absente.');
+
         $userModel = User::findOrFail($user);
         if ($denial = $this->refusAffectation($roleModel, [$userModel->id], $registry)) {
             return $denial;
@@ -628,6 +649,20 @@ class ESBTPCustomRoleController extends Controller
      */
     private function refusAffectation(Role $role, array $userIds, PermissionRegistry $registry): ?\Illuminate\Http\JsonResponse
     {
+        // Les comptes de secours sont exclus de TOUTES les modifications de
+        // rôles personnalisés : manage_all élargit le périmètre, pas le
+        // cycle de vie sensible soumis à une approbation distincte.
+        $proteges = User::query()->whereIn('id', $userIds)
+            ->whereHas('roles', fn ($q) => $q->whereIn('name', ['superAdmin', 'serviceTechnique']))
+            ->pluck('id')->all();
+        if ($proteges !== []) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Compte sensible : approbation distincte obligatoire.',
+                'forbidden_user_ids' => $proteges,
+            ], 403);
+        }
+
         if ($denial = $this->denyIfPermissionsNotGrantable(
             array_values(array_unique(array_map(
                 fn (string $nom) => $registry->canonicalize($nom),

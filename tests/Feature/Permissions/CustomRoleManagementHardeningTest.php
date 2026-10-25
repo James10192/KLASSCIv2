@@ -99,6 +99,55 @@ class CustomRoleManagementHardeningTest extends TestCase
         $this->assertFalse($cible->fresh()->hasRole($role->name));
     }
 
+    public function test_manage_all_sans_assign_ne_peut_pas_ajouter_un_role_custom(): void
+    {
+        $actor = User::factory()->create(['is_active' => true]);
+        foreach (['personnel.manage', 'personnel.roles.manage_all', 'personnel.users.initialize'] as $name) {
+            $actor->givePermissionTo(Permission::findOrCreate($name, 'web'));
+        }
+        $role = $this->rolePersonnalise('roleTestManageAllSansAssign');
+        $target = User::factory()->create(['is_active' => true]);
+
+        $this->actingAs($actor)
+            ->postJson(route('esbtp.custom-roles.assign-users', $role->name), [
+                'user_ids' => [$target->id],
+            ])->assertForbidden();
+
+        $this->assertFalse($target->fresh()->hasRole($role->name));
+    }
+
+    public function test_assign_sans_remove_ne_peut_pas_detacher_un_role_custom(): void
+    {
+        $actor = $this->acteur('superAdmin', false);
+        $role = $this->rolePersonnalise('roleTestSansRemove');
+        $target = $this->acteur('enseignant', false);
+        $target->assignRole($role);
+
+        $this->actingAs($actor)
+            ->postJson(route('esbtp.custom-roles.assign-users', $role->name), [
+                'user_ids' => [],
+            ])->assertForbidden();
+
+        $this->actingAs($actor)
+            ->deleteJson(route('esbtp.custom-roles.detach-user', [$role->name, $target->id]))
+            ->assertForbidden();
+        $this->assertTrue($target->fresh()->hasRole($role->name));
+    }
+
+    public function test_manage_all_et_assign_ne_permettent_pas_de_muter_un_compte_superadmin(): void
+    {
+        $actor = $this->acteur('superAdmin', false);
+        $role = $this->rolePersonnalise('roleTestCompteProtege');
+        $target = User::factory()->create(['is_active' => true]);
+        $target->assignRole('superAdmin');
+
+        $this->actingAs($actor)
+            ->postJson(route('esbtp.custom-roles.assign-users', $role->name), [
+                'user_ids' => [$target->id],
+            ])->assertForbidden();
+        $this->assertFalse($target->fresh()->hasRole($role->name));
+    }
+
     public function test_sans_perimetre_un_envoi_vide_ne_peut_pas_detacher_les_autres(): void
     {
         $actor = $this->acteur('agentInscription');
