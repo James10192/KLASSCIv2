@@ -92,6 +92,12 @@ final class ChoixProfilTest extends TestCase
             ->assertRedirect(route('dashboard'));
     }
 
+    public function test_une_route_inconnue_reste_404_meme_si_la_session_web_na_pas_demarre(): void
+    {
+        $this->actingAs($this->multiProfil());
+        $this->get('/une-route-profil-inexistante-404')->assertNotFound();
+    }
+
     public function test_retrait_role_invalide_un_profil_en_session(): void
     {
         $user = $this->multiProfil();

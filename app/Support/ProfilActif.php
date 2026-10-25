@@ -27,6 +27,13 @@ final class ProfilActif
 
     public static function courant(Request $request): ?string
     {
+        // Le composer mobile peut s'exécuter pendant le rendu d'une 404
+        // AVANT StartSession (route inexistante). Ne jamais transformer
+        // une erreur 404 légitime en 500 par un accès prématuré à la session.
+        if (! $request->hasSession()) {
+            return null;
+        }
+
         $user = $request->user();
         if (! $user || (int) $request->session()->get(self::UTILISATEUR, 0) !== (int) $user->id) {
             return null;
