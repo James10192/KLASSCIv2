@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Rules\MotDePasseNonGenerique;
 use App\Services\CLI\UserDeletionService;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
+use App\Services\Personnel\RoleAssignmentService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
@@ -20,17 +21,6 @@ use Spatie\Permission\Models\Role;
 
 class CLIUserController extends BaseApiController
 {
-    /**
-     * Roles attribuables par le CLI. Partagee entre la creation et le
-     * changement de role : deux listes divergeraient a la premiere evolution
-     * de l'organigramme.
-     */
-    private const VALID_ROLES = [
-        'superAdmin', 'admin', 'secretaire', 'responsableScolarite', 'serviceScolarite',
-        'agentInscription', 'chargeCommunication', 'coordinateur', 'directeurEtudes', 'enseignant',
-        'etudiant', 'parent', 'comptable', 'caissier', 'teacher',
-    ];
-
     /**
      * GET /api/cli/users — List user accounts
      */
@@ -83,15 +73,15 @@ class CLIUserController extends BaseApiController
     /**
      * POST /api/cli/user/create — Create a user with a role
      */
-    public function userCreate(Request $request): JsonResponse
+    public function userCreate(Request $request, RoleAssignmentService $roles): JsonResponse
     {
-        if (!$request->user()->tokenCan('cli:admin')) {
+        if (! $request->user()->tokenCan('cli:admin')) {
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
-
-        // password_hash permet de recreer un compte a l'identique sur un autre
-        // tenant (cf. userCredentials) sans jamais connaitre le mot de passe en
-        // clair. L'un des deux champs est requis, jamais les deux.
+        if (! $request->user()->checkPermissionTo('users.manage', 'web')
+            || ! $request->user()->checkPermissionTo('personnel.roles.assign', 'web')) {
+            return $this->errorResponse('Permissions de création et de rôle absentes.', [], 403);
+        }
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|unique:users,email',
@@ -101,30 +91,36 @@ class CLIUserController extends BaseApiController
             'role' => 'required|string',
             'phone' => 'nullable|string|max:20',
             'must_change_password' => 'nullable|boolean',
+            'motif' => 'required|string|min:3|max:1000',
         ]);
-
-        if ($roleError = $this->assertRoleAssignable($validated['role'])) {
-            return $roleError;
+        if ($denial = $this->assertRoleAssignable($validated['role'])) {
+            return $denial;
+        }
+        if ($validated['role'] === 'serviceTechnique'
+            || ($validated['role'] === 'superAdmin'
+                && ! $request->user()->checkPermissionTo('superadmin.accounts.create', 'web'))) {
+            return $this->errorResponse('Création de compte privilégié non autorisée.', [], 403);
         }
 
         try {
-            $user = User::create([
-                'name' => $validated['name'],
-                'email' => $validated['email'] ?? null,
-                'username' => $validated['username'],
-                'password' => isset($validated['password_hash'])
-                    ? $validated['password_hash']
-                    : Hash::make($validated['password']),
-                'phone' => $validated['phone'] ?? null,
-                'is_active' => true,
-                // Un compte cloné garde le mot de passe de son tenant d'origine :
-                // rien à réinitialiser, sinon l'utilisateur serait bloqué.
-                'must_change_password' => $validated['must_change_password']
-                    ?? !isset($validated['password_hash']),
-                'created_by' => $request->user()->id,
-            ]);
-
-            $user->assignRole($validated['role']);
+            $user = DB::transaction(function () use ($request, $validated, $roles): User {
+                $user = User::create([
+                    'name' => $validated['name'],
+                    'email' => $validated['email'] ?? null,
+                    'username' => $validated['username'],
+                    'password' => isset($validated['password_hash'])
+                        ? $validated['password_hash']
+                        : Hash::make($validated['password']),
+                    'phone' => $validated['phone'] ?? null,
+                    'is_active' => true,
+                    'must_change_password' => $validated['must_change_password']
+                        ?? ! isset($validated['password_hash']),
+                    'created_by' => $request->user()->id,
+                ]);
+                // Le service écrit l'audit des rôles DANS la même transaction.
+                $roles->change($request->user(), $user->id, 'add', $validated['role'], $validated['motif']);
+                return $user;
+            }, 3);
 
             return $this->successResponse([
                 'user_id' => $user->id,
@@ -132,10 +128,14 @@ class CLIUserController extends BaseApiController
                 'username' => $user->username,
                 'email' => $user->email,
                 'role' => $validated['role'],
-            ], "User '{$user->name}' created with role '{$validated['role']}'");
-        } catch (\Exception $e) {
-            Log::error('CLI: user creation failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);
+            ], 'Compte créé avec rôle et audit atomiques.');
+        } catch (AuthorizationException $e) {
+            return $this->errorResponse($e->getMessage(), [], 403);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            Log::error('CLI: account creation rolled back', ['exception' => get_class($e)]);
+            return $this->errorResponse('Création annulée sans compte partiel.', [], 500);
         }
     }
 
@@ -334,150 +334,53 @@ class CLIUserController extends BaseApiController
      *
      * Body: { role: string, mode?: 'replace'|'add' }
      */
-    public function userSetRole(Request $request, $id): JsonResponse
+    public function userSetRole(Request $request, $id, RoleAssignmentService $roles): JsonResponse
     {
         if (! $request->user()->tokenCan('cli:admin')) {
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
-
-        $user = User::find($id);
-        if (! $user) {
-            return $this->errorResponse("User #{$id} not found", [], 404);
-        }
-
-        $validated = $request->validate([
-            'role' => 'required|string',
-            'mode' => 'nullable|in:replace,add',
+        $data = $request->validate([
+            'role' => ['required', 'string'],
+            'mode' => ['nullable', 'in:add,remove,replace'],
+            'old_role' => ['required_if:mode,replace', 'nullable', 'string'],
+            'expected_roles' => ['required_if:mode,replace', 'array'],
+            'expected_roles.*' => ['string'],
+            'motif' => ['required', 'string', 'min:3', 'max:1000'],
         ]);
-        $mode = $validated['mode'] ?? 'replace';
-        $role = $validated['role'];
-
-        if ($roleError = $this->assertRoleAssignable($role)) {
-            return $roleError;
+        $mode = $data['mode'] ?? 'add'; // Défaut non destructif.
+        if ($denial = $this->assertRoleAssignable($data['role'])) {
+            return $denial;
         }
-
-        // Memes gardes que reset-password (audit securite 2026-05-21), dans les
-        // deux sens : on ne touche pas a un compte privilegie, et surtout on
-        // n'en fabrique pas un. Sans le second test, un jeton cli:admin vole
-        // suffirait a se promouvoir superAdmin, ce qui serait pire qu'un reset.
-        $caller = $request->user();
-        $callerIsSuperAdmin = $caller->hasRole('superAdmin');
-        $targetIsPrivileged = $user->hasAnyRole(['superAdmin', 'serviceTechnique']);
-        $grantIsPrivileged = in_array($role, ['superAdmin', 'serviceTechnique'], true);
-
-        if (($targetIsPrivileged || $grantIsPrivileged) && ! $callerIsSuperAdmin) {
-            Log::warning('CLI: set-role DENIED on privileged target or grant', [
-                'target_user_id' => $user->id,
-                'target_roles' => $user->getRoleNames()->toArray(),
-                'requested_role' => $role,
-                'caller_user_id' => $caller->id,
-                'caller_roles' => $caller->getRoleNames()->toArray(),
-                'ip' => $request->ip(),
-            ]);
-
-            return $this->errorResponse(
-                'Cannot change roles of, or grant, a privileged role (superAdmin or serviceTechnique) without superAdmin caller.',
-                [],
-                403
-            );
-        }
-
-        // Le même verrou global que SuperAdminLifecycleGuard sérialise les
-        // modifications de comptes privilégiés et évite la course où deux
-        // requêtes retirent simultanément les deux derniers superAdmin.
         try {
-            [$avant, $apres] = DB::transaction(function () use ($user, $role, $mode, $caller, $callerIsSuperAdmin) {
-                Role::query()->where('name', 'superAdmin')->where('guard_name', 'web')
-                    ->lockForUpdate()->first();
-                $cible = User::query()->with('roles')->whereKey($user->id)
-                    ->lockForUpdate()->firstOrFail();
-                $rolesAvant = $cible->getRoleNames()->toArray();
-
-                // Réévaluer les interdictions SOUS verrou, après une éventuelle
-                // promotion concurrente du compte ciblé.
-                if (!$callerIsSuperAdmin && (
-                    $cible->hasAnyRole(['superAdmin', 'serviceTechnique'])
-                    || in_array($role, ['superAdmin', 'serviceTechnique'], true)
-                )) {
-                    throw new AuthorizationException();
-                }
-
-                if ($mode === 'replace'
-                    && $role !== 'superAdmin'
-                    && $cible->is_active
-                    && in_array('superAdmin', $rolesAvant, true)) {
-                    $autreSuperAdminActif = User::role('superAdmin')
-                        ->where('users.is_active', true)
-                        ->where('users.id', '!=', $cible->id)
-                        ->exists();
-
-                    if (!$autreSuperAdminActif) {
-                        throw new LastActiveSuperAdminException();
-                    }
-                }
-
-                $mode === 'replace' ? $cible->syncRoles([$role]) : $cible->assignRole($role);
-                $rolesApres = $cible->fresh()->getRoleNames()->toArray();
-                app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeCompte(
-                    $cible,
-                    ['roles' => $rolesAvant],
-                    ['roles' => $rolesApres],
-                    $caller->id,
-                    'CLI userSetRole: '.$mode
-                );
-                return [$rolesAvant, $rolesApres];
-            }, 3);
-        } catch (LastActiveSuperAdminException) {
-            return $this->errorResponse(
-                'Refus : retirer le dernier rôle superAdmin actif verrouillerait le tenant.', [], 422
+            $result = $roles->change(
+                $request->user(), (int) $id, $mode, $data['role'],
+                $data['motif'], $data['old_role'] ?? null, $data['expected_roles'] ?? []
             );
-        } catch (AuthorizationException) {
-            return $this->errorResponse('Mutation d’un compte privilégié non autorisée.', [], 403);
+        } catch (AuthorizationException $e) {
+            return $this->errorResponse($e->getMessage(), [], 403);
+        } catch (ModelNotFoundException) {
+            return $this->errorResponse('Compte introuvable.', [], 404);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
-            Log::error('CLI: set-role transaction/audit failed', [
-                'user_id' => $user->id, 'exception' => get_class($e),
+            Log::error('CLI: role transaction rolled back', [
+                'user_id' => (int) $id, 'exception' => get_class($e),
             ]);
-            return $this->errorResponse('Modification refusée ou non enregistrée.', [], 500);
+            return $this->errorResponse('Modification annulée, aucun rôle partiellement modifié.', [], 500);
         }
-
-        Log::info('CLI: role changed', [
-            'target_user_id' => $user->id,
-            'mode' => $mode,
-            'roles_before' => $avant,
-            'roles_after' => $apres,
-            'caller_user_id' => $caller->id,
-            'caller_roles' => $caller->getRoleNames()->toArray(),
-            'ip' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-        ]);
-
         return $this->successResponse([
-            'user_id' => $user->id,
-            'name' => $user->name,
-            'username' => $user->username,
+            'user_id' => (int) $id,
             'mode' => $mode,
-            'roles_before' => $avant,
-            'roles_after' => $apres,
-        ], "Roles updated for '{$user->name}': ".implode(', ', $apres));
+            'roles_before' => $result['before'],
+            'roles_after' => $result['after'],
+        ], 'Rôles modifiés et audités.');
     }
 
     private function assertRoleAssignable(string $role): ?JsonResponse
     {
-        $exists = Role::where('name', $role)->where('guard_name', 'web')->exists();
-        if ($exists) {
-            return null;
-        }
-
-        if (in_array($role, self::VALID_ROLES, true)) {
-            Role::findOrCreate($role, 'web');
-
-            return null;
-        }
-
-        return $this->errorResponse(
-            "Role '{$role}' not found. Create it as a custom role first.",
-            [],
-            422
-        );
+        // Un appel d'affectation ne crée jamais implicitement un rôle.
+        return Role::query()->where('name', $role)->where('guard_name', 'web')->exists()
+            ? null
+            : $this->errorResponse('Rôle inconnu dans cet établissement.', [], 422);
     }
 }

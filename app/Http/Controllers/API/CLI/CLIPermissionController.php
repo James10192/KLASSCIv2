@@ -153,6 +153,16 @@ class CLIPermissionController extends BaseApiController
             'permissions.*' => ['string'],
         ]);
 
+        if (! $request->user()->checkPermissionTo('personnel.roles.create', 'web')) {
+            return $this->errorResponse('Permission de création de rôle absente.', [], 403);
+        }
+        foreach ($validated['permissions'] ?? [] as $permission) {
+            if (Permission::query()->where('name', $permission)->where('guard_name', 'web')->exists()
+                && ! $request->user()->checkPermissionTo($permission, 'web')) {
+                return $this->errorResponse('Permission non délégable : '.$permission, [], 403);
+            }
+        }
+
         $reserved = array_keys(config('permissions.roles', []));
         if (in_array($validated['name'], $reserved, true)) {
             return $this->errorResponse('Ce nom est réservé à un rôle système.', [], 422);
