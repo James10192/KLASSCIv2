@@ -57,6 +57,10 @@ class AdministrateurInstancePermissionsTest extends TestCase
         $this->assertNotContains('superadmin.accounts.create', $this->registry->defaultPermissionsFor('superAdmin'));
         $this->assertContains('superadmin.accounts.create', $this->registry->defaultPermissionsFor('serviceTechnique'));
         $this->assertContains('personnel.roles.assign', $this->registry->defaultPermissionsFor('superAdmin'));
+        foreach (['paywall.manage', 'system.technical_access'] as $permission) {
+            $this->assertNotContains($permission, $this->registry->defaultPermissionsFor('superAdmin'));
+            $this->assertContains($permission, $this->registry->defaultPermissionsFor('serviceTechnique'));
+        }
     }
 
     public function test_les_permissions_ne_permettent_pas_de_joker_superadmin_par_configuration(): void
