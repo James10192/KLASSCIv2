@@ -1635,6 +1635,13 @@
             </div>
         @endif
 
+        @if($roleCardsError ?? false)
+            <div class="pu-alert pu-alert-danger pu-animate pu-delay-1" role="alert">
+                <i class="fas fa-exclamation-triangle"></i>
+                Les rôles sont momentanément indisponibles. Les affectations n'ont pas été modifiées ; contactez le support avant une nouvelle opération.
+            </div>
+        @endif
+
         {{-- ═══ Lot 8 — Rôles personnalisés (collapsible) ═══ --}}
         @can('personnel.manage')
             @php $crCount = isset($customRoles) ? $customRoles->count() : 0; @endphp

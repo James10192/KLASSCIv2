@@ -109,6 +109,25 @@ class PersonnelUnifiedUniqueEntryTest extends TestCase
         $page->assertSee('Inactif');
     }
 
+    public function test_kpi_total_ne_compte_pas_deux_fois_une_personne_multi_roles(): void
+    {
+        $this->actingAs($this->administrateur());
+        $total = static function (string $html): int {
+            $pattern = '~<div class="pu-hero-kpi-value">\\s*(\\d+)\\s*</div>\\s*<div class="pu-hero-kpi-label">Total</div>~';
+            \PHPUnit\Framework\Assert::assertSame(1, preg_match($pattern, $html));
+            preg_match($pattern, $html, $matches);
+            return (int) $matches[1];
+        };
+
+        $avant = $total($this->get(route('esbtp.personnel.unified.index'))->assertOk()->getContent());
+        Role::findOrCreate('secretaire', 'web');
+        Role::findOrCreate('comptable', 'web');
+        $personne = User::factory()->create(['is_active' => true]);
+        $personne->assignRole(['secretaire', 'comptable']);
+        $apres = $total($this->get(route('esbtp.personnel.unified.index'))->assertOk()->getContent());
+        $this->assertSame($avant + 1, $apres);
+    }
+
     public function test_api_de_liste_custom_roles_reste_json_sur_la_page_unifiee(): void
     {
         $this->actingAs($this->administrateur());

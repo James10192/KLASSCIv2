@@ -188,9 +188,16 @@ class ESBTPPersonnelUnifiedController extends Controller
             'comptables' => $comptables->count(),
             'caissiers' => $caissiers->count(),
             'agents_inscription' => $agentsInscription->count(),
-            'total' => $directeursEtudes->count() + $coordinateurs->count() + $enseignants->count() + $secretaires->count()
-                + $responsablesScolarite->count() + $servicesScolarite->count()
-                + $comptables->count() + $caissiers->count() + $agentsInscription->count(),
+            // Une personne peut avoir plusieurs postes : compter les comptes,
+            // et non les appartenances à un rôle. Pour les enseignants, la
+            // clé à dédupliquer est user_id (et non l'id ESBTPTeacher).
+            'total' => collect([
+                $directeursEtudes->pluck('id'), $coordinateurs->pluck('id'),
+                $enseignants->pluck('user_id'), $secretaires->pluck('id'),
+                $responsablesScolarite->pluck('id'), $servicesScolarite->pluck('id'),
+                $comptables->pluck('id'), $caissiers->pluck('id'),
+                $agentsInscription->pluck('id'),
+            ])->flatten()->unique()->count(),
         ];
 
         $isCoordinateur = ($userRole === 'coordinateur');
@@ -198,6 +205,7 @@ class ESBTPPersonnelUnifiedController extends Controller
         // Lot 8/17 — Rôles custom + standards éditables (visibles si users.manage)
         $customRoles = collect();
         $standardRoles = collect();
+        $roleCardsError = false;
         // Lot 19 — users assignés à chaque rôle custom, indexé par roleName, pour générer un tab par rôle
         $customRoleUsers = collect();
 
@@ -275,6 +283,7 @@ class ESBTPPersonnelUnifiedController extends Controller
                 $customRoles = collect();
                 $standardRoles = collect();
                 $customRoleUsers = collect();
+                $roleCardsError = true;
             }
         }
 
@@ -295,7 +304,8 @@ class ESBTPPersonnelUnifiedController extends Controller
             'visiblePersonnelTabs',
             'customRoles',
             'standardRoles',
-            'customRoleUsers'
+            'customRoleUsers',
+            'roleCardsError'
         ));
     }
 
@@ -426,7 +436,12 @@ class ESBTPPersonnelUnifiedController extends Controller
                 ->orderBy('name')
                 ->get();
         } catch (\Exception $e) {
-            return collect();
+            \Illuminate\Support\Facades\Log::error('[personnel-unified] Chargement des membres échoué', [
+                'role' => $roleName,
+                'exception_type' => get_class($e),
+            ]);
+            // SQL invalide ≠ rôle vide. Ne jamais rendre un résultat faux.
+            throw $e;
         }
     }
 
@@ -461,7 +476,12 @@ class ESBTPPersonnelUnifiedController extends Controller
 
             return $query->orderBy('name')->get();
         } catch (\Exception $e) {
-            return collect();
+            \Illuminate\Support\Facades\Log::error('[personnel-unified] Chargement des membres échoué', [
+                'role' => $roleName,
+                'exception_type' => get_class($e),
+            ]);
+            // SQL invalide ≠ rôle vide. Ne jamais rendre un résultat faux.
+            throw $e;
         }
     }
 
