@@ -31,6 +31,8 @@ class UserDeletionGuardTest extends TestCase
         Permission::findOrCreate('admin.access', 'web');
         Permission::findOrCreate('users.manage', 'web');
         Permission::findOrCreate('personnel.users.deactivate', 'web');
+        Permission::findOrCreate('personnel.users.password.reset', 'web');
+        Permission::findOrCreate('personnel.users.credentials.export', 'web');
         Role::findOrCreate('superAdmin', 'web')->givePermissionTo('admin.access');
         Role::findOrCreate('secretaire', 'web')->givePermissionTo(['admin.access', 'users.manage']);
         Role::findOrCreate('serviceTechnique', 'web')->givePermissionTo(['admin.access', 'users.manage']);
@@ -419,4 +421,41 @@ class UserDeletionGuardTest extends TestCase
         return $this->postJson("/api/cli/user/{$target->id}/delete", ['motif' => 'Contrôle de désactivation']);
 
     }
+    public function test_cli_password_reset_exige_une_permission_effective_et_refuse_superadmin(): void
+    {
+        $actor = User::factory()->create();
+        $target = User::factory()->create(['is_active' => true]);
+        Sanctum::actingAs($actor, ['cli:admin']);
+        $url = "/api/cli/user/{$target->id}/reset-password";
+
+        $this->postJson($url, ['password' => 'MotDePasseUnique89#'])->assertForbidden();
+        $actor->givePermissionTo('personnel.users.password.reset');
+        $this->postJson($url, ['password' => 'MotDePasseUnique89#'])->assertOk();
+
+        $admin = User::factory()->create();
+        $admin->assignRole('superAdmin');
+        $hashAvant = $admin->password;
+        $this->postJson("/api/cli/user/{$admin->id}/reset-password", [
+            'password' => 'MotDePasseUnique90#',
+        ])->assertForbidden();
+        $this->assertSame($hashAvant, $admin->fresh()->password);
+    }
+
+    public function test_cli_export_empreinte_exige_permission_et_refuse_comptes_sensibles(): void
+    {
+        $actor = User::factory()->create();
+        $target = User::factory()->create();
+        Sanctum::actingAs($actor, ['cli:admin']);
+
+        $this->getJson("/api/cli/user/{$target->id}/credentials")->assertForbidden();
+        $actor->givePermissionTo('personnel.users.credentials.export');
+        $this->getJson("/api/cli/user/{$target->id}/credentials")
+            ->assertOk()->assertJsonPath('data.user_id', $target->id);
+
+        $super = User::factory()->create();
+        $super->assignRole('superAdmin');
+        $this->getJson("/api/cli/user/{$super->id}/credentials")->assertForbidden();
+    }
+
+
 }

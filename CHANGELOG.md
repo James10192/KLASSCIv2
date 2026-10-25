@@ -13,6 +13,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Sécurité CLI identifiants (PR #1685) :** permissions séparées pour réinitialisation et export de credentials ; aucun rôle de l'auteur ne sert de passe-droit sur les mots de passe des Superadmin ou Service Technique.
+
 - **Sécurité délégation CLI :** le retrait et le remplacement vérifient également les permissions contenues dans le rôle retiré ; aucun gestionnaire ne peut retirer des pouvoirs qu'il ne détient pas lui-même.
 
 - **Sécurité suppression CLI (PR #1685) :** désactivation conditionnée par personnel.users.deactivate, motif obligatoire, audit transactionnel et blocage des comptes sensibles tant que le double accord n'existe pas.

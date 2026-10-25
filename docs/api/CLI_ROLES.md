@@ -70,6 +70,18 @@ plusieurs Superadmin actifs existent : 403 sans modification.
 
     {"motif":"Fin de contrat confirmée"}
 
+## Identifiants et réinitialisation de mots de passe CLI
+
+- POST /api/cli/user/{id}/reset-password et /reset-password-expiry :
+  cli:admin + personnel.users.password.reset. Interdits 403 pour une cible
+  Superadmin ou Service Technique.
+- GET /api/cli/user/{id}/credentials : cli:admin +
+  personnel.users.credentials.export ; cette réponse contient une empreinte
+  de mot de passe, jamais destinée aux journaux. Comptes sensibles : 403.
+
+Les capacités sont évaluées directement sur les permissions effectives,
+pas sur le nom du rôle de l'opérateur.
+
 ## Historique et compatibilité
 
 - 25/10/2026 (PR #1685, EN ATTENTE) : BREAKING CHANGE. Pour toute mutation de rôle

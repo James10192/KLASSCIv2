@@ -1462,6 +1462,16 @@ return [
             'icon' => 'fa-users-cog',
             'aliases' => ['manage_personnel'],
         ],
+        'personnel.users.password.reset' => [
+            'label' => 'Réinitialiser les mots de passe des comptes ordinaires',
+            'group' => 'Sécurité',
+            'icon' => 'fa-key',
+        ],
+        'personnel.users.credentials.export' => [
+            'label' => 'Exporter les identifiants des comptes ordinaires',
+            'group' => 'Sécurité',
+            'icon' => 'fa-file-export',
+        ],
         'personnel.users.deactivate' => [
             'label' => 'Désactiver un compte du personnel',
             'group' => 'Personnel',

@@ -152,6 +152,9 @@ class CLIUserController extends BaseApiController
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
 
+        if (! $request->user()->checkPermissionTo('personnel.users.password.reset', 'web')) {
+            return $this->errorResponse('Permission de réinitialisation absente.', [], 403);
+        }
         $caller = $request->user();
         try {
             $user = $lifecycle->updateUser(
@@ -161,8 +164,9 @@ class CLIUserController extends BaseApiController
                     'must_change_password' => false,
                 ],
                 authorize: function (User $target) use ($caller): void {
-                    if ($target->hasAnyRole(['superAdmin', 'serviceTechnique']) && !$caller->hasRole('superAdmin')) {
-                        throw new AuthorizationException('Only a superAdmin can update privileged password state');
+                    // Classification de la cible, jamais habilitation via nom de rôle.
+                    if ($target->getRoleNames()->intersect(['superAdmin', 'serviceTechnique'])->isNotEmpty()) {
+                        throw new AuthorizationException('Compte sensible : changement de mot de passe refusé par la CLI.');
                     }
                 },
             );
@@ -199,6 +203,9 @@ class CLIUserController extends BaseApiController
         if (!$request->user()->tokenCan('cli:admin')) {
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
+        if (! $request->user()->checkPermissionTo('personnel.users.credentials.export', 'web')) {
+            return $this->errorResponse('Permission d’export des identifiants absente.', [], 403);
+        }
 
         $user = User::find($id);
         if (!$user) {
@@ -206,7 +213,7 @@ class CLIUserController extends BaseApiController
         }
 
         $caller = $request->user();
-        if ($user->hasAnyRole(['superAdmin', 'serviceTechnique']) && !$caller->hasRole('superAdmin')) {
+        if ($user->getRoleNames()->intersect(['superAdmin', 'serviceTechnique'])->isNotEmpty()) {
             Log::warning('CLI: credentials export DENIED on privileged target', [
                 'target_user_id' => $user->id,
                 'caller_user_id' => $caller->id,
@@ -214,7 +221,7 @@ class CLIUserController extends BaseApiController
             ]);
 
             return $this->errorResponse(
-                'Cannot export credentials of a privileged user (superAdmin or serviceTechnique) without superAdmin caller.',
+                'Export interdit pour un compte sensible, quel que soit le rôle du demandeur.',
                 [],
                 403
             );
@@ -272,6 +279,9 @@ class CLIUserController extends BaseApiController
         if (!$request->user()->tokenCan('cli:admin')) {
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
+        if (! $request->user()->checkPermissionTo('personnel.users.password.reset', 'web')) {
+            return $this->errorResponse('Permission de réinitialisation absente.', [], 403);
+        }
 
         $user = User::find($id);
         if (!$user) {
@@ -283,10 +293,7 @@ class CLIUserController extends BaseApiController
         // d'un superAdmin et compromettre tout le tenant. Seul un superAdmin
         // (via son propre token) peut désormais reset un compte privilégié.
         $caller = $request->user();
-        $targetIsPrivileged = $user->hasAnyRole(['superAdmin', 'serviceTechnique']);
-        $callerIsSuperAdmin = $caller->hasRole('superAdmin');
-
-        if ($targetIsPrivileged && !$callerIsSuperAdmin) {
+        if ($user->getRoleNames()->intersect(['superAdmin', 'serviceTechnique'])->isNotEmpty()) {
             Log::warning('CLI: reset-password DENIED on privileged target', [
                 'target_user_id' => $user->id,
                 'target_roles' => $user->getRoleNames()->toArray(),
@@ -296,7 +303,7 @@ class CLIUserController extends BaseApiController
             ]);
 
             return $this->errorResponse(
-                'Cannot reset password of a privileged user (superAdmin or serviceTechnique) without superAdmin caller.',
+                'Compte sensible : mot de passe non modifiable par ce parcours CLI.',
                 [],
                 403
             );
