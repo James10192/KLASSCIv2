@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-25 · #1687 sécurité · Le module de gestion des rôles sélectionne uniquement les rôles et permissions du guard web ; les homonymes des guards API ne sont ni présentés ni modifiés. La création autorise un homonyme sur un autre guard, avec tests de régression.
 - 2026-10-25 · #1687 sécurité · La permission de création d'un compte Superadmin ne permet plus de promouvoir directement un utilisateur existant via le service générique de changement de rôles ; cette opération exige une seconde approbation indépendante, encore indisponible.
 - 2026-10-25 · #1687 sécurité · Suppression d'un rôle personnalisé : état vide revérifié sous verrou au moment de la suppression pour éviter le détachement silencieux d'un utilisateur ajouté en parallèle ; trace d'audit explicite et test de non-régression.
 - 2026-10-25 · #1687 sécurité · Édition des permissions d'un rôle custom/standard refusée si ce rôle est aussi porté par un compte Superadmin ou Service Technique ; refus revalidé sous verrou transactionnel, évitant le déclassement indirect avant double approbation. Recette obligatoire.

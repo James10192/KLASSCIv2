@@ -192,7 +192,7 @@ class ESBTPCustomRoleController extends Controller
                 'string',
                 'max:64',
                 'regex:/^[a-z][a-z0-9_]*$/',  // snake_case ASCII, commence par lettre
-                Rule::unique('roles', 'name'),
+                Rule::unique('roles', 'name')->where('guard_name', 'web'),
             ],
             'label_fr' => ['required', 'string', 'max:255'],
             'icon' => ['nullable', 'string', 'max:64', Rule::in(self::ALLOWED_ICONS)],
@@ -226,7 +226,7 @@ class ESBTPCustomRoleController extends Controller
         return $this->runMutation($registry, 'la création', function () use ($validated, $requestedPerms) {
             $role = new Role();
             $role->name = $validated['name'];
-            $role->guard_name = config('auth.defaults.guard', 'web');
+            $role->guard_name = 'web';
             $role->label_fr = $validated['label_fr'];
             $role->icon = $this->normalizeIcon($validated['icon'] ?? null);
             $role->description = $validated['description'] ?? null;
@@ -264,7 +264,7 @@ class ESBTPCustomRoleController extends Controller
      */
     public function edit(string $role, PermissionRegistry $registry)
     {
-        $roleModel = Role::where('name', $role)->firstOrFail();
+        $roleModel = Role::query()->where('name', $role)->where('guard_name', 'web')->firstOrFail();
 
         if (! ($roleModel->is_custom ?? false)) {
             abort(403, 'Les rôles système ne peuvent pas être modifiés ici.');
@@ -287,7 +287,7 @@ class ESBTPCustomRoleController extends Controller
      */
     public function update(Request $request, string $role, PermissionRegistry $registry)
     {
-        $roleModel = Role::where('name', $role)->firstOrFail();
+        $roleModel = Role::query()->where('name', $role)->where('guard_name', 'web')->firstOrFail();
 
         if (! ($roleModel->is_custom ?? false)) {
             return response()->json([
@@ -354,7 +354,7 @@ class ESBTPCustomRoleController extends Controller
             abort(403, 'Ce rôle système n\'est pas éditable depuis cette page. Contactez le Service Technique.');
         }
 
-        $roleModel = Role::where('name', $role)->firstOrFail();
+        $roleModel = Role::query()->where('name', $role)->where('guard_name', 'web')->firstOrFail();
         $this->assertStandardRoleManageable($roleModel, $registry);
         $this->assertNoSensitiveRoleMembers($roleModel);
         $configMeta = config('permissions.roles', [])[$role] ?? [];
@@ -382,7 +382,7 @@ class ESBTPCustomRoleController extends Controller
             ], 403);
         }
 
-        $roleModel = Role::where('name', $role)->firstOrFail();
+        $roleModel = Role::query()->where('name', $role)->where('guard_name', 'web')->firstOrFail();
         $this->assertStandardRoleManageable($roleModel, $registry);
         $this->assertNoSensitiveRoleMembers($roleModel);
 
@@ -447,7 +447,7 @@ class ESBTPCustomRoleController extends Controller
      */
     public function destroy(string $role, PermissionRegistry $registry)
     {
-        $roleModel = Role::where('name', $role)->firstOrFail();
+        $roleModel = Role::query()->where('name', $role)->where('guard_name', 'web')->firstOrFail();
 
         if (! ($roleModel->is_custom ?? false)) {
             return response()->json([
@@ -504,7 +504,7 @@ class ESBTPCustomRoleController extends Controller
      */
     public function assignUsersForm(string $role, PermissionRegistry $registry)
     {
-        $roleModel = Role::where('name', $role)->firstOrFail();
+        $roleModel = Role::query()->where('name', $role)->where('guard_name', 'web')->firstOrFail();
 
         if (! ($roleModel->is_custom ?? false)) {
             abort(403, 'L\'assignation se fait via les outils dédiés pour les rôles système.');
@@ -564,7 +564,7 @@ class ESBTPCustomRoleController extends Controller
      */
     public function assignUsers(Request $request, string $role, PermissionRegistry $registry)
     {
-        $roleModel = Role::where('name', $role)->firstOrFail();
+        $roleModel = Role::query()->where('name', $role)->where('guard_name', 'web')->firstOrFail();
 
         if (! ($roleModel->is_custom ?? false)) {
             return response()->json([
@@ -684,7 +684,7 @@ class ESBTPCustomRoleController extends Controller
      */
     public function detachUser(string $role, int $user, PermissionRegistry $registry)
     {
-        $roleModel = Role::where('name', $role)->firstOrFail();
+        $roleModel = Role::query()->where('name', $role)->where('guard_name', 'web')->firstOrFail();
 
         if (! ($roleModel->is_custom ?? false)) {
             return response()->json([
@@ -878,7 +878,8 @@ class ESBTPCustomRoleController extends Controller
      */
     private function customRolesQuery()
     {
-        return Role::query()->where('is_custom', true)->orderBy('label_fr')->orderBy('name');
+        return Role::query()->where('is_custom', true)->where('guard_name', 'web')
+            ->orderBy('label_fr')->orderBy('name');
     }
 
     /**
@@ -994,7 +995,7 @@ class ESBTPCustomRoleController extends Controller
         $registryPerms = $registry->all();
 
         // Toutes les permissions DB (pour avoir id + name)
-        $dbPerms = Permission::query()->orderBy('name')->get();
+        $dbPerms = Permission::query()->where('guard_name', 'web')->orderBy('name')->get();
 
         $grantable = $dbPerms->filter(function (Permission $p) use ($actor) {
             // Aucun passe-droit pour un simple nom de rôle

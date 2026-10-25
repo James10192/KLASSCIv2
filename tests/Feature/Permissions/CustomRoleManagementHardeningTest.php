@@ -99,6 +99,53 @@ class CustomRoleManagementHardeningTest extends TestCase
         $this->assertFalse($cible->fresh()->hasRole($role->name));
     }
 
+    public function test_roles_homonymes_d_un_guard_api_ne_sont_pas_lus_par_l_interface_web(): void
+    {
+        $acteur = $this->acteur('superAdmin', false);
+        $api = Role::findOrCreate('role_test_guard_homonyme', 'api');
+        $api->is_custom = true;
+        $api->label_fr = 'Libellé API interdit';
+        $api->save();
+
+        $web = $this->rolePersonnalise('role_test_guard_homonyme');
+        $web->label_fr = 'Libellé WEB autorisé';
+        $web->save();
+
+        $this->actingAs($acteur)
+            ->get(route('esbtp.custom-roles.edit', $web->name))
+            ->assertOk()
+            ->assertSee('Libellé WEB autorisé')
+            ->assertDontSee('Libellé API interdit');
+
+        $liste = $this->actingAs($acteur)
+            ->getJson(route('esbtp.custom-roles.index'))
+            ->assertOk();
+
+        $homonymes = collect($liste->json('roles'))
+            ->filter(fn (array $role) => $role['name'] === $web->name);
+        $this->assertCount(1, $homonymes);
+    }
+
+    public function test_creation_role_web_n_est_pas_bloquee_par_un_homonyme_api(): void
+    {
+        $acteur = $this->acteur('superAdmin', false);
+        $acteur->givePermissionTo(Permission::findOrCreate('personnel.roles.create', 'web'));
+        Role::findOrCreate('role_test_guard_creation', 'api');
+
+        $this->actingAs($acteur)
+            ->postJson(route('esbtp.custom-roles.store'), [
+                'name' => 'role_test_guard_creation',
+                'label_fr' => 'Rôle pour le personnel web',
+                'permissions' => [],
+            ])->assertOk()->assertJsonPath('success', true);
+
+        $this->assertDatabaseHas('roles', [
+            'name' => 'role_test_guard_creation',
+            'guard_name' => 'web',
+            'is_custom' => true,
+        ]);
+    }
+
     public function test_creer_un_role_custom_exige_permission_create_specifique(): void
     {
         $actor = $this->acteur('coordinateur');
