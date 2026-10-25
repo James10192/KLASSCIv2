@@ -730,11 +730,19 @@ class TeacherDashboardController extends Controller
 
     private function ensureTeacherCanManageEvaluation($user, ESBTPEvaluation $evaluation): void
     {
-        if ($user->can('identity.teach') && $user->can('notes.manage_own')) {
-            $isOwner = $evaluation->enseignant_id === $user->id || $evaluation->created_by === $user->id;
-            if (! $isOwner) {
-                abort(403, "Vous n'êtes pas autorisé à gérer cette évaluation.");
-            }
+        // Ne JAMAIS mettre le contrôle de propriété sous condition d'une
+        // permission : sinon l'absence de droit supprime aussi le contrôle.
+        // Le droit de gestion et le rattachement de l'évaluation sont requis
+        // ensemble, quel que soit le nom du rôle attribué à l'utilisateur.
+        if (! $user || ! $user->can('notes.manage_own')) {
+            abort(403, 'Vous ne disposez pas du droit de gérer vos propres notes.');
+        }
+
+        $isOwner = (int) $evaluation->enseignant_id === (int) $user->id
+            || (int) $evaluation->created_by === (int) $user->id;
+
+        if (! $isOwner) {
+            abort(403, "Vous n'êtes pas autorisé à gérer cette évaluation.");
         }
     }
 
