@@ -4026,6 +4026,9 @@
                 @if(Route::has($mnbProfilRoute))
                     <a href="{{ route($mnbProfilRoute) }}"><x-m.icon name="user" />Mon profil<span class="ch"><x-m.icon name="chr" /></span></a>
                 @endif
+                @if($mnbUser->getRoleNames()->unique()->count() > 1)
+                    <a href="{{ route('profil.choisir') }}"><x-m.icon name="user" />Changer de profil<span class="ch"><x-m.icon name="chr" /></span></a>
+                @endif
                 @if(Route::has('securite.double-auth.reglages'))
                     <a href="{{ route('securite.double-auth.reglages') }}"><x-m.icon name="lock" />Double authentification<span class="ch"><x-m.icon name="chr" /></span></a>
                 @endif
