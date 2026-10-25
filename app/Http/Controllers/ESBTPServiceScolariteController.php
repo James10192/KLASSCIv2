@@ -37,6 +37,9 @@ class ESBTPServiceScolariteController extends Controller
     public function store(Request $request)
     {
         $this->authorize('services_scolarite.create');
+        // La création attribue aussi le rôle : même délégation effective que
+        // l'écran unique personnel/unified (aucun passe-droit par fonction).
+        abort_unless(app(\App\Services\UserManagementService::class)->canAssignRole($request->user(), 'serviceScolarite'), 403);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',

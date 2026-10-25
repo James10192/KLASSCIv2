@@ -252,4 +252,51 @@ class PersonnelUnifiedUniqueEntryTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true);
     }
+
+    public function test_les_creations_legacy_ne_peuvent_pas_attribuer_un_role_sans_delegation(): void
+    {
+        // Ces routes restent publiques pour la compatibilité, mais ne doivent
+        // pas contourner personnel.roles.assign et le périmètre du rôle cible.
+        $routes = [
+            ['esbtp.coordinateurs.store', 'coordinateurs.create', 'coordinateur'],
+            ['esbtp.directeurs-etudes.store', 'directeurs_etudes.create', 'directeurEtudes'],
+            ['esbtp.responsables-scolarite.store', 'responsables_scolarite.create', 'responsableScolarite'],
+            ['esbtp.services-scolarite.store', 'services_scolarite.create', 'serviceScolarite'],
+            ['esbtp.agents-inscription.store', 'agents_inscription.create', 'agentInscription'],
+        ];
+
+        $acteur = User::factory()->create(['is_active' => true]);
+        $acteur->givePermissionTo(Permission::findOrCreate('admin.access', 'web'));
+        foreach ($routes as [$route, $droitCreation, $role]) {
+            Role::findOrCreate($role, 'web');
+            $acteur->givePermissionTo(Permission::findOrCreate($droitCreation, 'web'));
+        }
+
+        $this->actingAs($acteur);
+        foreach ($routes as $i => [$route, $droitCreation, $role]) {
+            $email = 'legacy-delegation-'.$i.'@example.test';
+            $this->postJson(route($route), [
+                'name' => 'Création legacy non autorisée',
+                'email' => $email,
+            ])->assertForbidden();
+            $this->assertDatabaseMissing('users', ['email' => $email]);
+        }
+    }
+
+    public function test_creation_legacy_exige_aussi_les_permissions_incluses_dans_le_role(): void
+    {
+        $role = Role::findOrCreate('coordinateur', 'web');
+        $role->givePermissionTo(Permission::findOrCreate('notes.create', 'web'));
+        $acteur = User::factory()->create(['is_active' => true]);
+        foreach (['admin.access', 'coordinateurs.create', 'personnel.roles.assign'] as $name) {
+            $acteur->givePermissionTo(Permission::findOrCreate($name, 'web'));
+        }
+
+        $this->actingAs($acteur)
+            ->postJson(route('esbtp.coordinateurs.store'), [
+                'name' => 'Rôle hors périmètre',
+                'email' => 'legacy-role-hors-perimetre@example.test',
+            ])->assertForbidden();
+        $this->assertDatabaseMissing('users', ['email' => 'legacy-role-hors-perimetre@example.test']);
+    }
 }
