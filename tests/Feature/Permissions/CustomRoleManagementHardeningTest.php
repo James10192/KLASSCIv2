@@ -353,7 +353,7 @@ class CustomRoleManagementHardeningTest extends TestCase
     public function test_permissions_directes_sans_role_privilegie_autorisent_initialisation_personnel(): void
     {
         $actor = User::factory()->create(['is_active' => true]);
-        foreach (['personnel.manage', 'personnel.roles.manage_all', 'personnel.users.initialize'] as $name) {
+        foreach (['personnel.manage', 'personnel.roles.manage_all', 'personnel.users.initialize', 'personnel.roles.assign'] as $name) {
             $actor->givePermissionTo(Permission::findOrCreate($name, 'web'));
         }
 
