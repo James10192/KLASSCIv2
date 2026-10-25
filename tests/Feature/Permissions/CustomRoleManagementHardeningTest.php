@@ -127,6 +127,63 @@ class CustomRoleManagementHardeningTest extends TestCase
         $this->assertDatabaseHas('roles', ['name' => 'role_test_creation_autorisee', 'is_custom' => true]);
     }
 
+    public function test_affectation_personnalisee_ne_permet_pas_de_s_attribuer_un_role(): void
+    {
+        $acteur = User::factory()->create(['is_active' => true]);
+        foreach (['personnel.manage', 'personnel.roles.assign', 'personnel.users.initialize'] as $nom) {
+            $acteur->givePermissionTo(Permission::findOrCreate($nom, 'web'));
+        }
+        $role = $this->rolePersonnalise('roleTestInterditAutoAttribution');
+
+        $this->actingAs($acteur)
+            ->postJson(route('esbtp.custom-roles.assign-users', $role->name), [
+                'user_ids' => [$acteur->id],
+            ])->assertForbidden();
+
+        $this->assertFalse($acteur->fresh()->hasRole($role->name));
+    }
+
+    public function test_retrait_personnalise_refuse_la_suppression_de_son_propre_role(): void
+    {
+        $acteur = $this->acteur('superAdmin', false);
+        $acteur->givePermissionTo(Permission::findOrCreate('personnel.roles.remove', 'web'));
+        $role = $this->rolePersonnalise('roleTestInterditAutoRetrait');
+        $acteur->assignRole($role);
+
+        $this->actingAs($acteur)
+            ->deleteJson(route('esbtp.custom-roles.detach-user', [$role->name, $acteur->id]))
+            ->assertForbidden();
+
+        $this->actingAs($acteur)
+            ->postJson(route('esbtp.custom-roles.assign-users', $role->name), [
+                'user_ids' => [],
+            ])->assertForbidden();
+
+        $this->assertTrue($acteur->fresh()->hasRole($role->name));
+    }
+
+    public function test_remove_sans_assign_permet_uniquement_le_retrait_d_un_role_autorise(): void
+    {
+        $acteur = User::factory()->create(['is_active' => true]);
+        foreach (['personnel.manage', 'personnel.roles.remove'] as $nom) {
+            $acteur->givePermissionTo(Permission::findOrCreate($nom, 'web'));
+        }
+        $role = $this->rolePersonnalise('roleTestRemoveOnly');
+        $cible = $this->acteur('enseignant', false);
+        $cible->assignRole($role);
+
+        $this->actingAs($acteur)
+            ->deleteJson(route('esbtp.custom-roles.detach-user', [$role->name, $cible->id]))
+            ->assertOk()->assertJsonPath('success', true);
+        $this->assertFalse($cible->fresh()->hasRole($role->name));
+
+        $this->actingAs($acteur)
+            ->postJson(route('esbtp.custom-roles.assign-users', $role->name), [
+                'user_ids' => [$cible->id],
+            ])->assertForbidden();
+        $this->assertFalse($cible->fresh()->hasRole($role->name));
+    }
+
     public function test_manage_all_sans_assign_ne_peut_pas_ajouter_un_role_custom(): void
     {
         $actor = User::factory()->create(['is_active' => true]);

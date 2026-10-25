@@ -554,6 +554,14 @@ class ESBTPCustomRoleController extends Controller
         $currentIds = $roleModel->users()->pluck('users.id')->all();
         $nouveauxIds = array_values(array_diff($requestedUserIds, $currentIds));
         $retraits = array_values(array_diff($currentIds, $requestedUserIds));
+        // Une mutation de ses propres rôles ne peut jamais servir de raccourci
+        // pour contourner RoleAssignmentService::change.
+        if (in_array(Auth::id(), [...$nouveauxIds, ...$retraits], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de modifier ses propres rôles.',
+            ], 403);
+        }
         $operateur = Auth::user();
         $peutAjouter = $operateur->checkPermissionTo('personnel.roles.assign', 'web');
         $peutRetirer = $operateur->checkPermissionTo('personnel.roles.remove', 'web');
@@ -626,6 +634,7 @@ class ESBTPCustomRoleController extends Controller
             403, 'Permission de retrait de rôle absente.');
 
         $userModel = User::findOrFail($user);
+        abort_if($userModel->id === Auth::id(), 403, 'Impossible de modifier ses propres rôles.');
         if ($denial = $this->refusAffectation($roleModel, [$userModel->id], $registry)) {
             return $denial;
         }
@@ -935,7 +944,8 @@ class ESBTPCustomRoleController extends Controller
             return Role::query()->where('guard_name', 'web')->pluck('name')->all();
         }
 
-        if (! $actor->checkPermissionTo('personnel.roles.assign', 'web')) {
+        if (! $actor->checkPermissionTo('personnel.roles.assign', 'web')
+            && ! $actor->checkPermissionTo('personnel.roles.remove', 'web')) {
             return [];
         }
 
