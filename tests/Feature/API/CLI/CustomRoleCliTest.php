@@ -306,4 +306,22 @@ class CustomRoleCliTest extends TestCase
         $actor->revokePermissionTo('system.technical_access');
         $this->postJson('/api/cli/permissions/sync')->assertForbidden();
     }
+
+    public function test_erreur_synchro_ne_divulgue_jamais_message_sql_ou_stack(): void
+    {
+        $actor = User::factory()->create(['is_active' => true]);
+        Permission::findOrCreate('system.technical_access', 'web');
+        $actor->givePermissionTo('system.technical_access');
+        Sanctum::actingAs($actor, ['cli:admin']);
+
+        $this->mock(\App\Services\PermissionSyncService::class)
+            ->shouldReceive('run')
+            ->once()
+            ->andThrow(new \RuntimeException('SQLSTATE credentials=DB_PRIVATE_SECRET'));
+
+        $response = $this->postJson('/api/cli/permissions/sync')
+            ->assertStatus(500);
+        $this->assertStringNotContainsString('SQLSTATE', $response->getContent());
+        $this->assertStringNotContainsString('DB_PRIVATE_SECRET', $response->getContent());
+    }
 }
