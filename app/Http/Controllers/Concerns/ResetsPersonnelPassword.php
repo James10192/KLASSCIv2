@@ -30,6 +30,7 @@ trait ResetsPersonnelPassword
      */
     protected function resetPersonnelPassword(User $user, string $roleLabel): JsonResponse|RedirectResponse
     {
+        abort_unless(auth()->user()?->can('personnel.users.password.reset'), 403);
         try {
             $defaultPassword = UserService::defaultPassword();
 
