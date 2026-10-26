@@ -33,6 +33,9 @@ class CheckRole
             return redirect()->guest(route('login'));
         }
 
+        // Une session historique ne doit pas rester utilisable après désactivation.
+        abort_unless($user->is_active, 403, 'Compte inactif.');
+
         foreach (preg_split('/[,|]/', $roles) as $name) {
             $required = self::LEGACY_PERMISSIONS[trim($name)] ?? null;
             if ($required !== null && $user->can($required)) {
