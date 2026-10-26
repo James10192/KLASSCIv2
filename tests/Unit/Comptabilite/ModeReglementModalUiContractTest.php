@@ -53,7 +53,10 @@ class ModeReglementModalUiContractTest extends TestCase
             'if (paiementModalEnCours())',
             'refreshDiffere = true',
             'piMountModals(nouveauTableau.content, { replaceAll: true })',
-            'piMountModals(tmpl.content)',
+            // Lignes ajoutees au defilement (x-liste-infinie) : leurs modales
+            // montent dans le meme hote stable que la premiere page.
+            "document.addEventListener('liste-infinie:ajout'",
+            'piMountModals(boite)',
             'piMountModals(template.content, { updateExisting: true',
             'window.Alpine?.initTree?.(el)',
         ] as $garde) {
