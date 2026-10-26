@@ -45,6 +45,36 @@ class CustomRoleCliTest extends TestCase
         }
     }
 
+    public function test_cli_role_mutations_refusent_un_operateur_desactive_meme_avec_ability(): void
+    {
+        Permission::findOrCreate('personnel.manage', 'web');
+        $actor = User::factory()->create(['is_active' => false]);
+        $this->grantCliPermissions($actor);
+        $actor->givePermissionTo('personnel.manage');
+        Sanctum::actingAs($actor, ['cli:admin']);
+
+        $role = Role::findOrCreate('inactive_actor_cli_role', 'web');
+        $role->givePermissionTo('dashboard.view');
+
+        $this->postJson('/api/cli/roles', [
+            'name' => 'inactive_actor_new_role',
+            'label_fr' => 'Rôle refusé',
+            'permissions' => ['dashboard.view'],
+        ])->assertForbidden();
+
+        $this->postJson('/api/cli/roles/inactive_actor_cli_role/grant', [
+            'permissions' => ['inscriptions.validate'],
+        ])->assertForbidden();
+
+        $this->postJson('/api/cli/roles/inactive_actor_cli_role/revoke', [
+            'permissions' => ['dashboard.view'],
+        ])->assertForbidden();
+
+        $this->assertDatabaseMissing('roles', ['name' => 'inactive_actor_new_role', 'guard_name' => 'web']);
+        $this->assertTrue($role->fresh()->hasPermissionTo('dashboard.view'));
+        $this->assertFalse($role->fresh()->hasPermissionTo('inscriptions.validate'));
+    }
+
     public function test_cli_can_create_custom_role_and_assign_it(): void
     {
         $actor = User::factory()->create();
