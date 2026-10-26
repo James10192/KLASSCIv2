@@ -702,6 +702,12 @@ return [
             'icon' => 'fa-clipboard-list',
             'aliases' => ['view_notes', 'view_grades'],
         ],
+        'notes.view_all' => [
+            'label' => 'Voir toutes les notes, y compris avec un profil enseignant',
+            'group' => 'Notes & Évaluations',
+            'icon' => 'fa-eye',
+            'aliases' => [],
+        ],
         'notes.view_own' => [
             'label' => 'Voir ses propres notes',
             'group' => 'Notes & Évaluations',
