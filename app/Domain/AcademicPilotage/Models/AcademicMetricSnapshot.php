@@ -80,9 +80,8 @@ class AcademicMetricSnapshot extends Model
     }
 
     /**
-     * Instantanés que le lecteur de cohorte peut voir pour une classe : portée étudiant,
-     * année, système, période et moteur. Source unique, lue par AcademicMetricSnapshotCohortProvider
-     * et par academic-pilotage:diagnose.
+     * Instantanés qu'AcademicMetricSnapshotCohortProvider peut voir pour une classe : portée
+     * étudiant, année, système, période et moteur. Lu par le provider et par academic-pilotage:diagnose.
      */
     public function scopePourCohorte($query, int $classeId, int $anneeId, string $systeme, string $periode)
     {

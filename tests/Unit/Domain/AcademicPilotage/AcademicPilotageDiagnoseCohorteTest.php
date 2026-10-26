@@ -53,7 +53,7 @@ class AcademicPilotageDiagnoseCohorteTest extends AcademicPilotageDatabaseTestCa
         ]);
     }
 
-    public function test_cohorte_exclut_inscriptions_et_classes_supprimees(): void
+    public function test_inscription_supprimee_est_exclue_et_classe_supprimee_reste_lue(): void
     {
         $this->inscription(1, 10);
         $this->inscription(2, 10, deletedAt: now());
@@ -61,8 +61,9 @@ class AcademicPilotageDiagnoseCohorteTest extends AcademicPilotageDatabaseTestCa
 
         $cohorte = $this->diagnoseCohorte();
 
-        $this->assertSame(1, $cohorte['couples_cohorte']);
-        $this->assertSame(1, $cohorte['sans_ligne']);
+        $this->assertSame(2, $cohorte['couples_cohorte']);
+        $this->assertSame(2, $cohorte['sans_ligne']);
+        $this->assertSame(0, $cohorte['systeme_non_classable']);
     }
 
     public function test_cohorte_exclut_statut_workflow_et_autre_annee(): void
@@ -78,15 +79,14 @@ class AcademicPilotageDiagnoseCohorteTest extends AcademicPilotageDatabaseTestCa
         $this->assertSame(1, $cohorte['sans_ligne']);
     }
 
-    public function test_classe_inactive_est_hors_perimetre(): void
+    public function test_classe_inactive_reste_dans_la_cohorte_comme_pour_la_sante_de_classe(): void
     {
         $this->inscription(1, 10);
         $this->inscription(2, 13);
 
         $cohorte = $this->diagnoseCohorte();
 
-        $this->assertSame(1, $cohorte['couples_cohorte']);
-        $this->assertStringContainsString('classes actives', $cohorte['perimetre']);
+        $this->assertSame(2, $cohorte['couples_cohorte']);
     }
 
     public function test_option_classe_ne_compte_que_cette_classe(): void
@@ -116,7 +116,7 @@ class AcademicPilotageDiagnoseCohorteTest extends AcademicPilotageDatabaseTestCa
         $cohorte = $this->diagnoseCohorte(['--class-id' => 'abc']);
 
         $this->assertNull($cohorte['couples_cohorte']);
-        $this->assertStringContainsString('non numérique', $cohorte['motif']);
+        $this->assertStringContainsString('non valide', $cohorte['motif']);
     }
 
     public function test_periode_invalide_donne_un_motif(): void

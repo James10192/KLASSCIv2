@@ -456,9 +456,11 @@ class ESBTPInscription extends Model implements Auditable
     }
 
     /**
-     * Cohorte académique : étudiants inscrits et créés, pour une année (et une classe
-     * si fournie). Source unique de la cohorte de pilotage : ClassAcademicHealthService
-     * et le diagnostic lisent ce scope, pour ne pas la redéfinir à côté.
+     * Cohorte académique : inscriptions actives, étudiant créé, pour une année (et une
+     * classe si fournie). Lu par ClassAcademicHealthService::cohortIds et par
+     * academic-pilotage:diagnose. Les autres lecteurs inline (BtsBulkBulletinGenerationService,
+     * AcademicPilotageManualSyncService, ExpectedGradeSheetEntrySynchronizer,
+     * AcademicNoteCoverageService) ne lisent pas ce scope.
      */
     public function scopeCohorteAcademique($query, int $anneeId, ?int $classeId = null)
     {

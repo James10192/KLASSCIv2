@@ -66,8 +66,8 @@ class AcademicPilotageDiagnoseCommand extends Command
     /**
      * Couples (classe, étudiant) de la cohorte sans instantané exploitable.
      *
-     * Cohorte : ESBTPInscription::cohorteAcademique (inscriptions actives, étudiant créé),
-     * limitée aux classes actives (is_active). Pas de filtre d'année sur la classe.
+     * Cohorte : ESBTPInscription::cohorteAcademique, exactement celle que lit
+     * ClassAcademicHealthService::cohortIds (aucun filtre de classe en plus).
      * Instantanés : AcademicMetricSnapshot::pourCohorte, puis ->exploitable() pour les
      * lignes propres, comme AcademicMetricSnapshotCohortProvider. Une ligne propre prime.
      */
@@ -95,11 +95,10 @@ class AcademicPilotageDiagnoseCommand extends Command
         }
         $classeId = filled($brutClasse) ? (int) $brutClasse : null;
 
-        // Les soft-deletes d'inscription et de classe sont appliqués par Eloquent, y compris dans whereHas.
+        // Comme le lecteur (cohortIds, authoritativeSystem) : inscriptions supprimées exclues, classes supprimées lues.
         $couples = ESBTPInscription::query()
             ->cohorteAcademique($anneeId, $classeId)
-            ->whereHas('classe', fn ($classe) => $classe->where('is_active', true))
-            ->with(['classe' => fn ($classe) => $classe->without(['filiere', 'niveau', 'annee'])
+            ->with(['classe' => fn ($classe) => $classe->withTrashed()->without(['filiere', 'niveau', 'annee'])
                 ->select(['id', 'systeme_academique'])])
             ->get(['id', 'etudiant_id', 'classe_id'])
             ->unique(fn ($inscription): string => $inscription->classe_id.'|'.$inscription->etudiant_id);
@@ -136,7 +135,7 @@ class AcademicPilotageDiagnoseCommand extends Command
         return [
             'annee_universitaire_id' => $anneeId,
             'period' => $periode,
-            'perimetre' => 'inscriptions actives et étudiant créé, classes actives (is_active), sans filtre d\'année sur la classe',
+            'perimetre' => 'inscriptions actives et étudiant créé, comme la santé de classe',
             'motif' => null,
             'couples_cohorte' => $couples->count(),
             'etudiants_distincts' => $couples->pluck('etudiant_id')->unique()->count(),
@@ -160,7 +159,7 @@ class AcademicPilotageDiagnoseCommand extends Command
         return [
             'annee_universitaire_id' => null,
             'period' => $periode,
-            'perimetre' => 'inscriptions actives et étudiant créé, classes actives (is_active), sans filtre d\'année sur la classe',
+            'perimetre' => 'inscriptions actives et étudiant créé, comme la santé de classe',
             'motif' => $motif,
             'couples_cohorte' => null,
             'etudiants_distincts' => null,
