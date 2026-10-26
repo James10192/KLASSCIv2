@@ -64,7 +64,7 @@ final class McpConnectionsController extends Controller
         $organisation = $this->organisation();
         $approver = $request->user();
         abort_unless($approver && $approver->is_active
-            && $approver->hasRole('superAdmin'), 403);
+            && $approver->can('mcp.connections.approve'), 403);
 
         $validation = $request->validate([
             'code' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{43}$/D'],
@@ -76,11 +76,23 @@ final class McpConnectionsController extends Controller
             ->whereKey($validation['user_id'])->where('is_active', true)->first();
         abort_unless($target
             && $target->getAuthIdentifier() !== $approver->getAuthIdentifier()
-            && $target->hasRole(['superAdmin', 'secretaire', 'coordinateur', 'enseignant']), 403);
+            && $target->can('mcp.connections.connect'), 403);
 
         $approved = DB::transaction(function () use (
             $validation, $organisation, $approver, $target
         ): bool {
+            // Revérification au moment de l'écriture : un droit révoqué
+            // durant la requête ne doit pas permettre une approbation.
+            $lockedApprover = \App\Models\User::query()->whereKey($approver->id)
+                ->lockForUpdate()->first();
+            $lockedTarget = \App\Models\User::query()->whereKey($target->id)
+                ->lockForUpdate()->first();
+            abort_unless($lockedApprover?->is_active
+                && $lockedApprover->can('mcp.connections.approve')
+                && $lockedTarget?->is_active
+                && $lockedTarget->can('mcp.connections.connect')
+                && $lockedApprover->id !== $lockedTarget->id, 403);
+
             $challenge = DB::table('mcp_link_challenges')
                 ->where('code_hash', hash('sha256', $validation['code']))
                 ->where('organization', $organisation)
@@ -136,7 +148,7 @@ final class McpConnectionsController extends Controller
             && config('mcp.read_only.enabled') === true, 404);
         $this->organisation();
         abort_unless($request->user()?->is_active
-            && $request->user()->hasRole('superAdmin'), 403);
+            && $request->user()->can('mcp.connections.approve'), 403);
 
         return view('nanan.mcp.review');
     }
@@ -152,9 +164,9 @@ final class McpConnectionsController extends Controller
         $organisation = $this->organisation();
         $personne = $request->user();
 
-        // Pilote réservé aux rôles du personnel, jamais élève ou parent.
+        // Permission métier dédiée au rattachement MCP, révocable sur chaque compte.
         if (! $personne || ! $personne->is_active
-            || ! $personne->hasRole(['superAdmin', 'secretaire', 'coordinateur', 'enseignant'])) {
+            || ! $personne->can('mcp.connections.connect')) {
             abort(403);
         }
 
@@ -166,6 +178,11 @@ final class McpConnectionsController extends Controller
         $codeHash = hash('sha256', $validation['code']);
         try {
             $accepted = DB::transaction(function () use ($codeHash, $personne, $organisation): bool {
+                $lockedPersonne = \App\Models\User::query()->whereKey($personne->id)
+                    ->lockForUpdate()->first();
+                abort_unless($lockedPersonne?->is_active
+                    && $lockedPersonne->can('mcp.connections.connect'), 403);
+
                 $challenge = DB::table('mcp_link_challenges')
                     ->where('code_hash', $codeHash)
                     ->where('organization', $organisation)
@@ -178,6 +195,14 @@ final class McpConnectionsController extends Controller
                     || $challenge->approved_at === null
                     || (int) $challenge->approved_user_id !== (int) $personne->getAuthIdentifier()
                     || (int) $challenge->approved_by_user_id === (int) $personne->getAuthIdentifier()) {
+                    return false;
+                }
+
+                // L'approbation perd son effet si l'approbateur a été désactivé
+                // ou si son habilitation MCP a été révoquée entre-temps.
+                $validApprover = \App\Models\User::query()
+                    ->whereKey($challenge->approved_by_user_id)->where('is_active', true)->first();
+                if (! $validApprover?->can('mcp.connections.approve')) {
                     return false;
                 }
 
@@ -232,7 +257,7 @@ final class McpConnectionsController extends Controller
         abort_unless(config('mcp.pairing.enabled') === true, 404);
         $this->organisation();
         abort_unless($request->user()?->is_active
-            && $request->user()->hasRole(['superAdmin', 'secretaire', 'coordinateur', 'enseignant']), 403);
+            && $request->user()->can('mcp.connections.connect'), 403);
 
         return view('nanan.mcp.connect');
     }

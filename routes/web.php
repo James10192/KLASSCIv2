@@ -3922,8 +3922,7 @@ Route::get('/convocation-rdv/{jeton}', [\App\Http\Controllers\API\Public\Convoca
     ->name('public.rdv.convocation');
 
 // Shell mobile
-// Bascule de profil mobile reservee au superAdmin (verifiee dans le controleur) :
-// il possede toutes les permissions et verrait toujours la meme barre d onglets.
+// Bascule du shell mobile soumise à la permission effective mobile.profile.preview.
 Route::post('/mobile/profil', [\App\Http\Controllers\PwaController::class, 'profil'])
     ->middleware(['auth', 'throttle:10,1'])
     ->name('mobile.profil');

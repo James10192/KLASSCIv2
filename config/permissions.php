@@ -2323,6 +2323,23 @@ return [
             'group' => 'Sécurité',
             'icon' => 'fa-gauge-high',
         ],
+        'mcp.connections.approve' => [
+            'label' => 'Approuver une connexion Nanan MCP par vérification indépendante',
+            'description' => 'Habilitation distincte du droit de gestion du personnel ; jamais auto-approbation.',
+            'group' => 'Sécurité',
+            'icon' => 'fa-user-check',
+        ],
+        'mcp.connections.connect' => [
+            'label' => 'Connecter son compte au service Nanan MCP en lecture seule',
+            'description' => 'Liaison personnelle soumise à consentement et approbation ; aucun droit sur les autres comptes.',
+            'group' => 'Sécurité',
+            'icon' => 'fa-link',
+        ],
+        'mobile.profile.preview' => [
+            'label' => 'Prévisualiser les profils mobiles sans changer les permissions',
+            'group' => 'Administration',
+            'icon' => 'fa-mobile-alt',
+        ],
         'system.technical_access' => [
             'label' => 'Accès technique au système',
             'group' => 'Système',
@@ -2397,8 +2414,12 @@ return [
         // Le service technique reçoit seul par défaut la création de Superadmin.
         // Une attribution explicite et auditée peut toujours être décidée par tenant.
         'serviceTechnique' => [
-            // Le support n'ouvre pas implicitement les traces de l'établissement.
+            // L'état de compte technique ne donne ni l'approbation de connexions
+            // personnelles ni l'accès aux traces ou aux aperçus métier.
             'exploitation.control_center.view',
+            'mcp.connections.approve',
+            'mcp.connections.connect',
+            'mobile.profile.preview',
         ],
         'superAdmin' => [
             'superadmin.accounts.create',
@@ -2424,6 +2445,7 @@ return [
         ],
 
         'secretaire' => [
+            'mcp.connections.connect',
             'inscriptions.redoublant.confirm',
             'dashboard.view', 'admin.access', 'parent_chatbot.manage',
             'students.view', 'students.create', 'students.edit', 'students.delete',
@@ -2557,6 +2579,7 @@ return [
         ],
 
         'coordinateur' => [
+            'mcp.connections.connect',
             'inscriptions.redoublant.confirm',
             'emargement.prolongation.decide',
             'admin.access', 'dashboard.view',
@@ -2828,6 +2851,7 @@ return [
             'module.academique.access',
         ],
         'enseignant' => [
+            'mcp.connections.connect',
             'admin.access', 'dashboard.view',
             'students.view_own',
             'students.accessibility.view', 'students.accessibility.export',

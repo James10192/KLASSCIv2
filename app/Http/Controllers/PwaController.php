@@ -80,16 +80,12 @@ class PwaController extends Controller
     }
 
     /**
-     * Le superAdmin choisit le profil mobile qu'il veut voir pour la session.
-     *
-     * Il possede toutes les permissions : la cascade du resolver le rangerait
-     * toujours dans le premier profil. Cette bascule lui permet de verifier
-     * chaque barre d'onglets telle que la verra le personnel. Une valeur vide
-     * revient au defaut. Seule exception toleree a l'interdiction de hasRole().
+     * Prévisualisation mobile réservée à une permission explicite et révocable.
+     * Le choix de profil ne modifie jamais les permissions métier.
      */
     public function profil(Request $request): JsonResponse|RedirectResponse
     {
-        abort_unless($request->user()->hasRole('superAdmin'), 403);
+        abort_unless($request->user()?->is_active && $request->user()->can('mobile.profile.preview'), 403);
 
         $valide = $request->validate([
             'profil' => ['nullable', 'string', Rule::in(MobileProfileResolver::PROFILS_DECLARABLES)],

@@ -199,13 +199,16 @@ class MobileProfileResolver
             }
         }
 
-        // Exceptions tolerees a l'interdiction de hasRole() : le superAdmin
-        // possede toutes les permissions, la cascade ci-dessous le rangerait
-        // toujours en caisse.
+        // Le profil forcé est une préférence d'affichage soumise à un droit
+        // explicite, jamais au seul nom du rôle.
+        $force = $this->profilForce();
+        if ($user->can('mobile.profile.preview') && self::estDeclarable($force)) {
+            return $force;
+        }
+        // Par défaut, l'administrateur conserve le shell comptabilité.
+        // Ici hasRole ne sert qu'à CLASSIFIER le shell (pas à autoriser).
         if ($user->hasRole('superAdmin')) {
-            $force = $this->profilForce();
-
-            return self::estDeclarable($force) ? $force : self::COMPTABLE;
+            return self::COMPTABLE;
         }
 
         // Meme raison pour le service technique : il porte toutes les
