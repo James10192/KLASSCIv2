@@ -47,6 +47,8 @@ class AcademicPilotageDiagnoseCohorteTest extends AcademicPilotageDatabaseTestCa
             ['id' => 10, 'systeme_academique' => 'BTS', 'is_active' => true, 'annee_universitaire_id' => 1, 'deleted_at' => null],
             ['id' => 11, 'systeme_academique' => 'BTS', 'is_active' => true, 'annee_universitaire_id' => 1, 'deleted_at' => null],
             ['id' => 12, 'systeme_academique' => 'BTS', 'is_active' => true, 'annee_universitaire_id' => 1, 'deleted_at' => now()],
+            ['id' => 13, 'systeme_academique' => 'BTS', 'is_active' => false, 'annee_universitaire_id' => 1, 'deleted_at' => null],
+            ['id' => 14, 'systeme_academique' => 'XYZ', 'is_active' => true, 'annee_universitaire_id' => 1, 'deleted_at' => null],
         ]);
     }
 
@@ -72,6 +74,68 @@ class AcademicPilotageDiagnoseCohorteTest extends AcademicPilotageDatabaseTestCa
         $cohorte = $this->diagnoseCohorte();
 
         $this->assertSame(1, $cohorte['couples_cohorte']);
+        $this->assertSame(1, $cohorte['sans_ligne']);
+    }
+
+    public function test_classe_inactive_est_hors_perimetre(): void
+    {
+        $this->inscription(1, 10);
+        $this->inscription(2, 13);
+
+        $cohorte = $this->diagnoseCohorte();
+
+        $this->assertSame(1, $cohorte['couples_cohorte']);
+        $this->assertStringContainsString('classes actives', $cohorte['perimetre']);
+    }
+
+    public function test_option_classe_ne_compte_que_cette_classe(): void
+    {
+        $this->inscription(1, 10);
+        $this->inscription(2, 11);
+
+        $cohorte = $this->diagnoseCohorte(['--class-id' => 10]);
+
+        $this->assertSame(1, $cohorte['couples_cohorte']);
+    }
+
+    public function test_option_classe_vide_vaut_absente(): void
+    {
+        $this->inscription(1, 10);
+        $this->inscription(2, 11);
+
+        $cohorte = $this->diagnoseCohorte(['--class-id' => '']);
+
+        $this->assertSame(2, $cohorte['couples_cohorte']);
+    }
+
+    public function test_option_classe_non_numerique_donne_un_motif(): void
+    {
+        $this->inscription(1, 10);
+
+        $cohorte = $this->diagnoseCohorte(['--class-id' => 'abc']);
+
+        $this->assertNull($cohorte['couples_cohorte']);
+        $this->assertStringContainsString('non numérique', $cohorte['motif']);
+    }
+
+    public function test_periode_invalide_donne_un_motif(): void
+    {
+        $this->inscription(1, 10);
+
+        $cohorte = $this->diagnoseCohorte(['--period' => 'nimporte']);
+
+        $this->assertNull($cohorte['sans_instantane_exploitable']);
+        $this->assertStringContainsString('période', $cohorte['motif']);
+    }
+
+    public function test_systeme_non_classable_est_compte_sans_interrompre(): void
+    {
+        $this->inscription(1, 14);
+        $this->inscription(2, 10);
+
+        $cohorte = $this->diagnoseCohorte();
+
+        $this->assertSame(1, $cohorte['systeme_non_classable']);
         $this->assertSame(1, $cohorte['sans_ligne']);
     }
 
@@ -155,10 +219,10 @@ class AcademicPilotageDiagnoseCohorteTest extends AcademicPilotageDatabaseTestCa
         ]);
     }
 
-    /** @return array<string, mixed> */
-    private function diagnoseCohorte(): array
+    /** @param array<string, mixed> $options @return array<string, mixed> */
+    private function diagnoseCohorte(array $options = []): array
     {
-        Artisan::call('academic-pilotage:diagnose', ['--json' => true]);
+        Artisan::call('academic-pilotage:diagnose', ['--json' => true] + $options);
         $diagnosis = json_decode(Artisan::output(), true, 512, JSON_THROW_ON_ERROR);
 
         return $diagnosis['cohorte'];

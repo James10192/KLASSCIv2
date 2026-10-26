@@ -11,7 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
-- **Diagnostic du pilotage académique — cohorte et alertes :** `GET /api/cli/academic-pilotage/diagnose` indique combien d'étudiants de la cohorte active n'ont aucun instantané exploitable (sans ligne, ou ligne invalidée) et ventile les alertes ouvertes par type. Lecture seule : aucune donnée n'est modifiée.
+- **Diagnostic du pilotage académique — cohorte et alertes :** `GET /api/cli/academic-pilotage/diagnose` indique combien d'étudiants de la cohorte active n'ont aucun instantané exploitable (sans ligne, ou ligne invalidée) Lecture seule : aucune donnée n'est modifiée.
 - **Reçus de paiement — espace pour la signature et le cachet (#1677) :** zone manuscrite de 15 mm sur les deux exemplaires, sans changer le design ni dépasser une page A4.
 - **Validation des réinscriptions depuis la fiche inscription :** le bouton « Valider définitivement » réutilise le moteur de validation de la fiche étudiant pour une réinscription en « Documents complets ». Observations, auteur et historique conservés ; aucun paiement ni exonération artificiels.
 - **Reçus de paiement — deux exemplaires sur un A4 (#1675) :** les espaces verticaux du reçu PDF sont resserrés pour garder l’exemplaire élève/parent et l’exemplaire caisse sur une seule feuille, sans changement de design, de données ni de montants.

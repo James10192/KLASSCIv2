@@ -53,6 +53,7 @@ class AcademicPilotageDiagnoseCommand extends Command
             ['Dirty snapshots', $diagnosis['snapshots']['dirty']],
             ['Insufficient score coverage', $diagnosis['snapshots']['insufficient_data']],
             ['Cohort scope', $diagnosis['cohorte']['motif'] ?? sprintf('year %s, period %s', $diagnosis['cohorte']['annee_universitaire_id'], $diagnosis['cohorte']['period'])],
+            ['Cohort pairs (total)', $diagnosis['cohorte']['couples_cohorte'] ?? 'n/a'],
             ['Cohort pairs without usable snapshot', $diagnosis['cohorte']['sans_instantane_exploitable'] ?? 'n/a'],
             ['  of which: no snapshot row', $diagnosis['cohorte']['sans_ligne'] ?? 'n/a'],
             ['  of which: dirty snapshot only', $diagnosis['cohorte']['ligne_sale'] ?? 'n/a'],
@@ -83,13 +84,18 @@ class AcademicPilotageDiagnoseCommand extends Command
             return $this->cohorteSansMesure('aucune année universitaire courante : rien n\'a été compté', $periode);
         }
 
-        $classeId = isset($filters['class_id']) ? (int) $filters['class_id'] : null;
+        $brutClasse = $filters['class_id'] ?? null;
+        if ($brutClasse !== null && $brutClasse !== '' && ! ctype_digit((string) $brutClasse)) {
+            return $this->cohorteSansMesure('identifiant de classe non numérique : rien n\'a été compté', $periode);
+        }
+        $classeId = filled($brutClasse) ? (int) $brutClasse : null;
 
         // Les soft-deletes d'inscription et de classe sont appliqués par Eloquent, y compris dans whereHas.
         $couples = ESBTPInscription::query()
             ->cohorteAcademique($anneeId, $classeId)
             ->whereHas('classe', fn ($classe) => $classe->where('is_active', true))
-            ->with('classe:id,systeme_academique')
+            ->with(['classe' => fn ($classe) => $classe->without(['filiere', 'niveau', 'annee'])
+                ->select(['id', 'systeme_academique'])])
             ->get(['id', 'etudiant_id', 'classe_id'])
             ->unique(fn ($inscription): string => $inscription->classe_id.'|'.$inscription->etudiant_id);
 
@@ -183,13 +189,6 @@ class AcademicPilotageDiagnoseCommand extends Command
             'total' => (clone $query)->count(),
             'open' => (clone $query)->whereIn('status', ['open', 'acknowledged', 'in_progress'])->count(),
             'blocking' => (clone $query)->where('severity', 'blocking')->count(),
-            'ouvertes_par_type' => (clone $query)
-                ->whereIn('status', ['open', 'acknowledged', 'in_progress'])
-                ->selectRaw('type, count(*) as total')
-                ->groupBy('type')
-                ->orderByDesc('total')
-                ->pluck('total', 'type')
-                ->all(),
         ];
     }
 
