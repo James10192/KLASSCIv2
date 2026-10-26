@@ -536,6 +536,7 @@ jobs:
             tests/Feature/API/CLI/DirectPermissionCliHardeningTest.php \
             tests/Feature/Permissions/NoImplicitSuperAdminGateTest.php \
             tests/Feature/Permissions/PoliciesPermissionEffectiveTest.php \
+            tests/Feature/Permissions/NoteBulletinPropertyScopeTest.php \
             tests/Feature/Permissions/LegacyRoleMiddlewarePermissionOnlyTest.php \
             tests/Feature/Permissions/UserManagementPermissionOnlyTest.php \
             tests/Feature/Permissions/PaywallPermissionOnlyTest.php \
