@@ -114,6 +114,14 @@ historique mais **n'est pas une source d'autorisation** ; ne pas y réintroduire
 une matrice « quel rôle peut gérer quel rôle ». L'unique interface est
 `/esbtp/personnel/unified`.
 
+## Policies : propriété de ressource sans passe-droit
+
+- Aucun `Policy::before()` ne doit autoriser par le seul nom `superAdmin` ou `serviceTechnique`.
+- Une permission globale (`inscriptions.view`, `paiements.view`, etc.) ne doit jamais devenir inopérante parce que l'utilisateur porte AUSSI le rôle étudiant (multi-rôles).
+- Le périmètre « propres notes » et les évaluations de l'enseignant restent des contraintes métier **en plus** de la permission de lecture/édition ; le nom d'un rôle, à lui seul, n'ouvre pas une note.
+- `bulletins.view_own` exige une correspondance avec le compte du titulaire même pour un rôle custom ; `bulletins.view` est une autre permission, à portée globale.
+- Prévenir la régression avec des tests `Gate::forUser`, délégation directe, révocation et propriété croisée. Ne pas supprimer des restrictions métier pour faire passer la CI.
+
 ## Rôles canoniques
 
 `config/permissions.php` clé `roles` : `superAdmin`, `secretaire`, `comptable`, `caissier`, `coordinateur`, `directeurEtudes`, `enseignant`, `etudiant` (visibles UI) + `serviceTechnique` (masqué). Le rôle `parent` a été supprimé (Lot 1).
