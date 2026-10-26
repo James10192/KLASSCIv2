@@ -84,16 +84,37 @@ plusieurs Superadmin actifs existent : 403 sans modification.
 ## Identifiants et réinitialisation de mots de passe CLI
 
 - POST /api/cli/user/{id}/reset-password et /reset-password-expiry :
-  cli:admin + personnel.users.password.reset. Interdits 403 pour une cible
-  Superadmin ou Service Technique.
+  cli:admin + personnel.users.password.reset **ET** périmètre de gestion
+  effectif de la cible (personnel.manage ou users.manage, sans dépasser ses
+  propres privilèges sauf délégation manage_all explicite). Les comptes
+  Superadmin ou Service Technique et l'auto-gestion sont toujours refusés 403.
+  Le changement réel utilise un verrou SQL et un audit durable transactionnel
+  ne contenant ni mot de passe ni empreinte.
 - GET /api/cli/user/{id}/credentials : cli:admin +
-  personnel.users.credentials.export ; cette réponse contient une empreinte
-  de mot de passe, jamais destinée aux journaux. Comptes sensibles : 403.
+  personnel.users.credentials.export **ET** périmètre de gestion effectif.
+  Cette réponse contient une empreinte de mot de passe : endpoint sensible,
+  jamais destiné à des journaux ni à un compte moins habilité que sa cible.
+  Comptes sensibles : 403.
 
 Les capacités sont évaluées directement sur les permissions effectives,
 pas sur le nom du rôle de l'opérateur.
 
+## POST /api/cli/permissions/sync et /api/cli/permissions/fix
+
+Synchronise les rôles/permissions du registry sur la **base de l'établissement
+courant**. Les deux routes exigent désormais `cli:admin` **ET** la permission
+effective `system.technical_access` ou `personnel.roles.manage_all`.
+Un simple token d'administration CLI ne suffit pas à reconfigurer les rôles
+de l'école (403). Aucun pouvoir n'est accordé par le nom superAdmin.
+
 ## Historique et compatibilité
+
+- 26/10/2026 (PR #1687, non fusionnée) : BREAKING CHANGE sécurité : export
+  d'identifiants et changements de mot de passe CLI vérifient la délégation sur
+  la cible ; reset sous verrou avec audit sans secret. Les endpoints de synchro
+  de permissions exigent une permission technique ou manage_all en plus
+  de cli:admin. Adapter les tokens avant tout déploiement pilote.
+
 
 - 26/10/2026 (PR #1687, non fusionnée) : BREAKING CHANGE en lecture :
   GET /api/cli/users exige désormais la permission effective de consultation

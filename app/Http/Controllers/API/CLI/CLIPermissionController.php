@@ -508,6 +508,14 @@ class CLIPermissionController extends BaseApiController
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
 
+        // Une ability Sanctum n'est jamais une habilitation à reconfigurer
+        // les permissions de TOUS les comptes d'un établissement. Même
+        // garde pour /permissions/sync et son alias legacy /permissions/fix.
+        if (! $request->user()->checkPermissionTo('system.technical_access', 'web')
+            && ! $request->user()->checkPermissionTo('personnel.roles.manage_all', 'web')) {
+            return $this->errorResponse('Maintenance des permissions non autorisée.', [], 403);
+        }
+
         try {
             $result = $syncService->run();
 
