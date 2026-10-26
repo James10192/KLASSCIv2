@@ -455,12 +455,26 @@ class PaymentFilterService
      */
     public static function variantesDuMode(string $cle): array
     {
+        return self::variantesDesModes([$cle]);
+    }
+
+    /**
+     * Les formes stockees de plusieurs modes, en une seule lecture de la table.
+     *
+     * @param  array<int, string>  $cles
+     * @return list<string>
+     */
+    public static function variantesDesModes(array $cles): array
+    {
+        $cles = array_map('strval', $cles);
         $variantes = collect(self::valeursStockeesDesModes())
-            ->filter(fn (string $valeur) => self::cleDuMode($valeur) === $cle)
+            ->filter(fn (string $valeur) => in_array(self::cleDuMode($valeur), $cles, true))
             ->values()
             ->all();
 
-        return $variantes !== [] ? $variantes : [$cle];
+        // Un mode choisi sans aucune ligne stockee reste dans le filtre : il ne
+        // ramene rien, plutot que d'elargir le filtre a tous les modes.
+        return array_values(array_unique(array_merge($variantes, $cles)));
     }
 
     /**

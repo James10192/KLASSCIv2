@@ -131,11 +131,8 @@ class PaiementExportService
         // Chaque mode choisi couvre toutes ses formes stockees (code et libelle).
         $modes = array_values(array_filter($filters['modes'] ?? []));
         if (! empty($modes)) {
-            $query->whereIn('mode_paiement', collect($modes)
-                ->flatMap(fn (string $mode) => PaymentFilterService::variantesDuMode($mode))
-                ->unique()
-                ->values()
-                ->all());
+            // Une seule lecture des valeurs stockees, regroupees en memoire.
+            $query->whereIn('mode_paiement', PaymentFilterService::variantesDesModes($modes));
         }
     }
 
@@ -420,7 +417,9 @@ class PaiementExportService
         if (! empty($filters['modes']) && is_array($filters['modes'])) {
             $modes = array_values(array_filter($filters['modes']));
             if (! empty($modes)) {
-                $summary[] = ['label' => 'Mode(s) de paiement', 'value' => implode(', ', $modes)];
+                $summary[] = ['label' => 'Mode(s) de paiement', 'value' => implode(', ', array_map(
+                    [PaymentFilterService::class, 'libelleDuMode'], array_map('strval', $modes)
+                ))];
             }
         }
 

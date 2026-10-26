@@ -381,7 +381,7 @@
                 <div class="pe-hero-icon"><i class="fas fa-file-export"></i></div>
                 <div>
                     <h1>Export détaillé des paiements</h1>
-                    <p>États financiers filtrables — PDF (≤ 500 lignes) ou Excel/CSV (jusqu'à 50&nbsp;000 lignes)</p>
+                    <p>États financiers filtrables — PDF (≤ {{ \App\Services\PaiementExportService::PDF_MAX_ROWS }} lignes) ou Excel/CSV (jusqu'à 50&nbsp;000 lignes)</p>
                 </div>
             </div>
             <div class="pe-hero-actions">
@@ -434,7 +434,7 @@
                                 <i class="fas fa-file-pdf"></i>
                                 <div>
                                     <p class="pe-format-title">PDF</p>
-                                    <p class="pe-format-hint">≤ 500 lignes</p>
+                                    <p class="pe-format-hint">≤ {{ \App\Services\PaiementExportService::PDF_MAX_ROWS }} lignes</p>
                                 </div>
                             </div>
                         </label>
