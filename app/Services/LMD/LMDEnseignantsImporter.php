@@ -412,7 +412,9 @@ class LMDEnseignantsImporter
         ]);
 
         // Assigner rôle Spatie (canon KLASSCI : `enseignant`)
-        $user->assignRole('enseignant');
+        app(\App\Services\Personnel\RoleAssignmentService::class)->provisionnerNouveauCompte(
+            $user, 'enseignant', auth()->id(), 'Création à l\'import des enseignants LMD'
+        );
 
         $this->stats['users_created']++;
         // Le mot de passe temporaire est loggué dans warnings POUR LA SESSION

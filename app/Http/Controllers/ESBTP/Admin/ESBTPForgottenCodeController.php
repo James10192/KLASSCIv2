@@ -14,7 +14,7 @@ class ESBTPForgottenCodeController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['auth', 'role:secretary,superAdmin']);
+        $this->middleware(['auth', 'permission:system.manage']);
     }
 
     public function index()

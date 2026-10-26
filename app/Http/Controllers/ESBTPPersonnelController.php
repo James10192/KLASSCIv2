@@ -121,7 +121,9 @@ class ESBTPPersonnelController extends Controller
             ]);
 
             // Assigner le rôle approprié
-            $user->assignRole($validated['type']);
+            app(\App\Services\Personnel\RoleAssignmentService::class)->provisionnerNouveauCompte(
+                $user, $validated['type'], auth()->id(), 'Création d\'un compte du personnel'
+            );
 
             DB::commit();
 

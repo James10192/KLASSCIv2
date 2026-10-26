@@ -28,7 +28,9 @@ class SuperAdminAccueilMobileTest extends TestCase
     {
         parent::setUp();
 
-        Role::findOrCreate('superAdmin', 'web');
+        // En production le rôle porte « * » ; l'écran suit system.manage, pas le nom.
+        Role::findOrCreate('superAdmin', 'web')
+            ->givePermissionTo(\Spatie\Permission\Models\Permission::findOrCreate('system.manage', 'web'));
         $this->superAdmin = User::factory()->create([
             'must_change_password' => false,
             'password_changed_at' => now(),

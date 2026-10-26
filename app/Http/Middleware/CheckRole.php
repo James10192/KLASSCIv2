@@ -34,7 +34,10 @@ class CheckRole
         }
 
         // Une session historique ne doit pas rester utilisable après désactivation.
-        abort_unless($user->is_active, 403, 'Compte inactif.');
+        // Un modèle tout juste créé n'a pas l'attribut en mémoire : on relit la
+        // base plutôt que de prendre l'absence pour un refus (ou un accord).
+        $actif = $user->is_active ?? $user->newQuery()->whereKey($user->getKey())->value('is_active');
+        abort_unless((bool) $actif, 403, 'Compte inactif.');
 
         foreach (preg_split('/[,|]/', $roles) as $name) {
             $required = self::LEGACY_PERMISSIONS[trim($name)] ?? null;

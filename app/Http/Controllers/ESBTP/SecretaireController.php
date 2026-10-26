@@ -19,7 +19,7 @@ class SecretaireController extends Controller
      */
     public function __construct()
     {
-        $this->middleware(['auth', 'role:secretaire']);
+        $this->middleware(['auth', 'permission:identity.school_manager']);
     }
 
     /**

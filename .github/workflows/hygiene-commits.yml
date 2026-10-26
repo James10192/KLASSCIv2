@@ -549,6 +549,7 @@ jobs:
             tests/Feature/API/CLI/CliSensitiveAccountScopeTest.php \
             tests/Feature/Permissions/CustomRoleManagementHardeningTest.php \
             tests/Feature/Permissions/PersonnelUnifiedUniqueEntryTest.php \
+            tests/Feature/Permissions/RoleProvisioningAndPermissionOnlyTest.php \
             tests/Feature/Scolarite/ExtensionRoleSurvitSynchronisationTest.php \
             tests/Feature/ServiceTechnique/RolesEtPermissionsTest.php
           do

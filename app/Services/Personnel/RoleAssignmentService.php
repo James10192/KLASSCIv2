@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\UserManagementService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 
@@ -17,6 +18,12 @@ use Spatie\Permission\Models\Role;
  */
 final class RoleAssignmentService
 {
+    /**
+     * Rôles dont la pose ou le retrait exige la double validation. Ils
+     * qualifient la CIBLE d'une mutation, jamais le droit de l'acteur.
+     */
+    public const ROLES_SENSIBLES = ['superAdmin', 'serviceTechnique'];
+
     public function __construct(
         private readonly AuditPermissionChange $audit,
         private readonly UserManagementService $userManagement,
@@ -187,5 +194,68 @@ final class RoleAssignmentService
 
             return ['before' => $before, 'after' => $after];
         }, 3);
+    }
+
+    /**
+     * Rôle de départ d'un compte créé dans la même opération (élève inscrit,
+     * enseignant importé, personnel créé). L'appelant a déjà autorisé la
+     * création ; ce point unique garantit qu'aucun rôle sensible n'est posé
+     * par cette voie, que le compte est bien neuf, et que la décision est
+     * tracée dans l'audit avec son motif.
+     *
+     * Rend false si le rôle n'existe pas sur cet établissement : le compte
+     * reste créé sans rôle, et l'absence est journalisée (pas de repli muet).
+     */
+    public function provisionnerNouveauCompte(User $compte, string $roleName, ?int $auteurId, string $motif): bool
+    {
+        if (in_array($roleName, self::ROLES_SENSIBLES, true)) {
+            throw new AuthorizationException('Ce rôle ne s\'attribue pas à la création d\'un compte ordinaire.');
+        }
+
+        return DB::transaction(function () use ($compte, $roleName, $auteurId, $motif): bool {
+            $cible = User::query()->with('roles')->whereKey($compte->id)->lockForUpdate()->firstOrFail();
+            $avant = $cible->getRoleNames()->sort()->values()->all();
+            if ($avant !== [] && ! in_array($roleName, $avant, true)) {
+                // Un compte existant change de rôle par change(), avec ses contrôles.
+                throw new AuthorizationException('Compte existant : utilisez le changement de rôle contrôlé.');
+            }
+
+            $role = Role::query()->where('name', $roleName)->where('guard_name', 'web')->first();
+            if (! $role) {
+                Log::warning('Rôle de départ absent de cet établissement', ['role' => $roleName, 'user_id' => $cible->id]);
+
+                return false;
+            }
+
+            if (! in_array($roleName, $avant, true)) {
+                $cible->assignRole($role);
+                $this->audit->enregistrerDecisionDeCompte(
+                    $cible, ['roles' => $avant], ['roles' => [...$avant, $roleName]], $auteurId, $motif
+                );
+            }
+            $compte->unsetRelation('roles');
+
+            return true;
+        }, 3);
+    }
+
+    /**
+     * Retrait d'un rôle à l'intérieur d'une mutation déjà verrouillée et
+     * autorisée par SuperAdminLifecycleGuard (désactivation d'un compte).
+     * Le retrait est tracé ; il ne touche aucun autre rôle ni profil.
+     */
+    public function retirerPendantDesactivation(User $compte, string $roleName, ?int $auteurId, string $motif): void
+    {
+        if (DB::transactionLevel() === 0) {
+            throw new \LogicException('Retrait hors transaction : passer par SuperAdminLifecycleGuard.');
+        }
+        $avant = $compte->getRoleNames()->sort()->values()->all();
+        if (! in_array($roleName, $avant, true)) {
+            return;
+        }
+        $compte->removeRole($roleName);
+        $this->audit->enregistrerDecisionDeCompte(
+            $compte, ['roles' => $avant], ['roles' => array_values(array_diff($avant, [$roleName]))], $auteurId, $motif
+        );
     }
 }

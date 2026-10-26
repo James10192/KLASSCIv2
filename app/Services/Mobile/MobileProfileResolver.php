@@ -207,7 +207,7 @@ class MobileProfileResolver
         }
         // Par défaut, l'administrateur conserve le shell comptabilité.
         // Ici hasRole ne sert qu'à CLASSIFIER le shell (pas à autoriser).
-        if ($user->hasRole('superAdmin')) {
+        if ($user->hasRole('superAdmin') && $user->can('system.manage')) {
             return self::COMPTABLE;
         }
 
@@ -216,7 +216,7 @@ class MobileProfileResolver
         // proposait « Encaisser » et « Ma caisse ». Son accueil est le tableau
         // de bord du service technique (DashboardController::index le route
         // par role, avant toute permission) : son profil suit.
-        if ($user->hasRole('serviceTechnique')) {
+        if ($user->hasRole('serviceTechnique') && $user->can('system.technical_access')) {
             return self::TECHNIQUE;
         }
 

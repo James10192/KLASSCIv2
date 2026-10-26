@@ -213,6 +213,10 @@ class CLIPermissionController extends BaseApiController
 
                 return [$role, $granted, $missing];
             });
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface|\Illuminate\Auth\Access\AuthorizationException $e) {
+            // Un refus d'autorisation reste un 403 : le convertir en 500
+            // masquerait la raison et ferait croire à une panne.
+            throw $e;
         } catch (\Throwable $e) {
             Log::error('CLI: creation role annulee (transaction/audit)', [
                 'type' => get_class($e),
@@ -265,7 +269,7 @@ class CLIPermissionController extends BaseApiController
         // On ne retire jamais a superAdmin ni a serviceTechnique : ce sont les
         // roles qui permettent de reparer une instance. Se couper cette branche
         // a distance laisserait l'ecole sans recours.
-        if (in_array($role, ['superAdmin', 'serviceTechnique'], true)) {
+        if (in_array($role, \App\Services\Personnel\RoleAssignmentService::ROLES_SENSIBLES, true)) {
             return $this->errorResponse("Le role '{$role}' ne se retire pas depuis le CLI.", [], 422);
         }
 
@@ -326,7 +330,7 @@ class CLIPermissionController extends BaseApiController
         }
 
         // Le grant suit la même interdiction que roleRevoke.
-        if (in_array($role, ['superAdmin', 'serviceTechnique'], true)) {
+        if (in_array($role, \App\Services\Personnel\RoleAssignmentService::ROLES_SENSIBLES, true)) {
             return $this->errorResponse("Le role '{$role}' n'est pas modifiable depuis le CLI.", [], 422);
         }
 

@@ -23,7 +23,7 @@ class SecretaireAdminController extends Controller
      */
     public function __construct()
     {
-        $this->middleware(['auth', 'role:superAdmin']);
+        $this->middleware(['auth', 'permission:system.manage']);
     }
 
     /**

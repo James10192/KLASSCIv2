@@ -780,7 +780,7 @@ class ESBTPCustomRoleController extends Controller
         // rôles personnalisés : manage_all élargit le périmètre, pas le
         // cycle de vie sensible soumis à une approbation distincte.
         $proteges = User::query()->whereIn('id', $userIds)
-            ->whereHas('roles', fn ($q) => $q->whereIn('name', ['superAdmin', 'serviceTechnique']))
+            ->whereHas('roles', fn ($q) => $q->whereIn('name', \App\Services\Personnel\RoleAssignmentService::ROLES_SENSIBLES))
             ->pluck('id')->all();
         if ($proteges !== []) {
             return response()->json([
@@ -1070,7 +1070,7 @@ class ESBTPCustomRoleController extends Controller
 
         return Role::query()
             ->where('guard_name', 'web')
-            ->whereNotIn('name', ['superAdmin', 'serviceTechnique'])
+            ->whereNotIn('name', \App\Services\Personnel\RoleAssignmentService::ROLES_SENSIBLES)
             ->with('permissions')
             ->get()
             ->filter(static function (Role $role) use ($actor): bool {

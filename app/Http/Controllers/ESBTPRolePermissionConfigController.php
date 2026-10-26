@@ -16,7 +16,7 @@ class ESBTPRolePermissionConfigController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['auth', 'role:serviceTechnique']);
+        $this->middleware(['auth', 'permission:system.technical_access']);
     }
 
     public function index()
@@ -52,7 +52,7 @@ class ESBTPRolePermissionConfigController extends Controller
         $roleName = $validated['role'];
         // Les rôles de secours ne sont jamais modifiables, même via un
         // ancien endpoint technique ou une requête forgée.
-        abort_if(in_array($roleName, ['superAdmin', 'serviceTechnique'], true), 403,
+        abort_if(in_array($roleName, \App\Services\Personnel\RoleAssignmentService::ROLES_SENSIBLES, true), 403,
             'Les permissions des rôles de secours ne sont pas modifiables.');
         $permissionNames = array_values(array_unique($validated['permissions'] ?? []));
 
@@ -87,7 +87,7 @@ class ESBTPRolePermissionConfigController extends Controller
     {
         $validated = $request->validate(['role' => 'required|exists:roles,name']);
         $roleName = $validated['role'];
-        abort_if(in_array($roleName, ['superAdmin', 'serviceTechnique'], true), 403,
+        abort_if(in_array($roleName, \App\Services\Personnel\RoleAssignmentService::ROLES_SENSIBLES, true), 403,
             'Les rôles de secours ne peuvent pas être réinitialisés.');
 
         $expanded = $registry->avecAlias($registry->defaultPermissionsFor($roleName));

@@ -36,6 +36,28 @@ class RoleHelper
     const LMS_ALLOWED_ROLES = ['enseignant', 'coordinateur', 'directeurEtudes', 'etudiant', 'superAdmin'];
 
     /**
+     * Permissions qui ouvrent le LMS. Une seule suffit, quel que soit le rôle
+     * qui la porte (ou si elle est donnée directement) : un nom de rôle, et à
+     * plus forte raison le PREMIER rôle d'un compte multi-fonctions, ne décide
+     * jamais de l'accès. LMS_ALLOWED_ROLES ne sert plus qu'à la documentation.
+     */
+    const LMS_PERMISSIONS = ['identity.teach', 'identity.coordinate', 'identity.direct_studies', 'identity.student', 'system.manage'];
+
+    public static function peutAccederAuLms(?\App\Models\User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+        foreach (self::LMS_PERMISSIONS as $permission) {
+            if ($user->can($permission)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Vérifie si un rôle est équivalent au coordinateur
      *
      * @param string $role Le rôle à vérifier

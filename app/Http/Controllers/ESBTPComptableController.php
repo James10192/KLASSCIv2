@@ -22,7 +22,7 @@ class ESBTPComptableController extends Controller
 
     public function __construct(UserService $userService)
     {
-        $this->middleware(['auth', 'role:superAdmin']);
+        $this->middleware(['auth', 'permission:system.manage']);
         $this->userService = $userService;
     }
 

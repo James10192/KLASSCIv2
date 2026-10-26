@@ -299,14 +299,13 @@ class UserDeletionGuardTest extends TestCase
         $target->assignRole(['superAdmin', 'secretaire']);
         $this->actingAsPersonnelManager();
 
-        $response = app(ESBTPSecretaireController::class)->toggleStatus(
+        // Un refus d'autorisation remonte en 403 propre (jamais 500), sans
+        // rien écrire : le contrôleur relance AuthorizationException exprès.
+        $this->assertRefus(fn () => app(ESBTPSecretaireController::class)->toggleStatus(
             Request::create('/', 'POST'),
             $target->id,
             app(SuperAdminLifecycleGuard::class),
-        );
-
-        $this->assertSame(302, $response->getStatusCode());
-        $this->assertNotNull(session('error'));
+        ));
         $this->assertDatabaseHas('users', ['id' => $target->id, 'is_active' => true]);
     }
 
@@ -323,17 +322,13 @@ class UserDeletionGuardTest extends TestCase
         $this->actingAsPersonnelManager();
         $controller = app(ESBTPEnseignantController::class);
 
-        $reset = $controller->resetPassword(Request::create('/', 'POST'), $teacher);
-        $toggle = $controller->toggleStatus(
+        $this->assertRefus(fn () => $controller->resetPassword(Request::create('/', 'POST'), $teacher));
+        $this->assertRefus(fn () => $controller->toggleStatus(
             Request::create('/', 'POST'),
             $teacher,
             app(SuperAdminLifecycleGuard::class),
-        );
-        $destroy = $controller->destroy($teacher, app(SuperAdminLifecycleGuard::class));
-
-        $this->assertSame(302, $reset->getStatusCode());
-        $this->assertSame(302, $toggle->getStatusCode());
-        $this->assertSame(302, $destroy->getStatusCode());
+        ));
+        $this->assertRefus(fn () => $controller->destroy($teacher, app(SuperAdminLifecycleGuard::class)));
         $this->assertDatabaseHas('users', [
             'id' => $target->id,
             'is_active' => true,
@@ -391,6 +386,24 @@ class UserDeletionGuardTest extends TestCase
             'password' => $passwordHash,
         ]);
         $this->assertTrue($target->fresh()->hasAllRoles(['superAdmin', 'caissier']));
+    }
+
+    /**
+     * Refus attendu : soit une AuthorizationException (rendue en 403 par le
+     * gestionnaire d'exceptions), soit une redirection avec message d'erreur.
+     */
+    private function assertRefus(callable $action): void
+    {
+        try {
+            $response = $action();
+        } catch (\Illuminate\Auth\Access\AuthorizationException) {
+            $this->addToAssertionCount(1);
+
+            return;
+        }
+
+        $this->assertSame(302, $response->getStatusCode());
+        $this->assertNotNull(session('error'));
     }
 
     private function actingAsPersonnelManager(): User

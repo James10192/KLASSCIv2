@@ -28,7 +28,7 @@ class ESBTPSecretaireController extends Controller
     {
         $this->userService = $userService;
         $this->middleware('auth');
-        $this->middleware('role:superAdmin');
+        $this->middleware('permission:system.manage');
     }
 
     /**
