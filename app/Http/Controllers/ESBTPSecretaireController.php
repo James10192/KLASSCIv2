@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Rules\MotDePasseChoisi;
 use App\Services\UserService;
+use App\Services\Personnel\RoleAssignmentService;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use App\Support\ListeInfinie;
 use Illuminate\Support\Facades\Validator;
@@ -89,8 +92,10 @@ class ESBTPSecretaireController extends Controller
                 'email_verified_at' => !empty($validated['email']) ? now() : null,
             ]);
 
-            $role = Role::firstOrCreate(['name' => 'secretaire']);
-            $user->assignRole($role);
+            app(RoleAssignmentService::class)->change(
+                $request->user(), $user->id, 'add', 'secretaire',
+                'Création du secrétaire depuis la route historique.'
+            );
 
             DB::commit();
 
@@ -102,10 +107,14 @@ class ESBTPSecretaireController extends Controller
             return redirect()->route('esbtp.personnel.unified.index')
                 ->with('success', 'Secrétaire créé avec succès')
                 ->with('credentials', $credentials);
+        } catch (AuthorizationException|ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('Création secrétaire annulée', ['type' => get_class($e)]);
             return redirect()->back()
-                ->withErrors(['error' => 'Erreur lors de la création du secrétaire: ' . $e->getMessage()])
+                ->withErrors(['error' => 'La création a échoué. Aucune modification enregistrée.'])
                 ->withInput();
         }
     }
@@ -182,22 +191,18 @@ class ESBTPSecretaireController extends Controller
         }
 
         try {
-            $lifecycle->deactivateUser(
-                $secretaire->id,
-                function (User $user): void {
-                    $user->update([
-                        'is_active' => false,
-                        'email' => $user->email . '_deleted_' . time(),
-                    ]);
-                    $user->removeRole('secretaire');
-                },
-                authorize: fn (User $user) => $this->authorize('delete', $user),
+            app(RoleAssignmentService::class)->change(
+                auth()->user(), $secretaire->id, 'remove', 'secretaire',
+                'Retrait de la fonction secrétaire depuis la route historique.'
             );
 
             return redirect()->route('esbtp.personnel.unified.index')
-                ->with('success', 'Secrétaire désactivé avec succès');
+                ->with('success', 'Fonction secrétaire retirée avec succès');
+        } catch (AuthorizationException|ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
+            \Log::error('Retrait secrétaire annulé', ['type' => get_class($e)]);
+            return redirect()->back()->with('error', 'Le retrait de cette fonction a échoué.');
         }
     }
 
