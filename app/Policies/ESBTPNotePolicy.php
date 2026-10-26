@@ -14,7 +14,7 @@ class ESBTPNotePolicy
 
     public function viewAny(User $user)
     {
-        return $user->can('module.notes_evaluations.access');
+        return (bool) $user->is_active && $user->can('module.notes_evaluations.access');
     }
 
     /**
@@ -23,6 +23,10 @@ class ESBTPNotePolicy
      */
     public function view(User $user, ESBTPNote $note)
     {
+        if (! $user->is_active) {
+            return false;
+        }
+
         // L'accès personnel suit la propriété réelle de la note, quel que soit
         // le nom du rôle (un compte peut aussi être enseignant/coordinateur).
         if ($user->can('notes.view_own')
@@ -52,6 +56,10 @@ class ESBTPNotePolicy
      */
     public function update(User $user, ESBTPNote $note)
     {
+        if (! $user->is_active) {
+            return false;
+        }
+
         if (! $user->can('notes.edit')) {
             return false;
         }
