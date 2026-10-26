@@ -17,6 +17,9 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPTeacherAvailability;
 use App\Services\TeacherPlanningService;
 use App\Services\UserService;
+use App\Services\Personnel\RoleAssignmentService;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use App\Support\ListeInfinie;
 use Illuminate\Http\Request;
@@ -207,6 +210,7 @@ class ESBTPEnseignantController extends Controller
      */
     public function store(StoreEnseignantRequest $request)
     {
+        abort_unless(app(\App\Services\UserManagementService::class)->canAssignRole($request->user(), 'enseignant'), 403);
         $regime = $request->input('regime') ?: TeacherRegime::Vacataire->value;
 
         DB::beginTransaction();
@@ -220,7 +224,10 @@ class ESBTPEnseignantController extends Controller
                 ],
                 "enseignant",
             );
-            $user->assignRole("enseignant");
+            app(RoleAssignmentService::class)->change(
+                $request->user(), $user->id, 'add', 'enseignant',
+                'Création enseignant depuis le formulaire historique.'
+            );
 
             $teacher = ESBTPTeacher::create([
                 "user_id" => $user->id,
@@ -261,18 +268,19 @@ class ESBTPEnseignantController extends Controller
                 ->with("success", "Enseignant {$user->name} créé avec succès.")
                 ->with("credentials", $credentials)
                 ->with("created_teacher_id", $teacher->id);
+        } catch (AuthorizationException|ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
-            DB::rollback();
-
-            return redirect()
-                ->back()
-                ->with("error", "Erreur lors de la création de l'enseignant : " . $e->getMessage())
-                ->withInput();
+            DB::rollBack();
+            \Log::error('Création enseignant annulée', ['type' => get_class($e)]);
+            return redirect()->back()->with('error', 'Création impossible. Aucune modification enregistrée.')->withInput();
         }
     }
 
     public function quickStore(QuickStoreEnseignantRequest $request)
     {
+        abort_unless(app(\App\Services\UserManagementService::class)->canAssignRole($request->user(), 'enseignant'), 403);
         DB::beginTransaction();
 
         try {
@@ -285,8 +293,10 @@ class ESBTPEnseignantController extends Controller
                 "enseignant",
             );
 
-            $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'enseignant']);
-            $user->assignRole($role);
+            app(RoleAssignmentService::class)->change(
+                $request->user(), $user->id, 'add', 'enseignant',
+                'Création rapide enseignant depuis la route historique.'
+            );
 
             // @deprecated 2026-Q3 — fallback type_contrat pour clients AJAX legacy d'avant PR #287.
             // Tous les clients modernes envoient `regime` directement. À retirer après audit.
@@ -381,26 +391,19 @@ class ESBTPEnseignantController extends Controller
                 "teacher" => $teacher,
                 "availability" => $availabilityData,
             ]);
+        } catch (AuthorizationException|ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Throwable $e) {
             DB::rollBack();
-            \Log::error(
-                "Erreur création enseignant rapide: " . $e->getMessage(),
-                [
-                    'exception' => $e,
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'trace' => config('app.debug') ? $e->getTraceAsString() : null,
-                ],
-            );
-            return response()->json(
-                [
-                    "success" => false,
-                    "message" => $e->getMessage(),
-                    "file" => $e->getFile(),
-                    "line" => $e->getLine(),
-                ],
-                500,
-            );
+            \Log::error('Création rapide enseignant annulée', [
+                'exception_type' => get_class($e),
+                'exception' => $e,
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'La création de l’enseignant a échoué. Aucune modification enregistrée.',
+            ], 500);
         }
     }
 
@@ -641,34 +644,36 @@ class ESBTPEnseignantController extends Controller
 
         try {
             if ($teacher->user) {
-                $lifecycle->deactivateUser(
-                    $teacher->user->id,
-                    function (User $user) use ($teacher): void {
-                        $teacher->update(['status' => TeacherStatus::Inactive->value]);
-                        $user->update([
-                            'is_active' => false,
-                            'email' => $user->email . '_deleted_' . time(),
-                        ]);
-                        $user->removeRole('enseignant');
-                        $user->removeRole('teacher');
-                    },
-                    authorize: fn (User $user) => $this->authorize('delete', $user),
-                );
+                // Conserver le compte et ses autres rôles ainsi que le profil enseignant
+                // historique ; seul le rôle professionnel est retiré ici.
+                DB::transaction(function () use ($teacher): void {
+                    $user = $teacher->user;
+                    if ($user->hasRole('enseignant')) {
+                        app(RoleAssignmentService::class)->change(
+                            auth()->user(), $user->id, 'remove', 'enseignant',
+                            'Retrait fonction enseignant (ESBTP) depuis route historique.'
+                        );
+                    }
+                    if ($user->hasRole('teacher')) {
+                        app(RoleAssignmentService::class)->change(
+                            auth()->user(), $user->id, 'remove', 'teacher',
+                            'Retrait alias de rôle enseignant historique.'
+                        );
+                    }
+                    $teacher->update(['status' => TeacherStatus::Inactive->value]);
+                }, 3);
             } else {
                 $teacher->update(['status' => TeacherStatus::Inactive->value]);
             }
 
             return redirect()
                 ->route("esbtp.personnel.unified.index")
-                ->with("success", "Enseignant désactivé avec succès");
+                ->with("success", "Fonction enseignant retirée avec succès");
+        } catch (AuthorizationException|ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            return redirect()
-                ->back()
-                ->with(
-                    "error",
-                    "Une erreur est survenue lors de la suppression: " .
-                        $e->getMessage(),
-                );
+            \Log::error('Retrait fonction enseignant annulé', ['type' => get_class($e)]);
+            return redirect()->back()->with('error', 'Le retrait de cette fonction a échoué.');
         }
     }
 
