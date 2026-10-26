@@ -114,6 +114,15 @@ historique mais **n'est pas une source d'autorisation** ; ne pas y réintroduire
 une matrice « quel rôle peut gérer quel rôle ». L'unique interface est
 `/esbtp/personnel/unified`.
 
+## Portées des notes et réinitialisations (26 octobre 2026)
+
+- `notes.view_own` : uniquement la note rattachée au compte étudiant.
+- `notes.view` : lecture historique ; lorsqu'un utilisateur est enseignant, limitée aux évaluations dont il est responsable.
+- `notes.view_all` : lecture réellement globale dans le périmètre tenant, y compris lorsqu'un utilisateur cumule enseignant et coordinateur. Ce droit doit être attribué explicitement, par défaut seulement aux fonctions administratives concernées, et reste révocable par établissement. Il n'autorise **aucune modification**.
+- Le choix du profil visuel n'altère jamais ces permissions et les comptes inactifs sont systématiquement refusés.
+- Les réinitialisations de mot de passe du personnel exigent `personnel.users.password.reset` **en plus** de l'autorisation de gestion de la cible. La permission `users.manage` seule ne suffit pas. Les comptes protégés restent exclus des parcours historiques.
+- Ne jamais renvoyer `$e->getMessage()` dans les réponses publiques d'échec ; loguer seulement le type d'exception et l'identifiant technique utile. Le remplacement du mécanisme historique de remise des mots de passe temporaires reste une dette de sécurité distincte.
+
 ## Policies : propriété de ressource sans passe-droit
 
 - Aucun `Policy::before()` ne doit autoriser par le seul nom `superAdmin` ou `serviceTechnique`.
