@@ -10,15 +10,6 @@ class ESBTPSeanceCoursPolicy
 {
     use HandlesAuthorization;
 
-    /**
-     * Super-admin bypass — grants all abilities.
-     */
-    public function before(User $user, string $ability)
-    {
-        if ($user->hasRole('superAdmin')) {
-            return true;
-        }
-    }
 
     /**
      * Determine whether the user can view any models.

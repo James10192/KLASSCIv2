@@ -313,7 +313,8 @@ jobs:
             tests/Unit/Exports/EnseignantsExportRedirectRegressionTest.php \
             tests/Unit/Exports/PresentationAnnuairePdfTest.php \
             tests/Unit/Exports/EnseignantsPremiumSelectsTest.php \
-            tests/Unit/Security \
+            tests/Unit/Security/MotDePasseTemporaireEtudiantTest.php \
+            tests/Unit/Security/NoLegacyTokenGuardTest.php \
             tests/Unit/Comptabilite \
             tests/Unit/Photos \
             tests/Unit/Services/Master \
@@ -534,6 +535,7 @@ jobs:
             tests/Feature/API/CLI/AccesIndividuelsCliTest.php \
             tests/Feature/API/CLI/DirectPermissionCliHardeningTest.php \
             tests/Feature/Permissions/NoImplicitSuperAdminGateTest.php \
+            tests/Feature/Permissions/PoliciesPermissionEffectiveTest.php \
             tests/Feature/Permissions/LegacyRoleMiddlewarePermissionOnlyTest.php \
             tests/Feature/Permissions/UserManagementPermissionOnlyTest.php \
             tests/Feature/Permissions/PaywallPermissionOnlyTest.php \

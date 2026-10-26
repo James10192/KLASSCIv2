@@ -17,7 +17,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
-- **Maintenance de sécurité Laravel (PR #1689, en validation uniquement) :** préparation de Laravel 12 corrigé, de ses dépendances, et adaptation des migrations d'index et de contraintes aux API natives ; aucun changement d'usage ni aucun déploiement établissement avant validation des tests MySQL/MariaDB, de l'authentification et de la revue.
+- **Sécurité (Policies, PR #1687) :** suppression de six passe-droits `before()` fondés sur `superAdmin` pour les notes, inscriptions, paiements, bulletins, matières et séances ; autorisations du Gate vérifiées par les permissions effectives avec tests de révocation.
 - **Refus propre si permission manquante :** le Gate `users.manage` renvoie une interdiction (au lieu de `PermissionDoesNotExist` → HTTP 500) lorsque la permission du tenant n'est pas encore synchronisée.
 
 - **Gestion des rôles custom** : périmètre des affectations basé sur `personnel.roles.assign` et le droit effectif de déléguer les permissions du rôle ciblé ; aucune habilitation déduite du poste coordinateur, secrétaire ou autre.
