@@ -43,10 +43,12 @@ et protège contre l'écrasement d'une autre affectation récente :
 La réponse contient roles_before et roles_after. Etat attendu périmé = 422.
 Le remplacement sans old_role ou expected_roles = 422.
 
-Gouvernance : l'attribution de superAdmin nécessite
-superadmin.accounts.create en plus de personnel.roles.assign. La modification
-d'un compte possédant déjà superAdmin ou serviceTechnique est refusée (403)
-tant que le processus de double approbation n'est pas livré. L'attribution
+Gouvernance : la création INITIALE d'un NOUVEAU compte superAdmin via
+POST /api/cli/user/create exige cli:admin + users.manage + personnel.roles.assign
++ superadmin.accounts.create. Le service insère le compte, affecte le rôle
+et consigne la décision dans la même transaction. Une promotion, un retrait,
+un remplacement ou une modification d'un compte sensible déjà existant reste
+refusé (403) tant que le processus Maker-Checker n'est pas livré. L'attribution
 de serviceTechnique est interdite par ce parcours.
 
 ## POST /api/cli/user/create
@@ -83,6 +85,11 @@ Les capacités sont évaluées directement sur les permissions effectives,
 pas sur le nom du rôle de l'opérateur.
 
 ## Historique et compatibilité
+
+- 26/10/2026 (PR #1687, non fusionnée) : création Superadmin initiale corrigée,
+  sans promotion d'un compte existant et avec transaction/audit atomiques.
+  Comportement API réparé sans modifier son format.
+
 
 - 25/10/2026 (PR #1685, EN ATTENTE) : BREAKING CHANGE. Pour toute mutation de rôle
   et création de compte via la CLI, motif devient obligatoire. Le mode implicite

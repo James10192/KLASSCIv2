@@ -23,6 +23,61 @@ final class RoleAssignmentService
     ) {
     }
 
+    /**
+     * Création INITIALE uniquement : l'identité est insérée ici, dans cette
+     * transaction. Aucun identifiant de cible existante n'est accepté ; la
+     * création ne peut donc pas servir de promotion ou de remplacement.
+     *
+     * Promotion, retrait et désactivation continuent d'exiger Maker-Checker.
+     *
+     * @param array<string,mixed> $attributes Données déjà validées par l'API.
+     */
+    public function createInitialSuperAdmin(User $actor, array $attributes, string $reason): User
+    {
+        if (trim($reason) === '') {
+            throw ValidationException::withMessages(['motif' => 'Motif obligatoire.']);
+        }
+
+        return DB::transaction(function () use ($actor, $attributes, $reason): User {
+            // Même verrou d'exclusion que les autres mutations sensibles.
+            $role = Role::query()
+                ->where('name', 'superAdmin')
+                ->where('guard_name', 'web')
+                ->lockForUpdate()
+                ->firstOrFail();
+            $operator = User::query()->whereKey($actor->id)->lockForUpdate()->firstOrFail();
+
+            foreach (['users.manage', 'personnel.roles.assign', 'superadmin.accounts.create'] as $permission) {
+                if (! $operator->checkPermissionTo($permission, 'web')) {
+                    throw new AuthorizationException('Création Superadministrateur non autorisée.');
+                }
+            }
+
+            // Liste blanche stricte : le client ne choisit jamais id,
+            // created_by, roles ni l'état privilégié de la cible.
+            $user = User::create([
+                'name' => $attributes['name'],
+                'email' => $attributes['email'] ?? null,
+                'username' => $attributes['username'],
+                'password' => $attributes['password'],
+                'phone' => $attributes['phone'] ?? null,
+                'is_active' => true,
+                'must_change_password' => (bool) ($attributes['must_change_password'] ?? true),
+                'created_by' => $operator->id,
+            ]);
+            $user->assignRole($role);
+            $this->audit->enregistrerDecisionDeCompte(
+                $user,
+                ['roles' => []],
+                ['roles' => ['superAdmin']],
+                $operator->id,
+                $reason
+            );
+
+            return $user;
+        }, 3);
+    }
+
     /** @return array{before: array<int,string>, after: array<int,string>} */
     public function change(
         User $actor, int $targetId, string $mode, string $roleName, string $reason,
