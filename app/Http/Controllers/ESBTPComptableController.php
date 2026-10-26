@@ -35,6 +35,10 @@ class ESBTPComptableController extends Controller
 
     public function store(Request $request)
     {
+        // system.manage ouvre l'ancien écran, mais ne permet pas de déléguer
+        // automatiquement toutes les permissions d'un rôle comptable.
+        abort_unless(app(\App\Services\UserManagementService::class)->canAssignRole($request->user(), 'comptable'), 403);
+
         $validated = $request->validate([
             'name'       => 'required|string|max:255',
             'email'      => 'nullable|string|email|max:255|unique:users,email',
@@ -148,6 +152,8 @@ class ESBTPComptableController extends Controller
 
     public function storeCaissier(Request $request)
     {
+        abort_unless(app(\App\Services\UserManagementService::class)->canAssignRole($request->user(), 'caissier'), 403);
+
         $validated = $request->validate([
             'name'      => 'required|string|max:255',
             'email'     => 'nullable|string|email|max:255|unique:users,email',
