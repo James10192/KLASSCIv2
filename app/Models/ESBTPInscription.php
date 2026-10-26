@@ -456,12 +456,6 @@ class ESBTPInscription extends Model implements Auditable
     }
 
     /**
-     * Scope pour filtrer les inscriptions actives.
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
-    /**
      * Cohorte académique : étudiants inscrits et créés, pour une année (et une classe
      * si fournie). Source unique de la cohorte de pilotage : ClassAcademicHealthService
      * et le diagnostic lisent ce scope, pour ne pas la redéfinir à côté.
@@ -475,6 +469,12 @@ class ESBTPInscription extends Model implements Auditable
             ->when($classeId !== null, fn ($scope) => $scope->where('classe_id', $classeId));
     }
 
+    /**
+     * Scope pour filtrer les inscriptions actives.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
     public function scopeActives($query)
     {
         return $query->where('status', 'active');

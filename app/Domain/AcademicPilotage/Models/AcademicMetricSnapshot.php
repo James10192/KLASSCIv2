@@ -78,4 +78,26 @@ class AcademicMetricSnapshot extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    /**
+     * Instantanés que le lecteur de cohorte peut voir pour une classe : portée étudiant,
+     * année, système, période et moteur. Source unique, lue par AcademicMetricSnapshotCohortProvider
+     * et par academic-pilotage:diagnose.
+     */
+    public function scopePourCohorte($query, int $classeId, int $anneeId, string $systeme, string $periode)
+    {
+        return $query
+            ->where('scope_type', 'student')
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeId)
+            ->where('academic_system', $systeme)
+            ->where('semester', $periode)
+            ->where('engine_version', (string) config('academic_pilotage.engine_version', '1.0.0'));
+    }
+
+    /** Ligne utilisable : non marquée sale par l'invalidation. */
+    public function scopeExploitable($query)
+    {
+        return $query->where('is_dirty', false);
+    }
 }

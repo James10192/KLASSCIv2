@@ -42,18 +42,32 @@ class AcademicPilotageDiagnoseCohorteTest extends AcademicPilotageDatabaseTestCa
         DB::table('esbtp_annee_universitaires')->insert([
             'id' => 1, 'nom' => '2026-2027', 'annee_debut' => 2026, 'is_active' => true, 'is_current' => true,
         ]);
+        // Mêmes colonnes sur chaque ligne : Query\Builder::insert compile les colonnes de la première.
         DB::table('esbtp_classes')->insert([
-            ['id' => 10, 'systeme_academique' => 'BTS', 'is_active' => true],
-            ['id' => 11, 'systeme_academique' => 'BTS', 'is_active' => true],
-            ['id' => 12, 'systeme_academique' => 'BTS', 'is_active' => true, 'deleted_at' => now()],
+            ['id' => 10, 'systeme_academique' => 'BTS', 'is_active' => true, 'annee_universitaire_id' => 1, 'deleted_at' => null],
+            ['id' => 11, 'systeme_academique' => 'BTS', 'is_active' => true, 'annee_universitaire_id' => 1, 'deleted_at' => null],
+            ['id' => 12, 'systeme_academique' => 'BTS', 'is_active' => true, 'annee_universitaire_id' => 1, 'deleted_at' => now()],
         ]);
     }
 
-    public function test_cohorte_exclut_inscriptions_supprimees_et_classes_supprimees(): void
+    public function test_cohorte_exclut_inscriptions_et_classes_supprimees(): void
     {
-        $this->inscription(1, 10, 'active');
-        $this->inscription(2, 10, 'active', deletedAt: now());
-        $this->inscription(3, 12, 'active');
+        $this->inscription(1, 10);
+        $this->inscription(2, 10, deletedAt: now());
+        $this->inscription(3, 12);
+
+        $cohorte = $this->diagnoseCohorte();
+
+        $this->assertSame(1, $cohorte['couples_cohorte']);
+        $this->assertSame(1, $cohorte['sans_ligne']);
+    }
+
+    public function test_cohorte_exclut_statut_workflow_et_autre_annee(): void
+    {
+        $this->inscription(1, 10);
+        $this->inscription(2, 10, status: 'annulee');
+        $this->inscription(3, 10, workflow: 'prospect');
+        $this->inscription(4, 10, annee: 2);
 
         $cohorte = $this->diagnoseCohorte();
 
@@ -97,14 +111,20 @@ class AcademicPilotageDiagnoseCohorteTest extends AcademicPilotageDatabaseTestCa
         $this->assertStringContainsString('aucune année', $cohorte['motif']);
     }
 
-    private function inscription(int $etudiantId, int $classeId, string $workflow, $deletedAt = null): void
-    {
+    private function inscription(
+        int $etudiantId,
+        int $classeId,
+        string $status = 'active',
+        string $workflow = 'etudiant_cree',
+        int $annee = 1,
+        $deletedAt = null,
+    ): void {
         DB::table('esbtp_inscriptions')->insert([
             'etudiant_id' => $etudiantId,
             'classe_id' => $classeId,
-            'annee_universitaire_id' => 1,
-            'status' => 'active',
-            'workflow_step' => 'etudiant_cree',
+            'annee_universitaire_id' => $annee,
+            'status' => $status,
+            'workflow_step' => $workflow,
             'created_at' => now(),
             'updated_at' => now(),
             'deleted_at' => $deletedAt,
