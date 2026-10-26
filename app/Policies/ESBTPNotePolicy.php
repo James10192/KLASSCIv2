@@ -34,6 +34,11 @@ class ESBTPNotePolicy
         // Conserver la portée métier de l'enseignant : son droit notes.view
         // ne lui ouvre pas les évaluations des collègues. Le rôle étudiant
         // secondaire ne doit toutefois pas écraser ses permissions de prof.
+        // La permission globale explicite prend le pas sur le profil visuel.
+        // notes.view reste limité aux évaluations confiées aux enseignants.
+        if ($user->can('notes.view_all')) {
+            return true;
+        }
         if ($user->hasRole(['teacher', 'enseignant'])) {
             return $user->can('notes.view') && $this->teacherOwnsEvaluation($user, $note);
         }
