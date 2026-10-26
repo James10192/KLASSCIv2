@@ -130,15 +130,8 @@ jobs:
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Feature/Auth/SharedStudentAccountRoutesTest.php --stop-on-failure
 
-      # Vérifier les nouveaux endpoints RBAC contre les régressions : cette
-      # famille de tests doit rester exécutée sur le dernier SHA de chaque PR.
-      - name: Test sécurité des séances, exploitation et autorisations MCP
-        if: github.event_name == 'pull_request'
-        run: |
-          php artisan test tests/Feature/Permissions/TimetableAndExploitationScopeTest.php --stop-on-failure
-          php artisan test tests/Feature/Permissions/McpAndMobilePermissionOnlyTest.php --stop-on-failure
-          php artisan test tests/Feature/Permissions/LegacyCoordinateurRoleMutationTest.php --stop-on-failure
-
+      # Les nouveaux tests RBAC utilisent une base SQL réelle. Ils s'exécutent
+      # dans nanan-mcp.yml (MariaDB 10.11) : ce job lint n'en démarre aucune.
       - name: Test réparation des jetons de connexion et inscription sûre
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Feature/Auth/PasswordResetStorageRepairTest.php --stop-on-failure
