@@ -163,6 +163,11 @@ class LoginController extends Controller
     protected function sendLoginResponse(Request $request)
     {
         $request->session()->regenerate();
+        \App\Support\ProfilActif::oublier($request);
+
+        if (\App\Support\ProfilActif::doitChoisir($request->user())) {
+            return redirect()->route('profil.choisir');
+        }
 
         return redirect()->intended($this->redirectPath());
     }

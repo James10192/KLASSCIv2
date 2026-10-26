@@ -99,7 +99,7 @@
                     <div class="alert alert-info rounded-3 mt-3">
                         <i class="fas fa-info-circle me-2"></i>
                         Ce compte aura le rôle <strong>comptable</strong> avec accès complet à la comptabilité (paiements, frais, relances, rapports) mais <strong>sans pouvoir supprimer</strong> des données.
-                        Les permissions peuvent être ajustées depuis <a href="{{ route('esbtp.roles-permissions.index') }}" class="alert-link">Gestion des Permissions</a>.
+                        Les permissions peuvent être ajustées depuis <a href="{{ route('esbtp.personnel.unified.index', ['section' => 'roles']) }}" class="alert-link">Gestion des Permissions</a>.
                     </div>
 
                     <div class="alert alert-success rounded-3 mt-3">

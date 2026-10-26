@@ -5,7 +5,6 @@ namespace Tests\Unit\Services;
 use App\Models\User;
 use App\Services\PermissionRegistry;
 use App\Services\UserManagementService;
-use Illuminate\Database\Eloquent\Collection;
 use Mockery;
 use Tests\TestCase;
 
@@ -25,136 +24,82 @@ class UserManagementServiceTest extends TestCase
         parent::tearDown();
     }
 
-    /**
-     * Crée un mock de User avec les rôles donnés.
-     */
-    private function userWithRoles(array $roleNames, int $id = 1): User
+    private function user(int $id, array $rights, array $roles = [], array $targetPermissions = []): User
     {
         $user = Mockery::mock(User::class)->makePartial();
         $user->id = $id;
-
-        $rolesCollection = new Collection(array_map(function ($name) {
-            $role = new \stdClass();
-            $role->name = $name;
-            return $role;
-        }, $roleNames));
-
-        $user->shouldReceive('getAttribute')->with('roles')->andReturn($rolesCollection);
-        $user->roles = $rolesCollection;
-
-        $user->shouldReceive('hasAnyRole')->andReturnUsing(function ($needles) use ($roleNames) {
-            return ! empty(array_intersect((array) $needles, $roleNames));
-        });
+        $user->shouldReceive('can')->andReturnUsing(fn (string $name) => in_array($name, $rights, true));
+        $user->shouldReceive('getRoleNames')->andReturn(collect($roles));
+        $permissions = collect(array_map(fn (string $name) => (object) ['name' => $name], $targetPermissions));
+        $user->shouldReceive('getAllPermissions')->andReturn($permissions);
 
         return $user;
     }
 
-    public function test_secretaire_can_manage_enseignant(): void
+    public function test_le_nom_de_role_seul_ne_donne_aucun_droit_de_gestion(): void
     {
-        $secretaire = $this->userWithRoles(['secretaire'], 1);
-        $enseignant = $this->userWithRoles(['enseignant'], 2);
-
-        $this->assertTrue($this->service->canManage($secretaire, $enseignant));
+        $this->assertFalse($this->service->canManage(
+            $this->user(1, [], ['secretaire']),
+            $this->user(2, [], ['enseignant'])
+        ));
     }
 
-    public function test_secretaire_cannot_manage_super_admin(): void
+    public function test_permission_donne_acces_sans_role_quand_les_droits_de_cible_sont_couverts(): void
     {
-        $secretaire = $this->userWithRoles(['secretaire'], 1);
-        $superAdmin = $this->userWithRoles(['superAdmin'], 2);
-
-        $this->assertFalse($this->service->canManage($secretaire, $superAdmin));
+        $this->assertTrue($this->service->canManage(
+            $this->user(1, ['personnel.manage', 'notes.view']),
+            $this->user(2, [], ['enseignant'], ['notes.view'])
+        ));
     }
 
-    public function test_manageable_secondary_role_does_not_bypass_protected_role(): void
+    public function test_on_ne_peut_pas_prendre_le_compte_de_quelqu_un_de_plus_privilegie(): void
     {
-        $secretaire = $this->userWithRoles(['secretaire'], 1);
-        $mixedTarget = $this->userWithRoles(['superAdmin', 'enseignant'], 2);
-
-        $this->assertFalse($this->service->canManage($secretaire, $mixedTarget));
+        $this->assertFalse($this->service->canManage(
+            $this->user(1, ['personnel.manage']),
+            $this->user(2, [], ['comptable'], ['system.manage'])
+        ));
     }
 
-    public function test_actor_must_manage_every_target_role(): void
+    public function test_manage_all_est_une_permission_distincte_et_explicitement_attribuee(): void
     {
-        $support = $this->userWithRoles(['serviceTechnique'], 1);
-        $mixedTarget = $this->userWithRoles(['superAdmin', 'enseignant'], 2);
-
-        $this->assertTrue($this->service->canManage($support, $mixedTarget));
+        $this->assertTrue($this->service->canManage(
+            $this->user(1, ['users.manage', 'personnel.roles.manage_all']),
+            $this->user(2, [], ['administrateurInstance'], ['system.manage'])
+        ));
     }
 
-    public function test_secretaire_cannot_manage_comptable(): void
+    public function test_superadmin_et_technique_resten_proteges_meme_avec_tous_les_droits(): void
     {
-        $secretaire = $this->userWithRoles(['secretaire'], 1);
-        $comptable = $this->userWithRoles(['comptable'], 2);
-
-        $this->assertFalse($this->service->canManage($secretaire, $comptable));
+        $actor = $this->user(1, ['users.manage', 'personnel.roles.manage_all']);
+        $this->assertFalse($this->service->canManage($actor, $this->user(2, [], ['superAdmin'])));
+        $this->assertFalse($this->service->canManage($actor, $this->user(3, [], ['serviceTechnique', 'enseignant'])));
     }
 
-    public function test_user_cannot_manage_themselves(): void
+    public function test_compte_sans_role_gerable_par_permission(): void
     {
-        $secretaire = $this->userWithRoles(['secretaire'], 5);
-        $sameUser = $this->userWithRoles(['enseignant'], 5);
-
-        $this->assertFalse($this->service->canManage($secretaire, $sameUser));
+        $this->assertTrue($this->service->canManage(
+            $this->user(1, ['personnel.manage']), $this->user(2, [])
+        ));
     }
 
-    public function test_etudiant_cannot_manage_anyone(): void
+    public function test_auto_gestion_interdite(): void
     {
-        $etudiant = $this->userWithRoles(['etudiant'], 1);
-        $autre = $this->userWithRoles(['enseignant'], 2);
-
-        $this->assertFalse($this->service->canManage($etudiant, $autre));
+        $this->assertFalse($this->service->canManage(
+            $this->user(5, ['personnel.manage', 'personnel.roles.manage_all']), $this->user(5, [])
+        ));
     }
 
-    public function test_caissier_can_only_manage_etudiant(): void
+    public function test_superadmin_ne_peut_pas_etre_attribue_par_la_policy_generique(): void
     {
-        $caissier = $this->userWithRoles(['caissier'], 1);
-        $etudiant = $this->userWithRoles(['etudiant'], 2);
-        $enseignant = $this->userWithRoles(['enseignant'], 3);
-
-        $this->assertTrue($this->service->canManage($caissier, $etudiant));
-        $this->assertFalse($this->service->canManage($caissier, $enseignant));
+        $actor = $this->user(1, ['personnel.roles.assign', 'superadmin.accounts.create']);
+        $this->assertFalse($this->service->canAssignRole($actor, 'superAdmin'));
+        $this->assertFalse($this->service->canAssignRole($actor, 'serviceTechnique'));
     }
 
-    public function test_coordinateur_manages_enseignant_and_etudiant(): void
+    public function test_attribution_de_role_exige_permission_specifique(): void
     {
-        $coordinateur = $this->userWithRoles(['coordinateur'], 1);
-        $enseignant = $this->userWithRoles(['enseignant'], 2);
-        $etudiant = $this->userWithRoles(['etudiant'], 3);
-
-        $this->assertTrue($this->service->canManage($coordinateur, $enseignant));
-        $this->assertTrue($this->service->canManage($coordinateur, $etudiant));
-    }
-
-    public function test_can_assign_role_respects_matrix(): void
-    {
-        $secretaire = $this->userWithRoles(['secretaire'], 1);
-
-        $this->assertTrue($this->service->canAssignRole($secretaire, 'enseignant'));
-        $this->assertTrue($this->service->canAssignRole($secretaire, 'etudiant'));
-        $this->assertFalse($this->service->canAssignRole($secretaire, 'superAdmin'));
-        $this->assertFalse($this->service->canAssignRole($secretaire, 'comptable'));
-    }
-
-    public function test_manageable_roles_for_secretaire(): void
-    {
-        $secretaire = $this->userWithRoles(['secretaire'], 1);
-        $manageable = $this->service->manageableRolesFor($secretaire);
-
-        $this->assertContains('enseignant', $manageable);
-        $this->assertContains('etudiant', $manageable);
-        $this->assertContains('caissier', $manageable);
-        $this->assertNotContains('superAdmin', $manageable);
-    }
-
-    public function test_user_with_multiple_roles_gets_union_of_manageable(): void
-    {
-        $multiRole = $this->userWithRoles(['secretaire', 'caissier'], 1);
-        $manageable = $this->service->manageableRolesFor($multiRole);
-
-        // Doit contenir l'union : enseignant, etudiant, caissier (de secretaire)
-        // + etudiant (de caissier) → unique
-        $this->assertContains('enseignant', $manageable);
-        $this->assertContains('etudiant', $manageable);
-        $this->assertContains('caissier', $manageable);
+        $actor = $this->user(1, ['users.manage']);
+        $this->assertFalse($this->service->canAssignRole($actor, 'enseignant'));
+        $this->assertSame([], $this->service->manageableRolesFor($actor));
     }
 }

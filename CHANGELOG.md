@@ -1,5 +1,11 @@
 # Changelog KLASSCI
 
+- Multi-fonctions : choix obligatoire du profil après authentification mot de passe, e-mail OTP ou SSO et changement dans la session (aucune modification de droits), contrôles du middleware et tests intégration.
+
+- Sécurité : création d'un compte Superadmin réservée par défaut à la permission du Service Technique, sans droit implicite via le rôle Superadmin ; migration douce des attributions historiques, décisions explicitement accordées conservées.
+
+- Sécurité (PR #1685) : gestion globale des rôles et initialisation des comptes sans rôle sous permissions explicites `personnel.roles.manage_all` et `personnel.users.initialize`, avec tests de permissions directes, de refus sans habilitation et de repli 403 lorsque la permission manque en base.
+
 Toutes les évolutions notables de la plateforme KLASSCI, regroupées par mois.
 Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
@@ -11,6 +17,33 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Permissions seules (PR #1687, en validation) :** les huit derniers contrôleurs encore gardés par `role:*` passent sur des permissions ; l'accès au LMS et la gestion des caissiers se décident par permission et non par le premier rôle du compte ; les tableaux de bord Superadmin et Service technique exigent leur permission en plus du rôle. **Breaking API LMS :** `roles_autorises` devient `permissions_requises` (`docs/api/LMS_AUTH.md`).
+- **Affectations de rôle centralisées :** tout rôle de départ (élève inscrit, enseignant importé, personnel créé) et le retrait du rôle caissier à la désactivation passent par `RoleAssignmentService`, avec audit, refus des rôles sensibles et refus de changer un compte existant par cette voie. Un opérateur CLI désactivé reçoit un 403 et non plus une 500.
+- **Multi-rôles (sécurité des ressources) :** une identité supplémentaire d'étudiant ne masque plus les droits globaux `inscriptions.view` et `paiements.view` explicitement accordés par l'établissement ; les comptes sans ces permissions restent refusés.
+- **Notes et bulletins (sécurité des ressources) :** l'enseignant doit disposer explicitement de `notes.view` ou `notes.edit` même lorsqu'il a créé l'évaluation ; le périmètre des évaluations d'autrui reste protégé, le coordinateur n'est plus bloqué par son nom de rôle et `bulletins.view_own` ne révèle plus les bulletins d'autres titulaires.
+- **Sécurité API CLI (PR #1687, en validation) :** la liste des comptes exige désormais un droit de consultation effectif en plus du token ; tous les rôles sont exposés sans N+1, le champ ancien `role` reste disponible, et les erreurs techniques ne journalisent plus leurs traces intégrales.
+- **Superadministrateur (PR #1687, en validation) :** création initiale d'un nouveau compte via la CLI sous trois permissions effectives et ability de token, avec attribution et audit atomiques ; promotions et changements de comptes sensibles existants toujours interdits sans Maker-Checker.
+- **Sécurité (Policies, PR #1687) :** suppression de six passe-droits `before()` fondés sur `superAdmin` pour les notes, inscriptions, paiements, bulletins, matières et séances ; autorisations du Gate vérifiées par les permissions effectives avec tests de révocation.
+- **Refus propre si permission manquante :** le Gate `users.manage` renvoie une interdiction (au lieu de `PermissionDoesNotExist` → HTTP 500) lorsque la permission du tenant n'est pas encore synchronisée.
+
+- **Gestion des rôles custom** : périmètre des affectations basé sur `personnel.roles.assign` et le droit effectif de déléguer les permissions du rôle ciblé ; aucune habilitation déduite du poste coordinateur, secrétaire ou autre.
+
+- **Autorisations (PR #1685) :** suppression de l'ancien joker `Gate::before` fondé sur le nom du rôle superAdmin. Les permissions révocables du tenant sont désormais nécessaires y compris pour ce rôle, sans impacter les restrictions d'état de paiement. Couverture Feature des permissions directes et des retraits effectifs.
+
+- **CI permissions CLI** : tests Feature isolés du garde d'installation `CheckInstalled` ; les autorisations directes sans rôle sont testées sans redirection artificielle /install (la logique de protection en production reste inchangée).
+
+- **Sécurité CLI identifiants (PR #1685) :** permissions séparées pour réinitialisation et export de credentials ; aucun rôle de l'auteur ne sert de passe-droit sur les mots de passe des Superadmin ou Service Technique.
+
+- **Sécurité délégation CLI :** le retrait et le remplacement vérifient également les permissions contenues dans le rôle retiré ; aucun gestionnaire ne peut retirer des pouvoirs qu'il ne détient pas lui-même.
+
+- **Sécurité suppression CLI (PR #1685) :** désactivation conditionnée par personnel.users.deactivate, motif obligatoire, audit transactionnel et blocage des comptes sensibles tant que le double accord n'existe pas.
+
+- **CLI (PR #1685, validation en cours) :** création de compte et gestion de rôles personnalisés désormais conditionnées par des permissions effectives ; assignation via RoleAssignmentService avec motif, validation d'état et refus des transformations Superadmin non approuvées.
+
+- **Sécurité API CLI en préparation (#1685) :** opérations de rôles ciblées et audit atomique ; permissions de gestion explicites ; aucune modification d'instance scolaire.
+
+- **Gestion du personnel — écran unique :** accès centralisé sur `/esbtp/personnel/unified` pour les rôles personnalisés et standards ; anciennes pages redirigées, anciennes routes d'écriture fermées et vues mortes retirées, recherche et navigation desktop/mobile alignées ; mise à jour des cartes de rôles standards en AJAX après enregistrement, avec description, icône et compteur conservés ; restauration des droits d'origine et consultation du rapport d'audit par le Service Technique depuis les mêmes modales, sans rechargement. Les bascules de statut enseignants/secrétaires/comptables/caissiers actualisent maintenant les cartes et filtres sur place ; un compte multi-rôles n'est plus limité par l'ordre de ses rôles. Les erreurs techniques de création, mise à jour et suppression sont journalisées sans fuite des messages d'exception vers le navigateur. Les filtres « Inactifs » incluent réellement les comptes désactivés, et un compte multi-rôles est présent dans chaque onglet concerné, sans N+1. Chaque décision de permissions et d'affectation de rôle a une trace durable avant/après sur la base de l'instance, même si les événements de pivot Eloquent ne se déclenchent pas. Les écritures CLI de création de rôles et d'affectation des comptes sont transactionnelles avec trace auditable avant/après. Le KPI Total déduplique les comptes multi-rôles. Les anomalies SQL ne deviennent plus des listes vides silencieuses ; l'indisponibilité des cartes de rôles est signalée. Le CLI sérialise les mutations des superadministrateurs avec le verrou du cycle de vie, même pour une promotion vers serviceTechnique. La modification, la suppression et l'ouverture des affectations d'un rôle personnalisé vérifient également les permissions déjà présentes. Le personnel en lecture seule peut consulter les listes et statistiques, mais reste bloqué sur toutes les routes d'écriture. Le droit personnel.manage permet aussi d'ouvrir la page sans doublon personnel.view, sans élargir les mutations aux lecteurs. L'API des statistiques retourne des compteurs zéro lorsque les rôles d'organigramme ne sont pas encore créés, au lieu d'une erreur 500.
+- **Rôles et permissions — gestion du personnel (lot 1, vérifications en cours) :** les ajouts et retraits explicites de droits des rôles standards sont consignés et préservés pendant les synchronisations ; les anciennes routes d’écriture des rôles sont fermées et les affectations contrôlent le périmètre et tous les rôles de chaque compte. Les comptes désactivés affectés restent visibles et identifiés, sans retrait implicite. Aucune permission nouvelle accordée automatiquement ni configuration nominative d’établissement.
 - **Reçus de paiement — espace pour la signature et le cachet (#1677) :** zone manuscrite de 15 mm sur les deux exemplaires, sans changer le design ni dépasser une page A4.
 - **Validation des réinscriptions depuis la fiche inscription :** le bouton « Valider définitivement » réutilise le moteur de validation de la fiche étudiant pour une réinscription en « Documents complets ». Observations, auteur et historique conservés ; aucun paiement ni exonération artificiels.
 - **Reçus de paiement — deux exemplaires sur un A4 (#1675) :** les espaces verticaux du reçu PDF sont resserrés pour garder l’exemplaire élève/parent et l’exemplaire caisse sur une seule feuille, sans changement de design, de données ni de montants.

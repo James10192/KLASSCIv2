@@ -278,7 +278,7 @@ Les donnees retournees au login sont automatiquement filtrees selon le role :
 |------|---------|-------------|
 | 401 | Identifiants incorrects | Email/username ou mot de passe incorrect |
 | 403 | Compte desactive | L'utilisateur est desactive (`is_active=false`) |
-| 403 | Acces non autorise au LMS | Le role de l'utilisateur n'est pas dans la liste autorisee |
+| 403 | Acces non autorise au LMS : permission requise | Le compte ne porte aucune des permissions `identity.teach`, `identity.coordinate`, `identity.direct_studies`, `identity.student`, `system.manage` (par un role quelconque ou directement) |
 | 403 | Pas reinscrit (code: `NO_ACTIVE_ENROLLMENT`) | L'etudiant n'a pas d'inscription active pour l'annee courante |
 | 422 | Donnees invalides | Parametres de requete manquants ou invalides |
 | 429 | Too Many Requests | Rate limit atteint (10/min pour check-user/check-availability) |
@@ -304,6 +304,11 @@ Les donnees retournees au login sont automatiquement filtrees selon le role :
 ---
 
 ## Historique des modifications
+
+### 2026-10-26 — acces par permission (PR #1687)
+
+- `login` et `check-user` n'examinent plus le PREMIER role du compte : l'acces est accorde si le compte porte une des permissions listees ci-dessus. Un compte multi-fonctions dont le premier role n'est pas pedagogique n'est plus refuse ; un compte portant seulement le nom `superAdmin` sans permission est refuse.
+- **Breaking** : dans la reponse de documentation de l'API, `roles_autorises` est remplace par `permissions_requises`.
 
 ### Version 1.2 - 24 septembre 2026
 

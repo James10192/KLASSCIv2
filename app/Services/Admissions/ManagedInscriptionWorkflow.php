@@ -699,9 +699,9 @@ final class ManagedInscriptionWorkflow
             'must_change_password' => true,
         ]);
 
-        if ($role = Role::where('name', 'etudiant')->first()) {
-            $user->assignRole($role);
-        }
+        app(\App\Services\Personnel\RoleAssignmentService::class)->provisionnerNouveauCompte(
+            $user, 'etudiant', auth()->id(), 'Création du compte au parcours d\'admission'
+        );
 
         $etudiant->forceFill(['user_id' => $user->id])->save();
 

@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Rules\MotDePasseChoisi;
 use App\Services\UserService;
+use App\Services\Personnel\RoleAssignmentService;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use App\Support\ListeInfinie;
 use Illuminate\Http\Request;
@@ -66,6 +69,9 @@ class ESBTPCoordinateurController extends Controller
     public function store(Request $request)
     {
         $this->authorize('coordinateurs.create');
+        // La création attribue aussi le rôle : même délégation effective que
+        // l'écran unique personnel/unified (aucun passe-droit par fonction).
+        abort_unless(app(\App\Services\UserManagementService::class)->canAssignRole($request->user(), 'coordinateur'), 403);
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -95,8 +101,12 @@ class ESBTPCoordinateurController extends Controller
                 'email_verified_at' => !empty($validated['email']) ? now() : null,
             ]);
 
-            // Assigner le rôle coordinateur
-            $user->assignRole('coordinateur');
+            // Mutation sécurisée avec revalidation des droits et audit durable
+            // dans la même transaction que la création du compte.
+            app(RoleAssignmentService::class)->change(
+                $request->user(), $user->id, 'add', 'coordinateur',
+                'Création du coordinateur depuis la route historique.'
+            );
 
             DB::commit();
 
@@ -110,9 +120,13 @@ class ESBTPCoordinateurController extends Controller
                            ->with('success', 'Coordinateur créé avec succès.')
                            ->with('credentials', $credentials);
 
+        } catch (AuthorizationException|ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Erreur lors de la création du coordinateur: ' . $e->getMessage())
+            \Log::error('Création coordinateur annulée', ['type' => get_class($e)]);
+            return back()->with('error', 'La création a échoué. Aucune modification n’a été enregistrée.')
                         ->withInput();
         }
     }
@@ -200,8 +214,10 @@ class ESBTPCoordinateurController extends Controller
             return redirect()->route('esbtp.personnel.unified.index')
                            ->with('success', 'Coordinateur mis à jour avec succès.');
 
+        } catch (AuthorizationException|ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            return back()->with('error', 'Erreur lors de la mise à jour: ' . $e->getMessage())
+            return back()->with('error', 'La mise à jour a échoué. Contactez le support.')
                         ->withInput();
         }
     }
@@ -224,23 +240,22 @@ class ESBTPCoordinateurController extends Controller
         }
 
         try {
-            $lifecycle->deactivateUser(
-                $coordinateur->id,
-                function (User $user): void {
-                    $user->removeRole('coordinateur');
-                    $user->update([
-                        'is_active' => false,
-                        'email' => $user->email . '_deleted_' . time(),
-                    ]);
-                },
-                authorize: fn (User $user) => $this->authorize('delete', $user),
+            // Ce DELETE historique retire une FONCTION, non le compte entier.
+            // Un enseignant-coordinateur conserve son accès enseignant et ses relations.
+            // La désactivation complète utilise le workflow indépendant du personnel.
+            app(RoleAssignmentService::class)->change(
+                auth()->user(), $coordinateur->id, 'remove', 'coordinateur',
+                'Retrait de la fonction coordinateur depuis la route historique.'
             );
 
             return redirect()->route('esbtp.personnel.unified.index')
                            ->with('success', 'Coordinateur supprimé avec succès.');
 
+        } catch (AuthorizationException|ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            return back()->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
+            \Log::error('Retrait fonction coordinateur annulé', ['type' => get_class($e)]);
+            return back()->with('error', 'Le retrait de cette fonction a échoué.');
         }
     }
 
@@ -266,6 +281,7 @@ class ESBTPCoordinateurController extends Controller
      */
     public function resetPassword(User $coordinateur)
     {
+        abort_unless(auth()->user()?->can('personnel.users.password.reset'), 403);
         $this->authorize('users.manage');
         $this->authorize('update', $coordinateur);
 
@@ -308,19 +324,19 @@ class ESBTPCoordinateurController extends Controller
         } catch (\Exception $e) {
             \Log::error('❌ Password reset failed for coordinator', [
                 'coordinateur_id' => $coordinateur->id,
-                'error' => $e->getMessage()
+                'exception_type' => get_class($e)
             ]);
 
             if (request()->wantsJson() || request()->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Erreur lors de la réinitialisation du mot de passe: ' . $e->getMessage()
+                    'message' => 'La réinitialisation du mot de passe a échoué. Contactez le support.'
                 ], 500);
             }
 
             return redirect()
                 ->back()
-                ->with('error', 'Erreur lors de la réinitialisation du mot de passe: ' . $e->getMessage());
+                ->with('error', 'La réinitialisation du mot de passe a échoué. Contactez le support.');
         }
     }
 
@@ -341,7 +357,7 @@ class ESBTPCoordinateurController extends Controller
                 authorize: fn (User $user) => $this->authorize('update', $user),
             );
         } catch (\Exception $e) {
-            return back()->with('error', $e->getMessage());
+            return back()->with('error', 'Le changement de statut a échoué. Contactez le support.');
         }
 
         $status = $isActive ? 'activé' : 'désactivé';

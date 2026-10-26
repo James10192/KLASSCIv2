@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\ResetsPersonnelPassword;
 use App\Models\User;
 use App\Services\UserService;
+use App\Services\Personnel\RoleAssignmentService;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,7 +22,7 @@ class ESBTPComptableController extends Controller
 
     public function __construct(UserService $userService)
     {
-        $this->middleware(['auth', 'role:superAdmin']);
+        $this->middleware(['auth', 'permission:system.manage']);
         $this->userService = $userService;
     }
 
@@ -35,6 +38,10 @@ class ESBTPComptableController extends Controller
 
     public function store(Request $request)
     {
+        // system.manage ouvre l'ancien écran, mais ne permet pas de déléguer
+        // automatiquement toutes les permissions d'un rôle comptable.
+        abort_unless(app(\App\Services\UserManagementService::class)->canAssignRole($request->user(), 'comptable'), 403);
+
         $validated = $request->validate([
             'name'       => 'required|string|max:255',
             'email'      => 'nullable|string|email|max:255|unique:users,email',
@@ -58,7 +65,10 @@ class ESBTPComptableController extends Controller
             ]);
 
             // Assigner le rôle comptable
-            $user->assignRole('comptable');
+            app(RoleAssignmentService::class)->change(
+                $request->user(), $user->id, 'add', 'comptable',
+                'Création comptable depuis la route historique.'
+            );
 
             DB::commit();
 
@@ -72,11 +82,15 @@ class ESBTPComptableController extends Controller
                 ->route('esbtp.personnel.unified.index')
                 ->with('success', "Comptable {$user->name} créé avec succès.")
                 ->with('credentials', $credentials);
+        } catch (AuthorizationException|ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('Création comptabilité annulée', ['type' => get_class($e)]);
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Erreur lors de la création : ' . $e->getMessage());
+                ->with('error', 'La création a échoué. Aucune modification enregistrée.');
         }
     }
 
@@ -125,7 +139,7 @@ class ESBTPComptableController extends Controller
                 authorize: fn (User $target) => $this->authorize('update', $target),
             );
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', $e->getMessage());
+            return redirect()->back()->with('error', 'Le changement de statut a échoué.');
         }
 
         $label = $isActive ? 'activé' : 'désactivé';
@@ -148,6 +162,8 @@ class ESBTPComptableController extends Controller
 
     public function storeCaissier(Request $request)
     {
+        abort_unless(app(\App\Services\UserManagementService::class)->canAssignRole($request->user(), 'caissier'), 403);
+
         $validated = $request->validate([
             'name'      => 'required|string|max:255',
             'email'     => 'nullable|string|email|max:255|unique:users,email',
@@ -166,7 +182,10 @@ class ESBTPComptableController extends Controller
                 'telephone' => $validated['telephone'] ?? null,
             ]);
 
-            $user->assignRole('caissier');
+            app(RoleAssignmentService::class)->change(
+                $request->user(), $user->id, 'add', 'caissier',
+                'Création caissier depuis la route historique.'
+            );
 
             DB::commit();
 
@@ -179,11 +198,15 @@ class ESBTPComptableController extends Controller
                 ->route('esbtp.personnel.unified.index')
                 ->with('success', "Caissier {$user->name} créé avec succès.")
                 ->with('credentials', $credentials);
+        } catch (AuthorizationException|ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('Création comptabilité annulée', ['type' => get_class($e)]);
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Erreur lors de la création : ' . $e->getMessage());
+                ->with('error', 'La création a échoué. Aucune modification enregistrée.');
         }
     }
 
@@ -196,22 +219,18 @@ class ESBTPComptableController extends Controller
         }
 
         try {
-            $lifecycle->deactivateUser(
-                $user->id,
-                function (User $target): void {
-                    $target->update([
-                        'is_active' => false,
-                        'email' => $target->email . '_deleted_' . time(),
-                    ]);
-                    $target->removeRole('comptable');
-                },
-                authorize: fn (User $target) => $this->authorize('delete', $target),
+            app(RoleAssignmentService::class)->change(
+                auth()->user(), $user->id, 'remove', 'comptable',
+                'Retrait de la fonction comptable depuis la route historique.'
             );
 
             return redirect()->route('esbtp.personnel.unified.index')
-                ->with('success', 'Comptable désactivé avec succès');
+                ->with('success', 'Fonction comptable retirée avec succès');
+        } catch (AuthorizationException|ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
+            \Log::error('Retrait comptable annulé', ['type' => get_class($e)]);
+            return redirect()->back()->with('error', 'Le retrait de cette fonction a échoué.');
         }
     }
 

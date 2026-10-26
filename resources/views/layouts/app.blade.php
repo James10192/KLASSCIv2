@@ -2302,8 +2302,8 @@
                     @endcan
                     @endcan
 
-                    <!-- Service Technique Section - ADC Only (role-gated, not permission) -->
-                    @role('serviceTechnique')
+                    <!-- Menu technique visible par permissions effectives, sans gate sur rôle. -->
+                    @canany(['paywall.manage', 'system.technical_access', 'personnel.view', 'personnel.manage'])
                         <div class="menu-category">Service Technique ADC</div>
 
                         <!-- Configuration System -->
@@ -2314,25 +2314,33 @@
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
                             <div class="menu-accordion-content {{ Request::routeIs('esbtp.paywall-config.*') || Request::routeIs('esbtp.matricule-config.*') ? 'show' : '' }}">
+                                @can('paywall.manage')
                                 <a href="{{ route('esbtp.paywall-config.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.paywall-config.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span><i class="fas fa-shield-alt me-2"></i>Paywall</span>
                                 </a>
+                                @endcan
+                                @can('system.technical_access')
                                 <a href="{{ route('esbtp.matricule-config.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.matricule-config.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span><i class="fas fa-id-card me-2"></i>Matricule</span>
                                 </a>
-                                <a href="{{ route('esbtp.roles-permissions.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.roles-permissions.*') ? 'active' : '' }}">
+                                @endcan
+                                @canany(['personnel.view', 'personnel.manage'])
+                                <a href="{{ route('esbtp.personnel.unified.index', ['section' => 'roles']) }}" class="menu-sublink {{ Request::routeIs('esbtp.personnel.unified.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span><i class="fas fa-user-shield me-2"></i>Rôles & Permissions</span>
                                 </a>
+                                @endcanany
+                                @can('system.technical_access')
                                 <a href="{{ route('esbtp.bulletin-style.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.bulletin-style.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span><i class="fas fa-file-alt me-2"></i>Style Bulletin</span>
                                 </a>
+                                @endcan
                             </div>
                         </div>
-                    @endrole
+                    @endcanany
 
                     <!-- Security & Audit Section - permission-gated (superAdmin + serviceTechnique by default via *) -->
                     @canany(['security.audit.view', 'comptabilite.audit.view'])
@@ -2771,6 +2779,11 @@
                                     </a>
                                 @endrole
                             </li>
+                            @if(auth()->user()->getRoleNames()->unique()->count() > 1)
+                                <li><a class="dropdown-item" href="{{ route('profil.choisir') }}">
+                                    <i class="fas fa-arrows-rotate"></i> Changer de profil
+                                </a></li>
+                            @endif
                             <x-support.entrees-menu variante="bureau" />
                             <li>
                                 {{-- Une securite qu'on ne trouve pas n'est activee par personne. --}}
@@ -4020,6 +4033,9 @@
                 @endif
                 @if(Route::has($mnbProfilRoute))
                     <a href="{{ route($mnbProfilRoute) }}"><x-m.icon name="user" />Mon profil<span class="ch"><x-m.icon name="chr" /></span></a>
+                @endif
+                @if($mnbUser->getRoleNames()->unique()->count() > 1)
+                    <a href="{{ route('profil.choisir') }}"><x-m.icon name="user" />Changer de profil<span class="ch"><x-m.icon name="chr" /></span></a>
                 @endif
                 @if(Route::has('securite.double-auth.reglages'))
                     <a href="{{ route('securite.double-auth.reglages') }}"><x-m.icon name="lock" />Double authentification<span class="ch"><x-m.icon name="chr" /></span></a>

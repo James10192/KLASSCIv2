@@ -4,6 +4,10 @@ namespace App\Http\Controllers\ESBTP;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Services\Personnel\RoleAssignmentService;
+use App\Services\UserManagementService;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +23,7 @@ class SecretaireAdminController extends Controller
      */
     public function __construct()
     {
-        $this->middleware(['auth', 'role:superAdmin']);
+        $this->middleware(['auth', 'permission:system.manage']);
     }
 
     /**
@@ -60,6 +64,7 @@ class SecretaireAdminController extends Controller
      */
     public function store(Request $request)
     {
+        abort_unless(app(UserManagementService::class)->canAssignRole($request->user(), 'secretaire'), 403);
         // Validation des données
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
@@ -99,19 +104,23 @@ class SecretaireAdminController extends Controller
             $secretaire->save();
 
             // Assigner le rôle de secrétaire
-            $secretaire->assignRole('secretaire');
+            app(RoleAssignmentService::class)->change(
+                $request->user(), $secretaire->id, 'add', 'secretaire',
+                'Création secrétaire depuis SecretaireAdminController.'
+            );
 
             DB::commit();
 
             return redirect()->route('esbtp.personnel.unified.index')
                 ->with('success', 'Le compte secrétaire a été créé avec succès.');
 
+        } catch (AuthorizationException|ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
-
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Une erreur est survenue lors de la création du compte : ' . $e->getMessage());
+            \Log::error('Création secrétaire admin annulée', ['type' => get_class($e)]);
+            return redirect()->back()->withInput()->with('error', 'La création du compte a échoué.');
         }
     }
 
@@ -227,20 +236,20 @@ class SecretaireAdminController extends Controller
         try {
             $secretaire = User::role('secretaire')->findOrFail($id);
 
-            // Supprimer la photo de profil si elle existe
-            if ($secretaire->profile_photo_path) {
-                Storage::disk('public')->delete($secretaire->profile_photo_path);
-            }
-
-            // Supprimer l'utilisateur
-            $secretaire->delete();
+            // L'ancien hard-delete supprimait aussi les autres fonctions et
+            // détruisait les historiques : retirer seulement le rôle ciblé.
+            app(RoleAssignmentService::class)->change(
+                auth()->user(), $secretaire->id, 'remove', 'secretaire',
+                'Retrait de la fonction secrétaire depuis SecretaireAdminController.'
+            );
 
             return redirect()->route('esbtp.personnel.unified.index')
-                ->with('success', 'Le compte secrétaire a été supprimé avec succès.');
+                ->with('success', 'Fonction secrétaire retirée avec succès.');
 
+        } catch (AuthorizationException|ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'Une erreur est survenue lors de la suppression du compte : ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Le retrait de cette fonction a échoué.');
         }
     }
 }

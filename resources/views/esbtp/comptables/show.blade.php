@@ -555,7 +555,7 @@ select.cs-comptable-edit-input { text-align: left; min-width: 160px; cursor: poi
                             <div class="cs-comptable-card-title-icon"><i class="fas fa-shield-alt"></i></div>
                             Permissions actives
                         </div>
-                        <a href="{{ route('esbtp.roles-permissions.index', ['role' => 'comptable']) }}" class="cs-comptable-hero-btn primary" style="padding: 6px 14px; font-size: .78rem;">
+                        <a href="{{ route('esbtp.personnel.unified.index', ['section' => 'roles']) }}" class="cs-comptable-hero-btn primary" style="padding: 6px 14px; font-size: .78rem;">
                             <i class="fas fa-cog"></i> Gerer
                         </a>
                     </div>

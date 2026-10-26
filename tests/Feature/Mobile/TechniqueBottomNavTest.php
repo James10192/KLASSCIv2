@@ -32,7 +32,8 @@ class TechniqueBottomNavTest extends TestCase
 
     public function test_le_service_technique_a_ses_pages_et_pas_la_caisse(): void
     {
-        $permissions = ['module.caisse.access', 'paiements.create', 'cash_session.manage', 'paywall.manage'];
+        // system.technical_access : le profil technique suit la permission, pas le seul nom du rôle.
+        $permissions = ['module.caisse.access', 'paiements.create', 'cash_session.manage', 'paywall.manage', 'system.technical_access', 'personnel.view'];
         foreach ($permissions as $permission) {
             Permission::findOrCreate($permission, 'web');
         }
@@ -55,7 +56,8 @@ class TechniqueBottomNavTest extends TestCase
 
     public function test_le_superadmin_ne_voit_pas_technique_dans_sa_bascule(): void
     {
-        Role::findOrCreate('superAdmin', 'web');
+        Role::findOrCreate('superAdmin', 'web')
+            ->givePermissionTo(Permission::findOrCreate('system.manage', 'web'));
         $user = User::factory()->create();
         $user->assignRole('superAdmin');
         $this->actingAs($user);

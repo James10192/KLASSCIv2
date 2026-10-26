@@ -293,7 +293,7 @@ a.dst-kpi:hover { background:rgba(255,255,255,.18); color:#fff; }
                 <div class="dst-quick">
                     <a href="{{ $routePaywall }}"><i class="fas fa-shield-alt"></i><span><strong>Abonnement</strong><small>Limites, échéance, accès d'urgence</small></span></a>
                     <a href="{{ route('esbtp.matricule-config.index') }}"><i class="fas fa-id-card"></i><span><strong>Matricules</strong><small>Mode et nomenclature</small></span></a>
-                    <a href="{{ route('esbtp.roles-permissions.index') }}"><i class="fas fa-user-shield"></i><span><strong>Rôles et permissions</strong><small>Droits par rôle</small></span></a>
+                    <a href="{{ route('esbtp.personnel.unified.index', ['section' => 'roles']) }}"><i class="fas fa-user-shield"></i><span><strong>Rôles et permissions</strong><small>Droits par rôle</small></span></a>
                     <a href="{{ route('esbtp.bulletin-style.index') }}"><i class="fas fa-file-lines"></i><span><strong>Style des bulletins</strong><small>Présentation des PDF</small></span></a>
                     @if(config('app.support_email'))
                         <a href="mailto:{{ config('app.support_email') }}"><i class="fas fa-envelope"></i><span><strong>Support KLASSCI</strong><small>{{ config('app.support_email') }}</small></span></a>

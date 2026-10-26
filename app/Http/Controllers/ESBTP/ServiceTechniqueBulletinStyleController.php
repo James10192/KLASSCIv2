@@ -13,7 +13,7 @@ class ServiceTechniqueBulletinStyleController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:serviceTechnique');
+        $this->middleware('permission:system.technical_access');
     }
 
     /**

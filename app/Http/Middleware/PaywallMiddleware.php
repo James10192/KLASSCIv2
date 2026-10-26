@@ -194,8 +194,9 @@ class PaywallMiddleware
             return false;
         }
 
-        // ACCÈS RÉSERVÉ EXCLUSIVEMENT AU SERVICE TECHNIQUE D'AFRICAN DIGIT CONSULTING
-        // Seul le rôle serviceTechnique est autorisé, pas les superAdmin
-        return $user->hasRole('serviceTechnique');
+        // Le nom de rôle n'autorise aucune action. Seul le service technique
+        // reçoit ce droit PAR DÉFAUT ; l'école peut attribuer directement
+        // la permission avec traçabilité, indépendamment du rôle.
+        return $user->can('paywall.manage');
     }
 }

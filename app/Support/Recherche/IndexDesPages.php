@@ -132,7 +132,7 @@ final class IndexDesPages
         ['route' => 'esbtp.comptabilite.salaires.index', 'titre' => 'Salaires', 'groupe' => 'Finances', 'icone' => 'fa-money-check-dollar', 'mots' => ['paie', 'bulletin de paie', 'vacataires'], 'can' => ['module.comptabilite.access', 'comptabilite.salaires.view']],
 
         // Personnel
-        ['route' => 'esbtp.personnel.unified.index', 'titre' => 'Gestion du personnel', 'groupe' => 'Personnel', 'icone' => 'fa-people-group', 'mots' => ['personnel', 'secrétaires', 'comptables', 'caissiers', 'utilisateurs', 'comptes'], 'can' => ['personnel.manage']],
+        ['route' => 'esbtp.personnel.unified.index', 'titre' => 'Gestion du personnel', 'groupe' => 'Personnel', 'icone' => 'fa-people-group', 'mots' => ['personnel', 'secrétaires', 'comptables', 'caissiers', 'utilisateurs', 'comptes', 'rôles personnalisés', 'permissions', 'profils', 'droits'], 'can' => ['personnel.manage']],
         ['route' => 'esbtp.enseignants.index', 'titre' => 'Enseignants', 'groupe' => 'Personnel', 'icone' => 'fa-chalkboard-user', 'mots' => ['professeurs', 'vacataires', 'formateurs'], 'can' => ['personnel.manage']],
         ['route' => 'esbtp.enseignants.create', 'titre' => 'Nouvel enseignant', 'groupe' => 'Personnel', 'icone' => 'fa-user-plus', 'mots' => ['ajouter un professeur', 'recruter', 'vacataire'], 'can' => ['personnel.manage']],
         ['route' => 'esbtp.acces-individuels.index', 'titre' => 'Accès individuels', 'groupe' => 'Personnel', 'icone' => 'fa-user-shield', 'mots' => ['délégation', 'permissions temporaires', 'permission définitive', 'autorisation individuelle', 'intérim'], 'can' => ['personnel.manage', 'permissions.temporaires.manage']],
@@ -147,8 +147,6 @@ final class IndexDesPages
 
         // Paramètres
         ['route' => 'esbtp.settings.index', 'titre' => 'Paramètres', 'groupe' => 'Paramètres', 'icone' => 'fa-gear', 'mots' => ['réglages', 'configuration', 'établissement', 'logo', 'téléphone', 'pdf'], 'can' => ['system.manage']],
-        ['route' => 'esbtp.roles-permissions.index', 'titre' => 'Rôles et permissions', 'groupe' => 'Paramètres', 'icone' => 'fa-user-shield', 'mots' => ['droits', 'accès', 'rôles personnalisés'], 'can' => ['system.manage']],
-        ['route' => 'esbtp.custom-roles.index', 'titre' => 'Rôles personnalisés', 'groupe' => 'Paramètres', 'icone' => 'fa-user-gear', 'mots' => ['rôles', 'profils', 'droits'], 'can' => ['system.manage']],
         ['route' => 'esbtp.matricule-config.index', 'titre' => 'Format des matricules', 'groupe' => 'Paramètres', 'icone' => 'fa-hashtag', 'mots' => ['matricule', 'numérotation'], 'can' => ['system.manage']],
         ['route' => 'esbtp.bulletin-style.index', 'titre' => 'Style des bulletins', 'groupe' => 'Paramètres', 'icone' => 'fa-palette', 'mots' => ['mise en page bulletin', 'modèle'], 'can' => ['system.manage']],
         ['route' => 'esbtp.parent-chatbot-onboarding.index', 'titre' => 'Assistant WhatsApp des parents', 'groupe' => 'Paramètres', 'icone' => 'fa-robot', 'mots' => ['chatbot', 'whatsapp', 'parents'], 'can' => ['parent_chatbot.manage']],

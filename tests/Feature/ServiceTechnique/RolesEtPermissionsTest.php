@@ -5,6 +5,7 @@ namespace Tests\Feature\ServiceTechnique;
 use App\Models\User;
 use App\Services\ExtensionsDeRole;
 use App\Services\PermissionRegistry;
+use App\Services\PermissionSyncService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -45,16 +46,16 @@ class RolesEtPermissionsTest extends TestCase
 
         $this->st = User::factory()->create();
         $this->st->assignRole('serviceTechnique');
+        $this->st->givePermissionTo(Permission::findOrCreate('system.technical_access', 'web'));
+        // Les capacités explicites sont nécessaires, même au Service Technique.
+        $this->st->givePermissionTo(Permission::findOrCreate('personnel.manage', 'web'));
     }
 
-    public function test_la_page_se_rend_avec_le_role_demande(): void
+    public function test_ancienne_page_roles_redirige_vers_la_page_unifiee(): void
     {
         $this->actingAs($this->st)
             ->get(route('esbtp.roles-permissions.index', ['role' => 'comptable']))
-            ->assertOk()
-            ->assertSee('Rôles et permissions')
-            ->assertSee('id="rpRoleInput" name="role" value="comptable"', false)
-            ->assertSee('data-role="comptable"', false);
+            ->assertRedirect(route('esbtp.personnel.unified.index', ['section' => 'roles']));
     }
 
     public function test_l_enregistrement_en_json_rend_les_permissions_du_role(): void
@@ -110,6 +111,88 @@ class RolesEtPermissionsTest extends TestCase
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $this->assertTrue(Role::findByName('comptable')->hasPermissionTo($alias));
+    }
+
+    public function test_un_droit_par_defaut_explicitement_revoque_ne_revient_pas_au_deploiement(): void
+    {
+        // paiements.correct_mode figure dans le rattrapage newFeaturePermissions.
+        // Auparavant il était systématiquement réaccordé au prochain sync.
+        $role = Role::findOrCreate('caissier', 'web');
+        Permission::findOrCreate('paiements.correct_mode', 'web');
+        Permission::findOrCreate('paiements.view_own', 'web');
+        $role->syncPermissions(['paiements.correct_mode', 'paiements.view_own']);
+
+        $this->actingAs($this->st)
+            ->postJson(route('esbtp.roles-permissions.update'), [
+                'role' => 'caissier',
+                'permissions' => ['paiements.view_own'],
+            ])
+            ->assertOk();
+
+        $this->assertContains(
+            'paiements.correct_mode',
+            app(ExtensionsDeRole::class)->revoqueesPour('caissier')
+        );
+
+        app(PermissionSyncService::class)->run();
+
+        $this->assertFalse(Role::findByName('caissier', 'web')
+            ->hasPermissionTo('paiements.correct_mode'));
+
+        // Restaurer les paramètres usine supprime la décision de retrait.
+        $this->actingAs($this->st)
+            ->postJson(route('esbtp.roles-permissions.restore-defaults'), [
+                'role' => 'caissier',
+            ])->assertOk();
+
+        $this->assertNotContains(
+            'paiements.correct_mode',
+            app(ExtensionsDeRole::class)->revoqueesPour('caissier')
+        );
+
+        app(PermissionSyncService::class)->run();
+        $this->assertTrue(Role::findByName('caissier', 'web')
+            ->hasPermissionTo('paiements.correct_mode'));
+    }
+
+    public function test_endpoint_technique_refuse_mutation_indirecte_d_un_compte_superadmin(): void
+    {
+        $sensible = User::factory()->create(['is_active' => true]);
+        Role::findOrCreate('superAdmin', 'web');
+        $sensible->assignRole(['superAdmin', 'comptable']);
+        $role = Role::findByName('comptable', 'web');
+        $avant = $role->permissions()->pluck('name')->sort()->values()->all();
+
+        $this->actingAs($this->st)
+            ->postJson(route('esbtp.roles-permissions.update'), [
+                'role' => 'comptable', 'permissions' => [$this->horsDefaut],
+            ])->assertForbidden();
+
+        $this->actingAs($this->st)
+            ->postJson(route('esbtp.roles-permissions.restore-defaults'), [
+                'role' => 'comptable',
+            ])->assertForbidden();
+
+        $this->assertSame($avant, $role->fresh()->permissions()->pluck('name')->sort()->values()->all());
+        $this->assertTrue($sensible->fresh()->hasRole('comptable'));
+    }
+
+    public function test_roles_de_secours_immuables_sur_les_endpoints_techniques(): void
+    {
+        foreach (['superAdmin', 'serviceTechnique'] as $roleName) {
+            Role::findOrCreate($roleName, 'web');
+
+            $this->actingAs($this->st)
+                ->postJson(route('esbtp.roles-permissions.update'), [
+                    'role' => $roleName,
+                    'permissions' => [],
+                ])->assertForbidden();
+
+            $this->actingAs($this->st)
+                ->postJson(route('esbtp.roles-permissions.restore-defaults'), [
+                    'role' => $roleName,
+                ])->assertForbidden();
+        }
     }
 
     public function test_un_compte_sans_service_technique_est_refuse(): void

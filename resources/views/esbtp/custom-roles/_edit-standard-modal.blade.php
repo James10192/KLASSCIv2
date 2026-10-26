@@ -42,7 +42,7 @@
                     <i class="fas fa-shield-alt"></i>
                     <div>
                         <strong>Rôle système — modifications préservées</strong>
-                        <p>Vous modifiez un rôle standard de KLASSCI. Le <strong>nom interne</strong> (<code>{{ $role->name }}</code>) est figé. Le label, l'icône, la description et les permissions sont customisables. Pour des modifications avancées (création/suppression de rôle système, rôles superAdmin/serviceTechnique), contactez le Service Technique.</p>
+                        <p>Vous modifiez un rôle standard de KLASSCI. Le <strong>nom interne</strong> (<code>{{ $role->name }}</code>) est figé. Le label, l'icône, la description et les permissions sont customisables. Les rôles bootstrap superAdmin/serviceTechnique ne sont pas modifiables afin de préserver les accès de secours. Toutes les modifications autorisées se font depuis Gestion du personnel.</p>
                     </div>
                 </div>
 
@@ -127,6 +127,15 @@
             </div>
 
             <div class="modal-footer cr-modal-footer">
+                @role('serviceTechnique')
+                    <button type="button" class="cr-btn cr-btn-ghost"
+                            data-cr-restore-defaults
+                            data-cr-role-name="{{ $role->name }}"
+                            data-cr-restore-url="{{ route('esbtp.roles-permissions.restore-defaults') }}"
+                            title="Cette opération conserve la traçabilité et rétablit les droits du registre">
+                        <i class="fas fa-rotate-left"></i> Restaurer les permissions d'origine
+                    </button>
+                @endrole
                 <button type="button" class="cr-btn cr-btn-ghost" data-bs-dismiss="modal">
                     <i class="fas fa-times"></i> Annuler
                 </button>

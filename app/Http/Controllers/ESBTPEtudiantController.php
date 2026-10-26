@@ -1036,10 +1036,9 @@ class ESBTPEtudiantController extends Controller
             ]);
 
             // Assigner le rôle étudiant
-            $role = Role::where('name', 'etudiant')->first();
-            if ($role) {
-                $user->assignRole($role);
-            }
+            app(\App\Services\Personnel\RoleAssignmentService::class)->provisionnerNouveauCompte(
+                $user, 'etudiant', auth()->id(), 'Création du compte de l\'étudiant'
+            );
 
             // Lier le compte à l'étudiant
             $etudiant->user_id = $user->id;

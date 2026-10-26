@@ -30,6 +30,7 @@ trait ResetsPersonnelPassword
      */
     protected function resetPersonnelPassword(User $user, string $roleLabel): JsonResponse|RedirectResponse
     {
+        abort_unless(auth()->user()?->can('personnel.users.password.reset'), 403);
         try {
             $defaultPassword = UserService::defaultPassword();
 
@@ -60,18 +61,18 @@ trait ResetsPersonnelPassword
             Log::error('Password reset failed for personnel', [
                 'role' => $roleLabel,
                 'user_id' => $user->id,
-                'error' => $e->getMessage(),
+                'exception_type' => get_class($e),
             ]);
 
             if (request()->wantsJson() || request()->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Erreur lors de la réinitialisation : ' . $e->getMessage(),
+                    'message' => 'La réinitialisation a échoué. Contactez le support.',
                 ], 500);
             }
 
             return redirect()->back()
-                ->with('error', 'Erreur lors de la réinitialisation : ' . $e->getMessage());
+                ->with('error', 'La réinitialisation a échoué. Contactez le support.');
         }
     }
 }

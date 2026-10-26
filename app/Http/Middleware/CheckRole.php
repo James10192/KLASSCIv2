@@ -4,48 +4,48 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
+/**
+ * Pont de compatibilité pour les vieilles routes « role:* ».
+ *
+ * Un nom de rôle ne constitue JAMAIS une autorisation. Les routes métier
+ * doivent utiliser « permission:* » directement, mais si un ancien appel
+ * subsiste, ce pont traduit UNIQUEMENT l'étiquette legacy en permission
+ * explicite et refuse toute valeur inconnue. Aucun hasRole / bypass superAdmin.
+ */
 class CheckRole
 {
-    /**
-     * Vérifie si l'utilisateur a le rôle spécifié.
-     *
-     * Ce middleware permet de restreindre l'accès aux routes en fonction du rôle de l'utilisateur.
-     * Par exemple, certaines routes ne sont accessibles qu'aux super administrateurs, secrétaires ou étudiants.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure  $next
-     * @param  string  $role
-     * @return mixed
-     */
-    public function handle(Request $request, Closure $next, $role)
+    private const LEGACY_PERMISSIONS = [
+        'superAdmin' => 'system.manage',
+        'serviceTechnique' => 'system.technical_access',
+        'secretaire' => 'identity.school_manager',
+        'coordinateur' => 'identity.coordinate',
+        'directeurEtudes' => 'identity.direct_studies',
+        'enseignant' => 'identity.teach',
+        'teacher' => 'identity.teach',
+        'etudiant' => 'identity.student',
+    ];
+
+    public function handle(Request $request, Closure $next, string $roles)
     {
-        // Vérifier si l'utilisateur est connecté
-        if (!Auth::check()) {
-            return redirect('login');
+        $user = $request->user();
+        if (! $user) {
+            return redirect()->guest(route('login'));
         }
 
-        // Récupérer l'utilisateur connecté
-        $user = Auth::user();
+        // Une session historique ne doit pas rester utilisable après désactivation.
+        // Un modèle tout juste créé n'a pas l'attribut en mémoire : on relit la
+        // base plutôt que de prendre l'absence pour un refus (ou un accord).
+        $actif = $user->is_active ?? $user->newQuery()->whereKey($user->getKey())->value('is_active');
+        abort_unless((bool) $actif, 403, 'Compte inactif.');
 
-        // Si l'utilisateur est superAdmin, il a accès à tout
-        if ($user->hasRole('superAdmin')) {
-            return $next($request);
-        }
-
-        // Vérifier pour les rôles multiples (ex: 'role:admin,editor' ou 'role:admin|editor')
-        // Accepter à la fois les virgules ET les pipes comme séparateurs
-        $roles = preg_split('/[,|]/', $role);
-        foreach ($roles as $singleRole) {
-            $singleRole = trim($singleRole); // Nettoyer les espaces
-            if ($user->hasRole($singleRole)) {
+        foreach (preg_split('/[,|]/', $roles) as $name) {
+            $required = self::LEGACY_PERMISSIONS[trim($name)] ?? null;
+            if ($required !== null && $user->can($required)) {
                 return $next($request);
             }
         }
 
-        // Si aucun des rôles requis n'est présent
-        $rolesString = implode(', ', array_map('ucfirst', $roles));
-        abort(403, 'Accès non autorisé. Rôle requis: ' . $rolesString);
+        abort(403, 'Accès non autorisé : permission requise.');
     }
 }

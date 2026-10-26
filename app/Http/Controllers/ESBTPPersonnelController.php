@@ -21,41 +21,9 @@ class ESBTPPersonnelController extends Controller
      */
     public function index()
     {
-        // Vérifier les permissions
-        $this->authorize('users.manage');
-        
-        // Récupérer tous les types de personnel
-        $coordinateurs = User::role('coordinateur')
-            ->with(['roles'])
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
-            
-        $enseignants = User::role('enseignant')
-            ->with(['roles'])
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
-            
-        $secretaires = User::role('secretaire')
-            ->with(['roles'])
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
-            
-        // Calculer les statistiques
-        $stats = [
-            'coordinateurs' => $coordinateurs->count(),
-            'enseignants' => $enseignants->count(),
-            'secretaires' => $secretaires->count(),
-        ];
-        
-        return view('esbtp.personnel.index', compact(
-            'coordinateurs',
-            'enseignants', 
-            'secretaires',
-            'stats'
-        ));
+        // Une seule page canonique. Les endpoints AJAX legacy restent disponibles
+        // pendant leur migration vers le contrôleur unifié.
+        return redirect()->route('esbtp.personnel.unified.index');
     }
 
     /**
@@ -153,7 +121,9 @@ class ESBTPPersonnelController extends Controller
             ]);
 
             // Assigner le rôle approprié
-            $user->assignRole($validated['type']);
+            app(\App\Services\Personnel\RoleAssignmentService::class)->provisionnerNouveauCompte(
+                $user, $validated['type'], auth()->id(), 'Création d\'un compte du personnel'
+            );
 
             DB::commit();
 

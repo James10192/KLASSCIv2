@@ -14,7 +14,9 @@ class StoreEnseignantRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return (bool) $this->user()?->can('teachers.create');
+        // teachers.create n'est pas le droit de déléguer le rôle enseignant.
+        return (bool) $this->user()?->can('teachers.create')
+            && app(\App\Services\UserManagementService::class)->canAssignRole($this->user(), 'enseignant');
     }
 
     public function rules(): array

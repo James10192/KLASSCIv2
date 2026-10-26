@@ -41,7 +41,7 @@ class FicheReinscriptionTest extends TestCase
         $this->withoutMiddleware([PaywallMiddleware::class, EnsureInstalled::class, CheckInstalled::class]);
 
         Role::findOrCreate('superAdmin', 'web');
-        foreach (['identity.registrar', 'inscriptions.view', 'students.view', 'finances.etudiants.voir', 'paiements.create'] as $p) {
+        foreach (['admin.access', 'identity.registrar', 'inscriptions.view', 'students.view', 'finances.etudiants.voir', 'paiements.create', 'reinscriptions.reliquats.report', 'inscriptions.edit_validated'] as $p) {
             Permission::findOrCreate($p, 'web');
         }
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -50,6 +50,12 @@ class FicheReinscriptionTest extends TestCase
         $this->agent->givePermissionTo(['identity.registrar', 'inscriptions.view', 'finances.etudiants.voir']);
         $this->admin = User::withoutEvents(fn () => User::factory()->create(['username' => 'u_'.Str::lower(Str::random(8))]));
         $this->admin->assignRole('superAdmin');
+        // Depuis le retrait de Gate::before, aucune action ou route ne doit
+        // dépendre du seul nom superAdmin. La fixture porte ses vrais droits.
+        $this->admin->givePermissionTo([
+            'admin.access', 'inscriptions.view', 'finances.etudiants.voir',
+            'reinscriptions.reliquats.report', 'inscriptions.edit_validated',
+        ]);
 
         // Aucune autre année ouverte : l'année visée se déduit des seules années du test.
         ESBTPAnneeUniversitaire::query()->update(['is_current' => false, 'is_active' => false]);

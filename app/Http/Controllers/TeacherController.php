@@ -10,6 +10,10 @@ use App\Models\Designation;
 use App\Models\Subject;
 use App\Models\TeacherAttendance;
 use Illuminate\Http\Request;
+use App\Services\Personnel\RoleAssignmentService;
+use App\Services\UserManagementService;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -76,6 +80,7 @@ class TeacherController extends Controller
      */
     public function store(Request $request)
     {
+        abort_unless(app(UserManagementService::class)->canAssignRole($request->user(), 'enseignant'), 403);
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
@@ -117,7 +122,10 @@ class TeacherController extends Controller
             ]);
 
             // Attribution du rôle Spatie
-            $user->assignRole('enseignant');
+            app(RoleAssignmentService::class)->change(
+                $request->user(), $user->id, 'add', 'enseignant',
+                'Création enseignant via le contrôleur historique TeacherController.'
+            );
 
             // Gérer l'image de profil
             if ($request->hasFile('profile_image')) {
@@ -156,10 +164,14 @@ class TeacherController extends Controller
 
             return redirect()->route('teachers.index')
                 ->with('success', 'Enseignant créé avec succès.');
+        } catch (AuthorizationException|ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
-            DB::rollback();
+            DB::rollBack();
+            \Log::error('Création Teacher historique annulée', ['type' => get_class($e)]);
             return redirect()->back()
-                ->with('error', 'Une erreur est survenue lors de la création de l\'enseignant: ' . $e->getMessage())
+                ->with('error', 'La création de l’enseignant a échoué.')
                 ->withInput();
         }
     }
@@ -306,22 +318,24 @@ class TeacherController extends Controller
         try {
             $user = $teacher->user;
 
-            // Supprimer l'image de profil si elle existe
-            if ($user->profile_image) {
-                Storage::disk('public')->delete($user->profile_image);
-            }
-
-            // Supprimer l'enseignant (cela supprimera également l'utilisateur grâce à la contrainte onDelete cascade)
+            // Préserver les documents et la relation du compte pour l'audit :
+            // le modèle Teacher est SoftDeletes, l'utilisateur reste intact.
+            app(RoleAssignmentService::class)->change(
+                auth()->user(), $user->id, 'remove', 'enseignant',
+                'Retrait de la fonction enseignant depuis TeacherController.'
+            );
             $teacher->delete();
 
             DB::commit();
 
             return redirect()->route('teachers.index')
                 ->with('success', 'Enseignant supprimé avec succès.');
+        } catch (AuthorizationException|ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
-            DB::rollback();
-            return redirect()->back()
-                ->with('error', 'Une erreur est survenue lors de la suppression de l\'enseignant: ' . $e->getMessage());
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Le retrait de cette fonction a échoué.');
         }
     }
 

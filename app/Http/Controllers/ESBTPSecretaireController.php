@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Rules\MotDePasseChoisi;
 use App\Services\UserService;
+use App\Services\Personnel\RoleAssignmentService;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use App\Support\ListeInfinie;
 use Illuminate\Support\Facades\Validator;
@@ -25,7 +28,7 @@ class ESBTPSecretaireController extends Controller
     {
         $this->userService = $userService;
         $this->middleware('auth');
-        $this->middleware('role:superAdmin');
+        $this->middleware('permission:system.manage');
     }
 
     /**
@@ -55,6 +58,8 @@ class ESBTPSecretaireController extends Controller
      */
     public function store(Request $request)
     {
+        abort_unless(app(\App\Services\UserManagementService::class)->canAssignRole($request->user(), 'secretaire'), 403);
+
         // Capturer les données validées pour éviter la vulnérabilité mass assignment
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
@@ -87,8 +92,10 @@ class ESBTPSecretaireController extends Controller
                 'email_verified_at' => !empty($validated['email']) ? now() : null,
             ]);
 
-            $role = Role::firstOrCreate(['name' => 'secretaire']);
-            $user->assignRole($role);
+            app(RoleAssignmentService::class)->change(
+                $request->user(), $user->id, 'add', 'secretaire',
+                'Création du secrétaire depuis la route historique.'
+            );
 
             DB::commit();
 
@@ -100,10 +107,14 @@ class ESBTPSecretaireController extends Controller
             return redirect()->route('esbtp.personnel.unified.index')
                 ->with('success', 'Secrétaire créé avec succès')
                 ->with('credentials', $credentials);
+        } catch (AuthorizationException|ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('Création secrétaire annulée', ['type' => get_class($e)]);
             return redirect()->back()
-                ->withErrors(['error' => 'Erreur lors de la création du secrétaire: ' . $e->getMessage()])
+                ->withErrors(['error' => 'La création a échoué. Aucune modification enregistrée.'])
                 ->withInput();
         }
     }
@@ -180,22 +191,18 @@ class ESBTPSecretaireController extends Controller
         }
 
         try {
-            $lifecycle->deactivateUser(
-                $secretaire->id,
-                function (User $user): void {
-                    $user->update([
-                        'is_active' => false,
-                        'email' => $user->email . '_deleted_' . time(),
-                    ]);
-                    $user->removeRole('secretaire');
-                },
-                authorize: fn (User $user) => $this->authorize('delete', $user),
+            app(RoleAssignmentService::class)->change(
+                auth()->user(), $secretaire->id, 'remove', 'secretaire',
+                'Retrait de la fonction secrétaire depuis la route historique.'
             );
 
             return redirect()->route('esbtp.personnel.unified.index')
-                ->with('success', 'Secrétaire désactivé avec succès');
+                ->with('success', 'Fonction secrétaire retirée avec succès');
+        } catch (AuthorizationException|ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
+            \Log::error('Retrait secrétaire annulé', ['type' => get_class($e)]);
+            return redirect()->back()->with('error', 'Le retrait de cette fonction a échoué.');
         }
     }
 
@@ -210,8 +217,11 @@ class ESBTPSecretaireController extends Controller
                 $secretaire->id,
                 authorize: fn (User $user) => $this->authorize('update', $user),
             );
+        } catch (AuthorizationException|ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', $e->getMessage());
+            \Log::error('Changement de statut secrétaire impossible', ['type' => get_class($e)]);
+            return redirect()->back()->with('error', 'Le changement de statut a échoué. Contactez le support.');
         }
 
         // Si c'est une requête AJAX, retourner du JSON
@@ -231,6 +241,7 @@ class ESBTPSecretaireController extends Controller
      */
     public function resetPassword(User $secretaire)
     {
+        abort_unless(auth()->user()?->can('personnel.users.password.reset'), 403);
         $this->authorize('users.manage');
         $this->authorize('update', $secretaire);
 
@@ -268,19 +279,19 @@ class ESBTPSecretaireController extends Controller
         } catch (\Exception $e) {
             \Log::error('❌ Password reset failed for secretaire', [
                 'secretaire_id' => $secretaire->id,
-                'error' => $e->getMessage()
+                'exception_type' => get_class($e)
             ]);
 
             if (request()->wantsJson() || request()->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Erreur lors de la réinitialisation du mot de passe: ' . $e->getMessage()
+                    'message' => 'La réinitialisation du mot de passe a échoué. Contactez le support.'
                 ], 500);
             }
 
             return redirect()
                 ->back()
-                ->with('error', 'Erreur lors de la réinitialisation du mot de passe: ' . $e->getMessage());
+                ->with('error', 'La réinitialisation du mot de passe a échoué. Contactez le support.');
         }
     }
 }

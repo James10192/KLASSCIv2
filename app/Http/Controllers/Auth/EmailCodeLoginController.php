@@ -96,9 +96,12 @@ final class EmailCodeLoginController extends Controller
             $request->session()->forget('klassci_email_login_ids');
             Auth::login($user);
             $request->session()->regenerate();
+            \App\Support\ProfilActif::oublier($request);
             // Le middleware de second facteur reste actif pour tous les comptes
             // ayant déjà configuré la double authentification TOTP.
-            return redirect()->intended('/dashboard');
+            return \App\Support\ProfilActif::doitChoisir($user)
+                ? redirect()->route('profil.choisir')
+                : redirect()->intended('/dashboard');
         }
 
         return back()->withErrors(['code' => 'Code incorrect ou expiré. Demandez un nouveau code.']);

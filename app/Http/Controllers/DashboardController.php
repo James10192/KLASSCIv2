@@ -68,6 +68,22 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
+        // Sélection ergonomique du profil : la même identité et les mêmes
+        // permissions demeurent. Les contrôles serveur sont inchangés.
+        $profil = \App\Support\ProfilActif::courant(request());
+        if (in_array($profil, ['enseignant', 'teacher'], true) && $user->can('identity.teach')) {
+            return redirect()->route('teacher.dashboard');
+        }
+        if ($profil === 'coordinateur' && $user->can('identity.coordinate')) {
+            return $this->coordinateurDashboard();
+        }
+        if ($profil === 'directeurEtudes' && $user->can('identity.direct_studies')) {
+            return redirect()->route('dashboard.directeur-etudes');
+        }
+        if ($profil === 'etudiant' && $user->can('identity.student')) {
+            return $this->etudiantDashboard();
+        }
+
         // Lot 9 — Si l'utilisateur n'a QUE des rôles custom (créés via UI Lot 8),
         // pas de dashboard hard-codé : router vers le dashboard widget-based.
         // Les rôles système (superAdmin, secretaire...) gardent leur dashboard
@@ -76,15 +92,16 @@ class DashboardController extends Controller
             return redirect()->route('dashboard.widgets.index');
         }
 
-        // SuperAdmin/Admin en premier — ils ont TOUTES les permissions,
-        // donc tout check permission-based matcherait. On utilise hasRole()
-        // car c'est du routing UI par rôle (pattern validé post-overhaul).
-        if ($user->hasRole(['superAdmin', 'admin'])) {
+        // Le rôle ne fait ici que CHOISIR l'écran (ces deux rôles portent
+        // toutes les permissions, aucune ne les distingue) ; c'est la
+        // permission qui ouvre l'écran. Rôle conservé sans la permission :
+        // on tombe sur la cascade ordinaire, jamais sur le tableau complet.
+        if ($user->hasRole(['superAdmin', 'admin']) && $user->can('system.manage')) {
             return $this->superAdminDashboard();
         }
 
         // Service technique — a aussi toutes les permissions, donc hasRole requis
-        if ($user->hasRole('serviceTechnique')) {
+        if ($user->hasRole('serviceTechnique') && $user->can('system.technical_access')) {
             return $this->serviceTechniqueDashboard();
         }
 

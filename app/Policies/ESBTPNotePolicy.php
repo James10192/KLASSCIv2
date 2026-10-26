@@ -11,19 +11,10 @@ class ESBTPNotePolicy
 {
     use HandlesAuthorization;
 
-    /**
-     * Super-admin bypass — grants all abilities.
-     */
-    public function before(User $user, string $ability)
-    {
-        if ($user->hasRole('superAdmin')) {
-            return true;
-        }
-    }
 
     public function viewAny(User $user)
     {
-        return $user->can('module.notes_evaluations.access');
+        return (bool) $user->is_active && $user->can('module.notes_evaluations.access');
     }
 
     /**
@@ -32,16 +23,33 @@ class ESBTPNotePolicy
      */
     public function view(User $user, ESBTPNote $note)
     {
-        if ($user->hasRole('etudiant')) {
-            return $note->etudiant
-                && $note->etudiant->user_id === $user->id;
+        if (! $user->is_active) {
+            return false;
         }
 
+        // L'accès personnel suit la propriété réelle de la note, quel que soit
+        // le nom du rôle (un compte peut aussi être enseignant/coordinateur).
+        if ($user->can('notes.view_own')
+            && $note->etudiant
+            && (int) $note->etudiant->user_id === (int) $user->id) {
+            return true;
+        }
+
+        // Conserver la portée métier de l'enseignant : son droit notes.view
+        // ne lui ouvre pas les évaluations des collègues. Le rôle étudiant
+        // secondaire ne doit toutefois pas écraser ses permissions de prof.
+        // La permission globale explicite prend le pas sur le profil visuel.
+        // notes.view reste limité aux évaluations confiées aux enseignants.
+        if ($user->can('notes.view_all')) {
+            return true;
+        }
         if ($user->hasRole(['teacher', 'enseignant'])) {
-            return $this->teacherOwnsEvaluation($user, $note);
+            return $user->can('notes.view') && $this->teacherOwnsEvaluation($user, $note);
         }
 
-        return $user->can('module.notes_evaluations.access');
+        // Lecture globale explicite pour les autres fonctions (y compris
+        // un compte possédant aussi le rôle étudiant).
+        return $user->can('notes.view');
     }
 
     /**
@@ -50,15 +58,23 @@ class ESBTPNotePolicy
      */
     public function update(User $user, ESBTPNote $note)
     {
-        if ($user->hasRole('coordinateur')) {
+        if (! $user->is_active) {
             return false;
         }
 
+        if (! $user->can('notes.edit')) {
+            return false;
+        }
+
+        // Une permission d'édition seule ne permet pas à un enseignant
+        // de modifier les évaluations confiées à ses collègues.
         if ($user->hasRole(['teacher', 'enseignant'])) {
             return $this->teacherOwnsEvaluation($user, $note);
         }
 
-        return $user->can('module.notes_evaluations.access');
+        // Le coordinateur n'est plus bloqué par son nom de rôle :
+        // une permission notes.edit attribuée explicitement est effective.
+        return true;
     }
 
     /**

@@ -33,7 +33,7 @@ class ESBTPCaissierController extends Controller
      */
     public function show(User $caissier)
     {
-        $this->ensureCanManage();
+        $this->ensureCanManage('view');
         $this->ensureIsCaissier($caissier);
 
         $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resumePour($caissier, auth()->user());
@@ -46,7 +46,7 @@ class ESBTPCaissierController extends Controller
      */
     public function edit(User $caissier)
     {
-        $this->ensureCanManage();
+        $this->ensureCanManage('edit');
         $this->ensureIsCaissier($caissier);
 
         return view('esbtp.caissiers.edit', compact('caissier'));
@@ -57,7 +57,7 @@ class ESBTPCaissierController extends Controller
      */
     public function update(Request $request, User $caissier, SuperAdminLifecycleGuard $lifecycle)
     {
-        $this->ensureCanManage();
+        $this->ensureCanManage('edit');
         $this->ensureIsCaissier($caissier);
 
         $validated = $request->validate([
@@ -112,7 +112,7 @@ class ESBTPCaissierController extends Controller
      */
     public function destroy(User $caissier, SuperAdminLifecycleGuard $lifecycle)
     {
-        $this->ensureCanManage();
+        $this->ensureCanManage('delete');
         $this->ensureIsCaissier($caissier);
 
         if ($caissier->id === Auth::id()) {
@@ -127,7 +127,9 @@ class ESBTPCaissierController extends Controller
                         'is_active' => false,
                         'email' => $user->email ? $user->email . '_deleted_' . time() : null,
                     ]);
-                    $user->removeRole('caissier');
+                    app(\App\Services\Personnel\RoleAssignmentService::class)->retirerPendantDesactivation(
+                        $user, 'caissier', Auth::id(), 'Désactivation du caissier'
+                    );
                 },
                 authorize: fn (User $user) => $this->authorize('delete', $user),
             );
@@ -144,7 +146,7 @@ class ESBTPCaissierController extends Controller
      */
     public function toggleStatus(User $caissier, SuperAdminLifecycleGuard $lifecycle)
     {
-        $this->ensureCanManage();
+        $this->ensureCanManage('edit');
         $this->ensureIsCaissier($caissier);
 
         try {
@@ -175,7 +177,7 @@ class ESBTPCaissierController extends Controller
      */
     public function resetPassword(User $caissier)
     {
-        $this->ensureCanManage();
+        $this->ensureCanManage('edit');
         $this->ensureIsCaissier($caissier);
         $this->authorize('update', $caissier);
 
@@ -183,21 +185,20 @@ class ESBTPCaissierController extends Controller
     }
 
     /**
-     * Garde-fou : seul superAdmin / secretaire / comptable / les utilisateurs
-     * avec users.manage peuvent gérer les caissiers.
+     * Garde-fou : la permission caissiers.<action> (ou users.manage, la
+     * permission générale de gestion des comptes) décide seule. Le nom du
+     * rôle de l'acteur n'ouvre rien : un comptable y accède si l'école lui
+     * accorde caissiers.*.
      */
-    private function ensureCanManage(): void
+    private function ensureCanManage(string $action): void
     {
         $user = Auth::user();
 
-        if (! $user) {
-            abort(403);
-        }
-
-        $allowed = $user->hasAnyRole(['superAdmin', 'secretaire', 'comptable'])
-            || $user->can('users.manage');
-
-        abort_unless($allowed, 403, 'Action non autorisée.');
+        abort_unless(
+            $user && ($user->can('caissiers.'.$action) || $user->can('users.manage')),
+            403,
+            'Action non autorisée : permission requise.'
+        );
     }
 
     /**

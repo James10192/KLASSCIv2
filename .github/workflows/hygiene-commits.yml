@@ -314,11 +314,13 @@ jobs:
             tests/Unit/Exports/PresentationAnnuairePdfTest.php \
             tests/Unit/Exports/EnseignantsPremiumSelectsTest.php \
             tests/Unit/Security/MotDePasseTemporaireEtudiantTest.php \
+            tests/Unit/Security/NoLegacyTokenGuardTest.php \
             tests/Unit/Comptabilite \
             tests/Unit/Photos \
             tests/Unit/Services/Master \
             tests/Unit/Services/BtsProvisionalTranscriptTest.php \
-            tests/Unit/Views/AcademicDocumentsNavigationTest.php
+            tests/Unit/Views/AcademicDocumentsNavigationTest.php \
+            tests/Unit/Views/PersonnelUnifiedNoReloadTest.php
           do
             echo "::group::$chemin"
             php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
@@ -524,13 +526,32 @@ jobs:
 
       # Ces tests lisent et ecrivent la base reelle. Ne pas les executer
       # dans le job Laravel Lint, qui ne possede aucun service SQL.
-      - name: Accès individuels temporaires et définitifs (web, CLI, garde-fous)
+      - name: Rôles, droits individuels et périmètres de gestion (web, CLI, garde-fous)
         run: |
           echec=0
           for chemin in \
             tests/Feature/Permissions/AccesTemporairesTest.php \
             tests/Feature/Permissions/AccesTemporairesNonAccordablesTest.php \
-            tests/Feature/API/CLI/AccesIndividuelsCliTest.php
+            tests/Feature/API/CLI/AccesIndividuelsCliTest.php \
+            tests/Feature/API/CLI/DirectPermissionCliHardeningTest.php \
+            tests/Feature/Permissions/NoImplicitSuperAdminGateTest.php \
+            tests/Feature/Permissions/PoliciesPermissionEffectiveTest.php \
+            tests/Feature/Permissions/NoteBulletinPropertyScopeTest.php \
+            tests/Feature/Permissions/LegacyRoleMiddlewarePermissionOnlyTest.php \
+            tests/Feature/Permissions/UserManagementPermissionOnlyTest.php \
+            tests/Feature/Permissions/PaywallPermissionOnlyTest.php \
+            tests/Feature/Auth/ChoixProfilTest.php \
+            tests/Feature/Enseignant/TeacherEvaluationAuthorizationTest.php \
+            tests/Feature/API/CLI/UserDeletionGuardTest.php \
+            tests/Feature/API/CLI/CustomRoleCliTest.php \
+            tests/Feature/API/CLI/SuperAdminInitialCreationCliTest.php \
+            tests/Feature/API/CLI/CliUsersReadPermissionsTest.php \
+            tests/Feature/API/CLI/CliSensitiveAccountScopeTest.php \
+            tests/Feature/Permissions/CustomRoleManagementHardeningTest.php \
+            tests/Feature/Permissions/PersonnelUnifiedUniqueEntryTest.php \
+            tests/Feature/Permissions/RoleProvisioningAndPermissionOnlyTest.php \
+            tests/Feature/Scolarite/ExtensionRoleSurvitSynchronisationTest.php \
+            tests/Feature/ServiceTechnique/RolesEtPermissionsTest.php
           do
             php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
           done

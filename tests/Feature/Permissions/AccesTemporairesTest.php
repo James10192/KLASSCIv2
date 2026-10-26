@@ -44,6 +44,11 @@ class AccesTemporairesTest extends TestCase
 
         $this->admin = User::factory()->create();
         $this->admin->assignRole('superAdmin');
+        // Le nom superAdmin n'accorde aucun droit implicite depuis la suppression du Gate global.
+        $this->admin->givePermissionTo([
+            'notes.edit', 'paiements.view', 'permissions.temporaires.manage',
+            'permissions.individuels.permanents.manage', 'personnel.manage', 'users.manage',
+        ]);
     }
 
     protected function tearDown(): void
@@ -65,6 +70,52 @@ class AccesTemporairesTest extends TestCase
         app()->forgetInstance(AccesTemporaires::class);
 
         return $user->fresh()->can($ability);
+    }
+
+    public function test_une_ancienne_delegation_privilegiee_stockee_ne_donne_plus_acces(): void
+    {
+        Permission::findOrCreate('personnel.roles.assign', 'web');
+        $cible = User::factory()->create();
+        TemporaryPermissionGrant::create([
+            'user_id' => $cible->id,
+            'permission' => 'personnel.roles.assign',
+            'starts_at' => now()->subMinute(),
+            'expires_at' => now()->addDay(),
+            'is_permanent' => false,
+            'motif' => 'Ancienne délégation devenue interdite',
+            'granted_by' => $this->admin->id,
+        ]);
+        TemporaryPermissionGrant::create([
+            'user_id' => $cible->id,
+            'permission' => 'notes.edit',
+            'starts_at' => now()->subMinute(),
+            'expires_at' => now()->addDay(),
+            'is_permanent' => false,
+            'motif' => 'Correction pédagogique toujours permise',
+            'granted_by' => $this->admin->id,
+        ]);
+
+        $this->assertFalse($this->peut($cible, 'personnel.roles.assign'));
+        $this->assertTrue($this->peut($cible, 'notes.edit'));
+    }
+
+    public function test_un_simple_nom_superadmin_ne_permet_ni_delegation_ni_acces_definitif(): void
+    {
+        $sansDroits = User::factory()->create();
+        $sansDroits->assignRole('superAdmin');
+        $cible = User::factory()->create();
+
+        $this->assertFalse($this->service()->peutGererPermanents($sansDroits));
+        try {
+            $this->service()->accorder($cible, 'notes.edit', now(), now()->addDay(),
+                'Tentative d’octroi sans droit réel', $sansDroits);
+            $this->fail('Le nom du rôle ne suffit pas à accorder un droit.');
+        } catch (AccesTemporaireRefuse $e) {
+            $this->assertStringContainsString('ne détenez pas', $e->getMessage());
+        }
+        $this->assertDatabaseMissing('temporary_permission_grants', [
+            'user_id' => $cible->id, 'permission' => 'notes.edit',
+        ]);
     }
 
     public function test_l_acces_ouvre_la_permission_puis_tombe_a_l_echeance(): void

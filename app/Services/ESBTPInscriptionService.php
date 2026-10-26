@@ -322,10 +322,9 @@ class ESBTPInscriptionService
         ]);
 
         // Assigner le rôle étudiant
-        $role = Role::where('name', 'etudiant')->first();
-        if ($role) {
-            $user->assignRole($role);
-        }
+        app(\App\Services\Personnel\RoleAssignmentService::class)->provisionnerNouveauCompte(
+            $user, 'etudiant', auth()->id(), 'Création du compte à l\'inscription'
+        );
 
         $etudiantData['user_id'] = $user->id;
 

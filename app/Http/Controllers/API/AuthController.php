@@ -86,13 +86,11 @@ class AuthController extends BaseApiController
             );
         }
 
-        // Vérifier que l'utilisateur a un rôle autorisé pour le LMS
-        $userRole = $user->getRoleNames()->first();
-
-        if (!RoleHelper::hasAnyRole($userRole, RoleHelper::LMS_ALLOWED_ROLES)) {
+        // L'accès au LMS se décide par permission, jamais par le nom du rôle.
+        if (!RoleHelper::peutAccederAuLms($user)) {
             Auth::logout();
             return $this->errorResponse(
-                'Accès non autorisé au LMS. Rôles requis: ' . implode(', ', RoleHelper::LMS_ALLOWED_ROLES),
+                'Accès non autorisé au LMS : permission requise.',
                 [],
                 403
             );
@@ -448,15 +446,16 @@ class AuthController extends BaseApiController
             ], 'Utilisateur non trouvé sur ce tenant');
         }
 
-        // Vérifier que l'utilisateur a un rôle LMS
-        $userRole = $user->getRoleNames()->first();
-
-        if (!$userRole || !RoleHelper::hasAnyRole($userRole, RoleHelper::LMS_ALLOWED_ROLES)) {
+        // Accès LMS : permission effective, jamais le premier rôle retourné.
+        if (!RoleHelper::peutAccederAuLms($user)) {
             return $this->successResponse([
                 'found' => false,
                 'tenant_code' => $tenant['code'],
             ], 'Utilisateur non trouvé sur ce tenant');
         }
+
+        // Libellé affiché seulement : il ne décide d'aucun accès.
+        $userRole = $user->getRoleNames()->first();
 
         // Retour minimal pour limiter la fuite d'info (pas de rôle exact)
         $displayName = $user->first_name;
@@ -601,7 +600,7 @@ class AuthController extends BaseApiController
                 'header' => 'Authorization: Bearer {your_token}',
                 'scopes' => ['lms:access']
             ],
-            'roles_autorises' => RoleHelper::LMS_ALLOWED_ROLES
+            'permissions_requises' => RoleHelper::LMS_PERMISSIONS
         ]);
     }
 }
