@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class McpOneTimePairingTest extends TestCase
@@ -46,6 +47,7 @@ class McpOneTimePairingTest extends TestCase
         if ($authorized) {
             Role::firstOrCreate(['name' => 'enseignant', 'guard_name' => 'web']);
             $user->assignRole('enseignant');
+            $user->givePermissionTo(Permission::findOrCreate('mcp.connections.connect', 'web'));
         }
 
         return $user;
@@ -56,6 +58,8 @@ class McpOneTimePairingTest extends TestCase
         $admin = $this->staff(false);
         Role::firstOrCreate(['name' => 'superAdmin', 'guard_name' => 'web']);
         $admin->assignRole('superAdmin');
+        $admin->givePermissionTo(Permission::findOrCreate('mcp.connections.approve', 'web'));
+        $admin->givePermissionTo(Permission::findOrCreate('mcp.connections.connect', 'web'));
 
         return $admin;
     }
@@ -242,7 +246,7 @@ class McpOneTimePairingTest extends TestCase
         $this->assertDatabaseHas('mcp_bridge_nonces', ['nonce_hash' => $recent]);
     }
 
-    public function test_approbation_exige_superadmin_distinct_et_verification_explicite(): void
+    public function test_approbation_exige_permission_distincte_et_verification_explicite(): void
     {
         $code = str_repeat('n', 43);
         $employee = $this->staff();
