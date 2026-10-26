@@ -144,4 +144,38 @@ final class NoteBulletinPropertyScopeTest extends TestCase
         $this->assertFalse($inscriptions->view($actor, $inscription));
         $this->assertFalse($paiements->view($actor, $paiement));
     }
+
+    public function test_etudiant_multi_fonctions_conserve_notes_view_global_et_revocation(): void
+    {
+        $actor = User::factory()->create(['is_active' => true]);
+        $actor->assignRole(['etudiant', 'coordinateur']);
+        $autre = User::factory()->create(['is_active' => true]);
+        $etudiant = new ESBTPEtudiant();
+        $etudiant->user_id = $autre->id;
+        $note = new ESBTPNote();
+        $note->setRelation('etudiant', $etudiant);
+        $policy = app(ESBTPNotePolicy::class);
+
+        $this->assertFalse($policy->view($actor, $note));
+        $actor->givePermissionTo('notes.view');
+        $this->assertTrue($policy->view($actor, $note));
+        $actor->revokePermissionTo('notes.view');
+        $this->assertFalse($policy->view($actor, $note));
+    }
+
+    public function test_compte_enseignant_et_etudiant_conserve_la_portee_de_ses_evaluations(): void
+    {
+        $actor = User::factory()->create(['is_active' => true]);
+        $actor->assignRole(['enseignant', 'etudiant']);
+        $actor->givePermissionTo('notes.view');
+        $evaluation = new ESBTPEvaluation();
+        $evaluation->enseignant_id = $actor->id;
+        $note = new ESBTPNote();
+        $note->setRelation('evaluation', $evaluation);
+        $policy = app(ESBTPNotePolicy::class);
+
+        $this->assertTrue($policy->view($actor, $note));
+        $evaluation->enseignant_id = $actor->id + 1;
+        $this->assertFalse($policy->view($actor, $note));
+    }
 }
