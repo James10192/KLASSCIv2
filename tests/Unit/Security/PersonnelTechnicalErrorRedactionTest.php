@@ -17,6 +17,7 @@ final class PersonnelTechnicalErrorRedactionTest extends TestCase
         foreach ([
             'app/Http/Controllers/ESBTPCoordinateurController.php',
             'app/Http/Controllers/ESBTPSecretaireController.php',
+            'app/Http/Controllers/Concerns/ResetsPersonnelPassword.php',
         ] as $path) {
             $contents = file_get_contents(dirname(__DIR__, 3).'/'.$path);
             self::assertNotFalse($contents, "Fichier absent : {$path}");
