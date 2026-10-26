@@ -29,7 +29,7 @@ final class NoteBulletinPropertyScopeTest extends TestCase
         foreach (['enseignant', 'etudiant', 'coordinateur'] as $name) {
             Role::findOrCreate($name, 'web');
         }
-        foreach (['notes.view', 'notes.view_own', 'notes.edit', 'bulletins.view', 'bulletins.view_own'] as $name) {
+        foreach (['notes.view', 'notes.view_all', 'notes.view_own', 'notes.edit', 'bulletins.view', 'bulletins.view_own'] as $name) {
             Permission::findOrCreate($name, 'web');
         }
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -161,6 +161,40 @@ final class NoteBulletinPropertyScopeTest extends TestCase
         $this->assertTrue($policy->view($actor, $note));
         $actor->revokePermissionTo('notes.view');
         $this->assertFalse($policy->view($actor, $note));
+    }
+
+    public function test_enseignant_coordinateur_peut_lire_globalement_seulement_avec_droit_dedie(): void
+    {
+        $actor = User::factory()->create(['is_active' => true]);
+        $actor->assignRole(['enseignant', 'coordinateur']);
+        $actor->givePermissionTo('notes.view');
+
+        $evaluation = new ESBTPEvaluation();
+        $evaluation->enseignant_id = $actor->id + 1;
+        $note = new ESBTPNote();
+        $note->setRelation('evaluation', $evaluation);
+        $policy = app(ESBTPNotePolicy::class);
+
+        $this->assertFalse($policy->view($actor, $note));
+        $actor->givePermissionTo('notes.view_all');
+        $this->assertTrue($policy->view($actor, $note));
+        $actor->revokePermissionTo('notes.view_all');
+        $this->assertFalse($policy->view($actor, $note));
+    }
+
+    public function test_droit_global_de_lecture_ne_permet_pas_de_modifier_notes_collegue(): void
+    {
+        $actor = User::factory()->create(['is_active' => true]);
+        $actor->assignRole('enseignant');
+        $actor->givePermissionTo(['notes.view_all', 'notes.edit']);
+        $evaluation = new ESBTPEvaluation();
+        $evaluation->enseignant_id = $actor->id + 1;
+        $note = new ESBTPNote();
+        $note->setRelation('evaluation', $evaluation);
+        $policy = app(ESBTPNotePolicy::class);
+
+        $this->assertTrue($policy->view($actor, $note));
+        $this->assertFalse($policy->update($actor, $note));
     }
 
     public function test_compte_enseignant_et_etudiant_conserve_la_portee_de_ses_evaluations(): void
