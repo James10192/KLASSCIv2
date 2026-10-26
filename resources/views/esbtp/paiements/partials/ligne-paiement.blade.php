@@ -1,5 +1,5 @@
 {{-- Partial réutilisable pour une ligne de paiement dans le tableau --}}
-<tr data-paiement-id="{{ $paiement->id }}" class="pi-payment-row pi-payment-row--{{ $paiement->status }}">
+<tr data-paiement-id="{{ $paiement->id }}" data-li-cle="{{ $paiement->id }}" class="pi-payment-row pi-payment-row--{{ $paiement->status }}">
     <td class="pi-cell-selection">
         @if($paiement->status == 'en_attente' && auth()->user()->can('paiements.validate'))
             <input type="checkbox" class="form-check-input paiement-checkbox"
@@ -272,6 +272,14 @@
             </div>
         </div>
     </td>
+    {{-- Ligne ajoutee au defilement : ses modales restent dans une cellule
+         masquee (un <div> hors de <tr> serait deplace hors du tableau par
+         l'insertion HTML). La page les monte ensuite dans son hote stable. --}}
+    @if($modalesDansLigne ?? false)
+        <td class="pi-row-modales" hidden>
+            @include('esbtp.paiements.partials.modals-paiement', ['paiement' => $paiement])
+        </td>
+    @endif
 </tr>
 
 {{-- Hors du tableau : la page liste loge les modales dans un hôte stable.

@@ -3,14 +3,9 @@
     // qui voient TOUS les paiements (paiements.view).
     $showCreatorColumn = auth()->user()?->can('paiements.view') ?? false;
     $colspan = $showCreatorColumn ? 10 : 9;
-    $hasMore = method_exists($paiements, 'hasMorePages') ? $paiements->hasMorePages() : false;
-    $nextPage = method_exists($paiements, 'currentPage') ? ($paiements->currentPage() + 1) : 2;
     $totalRows = method_exists($paiements, 'total') ? $paiements->total() : $paiements->count();
 @endphp
-<div class="pi-table-card"
-     data-has-more="{{ $hasMore ? '1' : '0' }}"
-     data-next-page="{{ $nextPage }}"
-     data-total="{{ $totalRows }}">
+<div class="pi-table-card">
     <div class="pi-table-head">
         <div class="pi-table-title">
             <i class="fas fa-list"></i>
@@ -65,17 +60,7 @@
         @endforeach
     </div>
 
-    {{-- Sentinel infinite scroll + loader skeleton --}}
-    <div id="pi-infinite-zone" class="pi-infinite-zone">
-        <div id="pi-loader" class="pi-loader" style="display:none;" aria-hidden="true">
-            <div class="pi-skeleton-row"></div>
-            <div class="pi-skeleton-row"></div>
-            <div class="pi-skeleton-row"></div>
-        </div>
-        <div id="pi-sentinel" class="pi-sentinel" aria-hidden="true"></div>
-        <div id="pi-end-marker" class="pi-end-marker" style="display:{{ $hasMore ? 'none' : 'flex' }};">
-            <i class="fas fa-check-circle"></i>
-            <span>{{ $totalRows > 0 ? 'Tous les résultats sont affichés' : '' }}</span>
-        </div>
-    </div>
+    {{-- Suite au defilement : le composant commun (contrat ListeInfinie). --}}
+    <x-liste-infinie :paginateur="$paiements" cible="#pi-tbody" libelle="paiements"
+                     :url="route('esbtp.paiements.index')" />
 </div>

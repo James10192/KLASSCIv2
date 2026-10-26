@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Exports\PaiementDetailleExport;
 use App\Models\ESBTPPaiement;
 use App\Models\User;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\Exports\PdfParLots;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
@@ -138,9 +138,13 @@ class PaiementExportService
      */
     public function exportPdf(array $filters, ?User $user = null): Response
     {
-        $pdf = $this->buildPdf($filters, $user);
+        [$lignes, $donnees] = $this->donneesPdf($filters, $user);
         $filename = 'etat-paiements-detaille_' . now()->format('Y-m-d_His') . '.pdf';
-        return $pdf->download($filename);
+
+        return app(PdfParLots::class)->reponse(
+            'esbtp.paiements.exports.pdf-detaille', $lignes, $donnees, 'paiements', $filename,
+            inline: false, orientation: 'landscape'
+        );
     }
 
     /**
@@ -149,38 +153,42 @@ class PaiementExportService
      */
     public function previewPdf(array $filters, ?User $user = null): Response
     {
-        $pdf = $this->buildPdf($filters, $user);
+        [$lignes, $donnees] = $this->donneesPdf($filters, $user);
         $filename = 'apercu-paiements-detaille_' . now()->format('Y-m-d_His') . '.pdf';
-        return new Response($pdf->output(), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $filename . '"',
-        ]);
+
+        return app(PdfParLots::class)->reponse(
+            'esbtp.paiements.exports.pdf-detaille', $lignes, $donnees, 'paiements', $filename,
+            inline: true, orientation: 'landscape'
+        );
     }
 
-    private function buildPdf(array $filters, ?User $user)
+    /**
+     * Les lignes et les donnees de la vue. Un tableau de plusieurs centaines de
+     * lignes ne tient pas dans une seule passe de DomPDF : PdfParLots le rend
+     * par lots au-dela de son seuil (meme chemin que les autres exports).
+     *
+     * @return array{0: \Illuminate\Database\Eloquent\Collection, 1: array<string, mixed>}
+     */
+    private function donneesPdf(array $filters, ?User $user): array
     {
         $paiements = $this->buildQuery($filters, $user)->get();
         $count = $paiements->count();
         $totalMontant = \App\Models\ESBTPPaiement::netCashFrom($paiements);
         $showCreator = $this->shouldShowCreatorColumn($user);
-        $context = $this->buildContext($filters, $user, $showCreator);
-        $orientation = 'landscape'; // La colonne « année d'inscription » doit rester lisible.
 
         Log::info('PDF détaillé paiements rendu', [
             'user_id' => $user?->id,
             'count' => $count,
-            'orientation' => $orientation,
         ]);
 
-        return Pdf::loadView('esbtp.paiements.exports.pdf-detaille', [
-            'paiements' => $paiements,
+        return [$paiements, [
             'count' => $count,
             'totalMontant' => $totalMontant,
             'showCreator' => $showCreator,
-            'context' => $context,
+            'context' => $this->buildContext($filters, $user, $showCreator),
             'filtersSummary' => $this->buildFiltersSummary($filters, $user),
             'dateGeneration' => now(),
-        ])->setPaper('a4', $orientation);
+        ]];
     }
 
     /**

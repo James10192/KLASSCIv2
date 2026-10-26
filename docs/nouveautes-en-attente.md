@@ -149,3 +149,4 @@ Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 - 2026-10-09 · Notes BTS et LMD : changer l'année universitaire sans recharger la page ; classes, indicateurs, saisie des évaluations et suivi des notes actualisés.
 - 2026-10-21 · Inscriptions > Demandes : la conversion d'une candidature est envoyée comme formulaire texte, sans envoi multipart inutile ; si une passerelle refuse encore la requête avant KLASSCI, sa référence technique s'affiche pour le support.
+- 2026-10-26 · Paiements : le défilement infini charge bien toutes les tranches (la liste ne revient plus à la première page toutes les 30 s), l'aperçu PDF de l'export détaillé ne répond plus par « Service indisponible » sur les gros volumes, et un filtre « Mode de règlement » apparaît dans la liste des paiements.
