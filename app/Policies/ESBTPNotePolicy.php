@@ -23,19 +23,23 @@ class ESBTPNotePolicy
      */
     public function view(User $user, ESBTPNote $note)
     {
-        // La propriété d'une note ne donne JAMAIS à elle seule la permission
-        // de lire : cela reste vrai pour l'étudiant et l'enseignant.
-        if ($user->hasRole('etudiant')) {
-            return $user->can('notes.view_own')
-                && $note->etudiant
-                && (int) $note->etudiant->user_id === (int) $user->id;
+        // L'accès personnel suit la propriété réelle de la note, quel que soit
+        // le nom du rôle (un compte peut aussi être enseignant/coordinateur).
+        if ($user->can('notes.view_own')
+            && $note->etudiant
+            && (int) $note->etudiant->user_id === (int) $user->id) {
+            return true;
         }
 
+        // Conserver la portée métier de l'enseignant : son droit notes.view
+        // ne lui ouvre pas les évaluations des collègues. Le rôle étudiant
+        // secondaire ne doit toutefois pas écraser ses permissions de prof.
         if ($user->hasRole(['teacher', 'enseignant'])) {
-            return $user->can('notes.view')
-                && $this->teacherOwnsEvaluation($user, $note);
+            return $user->can('notes.view') && $this->teacherOwnsEvaluation($user, $note);
         }
 
+        // Lecture globale explicite pour les autres fonctions (y compris
+        // un compte possédant aussi le rôle étudiant).
         return $user->can('notes.view');
     }
 
