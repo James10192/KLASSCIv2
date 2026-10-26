@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\ESBTPSeanceCours;
+use App\Models\ESBTPInscription;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
@@ -19,7 +20,7 @@ class ESBTPSeanceCoursPolicy
      */
     public function viewAny(User $user)
     {
-        return $user->can('timetables.view') || $user->can('timetables.view_own');
+        return (bool) $user->is_active && $user->can('timetables.view');
     }
 
     /**
@@ -31,7 +32,43 @@ class ESBTPSeanceCoursPolicy
      */
     public function view(User $user, ESBTPSeanceCours $eSBTPSeanceCours)
     {
-        return $user->can('timetables.view') || $user->can('timetables.view_own');
+        if (! $user->is_active) {
+            return false;
+        }
+        if ($user->can('timetables.view')) {
+            return true;
+        }
+        if (! $user->can('timetables.view_own')) {
+            return false;
+        }
+
+        // teacher_id pointe vers esbtp_teachers.id, PAS users.id.
+        // Lire la relation locale, jamais un identifiant enseignant fourni par le client.
+        if ($eSBTPSeanceCours->teacher
+            && (int) $eSBTPSeanceCours->teacher->user_id === (int) $user->id) {
+            return true;
+        }
+
+        // Un étudiant ne voit que les séances de sa classe et de son année
+        // d'inscription. Un ID de séance connu ne constitue pas une autorisation.
+        $emploi = $eSBTPSeanceCours->emploiTemps;
+        $classeId = $eSBTPSeanceCours->classe_id ?: $emploi?->classe_id;
+        $anneeId = $eSBTPSeanceCours->annee_universitaire_id ?: $emploi?->annee_universitaire_id;
+        if (! $classeId || ! $anneeId) {
+            return false;
+        }
+        if (($eSBTPSeanceCours->classe_id && $emploi?->classe_id
+                && (int) $eSBTPSeanceCours->classe_id !== (int) $emploi->classe_id)
+            || ($eSBTPSeanceCours->annee_universitaire_id && $emploi?->annee_universitaire_id
+                && (int) $eSBTPSeanceCours->annee_universitaire_id !== (int) $emploi->annee_universitaire_id)) {
+            return false;
+        }
+
+        return ESBTPInscription::query()
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeId)
+            ->whereHas('etudiant', fn ($query) => $query->where('user_id', $user->id))
+            ->exists();
     }
 
     /**
@@ -54,7 +91,7 @@ class ESBTPSeanceCoursPolicy
      */
     public function update(User $user, ESBTPSeanceCours $eSBTPSeanceCours)
     {
-        return $user->can('timetables.create') || $user->can('timetables.edit');
+        return (bool) $user->is_active && $user->can('timetables.edit');
     }
 
     /**
@@ -66,7 +103,7 @@ class ESBTPSeanceCoursPolicy
      */
     public function edit(User $user, ESBTPSeanceCours $eSBTPSeanceCours)
     {
-        return $user->can('timetables.create') || $user->can('timetables.edit');
+        return (bool) $user->is_active && $user->can('timetables.edit');
     }
 
     /**

@@ -2317,6 +2317,12 @@ return [
             'group' => 'Système',
             'icon' => 'fa-chart-pie',
         ],
+        'exploitation.control_center.view' => [
+            'label' => "Consulter la console d'exploitation et les traces techniques",
+            'description' => "Accès de diagnostic aux traces de lenteur de l'établissement, indépendamment des autres droits d'administration.",
+            'group' => 'Sécurité',
+            'icon' => 'fa-gauge-high',
+        ],
         'system.technical_access' => [
             'label' => 'Accès technique au système',
             'group' => 'Système',
@@ -2390,6 +2396,10 @@ return [
     'role_default_exclusions' => [
         // Le service technique reçoit seul par défaut la création de Superadmin.
         // Une attribution explicite et auditée peut toujours être décidée par tenant.
+        'serviceTechnique' => [
+            // Le support n'ouvre pas implicitement les traces de l'établissement.
+            'exploitation.control_center.view',
+        ],
         'superAdmin' => [
             'superadmin.accounts.create',
             // Maintenance ADC uniquement par défaut ; l'école peut accorder
