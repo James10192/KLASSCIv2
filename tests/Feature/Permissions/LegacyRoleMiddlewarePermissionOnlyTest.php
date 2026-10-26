@@ -53,6 +53,15 @@ final class LegacyRoleMiddlewarePermissionOnlyTest extends TestCase
         $this->assertFalse($user->hasRole('enseignant'));
     }
 
+    public function test_compte_desactive_reste_bloque_meme_avec_permission_directe(): void
+    {
+        $user = User::factory()->create(['is_active' => false]);
+        $user->givePermissionTo('identity.teach');
+        Auth::login($user);
+        $this->expectException(HttpException::class);
+        app(CheckRole::class)->handle($this->requestFor($user), fn () => response('autorise'), 'enseignant');
+    }
+
     public function test_une_permission_retiree_bloque_meme_le_role_enseignant(): void
     {
         $user = User::factory()->create();
