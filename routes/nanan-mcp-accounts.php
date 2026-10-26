@@ -12,7 +12,7 @@ Route::middleware(['auth'])->prefix('nanan/mcp')->name('nanan.mcp.')->group(func
     Route::get('/connect', [McpConnectionsController::class, 'connect'])
         ->name('connect');
 
-    // Approbation nominative par un superAdmin distinct de l'employé.
+    // Approbation nominative par un acteur habilité distinct de l'employé.
     // Ne crée aucun lien : seul le détenteur de la session cible peut
     // confirmer le consentement après approbation.
     Route::get('/review', [McpConnectionsController::class, 'review'])
