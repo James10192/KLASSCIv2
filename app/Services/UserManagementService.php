@@ -3,12 +3,11 @@
 namespace App\Services;
 
 use App\Models\User;
+use Spatie\Permission\Models\Role;
 
 /**
- * Matrice "qui peut gérer qui" pour les utilisateurs.
- *
- * Source : config/permissions.php (clé role_management) lue via
- * PermissionRegistry::manageableRoles().
+ * La gestion d'un compte dépend uniquement des permissions EFFECTIVES.
+ * La présence d'un rôle ne donne jamais le droit d'administrer autrui.
  */
 class UserManagementService
 {
@@ -16,67 +15,81 @@ class UserManagementService
     {
     }
 
-    /**
-     * $actor peut-il gérer (créer/modifier/supprimer) $target ?
-     */
     public function canManage(User $actor, User $target): bool
     {
-        // Un user ne peut pas se gérer lui-même via cette policy (utiliser le profil)
-        if ($actor->id === $target->id) {
+        if ((int) $actor->id === (int) $target->id) {
             return false;
         }
 
-        $manageableRoles = $this->manageableRolesFor($actor);
-        if (empty($manageableRoles)) {
+        if (! $actor->can('personnel.manage') && ! $actor->can('users.manage')) {
             return false;
         }
 
-        $targetRoles = $target->roles
-            ->pluck('name')
-            ->map(fn (string $role) => $this->registry->canonicalizeRole($role))
-            ->unique()
-            ->values()
-            ->all();
-
-        if (empty($targetRoles)) {
-            // User sans rôle → seul superAdmin/serviceTechnique peuvent toucher
-            $actorRoles = $actor->roles
-                ->pluck('name')
-                ->map(fn (string $role) => $this->registry->canonicalizeRole($role))
-                ->all();
-
-            return count(array_intersect($actorRoles, ['superAdmin', 'serviceTechnique'])) > 0;
+        // Les titulaires d'un rôle sensible exigent le workflow spécifique
+        // de modification avec validation distincte, même pour le support.
+        $roles = $target->getRoleNames()->map(
+            fn (string $role) => $this->registry->canonicalizeRole($role)
+        );
+        if ($roles->intersect(['superAdmin', 'serviceTechnique'])->isNotEmpty()) {
+            return false;
         }
 
-        // Chaque rôle de la cible doit être gérable. Un rôle secondaire ne doit
-        // jamais permettre de contourner la protection d'un rôle privilégié.
-        // Les noms legacy (ex. teacher) sont d'abord ramenés vers le rôle
-        // canonique (enseignant), afin que les anciens comptes restent gérables.
-        return empty(array_diff($targetRoles, $manageableRoles));
+        if ($actor->can('personnel.roles.manage_all')) {
+            return true;
+        }
+
+        // Ne pas permettre une prise de contrôle d'un compte disposant de
+        // privilèges que l'opérateur ne possède pas lui-même.
+        foreach ($target->getAllPermissions() as $permission) {
+            if (! $actor->can($permission->name)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
-    /**
-     * Liste consolidée des rôles que l'acteur peut gérer (union de tous ses rôles).
-     */
+    /** @return list<string> */
     public function manageableRolesFor(User $actor): array
     {
-        $manageable = [];
-        foreach ($actor->roles->pluck('name') as $role) {
-            $manageable = array_merge(
-                $manageable,
-                $this->registry->manageableRoles($this->registry->canonicalizeRole($role)),
-            );
+        if (! $actor->can('personnel.roles.assign')) {
+            return [];
         }
-        return array_values(array_unique($manageable));
+
+        return Role::query()->with('permissions')->where('guard_name', 'web')->get()
+            ->filter(fn (Role $role) => $this->canAssignRoleModel($actor, $role))
+            ->pluck('name')->values()->all();
     }
 
-    /**
-     * $actor peut-il assigner le rôle $roleName à un user ?
-     */
     public function canAssignRole(User $actor, string $roleName): bool
     {
-        $roleName = $this->registry->canonicalizeRole($roleName);
+        if (! $actor->can('personnel.roles.assign')) {
+            return false;
+        }
 
-        return in_array($roleName, $this->manageableRolesFor($actor), true);
+        $canonical = $this->registry->canonicalizeRole($roleName);
+        if (in_array($canonical, ['superAdmin', 'serviceTechnique'], true)) {
+            return false;
+        }
+
+        $role = Role::query()->with('permissions')->where('name', $roleName)
+            ->where('guard_name', 'web')->first();
+
+        return $role !== null && $this->canAssignRoleModel($actor, $role);
+    }
+
+    private function canAssignRoleModel(User $actor, Role $role): bool
+    {
+        if (in_array($this->registry->canonicalizeRole($role->name), ['superAdmin', 'serviceTechnique'], true)) {
+            return false;
+        }
+
+        foreach ($role->permissions as $permission) {
+            if (! $actor->can($permission->name)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

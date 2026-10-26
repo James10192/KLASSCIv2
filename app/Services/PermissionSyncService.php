@@ -57,9 +57,13 @@ class PermissionSyncService
 
         $assignedRoles = [];
         $preservedRoles = [];
+        $revoqueesParRole = [];
+        $decisions = app(ExtensionsDeRole::class);
         foreach ($roles->keys() as $roleName) {
+            $revoqueesParRole[$roleName] = array_flip($decisions->revoqueesPour($roleName));
             $role = $roleModels[$roleName];
-            if ($role->permissions()->count() > 0) {
+            // Un role vidé explicitement ne doit surtout pas etre réinitialisé.
+            if ($role->permissions()->count() > 0 || $revoqueesParRole[$roleName] !== []) {
                 $preservedRoles[] = $roleName;
                 continue;
             }
@@ -78,9 +82,12 @@ class PermissionSyncService
                 $this->applyPermissionDependencies($this->registry->defaultPermissionsFor($roleName), $roleName)
             );
             $existingNames = $role->permissions()->pluck('name')->all();
-            $toAdd = array_values(array_intersect(
-                array_diff($defaults, $existingNames),
-                $this->expandWithAliases($this->newFeaturePermissions())
+            $toAdd = array_values(array_filter(
+                array_intersect(
+                    array_diff($defaults, $existingNames),
+                    $this->expandWithAliases($this->newFeaturePermissions())
+                ),
+                fn (string $nom) => ! isset($revoqueesParRole[$roleName][$this->registry->canonicalize($nom)])
             ));
             if ($toAdd !== []) {
                 $role->givePermissionTo($toAdd);
@@ -115,7 +122,10 @@ class PermissionSyncService
             $toAdd = [];
             foreach ($existingNames as $name) {
                 $canonical = $this->registry->canonicalize($name);
-                if ($canonical !== $name && !in_array($canonical, $existingNames, true)) {
+                if ($canonical !== $name
+                    && ! in_array($canonical, $existingNames, true)
+                    && ! isset($revoqueesParRole[$roleName][$canonical])
+                ) {
                     $toAdd[] = $canonical;
                 }
             }
@@ -130,10 +140,60 @@ class PermissionSyncService
             $role = $roleModels[$roleName];
             $existingNames = $role->permissions()->pluck('name')->all();
             $withDependencies = $this->expandWithAliases($this->applyPermissionDependencies($existingNames, $roleName));
-            $toAdd = array_values(array_diff($withDependencies, $existingNames));
+            $toAdd = array_values(array_filter(
+                array_diff($withDependencies, $existingNames),
+                fn (string $nom) => ! isset($revoqueesParRole[$roleName][$this->registry->canonicalize($nom)])
+            ));
             if (! empty($toAdd)) {
                 $role->givePermissionTo($toAdd);
                 $dependenciesHealed[] = ['role' => $roleName, 'permissions_added' => count($toAdd)];
+            }
+        }
+
+        // Une permission déjà présente en DB peut avoir été réaccordée par
+        // un ancien chemin ou un ancien déploiement : la décision de retrait
+        // explicite prime aussi sur cet état préexistant.
+        $retireesAppliquees = [];
+        foreach ($roles->keys() as $roleName) {
+            if ($revoqueesParRole[$roleName] === []) {
+                continue;
+            }
+
+            $role = $roleModels[$roleName];
+            $aRetirer = $role->permissions()->pluck('name')->filter(
+                fn (string $nom) => isset($revoqueesParRole[$roleName][$this->registry->canonicalize($nom)])
+            )->all();
+
+            foreach ($aRetirer as $nom) {
+                $role->revokePermissionTo($nom);
+            }
+
+            if ($aRetirer !== []) {
+                $retireesAppliquees[] = ['role' => $roleName, 'permissions_count' => count($aRetirer)];
+            }
+        }
+
+        // Un ancien joker pouvait avoir distribué des capacités sensibles.
+        // Nettoyer uniquement cette dérive par défaut ; une extension locale
+        // explicitement enregistrée reste une décision du tenant.
+        $exclusionsAppliquees = [];
+        foreach ($roles->keys() as $roleName) {
+            $excluded = array_diff(
+                $this->registry->excludedDefaultPermissionsFor($roleName),
+                $decisions->pour($roleName)
+            );
+            if ($excluded === []) {
+                continue;
+            }
+            $role = $roleModels[$roleName];
+            $aRetirer = $role->permissions()->pluck('name')->filter(
+                fn (string $nom) => in_array($this->registry->canonicalize($nom), $excluded, true)
+            )->all();
+            foreach ($aRetirer as $nom) {
+                $role->revokePermissionTo($nom);
+            }
+            if ($aRetirer !== []) {
+                $exclusionsAppliquees[] = ['role' => $roleName, 'permissions_count' => count($aRetirer)];
             }
         }
 
@@ -148,6 +208,8 @@ class PermissionSyncService
             'aliases_healed' => $healed,
             'dependencies_healed' => $dependenciesHealed,
             'missing_defaults_healed' => $missingDefaultsHealed,
+            'revocations_appliquees' => $retireesAppliquees,
+            'exclusions_appliquees' => $exclusionsAppliquees,
         ];
     }
 
@@ -176,6 +238,19 @@ class PermissionSyncService
             // Nouvelle : la correction d une erreur de mode au guichet, qui
             // n avait pour seule issue qu une session de reconciliation.
             'paiements.correct_mode',
+            // Délégation sensible bornée à l'administration du personnel.
+            // Seuls les rôles dont les defaults les contiennent la reçoivent ;
+            // les retraits explicites par tenant restent prioritaires.
+            'personnel.users.password.reset',
+            'personnel.users.credentials.export',
+            'personnel.users.deactivate',
+            'personnel.roles.assign',
+            'personnel.roles.remove',
+            'personnel.roles.replace',
+            'personnel.roles.create',
+            'superadmin.accounts.create',
+            'personnel.roles.manage_all',
+            'personnel.users.initialize',
             'identity.direct_studies',
             'identity.registrar',
             'identity.registrar_clerk',

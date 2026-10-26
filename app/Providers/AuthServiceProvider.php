@@ -89,25 +89,13 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        Gate::before(function ($user, $ability) {
-            if (! config('permissions.superadmin_gate_before', true)) {
-                return null;
-            }
-
-            // Une capacité qui décrit un ÉTAT et non un droit ne se contourne
-            // pas. « Annuler ma saisie » veut dire : c'est moi qui l'ai saisi,
-            // il est encore en attente, et il y a moins de N minutes. Le
-            // passe-droit du superAdmin rendait ces trois faits vrais pour tout
-            // paiement — validé, ancien, saisi par un autre — et la suppression
-            // partait sans motif, par-dessus les verrous de période. Le DROIT
-            // (`paiements.cancel_own`), lui, reste couvert : la politique
-            // l'interroge par `can()`, qui repasse ici.
-            if (in_array($ability, ESBTPPaiementPolicy::CAPACITES_D_ETAT, true)) {
-                return null;
-            }
-
-            return $user && $user->hasRole('superAdmin') ? true : null;
-        });
+        // Aucun passe-droit global Gate::before fondé sur le nom d'un rôle.
+        // Les droits proviennent uniquement des permissions du tenant,
+        // même pour superAdmin. Les capacités d'état restent décidées
+        // par leurs Policies, jamais par une identité de rôle.
+        //
+        // Ne PAS réintroduire de joker Gate : les retraits explicites du
+        // service technique/personnel doivent survivre aux déploiements.
 
         Gate::after(function ($user, $ability, $result) {
             if ($result === true || ! $user) {
@@ -194,7 +182,9 @@ class AuthServiceProvider extends ServiceProvider
         // `users.manage` : exposé en Gate explicite pour éviter toute ambiguïté
         // entre les routes qui consomment Gate::* et le résolveur Spatie.
         Gate::define('users.manage', function ($user) {
-            return $user && $user->hasPermissionTo('users.manage');
+            // Dans un tenant pas encore synchronisé, renvoyer 403 plutôt que
+            // PermissionDoesNotExist -> 500.
+            return $user && $user->checkPermissionTo('users.manage', 'web');
         });
 
         // W5 : workflow justification d'absence (3 abilities sur ESBTPAttendance).

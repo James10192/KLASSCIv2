@@ -53,6 +53,7 @@ class NananLotATest extends TestCase
     use DatabaseTransactions;
 
     private const DROITS = [
+        'admin.access', // garde parent des routes web d'inscription (plus de bypass superAdmin)
         'inscriptions.validate', 'students.edit', 'paiements.avoir', 'trash.view', 'paiements.restore',
         'inscriptions.in_kind.mark', 'paiements.reventiler', 'frais.configure', 'frais.create', 'frais.edit', 'system.manage',
     ];
@@ -76,6 +77,9 @@ class NananLotATest extends TestCase
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $this->admin = $this->utilisateur();
         $this->admin->assignRole('superAdmin');
+        // Le rôle n'accorde plus de passe-droit Gate implicite : cet acteur
+        // doit explicitement posséder chacune des capacités des outils testés.
+        $this->admin->givePermissionTo(self::DROITS);
 
         ESBTPAnneeUniversitaire::query()->update(['is_current' => false]);
         $this->annee = (int) ESBTPAnneeUniversitaire::factory()->create(['is_current' => true])->id;
@@ -313,6 +317,7 @@ class NananLotATest extends TestCase
     private function classePleine(string $code): ESBTPClasse
     {
         Permission::findOrCreate('inscriptions.override_capacity', 'web');
+        $this->admin->givePermissionTo('inscriptions.override_capacity');
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $classe = $this->classe($code);
         $classe->update(['places_totales' => 1]);
@@ -336,7 +341,7 @@ class NananLotATest extends TestCase
         $this->assertArrayHasKey('inscriptions.override_capacity', config('permissions.permissions'));
 
         $this->actingAs($this->admin);
-        $this->assertTrue(app(\App\Services\InscriptionWorkflowService::class)->checkClassAvailability($classe->id)['available'], 'superAdmin passe');
+        $this->assertTrue(app(\App\Services\InscriptionWorkflowService::class)->checkClassAvailability($classe->id)['available'], 'la permission inscriptions.override_capacity donne accès');
     }
 
     /** Les comptes dont la colonne héritée autorisait le dépassement le gardent, par la migration. */
@@ -667,9 +672,10 @@ class NananLotATest extends TestCase
         app(\App\Services\Frais\PoseDeBareme::class)->appliquer($bareme, $this->admin->id);
         $this->assertSame('ancien', \Illuminate\Support\Facades\Cache::get($cle), 'pas avant la fin de la transaction');
         \Illuminate\Support\Facades\DB::commit();
-        // Sous DatabaseTransactions (Laravel 9), la transaction du test ne se valide
-        // jamais : on joue ce que la vraie validation jouerait.
-        app('db.transactions')->getTransactions()->each->executeCallbacks();
+        // Laravel 12 déclenche les callbacks afterCommit de la transaction
+        // imbriquée au commit, même sous DatabaseTransactions : aucune
+        // simulation manuelle des callbacks n'est nécessaire.
+        $this->assertSame(1, \Illuminate\Support\Facades\DB::transactionLevel());
         $this->assertNull(\Illuminate\Support\Facades\Cache::get($cle));
     }
 

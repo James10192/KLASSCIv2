@@ -227,11 +227,24 @@ class PermissionRegistry
     {
         $defaults = config('permissions.role_defaults', [])[$role] ?? [];
 
+        $excluded = $this->excludedDefaultPermissionsFor($role);
+
         if (in_array('*', $defaults, true)) {
-            return $this->all()->keys()->all();
+            return array_values(array_diff($this->all()->keys()->all(), $excluded));
         }
 
-        return $defaults;
+        return array_values(array_diff($defaults, $excluded));
+    }
+
+    /**
+     * Capacités réservées par défaut, non distribuées par un wildcard de rôle.
+     * Elles restent attribuables explicitement par une décision tracée.
+     *
+     * @return list<string>
+     */
+    public function excludedDefaultPermissionsFor(string $role): array
+    {
+        return config('permissions.role_default_exclusions', [])[$role] ?? [];
     }
 
     /**

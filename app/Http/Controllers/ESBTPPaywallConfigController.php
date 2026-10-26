@@ -23,8 +23,8 @@ class ESBTPPaywallConfigController extends Controller
             abort(401, 'Non authentifié');
         }
 
-        // ACCÈS RÉSERVÉ EXCLUSIVEMENT AU SERVICE TECHNIQUE D'AFRICAN DIGIT CONSULTING
-        // Seul le rôle serviceTechnique est autorisé, pas les superAdmin
+        // Route, middleware et contrôleur se fondent exclusivement sur le même
+        // droit paywall.manage (sans aucune exemption fondée sur le rôle).
         $hasAccess = $user->can('paywall.manage');
 
         if (!$hasAccess) {

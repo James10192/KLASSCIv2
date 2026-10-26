@@ -120,7 +120,7 @@ final class EligibiliteReinscription
             'peut_poursuivre' => $autorisee || ($etat === self::IMPAYE && $deroge),
             // Rejouer une réinscription déjà faite (correction de classe) :
             // effectuerReinscription la gère, la fiche l'offre à qui peut déroger.
-            'peut_rejouer' => $etat === self::DEJA_INSCRIT && $lecteur !== null && method_exists($lecteur, 'isSuperAdmin') && $lecteur->isSuperAdmin() && $intermediaire === null,
+            'peut_rejouer' => $etat === self::DEJA_INSCRIT && $lecteur !== null && method_exists($lecteur, 'can') && $lecteur->can('inscriptions.edit_validated') && $intermediaire === null,
         ];
     }
 

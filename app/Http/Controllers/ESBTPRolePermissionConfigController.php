@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Services\PermissionRegistry;
+use App\Services\Personnel\RolePermissionMutationGuard;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -17,99 +19,11 @@ class ESBTPRolePermissionConfigController extends Controller
         $this->middleware(['auth', 'role:serviceTechnique']);
     }
 
-    public function index(Request $request, PermissionRegistry $registry)
+    public function index()
     {
-        app()[PermissionRegistrar::class]->forgetCachedPermissions();
-
-        $allowedRoles = $registry->rolesVisibleInUi()->keys()->all();
-
-        $roles = Role::with('permissions')
-            ->whereIn('name', $allowedRoles)
-            ->get()
-            ->sortBy(fn ($r) => array_search($r->name, $allowedRoles))
-            ->values();
-
-        // Toutes les permissions canoniques (les aliases sont masqués par défaut)
-        $showLegacy = $request->boolean('show_legacy', false);
-        $registryPerms = $registry->all();
-
-        $permissions = $showLegacy
-            ? Permission::orderBy('name')->get()
-            : Permission::whereIn('name', $registryPerms->keys()->all())->orderBy('name')->get();
-
-        // Group permissions by registry's group + sort
-        $groupOrder = [
-            'Tableau de bord', 'Administration', 'Étudiants', 'Inscriptions',
-            'Académique', 'Notes & Évaluations', 'Bulletins', 'Présences',
-            'Planning', 'Paiements', 'Frais', 'Comptabilité', 'Personnel',
-            'Communication', 'Rapports', 'Résultats', 'Identité',
-            'Modules', 'Sécurité', 'Système',
-        ];
-
-        $groupedPermissions = $permissions->groupBy(function ($permission) use ($registryPerms, $registry) {
-            $canonical = $registry->canonicalize($permission->name);
-            $meta = $registryPerms[$canonical] ?? null;
-            return $meta['group'] ?? 'Autres';
-        });
-
-        $sortedGroups = collect();
-        foreach ($groupOrder as $groupName) {
-            if ($groupedPermissions->has($groupName)) {
-                $sortedGroups[$groupName] = $groupedPermissions[$groupName];
-            }
-        }
-        foreach ($groupedPermissions as $groupName => $items) {
-            if (! $sortedGroups->has($groupName)) {
-                $sortedGroups[$groupName] = $items;
-            }
-        }
-
-        // Catalogue : permission name → [label_fr, group, icon, is_alias, canonical, deprecated_reason]
-        $catalog = [];
-        foreach ($permissions as $perm) {
-            $canonical = $registry->canonicalize($perm->name);
-            $meta = $registryPerms[$canonical] ?? null;
-            $isAlias = $perm->name !== $canonical;
-
-            $catalog[$perm->name] = [
-                'label' => $meta['label'] ?? $perm->name,
-                'group' => $meta['group'] ?? 'Autres',
-                'icon' => $meta['icon'] ?? 'fa-key',
-                'is_alias' => $isAlias,
-                'canonical' => $canonical,
-                'deprecated_reason' => $registry->isDeprecated($perm->name) ? $registry->deprecatedReason($perm->name) : null,
-            ];
-        }
-
-        $rolePermissions = $roles->mapWithKeys(function ($role) {
-            return [$role->name => $role->permissions->pluck('name')->values()];
-        });
-
-        $selectedRoleName = $request->input('role', $roles->first()?->name);
-        if ($selectedRoleName && ! $roles->contains('name', $selectedRoleName)) {
-            $selectedRoleName = $roles->first()?->name;
-        }
-
-        // Métadonnées des rôles (label FR, icône, description) depuis le registry
-        $roleMeta = $registry->roles();
-        $roleLabels = $roleMeta->mapWithKeys(fn ($m, $name) => [$name => $m['label'] ?? $name])->all();
-        $roleDescriptions = $roleMeta->mapWithKeys(fn ($m, $name) => [$name => $m['description'] ?? ''])->all();
-        $roleIcons = $roleMeta->mapWithKeys(fn ($m, $name) => [$name => $m['icon'] ?? 'fa-user'])->all();
-
-        // Groupement des rôles par catégorie (Administration / Pédagogie / etc.)
-        $groupedRoles = $roles->groupBy(fn ($r) => $roleMeta[$r->name]['group'] ?? 'Autres');
-
-        // Matrice de gestion users (qui peut gérer qui) — lecture seule pour info
-        $managementMatrix = collect($allowedRoles)->mapWithKeys(fn ($role) => [
-            $role => $registry->manageableRoles($role),
-        ]);
-
-        return view('esbtp.roles-permissions.index', compact(
-            'roles', 'permissions', 'groupedPermissions', 'groupedRoles',
-            'rolePermissions', 'selectedRoleName', 'catalog', 'sortedGroups',
-            'roleLabels', 'roleDescriptions', 'roleIcons',
-            'managementMatrix', 'showLegacy'
-        ));
+        // La gestion des rôles est intégrée aux modales de Personnel/unified.
+        // Les POST et l'audit techniques restent protégés et disponibles.
+        return redirect()->route('esbtp.personnel.unified.index', ['section' => 'roles']);
     }
 
     /**
@@ -136,21 +50,27 @@ class ESBTPRolePermissionConfigController extends Controller
         ]);
 
         $roleName = $validated['role'];
+        // Les rôles de secours ne sont jamais modifiables, même via un
+        // ancien endpoint technique ou une requête forgée.
+        abort_if(in_array($roleName, ['superAdmin', 'serviceTechnique'], true), 403,
+            'Les permissions des rôles de secours ne sont pas modifiables.');
         $permissionNames = array_values(array_unique($validated['permissions'] ?? []));
 
         // Anciens noms masqués à l'écran : chaque nom coché garde ses alias,
         // sinon enregistrer retirerait l'accès aux écrans qui testent encore
         // l'ancien nom, jusqu'au déploiement suivant.
         if (! $request->boolean('show_legacy')) {
-            $permissionNames = Permission::whereIn('name', $registry->avecAlias($permissionNames))->pluck('name')->all();
+            $permissionNames = Permission::where('guard_name', 'web')->whereIn('name', $registry->avecAlias($permissionNames))->pluck('name')->all();
         }
 
         try {
             [$avant, $apres] = $this->appliquer($roleName, $permissionNames, 'Accordé depuis la configuration des rôles.');
+        } catch (AuthorizationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
-            Log::error('Configuration des rôles : enregistrement refusé', ['role' => $roleName, 'erreur' => $e->getMessage()]);
+            Log::error('Configuration des rôles : enregistrement refusé', ['role' => $roleName, 'exception_type' => get_class($e)]);
 
-            return $this->repondre($request, false, 'Les permissions n\'ont pas été enregistrées : ' . $e->getMessage(), $roleName, null);
+            return $this->repondre($request, false, 'Les permissions n\'ont pas été enregistrées. Contactez le support.', $roleName, null);
         }
 
         Log::info('Configuration des rôles : permissions enregistrées', [
@@ -167,21 +87,25 @@ class ESBTPRolePermissionConfigController extends Controller
     {
         $validated = $request->validate(['role' => 'required|exists:roles,name']);
         $roleName = $validated['role'];
+        abort_if(in_array($roleName, ['superAdmin', 'serviceTechnique'], true), 403,
+            'Les rôles de secours ne peuvent pas être réinitialisés.');
 
         $expanded = $registry->avecAlias($registry->defaultPermissionsFor($roleName));
 
         // Filtrer pour ne garder que les permissions qui existent en DB
-        $existing = Permission::whereIn('name', $expanded)->pluck('name')->all();
+        $existing = Permission::where('guard_name', 'web')->whereIn('name', $expanded)->pluck('name')->all();
 
         try {
             // Revenir aux défauts vide aussi les ajouts inscrits pour ce rôle :
             // sans cela, la synchronisation du prochain déploiement remettrait
             // ce que l'école vient de retirer.
             [, $apres] = $this->appliquer($roleName, $existing, 'Défauts restaurés depuis la configuration des rôles.');
+        } catch (AuthorizationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
-            Log::error('Configuration des rôles : restauration refusée', ['role' => $roleName, 'erreur' => $e->getMessage()]);
+            Log::error('Configuration des rôles : restauration refusée', ['role' => $roleName, 'exception_type' => get_class($e)]);
 
-            return $this->repondre($request, false, 'Les défauts n\'ont pas été restaurés : ' . $e->getMessage(), $roleName, null);
+            return $this->repondre($request, false, 'La restauration des défauts a échoué. Contactez le support.', $roleName, null);
         }
 
         return $this->repondre($request, true, "Permissions par défaut restaurées pour {$roleName} (" . count($apres) . ' permissions).', $roleName, $apres);
@@ -198,10 +122,16 @@ class ESBTPRolePermissionConfigController extends Controller
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         $resultat = DB::transaction(function () use ($roleName, $permissionNames, $motif) {
-            $role = Role::findByName($roleName);
-            $avant = DB::table('role_has_permissions')->where('role_id', $role->id)->count();
+            $role = Role::findByName($roleName, 'web');
+            app(RolePermissionMutationGuard::class)->lockAndAssertSafe($role);
+            $avantPermissions = $role->permissions()->pluck('name')->all();
+            $avant = count($avantPermissions);
 
             $role->syncPermissions($permissionNames);
+            app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeRole(
+                $role, ['permissions' => $avantPermissions], ['permissions' => $permissionNames],
+                auth()->id(), $motif
+            );
             app(\App\Services\ExtensionsDeRole::class)->enregistrer($role->name, $permissionNames, $motif, auth()->id());
 
             return [$avant, $role->id];
@@ -230,7 +160,7 @@ class ESBTPRolePermissionConfigController extends Controller
         }
 
         return $ok
-            ? redirect()->route('esbtp.roles-permissions.index', ['role' => $roleName])->with('success', $message)
+            ? redirect()->route('esbtp.personnel.unified.index', ['section' => 'roles'])->with('success', $message)
             : redirect()->back()->with('error', $message);
     }
 }

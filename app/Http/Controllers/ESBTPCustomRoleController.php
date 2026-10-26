@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Services\Mobile\MobileProfileResolver;
 use App\Services\PermissionRegistry;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Permission;
@@ -24,18 +26,19 @@ use Spatie\Permission\PermissionRegistrar;
  * - assignation d'utilisateurs au rôle
  *
  * Sécurité :
- * - Un acteur non-superAdmin ne peut donner que les permissions QU'IL POSSÈDE
- *   (Gate::before couvre superAdmin pour l'octroi total)
+ * - Tout acteur ne peut donner que les permissions QU'IL POSSÈDE,
+ *   sans passe-droit implicite lié au nom de rôle.
  * - Un acteur ne peut assigner un rôle qu'à des utilisateurs qu'il peut gérer
- *   (matrice role_management — Lot 5)
+ *   (permissions explicites de gestion et délégation du rôle cible)
  * - Modification/suppression interdite sur les rôles système (is_custom = false)
  */
 class ESBTPCustomRoleController extends Controller
 {
     /**
      * Rôles système éditables depuis /esbtp/personnel/unified par les users avec
-     * `personnel.manage` (Lot 17). superAdmin et serviceTechnique restent gérés
-     * exclusivement via /esbtp/roles-permissions (Service Technique).
+     * `personnel.manage` (Lot 17). Les rôles bootstrap superAdmin et
+     * serviceTechnique ne sont pas modifiables depuis les modales : les garder
+     * immuables évite de verrouiller l'administration de l'instance.
      *
      * Pour ces rôles, seuls label_fr / icon / description / permissions sont modifiables.
      * Le `name` interne reste immuable (sinon casse les @can() et le code applicatif).
@@ -165,6 +168,9 @@ class ESBTPCustomRoleController extends Controller
      */
     public function create(PermissionRegistry $registry)
     {
+        abort_unless(Auth::user()->checkPermissionTo('personnel.roles.create', 'web'),
+            403, 'Permission de création de rôles absente.');
+
         $grantablePermissions = $this->grantablePermissionsForActor($registry);
 
         return view('esbtp.custom-roles._create-modal', [
@@ -177,13 +183,16 @@ class ESBTPCustomRoleController extends Controller
      */
     public function store(Request $request, PermissionRegistry $registry)
     {
+        abort_unless(Auth::user()->checkPermissionTo('personnel.roles.create', 'web'),
+            403, 'Permission de création de rôles absente.');
+
         $validated = $request->validate([
             'name' => [
                 'required',
                 'string',
                 'max:64',
                 'regex:/^[a-z][a-z0-9_]*$/',  // snake_case ASCII, commence par lettre
-                Rule::unique('roles', 'name'),
+                Rule::unique('roles', 'name')->where('guard_name', 'web'),
             ],
             'label_fr' => ['required', 'string', 'max:255'],
             'icon' => ['nullable', 'string', 'max:64', Rule::in(self::ALLOWED_ICONS)],
@@ -217,7 +226,7 @@ class ESBTPCustomRoleController extends Controller
         return $this->runMutation($registry, 'la création', function () use ($validated, $requestedPerms) {
             $role = new Role();
             $role->name = $validated['name'];
-            $role->guard_name = config('auth.defaults.guard', 'web');
+            $role->guard_name = 'web';
             $role->label_fr = $validated['label_fr'];
             $role->icon = $this->normalizeIcon($validated['icon'] ?? null);
             $role->description = $validated['description'] ?? null;
@@ -229,6 +238,11 @@ class ESBTPCustomRoleController extends Controller
             if (! empty($requestedPerms)) {
                 $role->syncPermissions($requestedPerms);
             }
+
+            app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeRole(
+                $role, ['permissions' => []], ['permissions' => $requestedPerms], Auth::id(),
+                'Création du rôle personnalisé depuis personnel/unified'
+            );
 
             return [
                 'success' => true,
@@ -250,11 +264,13 @@ class ESBTPCustomRoleController extends Controller
      */
     public function edit(string $role, PermissionRegistry $registry)
     {
-        $roleModel = Role::where('name', $role)->firstOrFail();
+        $roleModel = Role::query()->where('name', $role)->where('guard_name', 'web')->firstOrFail();
 
         if (! ($roleModel->is_custom ?? false)) {
             abort(403, 'Les rôles système ne peuvent pas être modifiés ici.');
         }
+        $this->assertCustomRolePermissionsManageable($roleModel, $registry);
+        $this->assertNoSensitiveRoleMembers($roleModel);
 
         $grantablePermissions = $this->grantablePermissionsForActor($registry);
         $assignedPermissions = $roleModel->permissions->pluck('name')->all();
@@ -271,7 +287,7 @@ class ESBTPCustomRoleController extends Controller
      */
     public function update(Request $request, string $role, PermissionRegistry $registry)
     {
-        $roleModel = Role::where('name', $role)->firstOrFail();
+        $roleModel = Role::query()->where('name', $role)->where('guard_name', 'web')->firstOrFail();
 
         if (! ($roleModel->is_custom ?? false)) {
             return response()->json([
@@ -279,6 +295,8 @@ class ESBTPCustomRoleController extends Controller
                 'message' => 'Les rôles système ne peuvent pas être modifiés ici.',
             ], 403);
         }
+        $this->assertCustomRolePermissionsManageable($roleModel, $registry);
+        $this->assertNoSensitiveRoleMembers($roleModel);
 
         $validated = $request->validate([
             'label_fr' => ['required', 'string', 'max:255'],
@@ -300,6 +318,9 @@ class ESBTPCustomRoleController extends Controller
         }
 
         return $this->runMutation($registry, 'la mise à jour', function () use ($roleModel, $validated, $requestedPerms) {
+            $this->lockCustomRoleMutation($roleModel);
+            $this->assertNoSensitiveRoleMembers($roleModel);
+            $anciennesPermissions = $roleModel->permissions()->pluck('name')->all();
             $roleModel->label_fr = $validated['label_fr'];
             $roleModel->icon = $this->normalizeIcon($validated['icon'] ?? null);
             $roleModel->description = $validated['description'] ?? null;
@@ -307,6 +328,11 @@ class ESBTPCustomRoleController extends Controller
             $roleModel->save();
 
             $roleModel->syncPermissions($requestedPerms);
+            app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeRole(
+                $roleModel, ['permissions' => $anciennesPermissions],
+                ['permissions' => $requestedPerms], Auth::id(),
+                'Modification du rôle personnalisé depuis personnel/unified'
+            );
 
             return [
                 'success' => true,
@@ -328,7 +354,9 @@ class ESBTPCustomRoleController extends Controller
             abort(403, 'Ce rôle système n\'est pas éditable depuis cette page. Contactez le Service Technique.');
         }
 
-        $roleModel = Role::where('name', $role)->firstOrFail();
+        $roleModel = Role::query()->where('name', $role)->where('guard_name', 'web')->firstOrFail();
+        $this->assertStandardRoleManageable($roleModel, $registry);
+        $this->assertNoSensitiveRoleMembers($roleModel);
         $configMeta = config('permissions.roles', [])[$role] ?? [];
 
         $grantablePermissions = $this->grantablePermissionsForActor($registry);
@@ -354,7 +382,9 @@ class ESBTPCustomRoleController extends Controller
             ], 403);
         }
 
-        $roleModel = Role::where('name', $role)->firstOrFail();
+        $roleModel = Role::query()->where('name', $role)->where('guard_name', 'web')->firstOrFail();
+        $this->assertStandardRoleManageable($roleModel, $registry);
+        $this->assertNoSensitiveRoleMembers($roleModel);
 
         $validated = $request->validate([
             'label_fr' => ['required', 'string', 'max:255'],
@@ -375,7 +405,9 @@ class ESBTPCustomRoleController extends Controller
             return $denial;
         }
 
-        return $this->runMutation($registry, 'la mise à jour', function () use ($roleModel, $validated, $requestedPerms) {
+        return $this->runMutation($registry, 'la mise à jour', function () use ($roleModel, $validated, $requestedPerms, $registry) {
+            $this->lockRoleEditMutation($roleModel);
+            $this->assertNoSensitiveRoleMembers($roleModel);
             // Override DB metadata (le registry config sert de fallback)
             $roleModel->label_fr = $validated['label_fr'];
             $roleModel->icon = $this->normalizeIcon($validated['icon'] ?? null);
@@ -383,11 +415,29 @@ class ESBTPCustomRoleController extends Controller
             // is_custom reste FALSE (rôle système, pas custom)
             $roleModel->save();
 
-            $roleModel->syncPermissions($requestedPerms);
+            // La page technique conserve les alias legacy et consigne les
+            // extensions volontaires. L'UI personnel doit avoir la même règle,
+            // sans quoi le déploiement peut supprimer les droits ajoutés ici.
+            $permissionNames = Permission::whereIn('name', $registry->avecAlias($requestedPerms))
+                ->pluck('name')->all();
+            $roleModel->syncPermissions($permissionNames);
+            app(\App\Services\ExtensionsDeRole::class)->enregistrer(
+                $roleModel->name,
+                $permissionNames,
+                'Configuration du rôle depuis la gestion du personnel.',
+                Auth::id()
+            );
 
             return [
                 'success' => true,
                 'message' => "Rôle système « {$validated['label_fr']} » mis à jour.",
+                'role' => [
+                    'name' => $roleModel->name,
+                    'label' => $roleModel->label_fr,
+                    'icon' => $roleModel->icon,
+                    'description' => $roleModel->description,
+                    'permissions_count' => $roleModel->permissions()->count(),
+                ],
             ];
         });
     }
@@ -397,7 +447,7 @@ class ESBTPCustomRoleController extends Controller
      */
     public function destroy(string $role, PermissionRegistry $registry)
     {
-        $roleModel = Role::where('name', $role)->firstOrFail();
+        $roleModel = Role::query()->where('name', $role)->where('guard_name', 'web')->firstOrFail();
 
         if (! ($roleModel->is_custom ?? false)) {
             return response()->json([
@@ -405,6 +455,8 @@ class ESBTPCustomRoleController extends Controller
                 'message' => 'Les rôles système ne peuvent pas être supprimés.',
             ], 403);
         }
+        $this->assertCustomRolePermissionsManageable($roleModel, $registry);
+        $this->assertNoSensitiveRoleMembers($roleModel);
 
         $usersCount = $roleModel->users()->count();
         if ($usersCount > 0) {
@@ -416,7 +468,27 @@ class ESBTPCustomRoleController extends Controller
         }
 
         return $this->runMutation($registry, 'la suppression', function () use ($roleModel) {
+            // L'absence de membres doit être revérifiée sous le verrou commun
+            // des affectations : un autre opérateur a pu attribuer le rôle
+            // après la première vérification HTTP.
+            $this->lockCustomRoleMutation($roleModel);
+            $this->assertNoSensitiveRoleMembers($roleModel);
+            if ($roleModel->users()->exists()) {
+                throw new AuthorizationException(
+                    'Ce rôle a reçu de nouvelles affectations. Actualisez la liste avant suppression.'
+                );
+            }
+
             $label = $roleModel->label_fr ?? $roleModel->name;
+            $permissionsAvant = $roleModel->permissions()->pluck('name')->all();
+            // La suppression d'un rôle vide reste une décision de sécurité
+            // traçable, même lorsqu'il n'avait aucune permission.
+            app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeRole(
+                $roleModel,
+                ['role' => [$roleModel->name], 'permissions' => $permissionsAvant],
+                ['role' => [], 'permissions' => []],
+                Auth::id(), 'Suppression du rôle personnalisé depuis personnel/unified'
+            );
             $roleModel->syncPermissions([]);
             $roleModel->delete();
 
@@ -432,29 +504,53 @@ class ESBTPCustomRoleController extends Controller
      */
     public function assignUsersForm(string $role, PermissionRegistry $registry)
     {
-        $roleModel = Role::where('name', $role)->firstOrFail();
+        $roleModel = Role::query()->where('name', $role)->where('guard_name', 'web')->firstOrFail();
 
         if (! ($roleModel->is_custom ?? false)) {
             abort(403, 'L\'assignation se fait via les outils dédiés pour les rôles système.');
         }
+        $this->assertCustomRolePermissionsManageable($roleModel, $registry);
+        $this->assertNoSensitiveRoleMembers($roleModel);
+        // Le périmètre manage_all ne remplace jamais le droit d'ajouter/retirer.
+        abort_unless(
+            Auth::user()->checkPermissionTo('personnel.roles.assign', 'web')
+                || Auth::user()->checkPermissionTo('personnel.roles.remove', 'web'),
+            403, 'Permission d’affectation ou de retrait absente.'
+        );
 
         $manageableRoles = $this->manageableRolesForActor($registry);
-        $manageableRoles[] = $roleModel->name;  // user déjà attribué = OK
+        abort_if($manageableRoles === [], 403, 'Aucun périmètre de gestion du personnel.');
+        $rolesAdmissibles = array_values(array_unique([...$manageableRoles, $roleModel->name]));
 
+        // Un rôle protégé additionnel exclut le compte. Une permission dédiée
+        // permet d'initialiser un compte sans rôle. Un compte désactivé déjà affecté
+        // reste visible, faute de quoi la soumission le détacherait en silence.
+        $peutInitialiser = Auth::user()->checkPermissionTo('personnel.users.initialize', 'web');
         $assignableUsers = User::query()
-            ->where('is_active', true)
-            ->where(function ($q) use ($manageableRoles) {
-                $q->whereHas('roles', function ($sub) use ($manageableRoles) {
-                    $sub->whereIn('name', $manageableRoles);
-                })->orWhere('id', Auth::id());
+            ->where(function ($q) use ($roleModel) {
+                $q->where('is_active', true)
+                    ->orWhereHas('roles', fn ($roles) => $roles->where('name', $roleModel->name));
             })
+            ->where(function ($q) use ($rolesAdmissibles, $peutInitialiser) {
+                $q->whereHas('roles', fn ($roles) => $roles->whereIn('name', $rolesAdmissibles));
+                if ($peutInitialiser) {
+                    $q->orWhereDoesntHave('roles');
+                }
+            })
+            ->whereDoesntHave('roles', fn ($q) => $q->whereNotIn('name', $rolesAdmissibles))
             ->with(['roles:id,name,label_fr'])
             ->orderBy('name')
-            ->get(['id', 'name', 'email'])
+            ->get(['id', 'name', 'email', 'is_active'])
             ->unique('id')
             ->values();
 
-        $currentUserIds = $roleModel->users()->pluck('users.id')->all();
+        $allCurrentIds = $roleModel->users()->pluck('users.id')->all();
+        abort_if(
+            $this->refusAffectation($roleModel, $allCurrentIds, $registry) !== null,
+            403,
+            'Certaines affectations existantes sont hors de votre périmètre.'
+        );
+        $currentUserIds = $allCurrentIds;
 
         return view('esbtp.custom-roles._assign-users-modal', [
             'role' => $roleModel,
@@ -468,7 +564,7 @@ class ESBTPCustomRoleController extends Controller
      */
     public function assignUsers(Request $request, string $role, PermissionRegistry $registry)
     {
-        $roleModel = Role::where('name', $role)->firstOrFail();
+        $roleModel = Role::query()->where('name', $role)->where('guard_name', 'web')->firstOrFail();
 
         if (! ($roleModel->is_custom ?? false)) {
             return response()->json([
@@ -482,30 +578,82 @@ class ESBTPCustomRoleController extends Controller
             'user_ids.*' => ['integer', 'exists:users,id'],
         ]);
 
-        $requestedUserIds = collect($validated['user_ids'] ?? [])->unique()->values()->all();
+        $requestedUserIds = collect($validated['user_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)->unique()->values()->all();
 
-        // Sécurité : vérifier que l'acteur peut gérer ces users
-        $manageableRoles = $this->manageableRolesForActor($registry);
-        if (! empty($requestedUserIds) && ! empty($manageableRoles)) {
-            $forbidden = User::whereIn('id', $requestedUserIds)
-                ->whereDoesntHave('roles', function ($q) use ($manageableRoles, $roleModel) {
-                    $q->whereIn('name', array_merge($manageableRoles, [$roleModel->name]));
-                })
-                ->pluck('id')
-                ->all();
-            if (! empty($forbidden)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Vous ne pouvez pas gérer certains utilisateurs sélectionnés (rôle hors de votre périmètre).',
-                    'forbidden_user_ids' => $forbidden,
-                ], 403);
-            }
+        // La liste envoyée est l'état complet : contrôler les ajouts ET les
+        // retraits, sans échapper au contrôle lorsque user_ids est vide.
+        $currentIds = $roleModel->users()->pluck('users.id')->map(fn ($id) => (int) $id)->all();
+        $nouveauxIds = array_values(array_diff($requestedUserIds, $currentIds));
+        $retraits = array_values(array_diff($currentIds, $requestedUserIds));
+        // Une mutation de ses propres rôles ne peut jamais servir de raccourci
+        // pour contourner RoleAssignmentService::change.
+        if (in_array(Auth::id(), [...$nouveauxIds, ...$retraits], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de modifier ses propres rôles.',
+            ], 403);
+        }
+        $operateur = Auth::user();
+        $peutAjouter = $operateur->checkPermissionTo('personnel.roles.assign', 'web');
+        $peutRetirer = $operateur->checkPermissionTo('personnel.roles.remove', 'web');
+        if ((! $peutAjouter && ! $peutRetirer)
+            || ($nouveauxIds !== [] && ! $peutAjouter)
+            || ($retraits !== [] && ! $peutRetirer)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Permission explicite d’ajout ou de retrait de rôle absente.',
+            ], 403);
+        }
+        $inactifs = User::whereIn('id', $nouveauxIds)->where('is_active', false)->pluck('id')->all();
+        if ($inactifs !== []) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Un compte désactivé ne peut pas recevoir de nouveau rôle.',
+                'forbidden_user_ids' => $inactifs,
+            ], 403);
         }
 
-        return $this->runMutation($registry, 'l\'affectation', function () use ($roleModel, $requestedUserIds) {
-            $currentIds = $roleModel->users()->pluck('users.id')->all();
-            $toAttach = array_diff($requestedUserIds, $currentIds);
-            $toDetach = array_diff($currentIds, $requestedUserIds);
+        $touchedIds = array_values(array_unique([...$requestedUserIds, ...$currentIds]));
+        if ($denial = $this->refusAffectation($roleModel, $touchedIds, $registry)) {
+            return $denial;
+        }
+
+        return $this->runMutation($registry, 'l\'affectation', function () use ($roleModel, $requestedUserIds, $registry, $currentIds) {
+            $this->lockCustomRoleMutation($roleModel);
+            $currentLocked = $roleModel->users()->pluck('users.id')->map(fn ($id) => (int) $id)->all();
+            sort($currentLocked);
+            $previous = $currentIds;
+            sort($previous);
+            if ($previous !== $currentLocked) {
+                throw new AuthorizationException('Affectations modifiées par une autre opération : actualisez la liste.');
+            }
+            $affected = array_values(array_unique([...$requestedUserIds, ...$currentLocked]));
+            sort($affected);
+            if ($affected !== []) {
+                User::query()->whereIn('id', $affected)->orderBy('id')->lockForUpdate()->get();
+            }
+            // Les contrôles de périmètre sont revérifiés SOUS verrou : une
+            // promotion concomitante en Superadmin interdit tout changement.
+            $freshActor = User::query()->findOrFail(Auth::id());
+            $freshAdded = array_values(array_diff($requestedUserIds, $currentLocked));
+            $freshRemoved = array_values(array_diff($currentLocked, $requestedUserIds));
+            if (($freshAdded !== [] && ! $freshActor->checkPermissionTo('personnel.roles.assign', 'web'))
+                || ($freshRemoved !== [] && ! $freshActor->checkPermissionTo('personnel.roles.remove', 'web'))
+                || in_array(Auth::id(), [...$freshAdded, ...$freshRemoved], true)) {
+                throw new AuthorizationException('Droit de mutation absent ou auto-modification interdite.');
+            }
+            if ($freshAdded !== [] && User::query()->whereIn('id', $freshAdded)
+                ->where('is_active', false)->exists()) {
+                throw new AuthorizationException('Un compte désactivé ne peut recevoir un rôle.');
+            }
+            if ($denial = $this->refusAffectation($roleModel, $affected, $registry)) {
+                throw new AuthorizationException((string) ($denial->getData()->message
+                    ?? 'Mutation de rôle refusée après revalidation.'));
+            }
+            $currentIds = $currentLocked;
+            $toAttach = $freshAdded;
+            $toDetach = $freshRemoved;
 
             // Batch operations : 2 queries au lieu de 2*N (cf revue perf simplify)
             if (! empty($toAttach)) {
@@ -514,6 +662,13 @@ class ESBTPCustomRoleController extends Controller
             if (! empty($toDetach)) {
                 $roleModel->users()->detach($toDetach);
             }
+
+            app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeRole(
+                $roleModel,
+                ['user_ids' => $currentIds],
+                ['user_ids' => $requestedUserIds],
+                Auth::id(), 'Affectation des utilisateurs du rôle personnalisé'
+            );
 
             return [
                 'success' => true,
@@ -529,7 +684,7 @@ class ESBTPCustomRoleController extends Controller
      */
     public function detachUser(string $role, int $user, PermissionRegistry $registry)
     {
-        $roleModel = Role::where('name', $role)->firstOrFail();
+        $roleModel = Role::query()->where('name', $role)->where('guard_name', 'web')->firstOrFail();
 
         if (! ($roleModel->is_custom ?? false)) {
             return response()->json([
@@ -538,10 +693,34 @@ class ESBTPCustomRoleController extends Controller
             ], 403);
         }
 
-        $userModel = User::findOrFail($user);
+        abort_unless(Auth::user()->checkPermissionTo('personnel.roles.remove', 'web'),
+            403, 'Permission de retrait de rôle absente.');
 
-        return $this->runMutation($registry, 'le détachement', function () use ($userModel, $roleModel) {
+        $userModel = User::findOrFail($user);
+        abort_if($userModel->id === Auth::id(), 403, 'Impossible de modifier ses propres rôles.');
+        if ($denial = $this->refusAffectation($roleModel, [$userModel->id], $registry)) {
+            return $denial;
+        }
+
+        return $this->runMutation($registry, 'le détachement', function () use ($userModel, $roleModel, $registry) {
+            $this->lockCustomRoleMutation($roleModel);
+            User::query()->whereKey($userModel->id)->lockForUpdate()->firstOrFail();
+            $freshActor = User::query()->findOrFail(Auth::id());
+            if (! $freshActor->checkPermissionTo('personnel.roles.remove', 'web')
+                || $freshActor->id === $userModel->id) {
+                throw new AuthorizationException('Permission de retrait absente ou auto-retrait interdit.');
+            }
+            if ($denial = $this->refusAffectation($roleModel, [$userModel->id], $registry)) {
+                throw new AuthorizationException((string) ($denial->getData()->message
+                    ?? 'Mutation de rôle refusée après revalidation.'));
+            }
+            $avant = $roleModel->users()->pluck('users.id')->all();
             $userModel->removeRole($roleModel);
+            $apres = array_values(array_diff($avant, [$userModel->id]));
+            app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeRole(
+                $roleModel, ['user_ids' => $avant], ['user_ids' => $apres],
+                Auth::id(), 'Retrait individuel d\'un rôle personnalisé'
+            );
 
             return [
                 'success' => true,
@@ -553,11 +732,154 @@ class ESBTPCustomRoleController extends Controller
     // ─────────────── Helpers privés ───────────────
 
     /**
+     * Modifier un rôle attribué à un compte privilégié change indirectement
+     * ses droits. Ce chemin doit rester fermé avant le workflow maker-checker.
+     */
+    private function assertNoSensitiveRoleMembers(Role $role): void
+    {
+        $protege = User::query()
+            ->whereHas('roles', fn ($query) => $query->where('roles.id', $role->id))
+            ->whereHas('roles', fn ($query) => $query->whereIn('name', ['superAdmin', 'serviceTechnique']))
+            ->exists();
+        if ($protege) {
+            throw new AuthorizationException('Rôle attribué à un compte sensible : approbation distincte obligatoire.');
+        }
+    }
+
+    /** Verrouille le rôle sensible de référence puis le rôle effectivement modifié. */
+    private function lockRoleEditMutation(Role $role): void
+    {
+        Role::query()->where('name', 'superAdmin')->where('guard_name', 'web')
+            ->lockForUpdate()->first();
+        Role::query()->whereKey($role->id)->lockForUpdate()->firstOrFail();
+    }
+
+    /**
+     * Même ordre de verrous que RoleAssignmentService : rôle bootstrap de
+     * secours, puis rôle custom, puis utilisateurs triés par identifiant.
+     * Ainsi les validations sensibles se refont après la sérialisation.
+     */
+    private function lockCustomRoleMutation(Role $role): void
+    {
+        Role::query()->where('name', 'superAdmin')->where('guard_name', 'web')
+            ->lockForUpdate()->first();
+        $courant = Role::query()->whereKey($role->id)->lockForUpdate()->firstOrFail();
+        if (! $courant->is_custom) {
+            throw new AuthorizationException('Un rôle système ne peut pas être modifié par cette action.');
+        }
+    }
+
+    /**
+     * Garde commune aux ajouts, retraits unitaires et synchronisations de
+     * membres. Une permission du rôle cible ou un second rôle non gérable
+     * doit refuser toute l'opération, y compris les listes vides.
+     */
+    private function refusAffectation(Role $role, array $userIds, PermissionRegistry $registry): ?\Illuminate\Http\JsonResponse
+    {
+        // Les comptes de secours sont exclus de TOUTES les modifications de
+        // rôles personnalisés : manage_all élargit le périmètre, pas le
+        // cycle de vie sensible soumis à une approbation distincte.
+        $proteges = User::query()->whereIn('id', $userIds)
+            ->whereHas('roles', fn ($q) => $q->whereIn('name', ['superAdmin', 'serviceTechnique']))
+            ->pluck('id')->all();
+        if ($proteges !== []) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Compte sensible : approbation distincte obligatoire.',
+                'forbidden_user_ids' => $proteges,
+            ], 403);
+        }
+
+        if ($denial = $this->denyIfPermissionsNotGrantable(
+            array_values(array_unique(array_map(
+                fn (string $nom) => $registry->canonicalize($nom),
+                $role->permissions()->pluck('name')->all()
+            ))), $registry
+        )) {
+            return $denial;
+        }
+
+        $manageable = $this->manageableRolesForActor($registry);
+        if ($manageable === []) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucun périmètre de gestion des utilisateurs ne vous est attribué.',
+            ], 403);
+        }
+
+        $admissibles = array_values(array_unique([...$manageable, $role->name]));
+        $peutInitialiser = Auth::user()->checkPermissionTo('personnel.users.initialize', 'web');
+        $interdits = User::query()
+            ->whereIn('id', $userIds)
+            ->where(function ($q) use ($admissibles, $peutInitialiser) {
+                if (! $peutInitialiser) {
+                    $q->whereDoesntHave('roles');
+                }
+                $methode = $peutInitialiser ? 'whereHas' : 'orWhereHas';
+                $q->{$methode}('roles', fn ($roles) => $roles->whereNotIn('name', $admissibles));
+            })
+            ->pluck('id')->all();
+
+        return $interdits === [] ? null : response()->json([
+            'success' => false,
+            'message' => 'Certains comptes ont des rôles hors de votre périmètre ou ne sont pas encore habilités.',
+            'forbidden_user_ids' => $interdits,
+        ], 403);
+    }
+
+    /**
+     * Même invariant pour les rôles personnalisés : contrôler les droits
+     * ACTUELS du rôle, pas uniquement les droits proposés. Sans ce garde,
+     * un gestionnaire peut retirer des permissions privilégiées qu'il n'a
+     * pas lui-même, voire supprimer entièrement le rôle.
+     */
+    private function assertCustomRolePermissionsManageable(Role $role, PermissionRegistry $registry): void
+    {
+        $courantes = array_values(array_unique(array_map(
+            fn (string $nom) => $registry->canonicalize($nom),
+            $role->permissions()->pluck('name')->all()
+        )));
+
+        abort_if(
+            $this->denyIfPermissionsNotGrantable($courantes, $registry) !== null,
+            403,
+            'Ce rôle personnalisé contient des permissions hors de votre périmètre.'
+        );
+    }
+
+    /**
+     * Un gestionnaire du personnel ne gère pas automatiquement les rôles
+     * de toute l'école : la matrice de gestion s'applique aussi aux rôles
+     * standards. Il ne peut pas non plus supprimer des droits qu'il ne
+     * possède pas lui-même. Le superadmin reste couvert par sa matrice.
+     */
+    private function assertStandardRoleManageable(Role $role, PermissionRegistry $registry): void
+    {
+        abort_unless(
+            in_array($role->name, $this->manageableRolesForActor($registry), true),
+            403,
+            'Ce rôle n’appartient pas à votre périmètre de gestion.'
+        );
+
+        $currentPermissions = array_values(array_unique(array_map(
+            fn (string $nom) => $registry->canonicalize($nom),
+            $role->permissions()->pluck('name')->all()
+        )));
+
+        abort_if(
+            $this->denyIfPermissionsNotGrantable($currentPermissions, $registry) !== null,
+            403,
+            'Ce rôle contient des permissions que vous ne pouvez pas administrer.'
+        );
+    }
+
+    /**
      * Query builder pour les rôles custom uniquement (is_custom = true).
      */
     private function customRolesQuery()
     {
-        return Role::query()->where('is_custom', true)->orderBy('label_fr')->orderBy('name');
+        return Role::query()->where('is_custom', true)->where('guard_name', 'web')
+            ->orderBy('label_fr')->orderBy('name');
     }
 
     /**
@@ -641,20 +963,29 @@ class ESBTPCustomRoleController extends Controller
             $registry->clearCache();
 
             return response()->json($payload);
+        } catch (AuthorizationException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 403);
         } catch (\Throwable $e) {
             DB::rollBack();
+            Log::error('Gestion des rôles : mutation annulée', [
+                'action' => $action,
+                'exception_type' => get_class($e),
+            ]);
 
             return response()->json([
                 'success' => false,
-                'message' => "Erreur lors de {$action} : " . $e->getMessage(),
+                'message' => "Erreur lors de {$action}. Aucune modification n'a été enregistrée. Contactez le support.",
             ], 500);
         }
     }
 
     /**
      * Permissions que l'acteur peut accorder à un nouveau rôle.
-     * - superAdmin (via Gate::before) → toutes
-     * - autre → uniquement celles qu'il possède
+     * - tous les utilisateurs → uniquement leurs permissions effectives
      *
      * Retourne un Collection groupée par "group" du registry.
      */
@@ -664,10 +995,10 @@ class ESBTPCustomRoleController extends Controller
         $registryPerms = $registry->all();
 
         // Toutes les permissions DB (pour avoir id + name)
-        $dbPerms = Permission::query()->orderBy('name')->get();
+        $dbPerms = Permission::query()->where('guard_name', 'web')->orderBy('name')->get();
 
         $grantable = $dbPerms->filter(function (Permission $p) use ($actor) {
-            // superAdmin via Gate::before passe toujours
+            // Aucun passe-droit pour un simple nom de rôle
             return $actor->can($p->name);
         });
 
@@ -714,22 +1045,43 @@ class ESBTPCustomRoleController extends Controller
     }
 
     /**
-     * Liste des rôles que l'acteur peut gérer (matrice Lot 5).
+     * Périmètre calculé depuis les permissions réelles, pas depuis une matrice
+     * de noms de rôles. Une permission directe fonctionne comme une permission
+     * provenant d'un rôle personnalisé.
+     *
+     * Le pouvoir d'affecter un rôle ne permet jamais de transmettre un pouvoir
+     * que l'opérateur ne possède pas : vérifier également son contenu Spatie.
      */
     private function manageableRolesForActor(PermissionRegistry $registry): array
     {
         $actor = Auth::user();
-
-        // superAdmin / serviceTechnique → tous les rôles existants
-        if ($actor->hasAnyRole(['superAdmin', 'serviceTechnique'])) {
-            return Role::pluck('name')->all();
-        }
-
-        $primaryRole = $actor->getRoleNames()->first();
-        if (! $primaryRole) {
+        if (! $actor) {
             return [];
         }
 
-        return $registry->manageableRoles($primaryRole);
+        if ($actor->checkPermissionTo('personnel.roles.manage_all', 'web')) {
+            return Role::query()->where('guard_name', 'web')->pluck('name')->all();
+        }
+
+        if (! $actor->checkPermissionTo('personnel.roles.assign', 'web')
+            && ! $actor->checkPermissionTo('personnel.roles.remove', 'web')) {
+            return [];
+        }
+
+        return Role::query()
+            ->where('guard_name', 'web')
+            ->whereNotIn('name', ['superAdmin', 'serviceTechnique'])
+            ->with('permissions')
+            ->get()
+            ->filter(static function (Role $role) use ($actor): bool {
+                foreach ($role->permissions as $permission) {
+                    if (! $actor->checkPermissionTo($permission->name, 'web')) {
+                        return false;
+                    }
+                }
+                return true;
+            })
+            ->pluck('name')
+            ->all();
     }
 }

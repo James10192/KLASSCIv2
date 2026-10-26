@@ -23,7 +23,7 @@ Tout besoin métier nouveau (« il faut un directeur financier qui voit l'audit 
 
 1. **Création d'une nouvelle PERMISSION** dans `config/permissions.php` clé `permissions`
 2. **Assignation aux rôles existants** via `role_defaults` (defaults) OU laisser vide → l'école configure
-3. **Création d'un rôle CUSTOM via l'UI** (`/esbtp/custom-roles` → ESBTPCustomRoleController) — chaque école configure ses propres rôles métier (ex: ESBTP Yakro crée « Directeur Financier », Hetec crée « Auditeur Interne »)
+3. **Création d'un rôle CUSTOM via l'UI** (`/esbtp/personnel/unified` → modales AJAX du contrôleur ESBTPCustomRoleController) — chaque école configure ses propres rôles métier (ex: ESBTP Yakro crée « Directeur Financier », Hetec crée « Auditeur Interne »)
 
 ## Pourquoi cette rule existe
 
@@ -83,9 +83,9 @@ if (auth()->user()->hasRole('directeur_financier')) {  // ❌ NON
 
 'role_defaults' => [
     // Laisser VIDE pour ces perms → l'école attribue à qui elle veut.
-    // OU pré-grant au superAdmin uniquement (couverture par Gate::before quoi qu'il arrive).
+    // OU pré-grant au superAdmin (révocable dans chaque instance).
     'superAdmin' => [
-        // pas besoin d'expliciter, Gate::before couvre tout
+        // droits explicitement synchronisés depuis le registry, révocables par instance
     ],
 ],
 ```
@@ -104,7 +104,7 @@ if (auth()->user()->can('paiements.validate.high_amount')) {  // ✅ OUI
 @endcan
 ```
 
-L'école va sur `/esbtp/custom-roles` :
+L'école va sur `/esbtp/personnel/unified` :
 1. Crée un rôle « Directeur Financier ESBTP » (ou « Auditeur », ou ce qu'elle veut)
 2. Coche les permissions `comptabilite.audit.view`, `paiements.validate.high_amount`, etc.
 3. Assigne ce rôle à un user

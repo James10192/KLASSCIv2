@@ -181,13 +181,34 @@ class MobileProfileResolver
             return null;
         }
 
-        // Exceptions tolerees a l'interdiction de hasRole() : le superAdmin
-        // possede toutes les permissions, la cascade ci-dessous le rangerait
-        // toujours en caisse.
-        if ($user->hasRole('superAdmin')) {
-            $force = $this->profilForce();
+        // La fonction explicitement choisie prime la cascade des autres droits
+        // du compte. Ce choix n'est PAS une preuve d'autorisation ; chaque
+        // écran et action conserve ses vérifications de permissions.
+        $choisi = \App\Support\ProfilActif::courant(request());
+        if (in_array($choisi, ['enseignant', 'teacher'], true) && $user->can('identity.teach')) {
+            return self::ENSEIGNANT;
+        }
+        if ($choisi === 'coordinateur' && $user->can('identity.coordinate')) {
+            return self::SCOLARITE;
+        }
+        if ($choisi !== null) {
+            $roleChoisi = $user->roles->firstWhere('name', $choisi);
+            $profilChoisi = $roleChoisi?->getAttribute('mobile_profile');
+            if (is_string($profilChoisi) && self::estDeclarable($profilChoisi)) {
+                return $profilChoisi;
+            }
+        }
 
-            return self::estDeclarable($force) ? $force : self::COMPTABLE;
+        // Le profil forcé est une préférence d'affichage soumise à un droit
+        // explicite, jamais au seul nom du rôle.
+        $force = $this->profilForce();
+        if ($user->can('mobile.profile.preview') && self::estDeclarable($force)) {
+            return $force;
+        }
+        // Par défaut, l'administrateur conserve le shell comptabilité.
+        // Ici hasRole ne sert qu'à CLASSIFIER le shell (pas à autoriser).
+        if ($user->hasRole('superAdmin')) {
+            return self::COMPTABLE;
         }
 
         // Meme raison pour le service technique : il porte toutes les

@@ -10,15 +10,6 @@ class ESBTPInscriptionPolicy
 {
     use HandlesAuthorization;
 
-    /**
-     * Super-admin bypass — grants all abilities.
-     */
-    public function before(User $user, string $ability)
-    {
-        if ($user->hasRole('superAdmin')) {
-            return true;
-        }
-    }
 
     public function viewAny(User $user)
     {
@@ -32,16 +23,10 @@ class ESBTPInscriptionPolicy
      */
     public function view(User $user, ESBTPInscription $inscription)
     {
-        if (!$user->can('inscriptions.view')) {
-            return false;
-        }
-
-        if ($user->hasRole('etudiant')) {
-            return $inscription->etudiant
-                && $inscription->etudiant->user_id === $user->id;
-        }
-
-        return true;
+        // Une permission globale explicite vaut même pour un compte ayant
+        // aussi le rôle étudiant (multi-fonctions). Le rôle ne retire aucun
+        // droit effectivement attribué par l'établissement.
+        return $user->can('inscriptions.view');
     }
 
     /**

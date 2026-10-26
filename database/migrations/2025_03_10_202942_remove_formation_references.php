@@ -15,14 +15,10 @@ class RemoveFormationReferences extends Migration
     {
         Schema::table('esbtp_classes', function (Blueprint $table) {
             // Vérifier si la clé étrangère existe avant de la supprimer
-            $foreignKeys = Schema::getConnection()
-                ->getDoctrineSchemaManager()
-                ->listTableForeignKeys('esbtp_classes');
-
-            $formationForeignKeyExists = collect($foreignKeys)
-                ->contains(function ($foreignKey) {
-                    return $foreignKey->getName() === 'esbtp_classes_formation_id_foreign';
-                });
+            $formationForeignKeyExists = collect(Schema::getForeignKeys('esbtp_classes'))
+                ->contains(static fn (array $foreignKey): bool =>
+                    ($foreignKey['name'] ?? null) === 'esbtp_classes_formation_id_foreign'
+                );
 
             if ($formationForeignKeyExists) {
                 $table->dropForeign(['formation_id']);

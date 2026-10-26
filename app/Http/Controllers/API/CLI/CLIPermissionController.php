@@ -97,8 +97,9 @@ class CLIPermissionController extends BaseApiController
                 'audit' => $payload,
             ], 'Audit completed');
         } catch (\Throwable $e) {
-            Log::error('CLI: permissions audit failed', ['error' => $e->getMessage()]);
-            return $this->errorResponse('Audit failed', ['error' => $e->getMessage()], 500);
+            Log::error('CLI: permissions audit failed', ['exception_type' => get_class($e)]);
+            // Ne jamais divulguer au consommateur API les chemins ou SQL internes.
+            return $this->errorResponse('Audit failed', [], 500);
         }
     }
 
@@ -153,45 +154,75 @@ class CLIPermissionController extends BaseApiController
             'permissions.*' => ['string'],
         ]);
 
+        if (! $request->user()->checkPermissionTo('personnel.roles.create', 'web')) {
+            return $this->errorResponse('Permission de création de rôle absente.', [], 403);
+        }
+        foreach ($validated['permissions'] ?? [] as $permission) {
+            if (Permission::query()->where('name', $permission)->where('guard_name', 'web')->exists()
+                && ! $request->user()->checkPermissionTo($permission, 'web')) {
+                return $this->errorResponse('Permission non délégable : '.$permission, [], 403);
+            }
+        }
+
         $reserved = array_keys(config('permissions.roles', []));
         if (in_array($validated['name'], $reserved, true)) {
             return $this->errorResponse('Ce nom est réservé à un rôle système.', [], 422);
         }
 
-        $existing = Role::where('name', $validated['name'])->first();
-        if ($existing) {
-            $emptyWrongGuard = $existing->guard_name !== 'web'
-                && $existing->permissions()->count() === 0;
-            if (! $emptyWrongGuard) {
-                return $this->errorResponse("Role '{$validated['name']}' already exists", [], 422);
-            }
-            $existing->guard_name = 'web';
-            $existing->label_fr = $validated['label_fr'];
-            $existing->description = $validated['description'] ?? $existing->description;
-            $existing->is_custom = true;
-            $existing->save();
-            $role = $existing;
-        } else {
-            $role = new Role();
-            $role->name = $validated['name'];
-            $role->guard_name = 'web';
-            $role->label_fr = $validated['label_fr'];
-            $role->description = $validated['description'] ?? null;
-            $role->is_custom = true;
-            $role->created_by_user_id = $request->user()->id;
-            $role->save();
+        // Validation hors mutation, puis rôle + droits + audit dans une transaction.
+        // En cas d'échec, pas de rôle créé à moitié ni de permissions non tracées.
+        try {
+            [$role, $granted, $missing] = DB::transaction(function () use ($validated, $request) {
+                $this->assertRoleMutationScopeLocked($request, 'personnel.roles.create', $validated['permissions'] ?? [], true);
+                $existing = Role::query()->where('name', $validated['name'])
+                    ->where('guard_name', 'web')->first();
+                if ($existing) {
+                    return [null, [], []];
+                }
+
+                // Jamais convertir un rôle d'un autre guard : les homonymes
+                // web/api peuvent légitimement coexister.
+                $role = new Role();
+                $role->name = $validated['name'];
+                $role->guard_name = 'web';
+                $role->label_fr = $validated['label_fr'];
+                $role->description = $validated['description'] ?? null;
+                $role->is_custom = true;
+                $role->created_by_user_id = $request->user()->id;
+                $role->save();
+
+                $granted = [];
+                $missing = [];
+                foreach (array_unique($validated['permissions'] ?? []) as $perm) {
+                    $permModel = Permission::where('name', $perm)->where('guard_name', 'web')->first();
+                    if (! $permModel) {
+                        $missing[] = $perm;
+                        continue;
+                    }
+                    $role->givePermissionTo($permModel);
+                    $granted[] = $perm;
+                }
+
+                app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeRole(
+                    $role,
+                    ['permissions' => []],
+                    ['permissions' => $granted],
+                    $request->user()->id,
+                    'Création du rôle personnalisé depuis la CLI'
+                );
+
+                return [$role, $granted, $missing];
+            });
+        } catch (\Throwable $e) {
+            Log::error('CLI: creation role annulee (transaction/audit)', [
+                'type' => get_class($e),
+                'role' => $validated['name'],
+            ]);
+            return $this->errorResponse('Création impossible : aucune modification enregistrée.', [], 500);
         }
 
-        $granted = [];
-        $missing = [];
-        foreach ($validated['permissions'] ?? [] as $perm) {
-            $permModel = Permission::where('name', $perm)->where('guard_name', 'web')->first();
-            if (! $permModel) {
-                $missing[] = $perm;
-                continue;
-            }
-            $role->givePermissionTo($permModel);
-            $granted[] = $perm;
+        if ($role === null) {
+            return $this->errorResponse("Role '{$validated['name']}' already exists", [], 422);
         }
 
         app()['cache']->forget(config('permission.cache.key', 'spatie.permission.cache'));
@@ -238,21 +269,44 @@ class CLIPermissionController extends BaseApiController
             return $this->errorResponse("Le role '{$role}' ne se retire pas depuis le CLI.", [], 422);
         }
 
-        $revoquees = [];
-        foreach ($perms as $perm) {
-            if ($roleModel->hasPermissionTo($perm)) {
-                $roleModel->revokePermissionTo($perm);
-                $revoquees[] = $perm;
+        if (! $request->user()->checkPermissionTo('personnel.manage', 'web')) {
+            return $this->errorResponse('Permission personnel.manage absente.', [], 403);
+        }
+        // Le token d'administration ne donne aucun droit Spatie de plus.
+        foreach ($perms as $permission) {
+            if (! is_string($permission) || ! $request->user()->checkPermissionTo($permission, 'web')) {
+                return $this->errorResponse('Permission hors du périmètre de l opérateur.', [], 403);
             }
         }
 
         $extensions = app(\App\Services\ExtensionsDeRole::class);
-        $extensions->enregistrer(
-            $role,
-            $roleModel->fresh()->permissions()->pluck('name')->all(),
-            $request->input('motif'),
-            $request->user()->id
-        );
+
+        // Changement de droits et trace durable dans la MEME transaction.
+        // Une migration manquante ou un audit en erreur ne doit jamais laisser
+        // un role modifie a moitie.
+        $revoquees = DB::transaction(function () use ($roleModel, $perms, $extensions, $role, $request) {
+            app(\App\Services\Personnel\RolePermissionMutationGuard::class)->lockAndAssertSafe($roleModel);
+            $this->assertRoleMutationScopeLocked($request, 'personnel.manage', $perms);
+            $existantes = $roleModel->permissions()->pluck('name')->all();
+            $revoquees = [];
+            foreach ($perms as $perm) {
+                if (in_array($perm, $existantes, true)) {
+                    $roleModel->revokePermissionTo($perm);
+                    $revoquees[] = $perm;
+                }
+            }
+
+            $apres = $roleModel->fresh()->permissions()->pluck('name')->all();
+            app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeRole(
+                $roleModel, ['permissions' => $existantes], ['permissions' => $apres],
+                $request->user()->id, $request->input('motif') ?: 'Révocation CLI'
+            );
+            $extensions->enregistrer(
+                $role, $apres, $request->input('motif'), $request->user()->id
+            );
+
+            return $revoquees;
+        });
 
         app()['cache']->forget(config('permission.cache.key', 'spatie.permission.cache'));
 
@@ -271,6 +325,11 @@ class CLIPermissionController extends BaseApiController
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
 
+        // Le grant suit la même interdiction que roleRevoke.
+        if (in_array($role, ['superAdmin', 'serviceTechnique'], true)) {
+            return $this->errorResponse("Le role '{$role}' n'est pas modifiable depuis le CLI.", [], 422);
+        }
+
         $perms = $request->input('permissions', []);
         if (!is_array($perms) || empty($perms)) {
             return $this->errorResponse('permissions[] requis', [], 422);
@@ -281,27 +340,46 @@ class CLIPermissionController extends BaseApiController
             return $this->errorResponse("Role '{$role}' not found", [], 404);
         }
 
-        $granted = [];
-        $missing = [];
-        foreach ($perms as $perm) {
-            $permModel = Permission::where('name', $perm)->where('guard_name', 'web')->first();
-            if (!$permModel) { $missing[] = $perm; continue; }
-            if (!$roleModel->hasPermissionTo($perm)) {
-                $roleModel->givePermissionTo($permModel);
-                $granted[] = $perm;
+        if (! $request->user()->checkPermissionTo('personnel.manage', 'web')) {
+            return $this->errorResponse('Permission personnel.manage absente.', [], 403);
+        }
+        // Le token d'administration ne donne aucun droit Spatie de plus.
+        foreach ($perms as $permission) {
+            if (! is_string($permission) || ! $request->user()->checkPermissionTo($permission, 'web')) {
+                return $this->errorResponse('Permission hors du périmètre de l opérateur.', [], 403);
             }
         }
-        // Ce qui sort des defauts du role a ete voulu : on l'inscrit, sinon la
-        // synchronisation des permissions le prendrait pour de la derive et
-        // l'effacerait au prochain deploiement — precisement sur les roles
-        // d'organigramme qu'une ecole a le plus de raisons d'etendre.
+
         $extensions = app(\App\Services\ExtensionsDeRole::class);
-        $extensions->enregistrer(
-            $role,
-            $roleModel->permissions()->pluck('name')->all(),
-            $request->input('motif'),
-            $request->user()->id
-        );
+        [$granted, $missing] = DB::transaction(function () use ($roleModel, $perms, $extensions, $role, $request) {
+            app(\App\Services\Personnel\RolePermissionMutationGuard::class)->lockAndAssertSafe($roleModel);
+            $this->assertRoleMutationScopeLocked($request, 'personnel.manage', $perms);
+            $avant = $roleModel->permissions()->pluck('name')->all();
+            $granted = [];
+            $missing = [];
+            foreach ($perms as $perm) {
+                $permModel = Permission::where('name', $perm)->where('guard_name', 'web')->first();
+                if (! $permModel) {
+                    $missing[] = $perm;
+                    continue;
+                }
+                if (! $roleModel->hasPermissionTo($perm)) {
+                    $roleModel->givePermissionTo($permModel);
+                    $granted[] = $perm;
+                }
+            }
+
+            $apres = $roleModel->fresh()->permissions()->pluck('name')->all();
+            app(\App\Listeners\AuditPermissionChange::class)->enregistrerDecisionDeRole(
+                $roleModel, ['permissions' => $avant], ['permissions' => $apres],
+                $request->user()->id, $request->input('motif') ?: 'Attribution CLI'
+            );
+            $extensions->enregistrer(
+                $role, $apres, $request->input('motif'), $request->user()->id
+            );
+
+            return [$granted, $missing];
+        });
 
         app()['cache']->forget(config('permission.cache.key', 'spatie.permission.cache'));
 
@@ -386,6 +464,30 @@ class CLIPermissionController extends BaseApiController
     }
 
     /**
+     * Revalidation au moment de l'écriture : la permission Spatie et l'ability
+     * CLI doivent encore être valides APRES les verrous de mutation du rôle.
+     * Exécuté uniquement dans une transaction DB.
+     *
+     * @param list<string> $permissionNames
+     */
+    private function assertRoleMutationScopeLocked(Request $request, string $action, array $permissionNames, bool $allowUnknown = false): void
+    {
+        $actor = User::query()->whereKey($request->user()->id)->lockForUpdate()->first();
+
+        abort_unless($actor?->is_active
+            && $request->user()->tokenCan('cli:admin')
+            && $actor->checkPermissionTo($action, 'web'), 403);
+
+        foreach (array_unique($permissionNames) as $name) {
+            abort_unless(is_string($name), 403);
+            if ($allowUnknown && ! Permission::query()->where('name', $name)->where('guard_name', 'web')->exists()) {
+                continue;
+            }
+            abort_unless($actor->checkPermissionTo($name, 'web'), 403);
+        }
+    }
+
+    /**
      * Count assigned users without relying on Spatie's Role::users() relation.
      * Roles using an API guard without an auth provider must remain auditable.
      *
@@ -434,6 +536,14 @@ class CLIPermissionController extends BaseApiController
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
 
+        // Une ability Sanctum n'est jamais une habilitation à reconfigurer
+        // les permissions de TOUS les comptes d'un établissement. Même
+        // garde pour /permissions/sync et son alias legacy /permissions/fix.
+        if (! $request->user()->checkPermissionTo('system.technical_access', 'web')
+            && ! $request->user()->checkPermissionTo('personnel.roles.manage_all', 'web')) {
+            return $this->errorResponse('Maintenance des permissions non autorisée.', [], 403);
+        }
+
         try {
             $result = $syncService->run();
 
@@ -445,8 +555,13 @@ class CLIPermissionController extends BaseApiController
                 'aliases_healed' => $result['aliases_healed'],
             ], 'Permissions and roles synced from registry');
         } catch (\Throwable $e) {
-            Log::error('CLI: permissions sync failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return $this->errorResponse('Sync failed: ' . $e->getMessage(), [], 500);
+            // La synchronisation peut échouer sur une contrainte SQL. Jamais
+            // exposer au client le SQL, les chemins, les valeurs ou la stack.
+            Log::error('CLI: permissions sync failed', [
+                'exception_class' => get_class($e),
+                'actor_user_id' => $request->user()?->id,
+            ]);
+            return $this->errorResponse('Synchronisation impossible. Vérifiez les journaux serveur.', [], 500);
         }
     }
 }

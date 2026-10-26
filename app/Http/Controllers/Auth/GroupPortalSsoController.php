@@ -80,8 +80,17 @@ class GroupPortalSsoController extends Controller
 
         Auth::login($user);
         $request->session()->regenerate();
+        \App\Support\ProfilActif::oublier($request);
 
         $this->log($request, $email, $payload, null, $user->id);
+        if (\App\Support\ProfilActif::doitChoisir($user)) {
+            // Conserver la destination signée du portail, sans redirection externe.
+            $request->session()->put('url.intended', $this->sanitizeRedirect($payload[SsoClaim::REDIRECT_TO] ?? '/dashboard'));
+            return redirect()->route('profil.choisir')->withHeaders([
+                'Referrer-Policy' => 'no-referrer',
+                'X-Robots-Tag' => 'noindex, nofollow',
+            ]);
+        }
 
         return $this->redirectResponse($payload);
     }

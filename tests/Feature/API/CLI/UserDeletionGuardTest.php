@@ -27,9 +27,19 @@ class UserDeletionGuardTest extends TestCase
     {
         parent::setUp();
 
+        // Ce lot éprouve des droits individuels sur des comptes sans rôle.
+        // CheckInstalled redirige l'ensemble des API vers /install lorsqu'aucun
+        // compte superAdmin n'a été créé dans la DB de test. Cela produit des
+        // 302 sans atteindre l'autorisation CLI testée ici. L'installation est
+        // couverte séparément ; elle ne doit pas masquer les refus 403/422.
+        $this->withoutMiddleware(\App\Http\Middleware\CheckInstalled::class);
+
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         Permission::findOrCreate('admin.access', 'web');
         Permission::findOrCreate('users.manage', 'web');
+        Permission::findOrCreate('personnel.users.deactivate', 'web');
+        Permission::findOrCreate('personnel.users.password.reset', 'web');
+        Permission::findOrCreate('personnel.users.credentials.export', 'web');
         Role::findOrCreate('superAdmin', 'web')->givePermissionTo('admin.access');
         Role::findOrCreate('secretaire', 'web')->givePermissionTo(['admin.access', 'users.manage']);
         Role::findOrCreate('serviceTechnique', 'web')->givePermissionTo(['admin.access', 'users.manage']);
@@ -59,12 +69,12 @@ class UserDeletionGuardTest extends TestCase
 
         $response = $this->deleteUser($superAdmin, $actor);
 
-        $this->assertSame(422, $response->getStatusCode());
+        $this->assertSame(403, $response->getStatusCode());
         $this->assertNotSoftDeleted('users', ['id' => $superAdmin->id]);
         $this->assertDatabaseHas('users', ['id' => $superAdmin->id, 'is_active' => true]);
     }
 
-    public function test_one_of_two_super_admins_can_be_deleted(): void
+    public function test_even_two_super_admins_cannot_be_reduced_without_approval(): void
     {
         $first = User::factory()->create(['is_active' => true]);
         $second = User::factory()->create(['is_active' => true]);
@@ -73,10 +83,10 @@ class UserDeletionGuardTest extends TestCase
 
         $response = $this->deleteUser($first, $second);
 
-        $response->assertOk();
-        $this->assertSoftDeleted('users', ['id' => $first->id]);
+        $response->assertForbidden();
+        $this->assertNotSoftDeleted('users', ['id' => $first->id]);
         $this->assertDatabaseHas('users', ['id' => $second->id, 'is_active' => true]);
-        $this->assertSame(1, User::role('superAdmin')->count());
+        $this->assertSame(2, User::role('superAdmin')->count());
     }
 
     public function test_non_super_admin_cli_actor_cannot_delete_super_admin_target(): void
@@ -112,7 +122,7 @@ class UserDeletionGuardTest extends TestCase
 
         $response = $this->deleteUser($active, $inactive);
 
-        $response->assertStatus(422);
+        $response->assertForbidden();
         $this->assertNotSoftDeleted('users', ['id' => $active->id]);
         $this->assertDatabaseHas('users', ['id' => $active->id, 'is_active' => true]);
     }
@@ -123,7 +133,7 @@ class UserDeletionGuardTest extends TestCase
         $support = User::factory()->create(['is_active' => true]);
         $support->assignRole('serviceTechnique');
 
-        $this->deleteUser($support)->assertStatus(422);
+        $this->deleteUser($support)->assertForbidden();
 
         $this->assertNotSoftDeleted('users', ['id' => $support->id]);
     }
@@ -134,7 +144,7 @@ class UserDeletionGuardTest extends TestCase
         $actor = User::factory()->create(['is_active' => true]);
         Sanctum::actingAs($actor, ['cli:admin']);
 
-        $this->postJson("/api/cli/user/{$actor->id}/delete")->assertStatus(422);
+        $this->postJson("/api/cli/user/{$actor->id}/delete", ['motif' => 'Test auto suppression'])->assertStatus(422);
 
         $this->assertNotSoftDeleted('users', ['id' => $actor->id]);
     }
@@ -214,7 +224,8 @@ class UserDeletionGuardTest extends TestCase
             app(SuperAdminLifecycleGuard::class),
         );
 
-        $this->assertSame(422, $response->getStatusCode());
+        // Un compte Superadmin reste verrouillé jusqu'au workflow maker-checker.
+        $this->assertSame(403, $response->getStatusCode());
         $this->assertDatabaseHas('users', ['id' => $target->id, 'is_active' => true]);
     }
 
@@ -235,7 +246,8 @@ class UserDeletionGuardTest extends TestCase
             app(SuperAdminLifecycleGuard::class),
         );
 
-        $this->assertSame(422, $response->getStatusCode());
+        // Un compte Superadmin reste verrouillé jusqu'au workflow maker-checker.
+        $this->assertSame(403, $response->getStatusCode());
         $this->assertSame(2, User::role('superAdmin')->where('users.is_active', true)->count());
     }
 
@@ -399,10 +411,78 @@ class UserDeletionGuardTest extends TestCase
         return $actor;
     }
 
+    public function test_cli_suppression_sans_motif_repond_422_et_non_500(): void
+    {
+        $target = User::factory()->create(['is_active' => true]);
+        $actor = User::factory()->create();
+        $actor->givePermissionTo('personnel.users.deactivate');
+        Sanctum::actingAs($actor, ['cli:admin']);
+        $this->postJson("/api/cli/user/{$target->id}/delete", [])
+            ->assertStatus(422)->assertJsonValidationErrors(['motif']);
+        $this->assertNotSoftDeleted('users', ['id' => $target->id]);
+    }
+
+    public function test_cli_token_admin_sans_permission_ne_desactive_pas_un_compte(): void
+    {
+        $target = User::factory()->create(['is_active' => true]);
+        Sanctum::actingAs(User::factory()->create(), ['cli:admin']);
+        $this->postJson("/api/cli/user/{$target->id}/delete", [
+            'motif' => 'Test permission absente',
+        ])->assertForbidden();
+        $this->assertNotSoftDeleted('users', ['id' => $target->id]);
+    }
+
     private function deleteUser(User $target, ?User $actor = null): \Illuminate\Testing\TestResponse
     {
-        Sanctum::actingAs($actor ?? User::factory()->create(), ['cli:admin']);
+        $actor = $actor ?? User::factory()->create();
+        $actor->givePermissionTo('personnel.users.deactivate');
+        Sanctum::actingAs($actor, ['cli:admin']);
 
-        return $this->postJson("/api/cli/user/{$target->id}/delete");
+        return $this->postJson("/api/cli/user/{$target->id}/delete", ['motif' => 'Contrôle de désactivation']);
+
     }
+    public function test_cli_password_reset_exige_une_permission_effective_et_refuse_superadmin(): void
+    {
+        $actor = User::factory()->create();
+        $target = User::factory()->create(['is_active' => true]);
+        Sanctum::actingAs($actor, ['cli:admin']);
+        $url = "/api/cli/user/{$target->id}/reset-password";
+
+        $this->postJson($url, ['password' => 'MotDePasseUnique89#'])->assertForbidden();
+        $actor->givePermissionTo('personnel.users.password.reset');
+        // La capacité sensible seule ne suffit pas : l'opérateur doit aussi
+        // avoir le droit de gérer la cible (UserManagementService::canManage).
+        $this->postJson($url, ['password' => 'MotDePasseUnique89#'])->assertForbidden();
+        $actor->givePermissionTo(Permission::findOrCreate('personnel.manage', 'web'));
+        $this->postJson($url, ['password' => 'MotDePasseUnique89#'])->assertOk();
+
+        $admin = User::factory()->create();
+        $admin->assignRole('superAdmin');
+        $hashAvant = $admin->password;
+        $this->postJson("/api/cli/user/{$admin->id}/reset-password", [
+            'password' => 'MotDePasseUnique90#',
+        ])->assertForbidden();
+        $this->assertSame($hashAvant, $admin->fresh()->password);
+    }
+
+    public function test_cli_export_empreinte_exige_permission_et_refuse_comptes_sensibles(): void
+    {
+        $actor = User::factory()->create();
+        $target = User::factory()->create();
+        Sanctum::actingAs($actor, ['cli:admin']);
+
+        $this->getJson("/api/cli/user/{$target->id}/credentials")->assertForbidden();
+        $actor->givePermissionTo('personnel.users.credentials.export');
+        // Même invariant pour l'export sensible : droit d'action + gestion de cible.
+        $this->getJson("/api/cli/user/{$target->id}/credentials")->assertForbidden();
+        $actor->givePermissionTo(Permission::findOrCreate('personnel.manage', 'web'));
+        $this->getJson("/api/cli/user/{$target->id}/credentials")
+            ->assertOk()->assertJsonPath('data.user_id', $target->id);
+
+        $super = User::factory()->create();
+        $super->assignRole('superAdmin');
+        $this->getJson("/api/cli/user/{$super->id}/credentials")->assertForbidden();
+    }
+
+
 }

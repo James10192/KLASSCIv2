@@ -66,6 +66,18 @@ class AccesTemporairesNonAccordablesTest extends TestCase
             'Ces ecritures posent un role, une permission ou un mot de passe et s\'ouvrent par un acces temporaire.');
     }
 
+    public function test_les_permissions_de_mutation_de_roles_et_de_comptes_sont_non_accordables(): void
+    {
+        $service = app(AccesTemporaires::class);
+        foreach ([
+            'personnel.roles.assign', 'personnel.roles.remove', 'personnel.roles.replace',
+            'personnel.roles.manage_all', 'personnel.users.deactivate',
+            'personnel.users.password.reset', 'superadmin.accounts.create',
+        ] as $nom) {
+            $this->assertFalse($service->estAccordable($nom), $nom);
+        }
+    }
+
     public function test_un_alias_legacy_se_juge_sous_son_nom_canonique(): void
     {
         $registre = app(PermissionRegistry::class);

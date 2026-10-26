@@ -702,6 +702,12 @@ return [
             'icon' => 'fa-clipboard-list',
             'aliases' => ['view_notes', 'view_grades'],
         ],
+        'notes.view_all' => [
+            'label' => 'Voir toutes les notes, y compris avec un profil enseignant',
+            'group' => 'Notes & Évaluations',
+            'icon' => 'fa-eye',
+            'aliases' => [],
+        ],
         'notes.view_own' => [
             'label' => 'Voir ses propres notes',
             'group' => 'Notes & Évaluations',
@@ -1461,6 +1467,58 @@ return [
             'group' => 'Personnel',
             'icon' => 'fa-users-cog',
             'aliases' => ['manage_personnel'],
+        ],
+        'personnel.users.password.reset' => [
+            'label' => 'Réinitialiser les mots de passe des comptes ordinaires',
+            'group' => 'Sécurité',
+            'icon' => 'fa-key',
+        ],
+        'personnel.users.credentials.export' => [
+            'label' => 'Exporter les identifiants des comptes ordinaires',
+            'group' => 'Sécurité',
+            'icon' => 'fa-file-export',
+        ],
+        'personnel.users.deactivate' => [
+            'label' => 'Désactiver un compte du personnel',
+            'group' => 'Personnel',
+            'icon' => 'fa-user-slash',
+        ],
+        'personnel.roles.assign' => [
+            'label' => 'Ajouter un rôle au compte',
+            'group' => 'Personnel',
+            'icon' => 'fa-user-plus',
+        ],
+        'personnel.roles.remove' => [
+            'label' => 'Retirer un rôle du compte',
+            'group' => 'Personnel',
+            'icon' => 'fa-user-minus',
+        ],
+        'personnel.roles.replace' => [
+            'label' => 'Remplacer un rôle précis',
+            'group' => 'Personnel',
+            'icon' => 'fa-user-cog',
+        ],
+        'personnel.roles.create' => [
+            'label' => 'Créer un rôle personnalisé',
+            'group' => 'Personnel',
+            'icon' => 'fa-users-cog',
+        ],
+        'superadmin.accounts.create' => [
+            'label' => 'Créer ou promouvoir un compte Superadmin',
+            'group' => 'Sécurité',
+            'icon' => 'fa-user-shield',
+        ],
+        'personnel.roles.manage_all' => [
+            'label' => 'Administrer le périmètre complet des rôles du personnel',
+            'description' => 'Gérer les rôles existants sans dépendre du nom du rôle porté par le gestionnaire.',
+            'group' => 'Personnel',
+            'icon' => 'fa-user-shield',
+        ],
+        'personnel.users.initialize' => [
+            'label' => 'Affecter le premier rôle à un compte existant',
+            'description' => 'Autorise à sélectionner un compte sans rôle lors des affectations contrôlées.',
+            'group' => 'Personnel',
+            'icon' => 'fa-user-plus',
         ],
         'profile.view_own' => [
             'label' => 'Voir son propre profil',
@@ -2265,6 +2323,29 @@ return [
             'group' => 'Système',
             'icon' => 'fa-chart-pie',
         ],
+        'exploitation.control_center.view' => [
+            'label' => "Consulter la console d'exploitation et les traces techniques",
+            'description' => "Accès de diagnostic aux traces de lenteur de l'établissement, indépendamment des autres droits d'administration.",
+            'group' => 'Sécurité',
+            'icon' => 'fa-gauge-high',
+        ],
+        'mcp.connections.approve' => [
+            'label' => 'Approuver une connexion Nanan MCP par vérification indépendante',
+            'description' => 'Habilitation distincte du droit de gestion du personnel ; jamais auto-approbation.',
+            'group' => 'Sécurité',
+            'icon' => 'fa-user-check',
+        ],
+        'mcp.connections.connect' => [
+            'label' => 'Connecter son compte au service Nanan MCP en lecture seule',
+            'description' => 'Liaison personnelle soumise à consentement et approbation ; aucun droit sur les autres comptes.',
+            'group' => 'Sécurité',
+            'icon' => 'fa-link',
+        ],
+        'mobile.profile.preview' => [
+            'label' => 'Prévisualiser les profils mobiles sans changer les permissions',
+            'group' => 'Administration',
+            'icon' => 'fa-mobile-alt',
+        ],
         'system.technical_access' => [
             'label' => 'Accès technique au système',
             'group' => 'Système',
@@ -2335,6 +2416,31 @@ return [
     | Lecture via PermissionRegistry::defaultPermissionsFor($role).
     */
 
+    'role_default_exclusions' => [
+        // Le service technique reçoit seul par défaut la création de Superadmin.
+        // Une attribution explicite et auditée peut toujours être décidée par tenant.
+        'serviceTechnique' => [
+            // L'état de compte technique ne donne ni l'approbation de connexions
+            // personnelles ni l'accès aux traces ou aux aperçus métier.
+            'exploitation.control_center.view',
+            'mcp.connections.approve',
+            'mcp.connections.connect',
+            'mobile.profile.preview',
+        ],
+        'superAdmin' => [
+            'superadmin.accounts.create',
+            // Permission d'exploitation, approbation d'identité MCP et aperçu
+            // transversal : accordés seulement après délégation explicite auditée.
+            'exploitation.control_center.view',
+            'mcp.connections.approve',
+            'mobile.profile.preview',
+            // Maintenance ADC uniquement par défaut ; l'école peut accorder
+            // explicitement ces droits, avec audit et sans rôle obligatoire.
+            'paywall.manage',
+            'system.technical_access',
+        ],
+    ],
+
     'role_defaults' => [
         'superAdmin' => ['*'],
 
@@ -2350,6 +2456,7 @@ return [
         ],
 
         'secretaire' => [
+            'mcp.connections.connect',
             'inscriptions.redoublant.confirm',
             'dashboard.view', 'admin.access', 'parent_chatbot.manage',
             'students.view', 'students.create', 'students.edit', 'students.delete',
@@ -2367,7 +2474,7 @@ return [
             'filieres.view', 'filieres.create', 'filieres.edit',
             'niveaux.view', 'niveaux.create', 'niveaux.edit',
             'matieres.view',
-            'notes.view', 'notes.create', 'notes.edit', 'notes.import_excel',
+            'notes.view', 'notes.view_all', 'notes.create', 'notes.edit', 'notes.import_excel',
             'notes.window.manage',
             'evaluations.view', 'evaluations.create', 'evaluations.edit', 'exams.view',
             'bulletins.view', 'bulletins.generate', 'bulletins.edit', 'bulletins.delete', 'bulletins.configure',
@@ -2483,6 +2590,7 @@ return [
         ],
 
         'coordinateur' => [
+            'mcp.connections.connect',
             'inscriptions.redoublant.confirm',
             'emargement.prolongation.decide',
             'admin.access', 'dashboard.view',
@@ -2508,7 +2616,7 @@ return [
             'classes.view',
             'filieres.view', 'niveaux.view',
             'matieres.view', 'matieres.create', 'matieres.edit',
-            'notes.view', 'notes.create', 'notes.import_excel',
+            'notes.view', 'notes.view_all', 'notes.create', 'notes.import_excel',
             'evaluations.view', 'evaluations.create', 'evaluations.edit',
             'exams.view',
             'bulletins.view', 'bulletins.generate', 'bulletins.edit',
@@ -2577,7 +2685,7 @@ return [
             'annees.view',
             'bts_tronc_commun.view', 'bts_tronc_commun.view_history',
             'matieres.view',
-            'notes.view',
+            'notes.view', 'notes.view_all',
             'evaluations.view',
             'exams.view',
             'bulletins.view',
@@ -2641,7 +2749,7 @@ return [
             'classes.view',
             'filieres.view', 'niveaux.view',
             'matieres.view',
-            'notes.view', 'notes.create', 'notes.edit', 'notes.import_excel',
+            'notes.view', 'notes.view_all', 'notes.create', 'notes.edit', 'notes.import_excel',
             'notes.window.manage',
             'evaluations.view', 'evaluations.create', 'evaluations.edit', 'exams.view',
             'bulletins.view', 'bulletins.generate', 'bulletins.edit',
@@ -2703,7 +2811,7 @@ return [
             'classes.view',
             'filieres.view', 'niveaux.view',
             'matieres.view',
-            'notes.view', 'notes.create', 'notes.edit',
+            'notes.view', 'notes.view_all', 'notes.create', 'notes.edit',
             'evaluations.view',
             'bulletins.view',
             'dispenses.view',
@@ -2754,6 +2862,7 @@ return [
             'module.academique.access',
         ],
         'enseignant' => [
+            'mcp.connections.connect',
             'admin.access', 'dashboard.view',
             'students.view_own',
             'students.accessibility.view', 'students.accessibility.export',
@@ -2877,12 +2986,5 @@ return [
         'admin'                   => ['since' => '2026-04', 'reason' => 'Rôle doublon de superAdmin — à fusionner Lot 6j'],
         'teacher'                 => ['since' => '2026-04', 'reason' => 'Rôle doublon de enseignant — à fusionner Lot 6j'],
     ],
-
-    /*
-    | superAdmin Gate::before. Défaut true = CI inchangé. Une instance
-    | (UCAO) pose PERMISSIONS_SUPERADMIN_GATE_BEFORE=false dans son .env :
-    | le rôle reste, mais il n'a plus le joker. Pas de if (tenant).
-    */
-    'superadmin_gate_before' => env('PERMISSIONS_SUPERADMIN_GATE_BEFORE', true),
 
 ];

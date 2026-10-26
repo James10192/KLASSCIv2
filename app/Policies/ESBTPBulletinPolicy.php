@@ -10,15 +10,6 @@ class ESBTPBulletinPolicy
 {
     use HandlesAuthorization;
 
-    /**
-     * Super-admin bypass — grants all abilities.
-     */
-    public function before(User $user, string $ability)
-    {
-        if ($user->hasRole('superAdmin')) {
-            return true;
-        }
-    }
 
     public function viewAny(User $user)
     {
@@ -31,12 +22,15 @@ class ESBTPBulletinPolicy
      */
     public function view(User $user, ESBTPBulletin $bulletin)
     {
-        if ($user->hasRole('etudiant')) {
-            return $bulletin->etudiant
-                && $bulletin->etudiant->user_id === $user->id;
+        // Une permission de lecture globale prime sur une simple identité
+        // « étudiant » : un compte multi-rôles conserve l'union des droits.
+        if ($user->can('bulletins.view')) {
+            return true;
         }
 
-        return $user->can('bulletins.view') || $user->can('bulletins.view_own');
+        return $user->can('bulletins.view_own')
+            && $bulletin->etudiant
+            && (int) $bulletin->etudiant->user_id === (int) $user->id;
     }
 
     /**

@@ -130,6 +130,8 @@ jobs:
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Feature/Auth/SharedStudentAccountRoutesTest.php --stop-on-failure
 
+      # Les nouveaux tests RBAC utilisent une base SQL réelle. Ils s'exécutent
+      # dans nanan-mcp.yml (MariaDB 10.11) : ce job lint n'en démarre aucune.
       - name: Test réparation des jetons de connexion et inscription sûre
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Feature/Auth/PasswordResetStorageRepairTest.php --stop-on-failure

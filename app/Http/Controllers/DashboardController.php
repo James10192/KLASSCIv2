@@ -68,6 +68,22 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
+        // Sélection ergonomique du profil : la même identité et les mêmes
+        // permissions demeurent. Les contrôles serveur sont inchangés.
+        $profil = \App\Support\ProfilActif::courant(request());
+        if (in_array($profil, ['enseignant', 'teacher'], true) && $user->can('identity.teach')) {
+            return redirect()->route('teacher.dashboard');
+        }
+        if ($profil === 'coordinateur' && $user->can('identity.coordinate')) {
+            return $this->coordinateurDashboard();
+        }
+        if ($profil === 'directeurEtudes' && $user->can('identity.direct_studies')) {
+            return redirect()->route('dashboard.directeur-etudes');
+        }
+        if ($profil === 'etudiant' && $user->can('identity.student')) {
+            return $this->etudiantDashboard();
+        }
+
         // Lot 9 — Si l'utilisateur n'a QUE des rôles custom (créés via UI Lot 8),
         // pas de dashboard hard-codé : router vers le dashboard widget-based.
         // Les rôles système (superAdmin, secretaire...) gardent leur dashboard

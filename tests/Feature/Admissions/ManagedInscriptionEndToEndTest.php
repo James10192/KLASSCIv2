@@ -80,8 +80,13 @@ class ManagedInscriptionEndToEndTest extends TestCase
 
         // Le garde « installed » renvoie vers l'assistant tant qu'aucun
         // superAdmin n'existe.
-        User::factory()->create(['must_change_password' => false, 'password_changed_at' => now()])
-            ->assignRole(\Spatie\Permission\Models\Role::findOrCreate('superAdmin', 'web'));
+        $administrateur = User::factory()->create(['must_change_password' => false, 'password_changed_at' => now()]);
+        $administrateur->assignRole(\Spatie\Permission\Models\Role::findOrCreate('superAdmin', 'web'));
+        // Le rôle ne donne plus un bypass Gate implicite : les scénarios HTTP
+        // disposent des capacités correspondant aux gardes des routes testées.
+        foreach (['admin.access', 'inscriptions.create', 'inscriptions.candidatures.process', 'inscriptions.validate'] as $droit) {
+            $administrateur->givePermissionTo(\Spatie\Permission\Models\Permission::findOrCreate($droit, 'web'));
+        }
 
         $this->fraisInscription = $this->frais("FRAIS D'INSCRIPTION", 50000, 1);
         $this->frais('FRAIS DE SCOLARITE', 450000, 2);

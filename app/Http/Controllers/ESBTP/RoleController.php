@@ -5,66 +5,43 @@ namespace App\Http\Controllers\ESBTP;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
 
+/**
+ * Compatibilite des anciennes routes /esbtp/roles.
+ *
+ * L'ecriture historique sur le nom et la suppression des roles contournaient
+ * la matrice de gestion, le registre canonique et l'audit des extensions.
+ * L'interface Personnel est maintenant l'unique parcours de gestion standard.
+ */
 class RoleController extends Controller
 {
     public function index()
     {
-        $roles = Role::with('permissions')->get();
-        return view('esbtp.roles.index', compact('roles'));
+        return redirect()->route('esbtp.personnel.unified.index');
     }
 
     public function create()
     {
-        $permissions = Permission::all();
-        return view('esbtp.roles.create', compact('permissions'));
-    }
-
-    public function store(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|unique:roles,name',
-            'permissions' => 'array'
-        ]);
-
-        $role = Role::create(['name' => $request->name]);
-
-        if ($request->has('permissions')) {
-            $role->syncPermissions($request->permissions);
-        }
-
-        return redirect()->route('esbtp.roles.index')
-            ->with('success', 'Rôle créé avec succès.');
+        return redirect()->route('esbtp.personnel.unified.index');
     }
 
     public function edit(Role $role)
     {
-        $permissions = Permission::all();
-        return view('esbtp.roles.edit', compact('role', 'permissions'));
+        return redirect()->route('esbtp.personnel.unified.index');
+    }
+
+    public function store(Request $request)
+    {
+        abort(403, 'Les roles sont crees depuis la gestion du personnel.');
     }
 
     public function update(Request $request, Role $role)
     {
-        $request->validate([
-            'name' => 'required|unique:roles,name,' . $role->id,
-            'permissions' => 'array'
-        ]);
-
-        $role->update(['name' => $request->name]);
-
-        if ($request->has('permissions')) {
-            $role->syncPermissions($request->permissions);
-        }
-
-        return redirect()->route('esbtp.roles.index')
-            ->with('success', 'Rôle mis à jour avec succès.');
+        abort(403, 'Les roles sont modifies depuis la gestion du personnel.');
     }
 
     public function destroy(Role $role)
     {
-        $role->delete();
-        return redirect()->route('esbtp.roles.index')
-            ->with('success', 'Rôle supprimé avec succès.');
+        abort(403, 'La suppression de roles utilise la gestion du personnel.');
     }
 }

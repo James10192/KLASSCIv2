@@ -7,6 +7,9 @@ use App\Rules\MotDePasseChoisi;
 use App\Http\Controllers\Concerns\ResetsStaffPassword;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use App\Services\UserService;
+use App\Services\Personnel\RoleAssignmentService;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +40,9 @@ class ESBTPAgentInscriptionController extends Controller
     public function store(Request $request)
     {
         $this->authorize('agents_inscription.create');
+        // La création attribue aussi le rôle : même délégation effective que
+        // l'écran unique personnel/unified (aucun passe-droit par fonction).
+        abort_unless(app(\App\Services\UserManagementService::class)->canAssignRole($request->user(), 'agentInscription'), 403);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -59,7 +65,10 @@ class ESBTPAgentInscriptionController extends Controller
                 'specialite' => $validated['specialite'] ?? null,
                 'email_verified_at' => ! empty($validated['email']) ? now() : null,
             ]);
-            $user->assignRole('agentInscription');
+            app(RoleAssignmentService::class)->change(
+                $request->user(), $user->id, 'add', 'agentInscription',
+                'Création de la fonction agentInscription depuis la route historique.'
+            );
 
             DB::commit();
 
@@ -69,10 +78,13 @@ class ESBTPAgentInscriptionController extends Controller
                     $user->username,
                     $this->userService->generateDefaultPassword()
                 ));
+        } catch (AuthorizationException|ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
-
-            return back()->with('error', 'Erreur lors de la création : '.$e->getMessage())->withInput();
+            \Log::error('Création de personnel annulée', ['role' => 'agentInscription', 'type' => get_class($e)]);
+            return back()->with('error', 'La création a échoué. Aucune modification enregistrée.')->withInput();
         }
     }
 
@@ -134,8 +146,10 @@ class ESBTPAgentInscriptionController extends Controller
 
             return redirect()->route('esbtp.personnel.unified.index')
                 ->with('success', 'Agent d inscription mis à jour avec succès.');
+        } catch (AuthorizationException|ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            return back()->with('error', 'Erreur lors de la mise à jour : '.$e->getMessage())->withInput();
+            return back()->with('error', 'La mise à jour a échoué. Contactez le support.')->withInput();
         }
     }
 
@@ -149,22 +163,19 @@ class ESBTPAgentInscriptionController extends Controller
         }
 
         try {
-            $lifecycle->deactivateUser(
-                $agentInscription->id,
-                function (User $user): void {
-                    $user->removeRole('agentInscription');
-                    $user->update([
-                        'is_active' => false,
-                        'email' => $user->email.'_deleted_'.time(),
-                    ]);
-                },
-                authorize: fn (User $user) => $this->authorize('delete', $user),
+            // Retirer seulement la fonction : ne jamais désactiver un compte multi-rôles.
+            app(RoleAssignmentService::class)->change(
+                auth()->user(), $agentInscription->id, 'remove', 'agentInscription',
+                'Retrait de la fonction agentInscription depuis la route historique.'
             );
 
             return redirect()->route('esbtp.personnel.unified.index')
-                ->with('success', 'Agent d inscription désactivé avec succès.');
+                ->with('success', 'Fonction agentInscription retirée avec succès.');
+        } catch (AuthorizationException|ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            return back()->with('error', 'Erreur lors de la suppression : '.$e->getMessage());
+            \Log::error('Retrait de fonction annulé', ['role' => 'agentInscription', 'type' => get_class($e)]);
+            return back()->with('error', 'Le retrait de cette fonction a échoué.');
         }
     }
 
@@ -186,7 +197,7 @@ class ESBTPAgentInscriptionController extends Controller
                 authorize: fn (User $user) => $this->authorize('update', $user),
             );
         } catch (\Exception $e) {
-            return back()->with('error', $e->getMessage());
+            return back()->with('error', 'Le changement de statut a échoué. Contactez le support.');
         }
 
         $status = $isActive ? 'activé' : 'désactivé';

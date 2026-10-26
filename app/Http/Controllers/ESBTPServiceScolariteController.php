@@ -7,6 +7,9 @@ use App\Rules\MotDePasseChoisi;
 use App\Http\Controllers\Concerns\ResetsStaffPassword;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use App\Services\UserService;
+use App\Services\Personnel\RoleAssignmentService;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +40,9 @@ class ESBTPServiceScolariteController extends Controller
     public function store(Request $request)
     {
         $this->authorize('services_scolarite.create');
+        // La création attribue aussi le rôle : même délégation effective que
+        // l'écran unique personnel/unified (aucun passe-droit par fonction).
+        abort_unless(app(\App\Services\UserManagementService::class)->canAssignRole($request->user(), 'serviceScolarite'), 403);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -59,7 +65,10 @@ class ESBTPServiceScolariteController extends Controller
                 'specialite' => $validated['specialite'] ?? null,
                 'email_verified_at' => ! empty($validated['email']) ? now() : null,
             ]);
-            $user->assignRole('serviceScolarite');
+            app(RoleAssignmentService::class)->change(
+                $request->user(), $user->id, 'add', 'serviceScolarite',
+                'Création de la fonction serviceScolarite depuis la route historique.'
+            );
 
             DB::commit();
 
@@ -69,10 +78,13 @@ class ESBTPServiceScolariteController extends Controller
                     $user->username,
                     $this->userService->generateDefaultPassword()
                 ));
+        } catch (AuthorizationException|ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
-
-            return back()->with('error', 'Erreur lors de la création : '.$e->getMessage())->withInput();
+            \Log::error('Création de personnel annulée', ['role' => 'serviceScolarite', 'type' => get_class($e)]);
+            return back()->with('error', 'La création a échoué. Aucune modification enregistrée.')->withInput();
         }
     }
 
@@ -134,8 +146,10 @@ class ESBTPServiceScolariteController extends Controller
 
             return redirect()->route('esbtp.personnel.unified.index')
                 ->with('success', 'Service scolarite mis à jour avec succès.');
+        } catch (AuthorizationException|ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            return back()->with('error', 'Erreur lors de la mise à jour : '.$e->getMessage())->withInput();
+            return back()->with('error', 'La mise à jour a échoué. Contactez le support.')->withInput();
         }
     }
 
@@ -149,22 +163,19 @@ class ESBTPServiceScolariteController extends Controller
         }
 
         try {
-            $lifecycle->deactivateUser(
-                $serviceScolarite->id,
-                function (User $user): void {
-                    $user->removeRole('serviceScolarite');
-                    $user->update([
-                        'is_active' => false,
-                        'email' => $user->email.'_deleted_'.time(),
-                    ]);
-                },
-                authorize: fn (User $user) => $this->authorize('delete', $user),
+            // Retirer seulement la fonction : ne jamais désactiver un compte multi-rôles.
+            app(RoleAssignmentService::class)->change(
+                auth()->user(), $serviceScolarite->id, 'remove', 'serviceScolarite',
+                'Retrait de la fonction serviceScolarite depuis la route historique.'
             );
 
             return redirect()->route('esbtp.personnel.unified.index')
-                ->with('success', 'Service scolarite désactivé avec succès.');
+                ->with('success', 'Fonction serviceScolarite retirée avec succès.');
+        } catch (AuthorizationException|ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            return back()->with('error', 'Erreur lors de la suppression : '.$e->getMessage());
+            \Log::error('Retrait de fonction annulé', ['role' => 'serviceScolarite', 'type' => get_class($e)]);
+            return back()->with('error', 'Le retrait de cette fonction a échoué.');
         }
     }
 
@@ -186,7 +197,7 @@ class ESBTPServiceScolariteController extends Controller
                 authorize: fn (User $user) => $this->authorize('update', $user),
             );
         } catch (\Exception $e) {
-            return back()->with('error', $e->getMessage());
+            return back()->with('error', 'Le changement de statut a échoué. Contactez le support.');
         }
 
         $status = $isActive ? 'activé' : 'désactivé';

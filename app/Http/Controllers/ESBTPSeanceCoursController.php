@@ -32,6 +32,8 @@ class ESBTPSeanceCoursController extends Controller
      */
     public function index(Request $request)
     {
+        // Autorisation avant le try : aucun refus 403 ne devient un flash ou un 500.
+        \Illuminate\Support\Facades\Gate::authorize('viewAny', ESBTPSeanceCours::class);
         try {
             $seancesCours = $this->listeFiltree($request)
                 ->orderBy('jour')
@@ -207,6 +209,8 @@ class ESBTPSeanceCoursController extends Controller
      */
     public function show(ESBTPSeanceCours $seancesCour)
     {
+        // Autorisation avant le try : aucun refus 403 ne devient un flash ou un 500.
+        \Illuminate\Support\Facades\Gate::authorize('view', $seancesCour);
         try {
             // Load relationships
             $seancesCour->load(['emploiTemps.classe', 'matiere', 'teacher.user', 'sessionReport']);
@@ -224,6 +228,8 @@ class ESBTPSeanceCoursController extends Controller
      */
     public function create(Request $request)
     {
+        // Autorisation avant le try : aucun refus 403 ne devient un flash ou un 500.
+        \Illuminate\Support\Facades\Gate::authorize('create', ESBTPSeanceCours::class);
         // PR17.2 : si pas d'emploi_temps_id, afficher page picker EDT premium
         if (! $request->filled('emploi_temps_id')) {
             return $this->showEmploiTempsPicker($request);
@@ -475,6 +481,8 @@ class ESBTPSeanceCoursController extends Controller
      */
     public function store(Request $request)
     {
+        // Autorisation avant le try : aucun refus 403 ne devient un flash ou un 500.
+        \Illuminate\Support\Facades\Gate::authorize('create', ESBTPSeanceCours::class);
         try {
             $expectsJson = $request->expectsJson() || $request->boolean('embed');
 
@@ -911,6 +919,8 @@ class ESBTPSeanceCoursController extends Controller
      */
     public function edit(ESBTPSeanceCours $seancesCour)
     {
+        // Autorisation avant le try : aucun refus 403 ne devient un flash ou un 500.
+        \Illuminate\Support\Facades\Gate::authorize('edit', $seancesCour);
         try {
             // Check if the session exists
             if (! $seancesCour->exists) {
@@ -1101,6 +1111,8 @@ class ESBTPSeanceCoursController extends Controller
      */
     public function update(Request $request, ESBTPSeanceCours $seancesCour)
     {
+        // Autorisation avant le try : aucun refus 403 ne devient un flash ou un 500.
+        \Illuminate\Support\Facades\Gate::authorize('update', $seancesCour);
         try {
             // Une séance ne change pas de nature en cours de route : le type
             // stocké est réimposé avant validation, et c'est lui qui pilote les
@@ -1177,6 +1189,8 @@ class ESBTPSeanceCoursController extends Controller
      */
     public function destroy(ESBTPSeanceCours $seancesCour)
     {
+        // Autorisation avant le try : aucun refus 403 ne devient un flash ou un 500.
+        \Illuminate\Support\Facades\Gate::authorize('delete', $seancesCour);
         try {
             $emploiTempsId = $seancesCour->emploi_temps_id;
             if ($devoir = SuppressionDEvaluation::devoirQuiRetient($seancesCour)) {

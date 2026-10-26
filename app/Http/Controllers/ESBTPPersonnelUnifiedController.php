@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Rules\MotDePasseChoisi;
 use App\Services\PermissionRegistry;
 use App\Services\UserService;
+use App\Services\Personnel\RoleAssignmentService;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use App\Support\PorteDeRoute;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -17,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
@@ -121,24 +123,20 @@ class ESBTPPersonnelUnifiedController extends Controller
      */
     public function index(Request $request)
     {
-        if (! auth()->user()->can('personnel.view')) {
-            abort(403, 'Accès non autorisé');
-        }
+        // 'personnel.manage' implique la consultation de la page sans exiger
+        // une seconde permission DB explicitement attachée au compte.
+        abort_unless(
+            auth()->user()->can('personnel.view') || auth()->user()->can('personnel.manage'),
+            403,
+            'Accès non autorisé'
+        );
 
-        // Rôle principal de l'utilisateur connecté — on cache le tab de son propre rôle
-        // (un secretaire ne gère pas d'autres secretaires, idem coordinateur).
-        $userRole = auth()->user()->getRoleNames()->first();
-
-        // Coordinateurs/secrétaires masqués si l'utilisateur a ce rôle lui-même.
+        // Une section de personnel est visible selon les permissions effectives,
+        // jamais selon le rôle que l'opérateur porte lui-même.
+        // L'interdiction de modifier son propre compte reste dans les gardes serveur.
         $personnelAccess = $this->personnelAccessMatrix();
         $visiblePersonnelTabs = collect(array_keys(self::TAB_PERMISSIONS))
-            ->filter(fn ($tab) => ($personnelAccess[$tab]['view'] ?? false)
-                && ! ($tab === 'directeurs_etudes' && $userRole === 'directeurEtudes')
-                && ! ($tab === 'coordinateurs' && $userRole === 'coordinateur')
-                && ! ($tab === 'secretaires' && $userRole === 'secretaire')
-                && ! ($tab === 'responsables_scolarite' && $userRole === 'responsableScolarite')
-                && ! ($tab === 'services_scolarite' && $userRole === 'serviceScolarite')
-                && ! ($tab === 'agents_inscription' && $userRole === 'agentInscription'))
+            ->filter(fn ($tab) => $personnelAccess[$tab]['view'] ?? false)
             ->values()
             ->all();
 
@@ -167,7 +165,9 @@ class ESBTPPersonnelUnifiedController extends Controller
 
         $enseignants = in_array('enseignants', $visiblePersonnelTabs, true)
             ? ESBTPTeacher::with(['user'])
-                ->whereHas('user', fn ($q) => $q->where('is_active', true))
+                // Ne pas masquer les enseignants désactivés : ils doivent
+                // rester consultables et réactivables depuis cette liste.
+                ->whereHas('user')
                 ->orderBy('created_at', 'desc')
                 ->get()
             : collect();
@@ -182,16 +182,22 @@ class ESBTPPersonnelUnifiedController extends Controller
             'comptables' => $comptables->count(),
             'caissiers' => $caissiers->count(),
             'agents_inscription' => $agentsInscription->count(),
-            'total' => $directeursEtudes->count() + $coordinateurs->count() + $enseignants->count() + $secretaires->count()
-                + $responsablesScolarite->count() + $servicesScolarite->count()
-                + $comptables->count() + $caissiers->count() + $agentsInscription->count(),
+            // Une personne peut avoir plusieurs postes : compter les comptes,
+            // et non les appartenances à un rôle. Pour les enseignants, la
+            // clé à dédupliquer est user_id (et non l'id ESBTPTeacher).
+            'total' => collect([
+                $directeursEtudes->pluck('id'), $coordinateurs->pluck('id'),
+                $enseignants->pluck('user_id'), $secretaires->pluck('id'),
+                $responsablesScolarite->pluck('id'), $servicesScolarite->pluck('id'),
+                $comptables->pluck('id'), $caissiers->pluck('id'),
+                $agentsInscription->pluck('id'),
+            ])->flatten()->unique()->count(),
         ];
-
-        $isCoordinateur = ($userRole === 'coordinateur');
 
         // Lot 8/17 — Rôles custom + standards éditables (visibles si users.manage)
         $customRoles = collect();
         $standardRoles = collect();
+        $roleCardsError = false;
         // Lot 19 — users assignés à chaque rôle custom, indexé par roleName, pour générer un tab par rôle
         $customRoleUsers = collect();
 
@@ -209,19 +215,23 @@ class ESBTPPersonnelUnifiedController extends Controller
                 $customRoles = $customRolesQuery
                     ->map(fn (Role $role) => $this->buildRoleCardData($role, $registry));
 
-                // Lot 19 — Charger les users de TOUS les rôles custom en une seule requête
-                // (évite le N+1 d'une query par rôle).
+                // Une seule requête de personnes + eager loading des rôles.
+                // Un compte à plusieurs rôles personnalisés doit figurer
+                // dans CHACUN de ses onglets, y compris s'il est inactif.
                 $customRoleNames = $customRolesQuery->pluck('name')->all();
                 $usersByRole = collect();
-                if (! empty($customRoleNames)) {
-                    $usersByRole = User::role($customRoleNames)
-                        ->where('is_active', true)
+                if ($customRoleNames !== []) {
+                    $customUsers = User::role($customRoleNames)
                         ->with(['roles:id,name'])
                         ->orderBy('name')
-                        ->get(['id', 'name', 'email', 'phone', 'is_active', 'created_at'])
-                        ->groupBy(fn ($u) => $u->roles
+                        ->get(['id', 'name', 'email', 'phone', 'is_active', 'created_at']);
+
+                    $usersByRole = $customUsers
+                        ->flatMap(fn (User $personne) => $personne->roles
                             ->whereIn('name', $customRoleNames)
-                            ->first()?->name);
+                            ->map(fn (Role $role) => ['role' => $role->name, 'user' => $personne]))
+                        ->groupBy('role')
+                        ->map(fn ($lignes) => $lignes->pluck('user'));
                 }
 
                 foreach ($customRolesQuery as $role) {
@@ -265,6 +275,7 @@ class ESBTPPersonnelUnifiedController extends Controller
                 $customRoles = collect();
                 $standardRoles = collect();
                 $customRoleUsers = collect();
+                $roleCardsError = true;
             }
         }
 
@@ -279,13 +290,12 @@ class ESBTPPersonnelUnifiedController extends Controller
             'caissiers',
             'agentsInscription',
             'stats',
-            'isCoordinateur',
-            'userRole',
             'personnelAccess',
             'visiblePersonnelTabs',
             'customRoles',
             'standardRoles',
-            'customRoleUsers'
+            'customRoleUsers',
+            'roleCardsError'
         ));
     }
 
@@ -401,8 +411,8 @@ class ESBTPPersonnelUnifiedController extends Controller
     }
 
     /**
-     * Charge tous les utilisateurs actifs d'un rôle, retourne collect() vide
-     * si le rôle n'existe pas (degrade silencieusement).
+     * Charge actifs ET inactifs : sinon le filtre « Inactifs » est inutile
+     * et la réactivation depuis l'écran est impossible.
      */
     private function loadActiveByRole(string $roleName)
     {
@@ -413,11 +423,15 @@ class ESBTPPersonnelUnifiedController extends Controller
 
             return User::role($roleName)
                 ->with(['roles'])
-                ->where('is_active', true)
                 ->orderBy('name')
                 ->get();
         } catch (\Exception $e) {
-            return collect();
+            \Illuminate\Support\Facades\Log::error('[personnel-unified] Chargement des membres échoué', [
+                'role' => $roleName,
+                'exception_type' => get_class($e),
+            ]);
+            // SQL invalide ≠ rôle vide. Ne jamais rendre un résultat faux.
+            throw $e;
         }
     }
 
@@ -452,7 +466,12 @@ class ESBTPPersonnelUnifiedController extends Controller
 
             return $query->orderBy('name')->get();
         } catch (\Exception $e) {
-            return collect();
+            \Illuminate\Support\Facades\Log::error('[personnel-unified] Chargement des membres échoué', [
+                'role' => $roleName,
+                'exception_type' => get_class($e),
+            ]);
+            // SQL invalide ≠ rôle vide. Ne jamais rendre un résultat faux.
+            throw $e;
         }
     }
 
@@ -462,7 +481,7 @@ class ESBTPPersonnelUnifiedController extends Controller
     private function ensureCanViewPersonnel(): void
     {
         $user = auth()->user();
-        if ($user && $user->can('personnel.view')) {
+        if ($user && ($user->can('personnel.view') || $user->can('personnel.manage'))) {
             return;
         }
 
@@ -544,10 +563,13 @@ class ESBTPPersonnelUnifiedController extends Controller
     /**
      * Store a newly created personnel in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request, RoleAssignmentService $roleAssignments)
     {
         $type = $request->get('type');
         $this->ensureCanManagePersonnelType($type, 'create');
+        // La capacité de créer une fiche n'autorise pas implicitement à attribuer un rôle.
+        abort_unless($request->user()?->can('personnel.roles.assign'), 403,
+            'Permission d\'affectation de rôle absente.');
 
         $rules = [
             'name' => 'required|string|max:255',
@@ -588,7 +610,11 @@ class ESBTPPersonnelUnifiedController extends Controller
                 'email_verified_at' => now(),
             ]));
 
-            $user->assignRole($validated['type']);
+            // Attribution contrôlée et audit avant/après dans la transaction du compte.
+            $roleAssignments->change(
+                $request->user(), $user->id, 'add', $validated['type'],
+                'Création du personnel depuis personnel/unified'
+            );
 
             if ($type === 'enseignant') {
                 ESBTPTeacher::create([
@@ -611,12 +637,23 @@ class ESBTPPersonnelUnifiedController extends Controller
                     'must_change_password' => true,
                 ],
             ]);
+        } catch (AuthorizationException $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 403);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Gestion du personnel : échec de création', [
+                'action' => 'store',
+                'exception' => get_class($e),
+                'actor_id' => Auth::id(),
+            ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la création : '.$e->getMessage(),
+                'message' => 'La création du personnel a échoué. Aucune information technique n\'est disponible dans l\'interface.',
             ], 500);
         }
     }
@@ -710,9 +747,15 @@ class ESBTPPersonnelUnifiedController extends Controller
         } catch (ModelNotFoundException) {
             return response()->json(['success' => false, 'message' => 'Personnel introuvable.'], 404);
         } catch (\Exception $e) {
+            Log::error('Gestion du personnel : échec de mise à jour', [
+                'action' => 'update',
+                'exception' => get_class($e),
+                'actor_id' => Auth::id(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la mise à jour : '.$e->getMessage(),
+                'message' => 'La mise à jour du personnel a échoué. Aucune information technique n\'est disponible dans l\'interface.',
             ], 500);
         }
     }
@@ -754,9 +797,15 @@ class ESBTPPersonnelUnifiedController extends Controller
         } catch (ModelNotFoundException) {
             return response()->json(['success' => false, 'message' => 'Personnel introuvable.'], 404);
         } catch (\Exception $e) {
+            Log::error('Gestion du personnel : échec de suppression', [
+                'action' => 'destroy',
+                'exception' => get_class($e),
+                'actor_id' => Auth::id(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la suppression : '.$e->getMessage(),
+                'message' => 'La suppression du personnel a échoué. Aucune information technique n\'est disponible dans l\'interface.',
             ], 500);
         }
     }
@@ -822,6 +871,18 @@ class ESBTPPersonnelUnifiedController extends Controller
      */
     private function roleStats(string $roleName): array
     {
+        // Un tenant neuf ou partiellement migré n'a pas nécessairement tous
+        // les rôles de l'organigramme. User::role() lève RoleDoesNotExist dans
+        // ce cas : une consultation des statistiques ne doit pas faire 500.
+        if (! Role::query()->where('name', $roleName)->where('guard_name', 'web')->exists()) {
+            return [
+                'total' => 0,
+                'actifs' => 0,
+                'inactifs' => 0,
+                'nouveau_ce_mois' => 0,
+            ];
+        }
+
         return [
             'total' => User::role($roleName)->count(),
             'actifs' => User::role($roleName)->where('is_active', true)->count(),
