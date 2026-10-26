@@ -418,7 +418,8 @@ class PaiementExportService
             $modes = array_values(array_filter($filters['modes']));
             if (! empty($modes)) {
                 $summary[] = ['label' => 'Mode(s) de paiement', 'value' => implode(', ', array_map(
-                    [PaymentFilterService::class, 'libelleDuMode'], array_map('strval', $modes)
+                    fn ($mode) => PaymentFilterService::libelleDuMode(PaymentFilterService::cleDuMode((string) $mode)),
+                    $modes
                 ))];
             }
         }

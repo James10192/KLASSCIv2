@@ -120,7 +120,8 @@ class PaiementExportServiceTest extends TestCase
 
         $this->assertCount(1, $summary);
         $this->assertSame('Mode(s) de paiement', $summary[0]['label']);
-        $this->assertSame('espèces, mobile money', $summary[0]['value']);
+        // Chaque mode, code ou libelle ancien, est imprime sous son libelle canonique.
+        $this->assertSame('Espèces, Mobile Money (générique)', $summary[0]['value']);
     }
 
     public function test_build_filters_summary_skips_empty_modes_array(): void

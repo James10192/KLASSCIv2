@@ -466,7 +466,8 @@ class PaymentFilterService
      */
     public static function variantesDesModes(array $cles): array
     {
-        $cles = array_map('strval', $cles);
+        // Une valeur ancienne (« mobile ») est ramenee a sa cle canonique.
+        $cles = array_map(fn ($cle) => self::cleDuMode((string) $cle), $cles);
         $variantes = collect(self::valeursStockeesDesModes())
             ->filter(fn (string $valeur) => in_array(self::cleDuMode($valeur), $cles, true))
             ->values()
