@@ -75,6 +75,12 @@ class PaymentFilterService
             $query->pourCategorie((int) $categoryId);
         }
 
+        // Valeur exacte, telle que stockee : les valeurs legacy (« espèces »)
+        // se filtrent comme les canoniques, sans reecriture de la donnee.
+        if ($mode = $request->input('mode_paiement')) {
+            $query->where('mode_paiement', (string) $mode);
+        }
+
         // Une seule règle métier pour liste, exports simplifiés et export détaillé.
         self::appliquerPortee($query, (string) $request->input('portee', 'tous'));
 
@@ -382,6 +388,26 @@ class PaymentFilterService
                 'page' => $paiements->currentPage(),
                 'per_page' => $paiements->perPage(),
             ],
+        ];
+    }
+
+    /**
+     * Empreinte légère de la liste (nombre + dernière modification) pour le
+     * polling. Même périmètre et mêmes filtres que la liste, sauf la recherche
+     * texte (floue, non reproductible en SQL) : sans cela, une recherche active
+     * ferait croire à un changement toutes les 30 s et remettrait la liste à zéro.
+     *
+     * @return array{count: int, last_updated_at: ?string}
+     */
+    public function pointDeControle(Request $request): array
+    {
+        $requete = $this->baseFilteredQuery($request)->reorder();
+
+        return [
+            'count' => (clone $requete)->count(),
+            'last_updated_at' => optional(
+                Carbon::make((clone $requete)->max('updated_at'))
+            )->toIso8601String(),
         ];
     }
 
