@@ -29,7 +29,7 @@ final class NoteBulletinPropertyScopeTest extends TestCase
         foreach (['enseignant', 'etudiant', 'coordinateur'] as $name) {
             Role::findOrCreate($name, 'web');
         }
-        foreach (['notes.view', 'notes.view_own', 'notes.edit', 'bulletins.view', 'bulletins.view_own'] as $name) {
+        foreach (['notes.view', 'notes.view_all', 'notes.view_own', 'notes.edit', 'bulletins.view', 'bulletins.view_own'] as $name) {
             Permission::findOrCreate($name, 'web');
         }
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -160,6 +160,27 @@ final class NoteBulletinPropertyScopeTest extends TestCase
         $actor->givePermissionTo('notes.view');
         $this->assertTrue($policy->view($actor, $note));
         $actor->revokePermissionTo('notes.view');
+        $this->assertFalse($policy->view($actor, $note));
+    }
+
+    public function test_enseignant_coordinateur_heritant_de_la_permission_globale_par_role(): void
+    {
+        $actor = User::factory()->create(['is_active' => true]);
+        $actor->assignRole(['enseignant', 'coordinateur']);
+        $actor->givePermissionTo('notes.view');
+        $role = Role::findByName('coordinateur', 'web');
+        $role->givePermissionTo('notes.view_all');
+
+        $evaluation = new ESBTPEvaluation();
+        $evaluation->enseignant_id = $actor->id + 1;
+        $note = new ESBTPNote();
+        $note->setRelation('evaluation', $evaluation);
+        $policy = app(ESBTPNotePolicy::class);
+
+        $this->assertTrue($policy->view($actor, $note));
+        $role->revokePermissionTo('notes.view_all');
+        $actor->unsetRelation('roles');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
         $this->assertFalse($policy->view($actor, $note));
     }
 
