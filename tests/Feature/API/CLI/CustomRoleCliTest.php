@@ -276,4 +276,34 @@ class CustomRoleCliTest extends TestCase
     }
 
 
+
+    public function test_synchro_permissions_refusee_si_token_admin_sans_droit_de_maintenance(): void
+    {
+        $actor = User::factory()->create(['is_active' => true]);
+        Sanctum::actingAs($actor, ['cli:admin']);
+
+        $beforeRoles = Role::query()->count();
+        $beforePermissions = Permission::query()->count();
+
+        $this->postJson('/api/cli/permissions/sync')->assertForbidden();
+        $this->postJson('/api/cli/permissions/fix')->assertForbidden();
+
+        $this->assertSame($beforeRoles, Role::query()->count());
+        $this->assertSame($beforePermissions, Permission::query()->count());
+    }
+
+    public function test_droit_technique_effectif_autorise_la_synchro_et_sa_revocation_la_bloque(): void
+    {
+        $actor = User::factory()->create(['is_active' => true]);
+        Permission::findOrCreate('system.technical_access', 'web');
+        $actor->givePermissionTo('system.technical_access');
+        Sanctum::actingAs($actor, ['cli:admin']);
+
+        $this->postJson('/api/cli/permissions/sync')
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $actor->revokePermissionTo('system.technical_access');
+        $this->postJson('/api/cli/permissions/sync')->assertForbidden();
+    }
 }
