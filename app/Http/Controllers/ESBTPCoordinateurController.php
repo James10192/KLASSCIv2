@@ -323,19 +323,19 @@ class ESBTPCoordinateurController extends Controller
         } catch (\Exception $e) {
             \Log::error('❌ Password reset failed for coordinator', [
                 'coordinateur_id' => $coordinateur->id,
-                'error' => $e->getMessage()
+                'exception_type' => get_class($e)
             ]);
 
             if (request()->wantsJson() || request()->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Erreur lors de la réinitialisation du mot de passe: ' . $e->getMessage()
+                    'message' => 'La réinitialisation du mot de passe a échoué. Contactez le support.'
                 ], 500);
             }
 
             return redirect()
                 ->back()
-                ->with('error', 'Erreur lors de la réinitialisation du mot de passe: ' . $e->getMessage());
+                ->with('error', 'La réinitialisation du mot de passe a échoué. Contactez le support.');
         }
     }
 
