@@ -241,6 +241,7 @@ class ESBTPSecretaireController extends Controller
      */
     public function resetPassword(User $secretaire)
     {
+        abort_unless(auth()->user()?->can('personnel.users.password.reset'), 403);
         $this->authorize('users.manage');
         $this->authorize('update', $secretaire);
 
