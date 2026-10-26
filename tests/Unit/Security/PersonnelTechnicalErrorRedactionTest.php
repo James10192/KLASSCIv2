@@ -28,4 +28,21 @@ final class PersonnelTechnicalErrorRedactionTest extends TestCase
             );
         }
     }
+
+    public function test_legacy_reset_paths_require_the_specific_revocable_permission(): void
+    {
+        foreach ([
+            'app/Http/Controllers/ESBTPCoordinateurController.php',
+            'app/Http/Controllers/ESBTPSecretaireController.php',
+            'app/Http/Controllers/Concerns/ResetsPersonnelPassword.php',
+        ] as $path) {
+            $contents = file_get_contents(dirname(__DIR__, 3).'/'.$path);
+            self::assertNotFalse($contents, "Fichier absent : {$path}");
+            self::assertStringContainsString(
+                "can('personnel.users.password.reset')",
+                $contents,
+                "La réinitialisation historique {$path} exige un droit métier explicite."
+            );
+        }
+    }
 }
