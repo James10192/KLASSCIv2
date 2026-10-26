@@ -10,22 +10,6 @@ class ESBTPPaiementPolicy
 {
     use HandlesAuthorization;
 
-    /**
-     * Capacités qui vérifient un FAIT sur le paiement (son auteur, son statut,
-     * son âge) et non un droit. Aucun passe-droit ne les rend vraies : ni ce
-     * `before()`, ni le `Gate::before` du superAdmin, qui lit la même liste.
-     */
-    public const CAPACITES_D_ETAT = ['cancelOwnRecent'];
-
-    /**
-     * Super-admin bypass — grants all abilities, sauf celles d'état.
-     */
-    public function before(User $user, string $ability)
-    {
-        if ($user->hasRole('superAdmin') && ! in_array($ability, self::CAPACITES_D_ETAT, true)) {
-            return true;
-        }
-    }
 
     public function viewAny(User $user)
     {

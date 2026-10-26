@@ -11,15 +11,6 @@ class ESBTPNotePolicy
 {
     use HandlesAuthorization;
 
-    /**
-     * Super-admin bypass — grants all abilities.
-     */
-    public function before(User $user, string $ability)
-    {
-        if ($user->hasRole('superAdmin')) {
-            return true;
-        }
-    }
 
     public function viewAny(User $user)
     {
