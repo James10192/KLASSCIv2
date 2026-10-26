@@ -217,8 +217,11 @@ class ESBTPSecretaireController extends Controller
                 $secretaire->id,
                 authorize: fn (User $user) => $this->authorize('update', $user),
             );
+        } catch (AuthorizationException|ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', $e->getMessage());
+            \Log::error('Changement de statut secrétaire impossible', ['type' => get_class($e)]);
+            return redirect()->back()->with('error', 'Le changement de statut a échoué. Contactez le support.');
         }
 
         // Si c'est une requête AJAX, retourner du JSON
@@ -275,19 +278,19 @@ class ESBTPSecretaireController extends Controller
         } catch (\Exception $e) {
             \Log::error('❌ Password reset failed for secretaire', [
                 'secretaire_id' => $secretaire->id,
-                'error' => $e->getMessage()
+                'exception_type' => get_class($e)
             ]);
 
             if (request()->wantsJson() || request()->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Erreur lors de la réinitialisation du mot de passe: ' . $e->getMessage()
+                    'message' => 'La réinitialisation du mot de passe a échoué. Contactez le support.'
                 ], 500);
             }
 
             return redirect()
                 ->back()
-                ->with('error', 'Erreur lors de la réinitialisation du mot de passe: ' . $e->getMessage());
+                ->with('error', 'La réinitialisation du mot de passe a échoué. Contactez le support.');
         }
     }
 }
