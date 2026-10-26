@@ -5,7 +5,10 @@ namespace App\Console\Commands;
 use App\Domain\AcademicPilotage\Models\AcademicAlert;
 use App\Domain\AcademicPilotage\Models\AcademicMetricSnapshot;
 use App\Domain\AcademicPilotage\Models\GradeSheet;
+use App\Domain\AcademicPilotage\Services\AcademicPeriodNormalizer;
 use App\Domain\AcademicPilotage\Services\AcademicPilotageBackfillService;
+use App\Domain\AcademicPilotage\Services\AcademicSystemNormalizer;
+use App\Models\ESBTPAnneeUniversitaire;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -31,6 +34,7 @@ class AcademicPilotageDiagnoseCommand extends Command
             'grade_sheets' => $this->gradeSheets($filters),
             'alerts' => $this->alerts($filters),
             'snapshots' => $this->snapshots($filters),
+            'cohorte' => $this->cohorte($filters),
         ];
 
         if ($this->option('json')) {
@@ -46,9 +50,85 @@ class AcademicPilotageDiagnoseCommand extends Command
             ['Open alerts', $diagnosis['alerts']['open']],
             ['Dirty snapshots', $diagnosis['snapshots']['dirty']],
             ['Insufficient score coverage', $diagnosis['snapshots']['insufficient_data']],
+            ['Cohort pairs without usable snapshot', $diagnosis['cohorte']['sans_instantane_exploitable']],
+            ['  of which: no snapshot row', $diagnosis['cohorte']['sans_ligne']],
+            ['  of which: dirty snapshot', $diagnosis['cohorte']['ligne_sale']],
         ]);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Compte les couples (classe, étudiant) de la cohorte qui n'ont aucun instantané
+     * exploitable, avec les mêmes filtres que AcademicMetricSnapshotCohortProvider.
+     * Un étudiant sans ligne n'apparaît dans aucun autre compte du diagnostic.
+     */
+    private function cohorte(array $filters): array
+    {
+        $anneeId = (int) ($filters['year_id'] ?? $this->anneeCourante());
+        $periode = app(AcademicPeriodNormalizer::class)->normalize($filters['period'] ?? 'semestre1');
+        $systemes = app(AcademicSystemNormalizer::class);
+
+        if ($anneeId <= 0) {
+            return ['annee_universitaire_id' => null, 'period' => $periode] + array_fill_keys([
+                'couples_cohorte', 'etudiants_distincts', 'exploitable', 'sans_ligne', 'ligne_sale',
+                'sans_instantane_exploitable',
+            ], 0);
+        }
+
+        $couples = DB::table('esbtp_inscriptions as i')
+            ->join('esbtp_classes as c', 'c.id', '=', 'i.classe_id')
+            ->where('i.annee_universitaire_id', $anneeId)
+            ->where('i.status', 'active')
+            ->where('i.workflow_step', 'etudiant_cree')
+            ->where('c.is_active', true)
+            ->when($filters['class_id'] ?? null, fn ($scope, $classId) => $scope->where('i.classe_id', (int) $classId))
+            ->distinct()
+            ->get(['i.classe_id', 'i.etudiant_id', 'c.systeme_academique']);
+
+        // Lignes que le lecteur peut voir : même année, période, moteur et portée « étudiant ».
+        $lignes = AcademicMetricSnapshot::query()
+            ->where('scope_type', 'student')
+            ->where('annee_universitaire_id', $anneeId)
+            ->where('semester', $periode)
+            ->where('engine_version', (string) config('academic_pilotage.engine_version', '1.0.0'))
+            ->when($filters['class_id'] ?? null, fn ($scope, $classId) => $scope->where('classe_id', (int) $classId))
+            ->get(['classe_id', 'etudiant_id', 'academic_system', 'is_dirty'])
+            ->groupBy(fn ($ligne): string => $ligne->classe_id.'|'.$ligne->etudiant_id.'|'.$ligne->academic_system);
+
+        $exploitable = 0;
+        $sansLigne = 0;
+        $ligneSale = 0;
+        foreach ($couples as $couple) {
+            $cle = $couple->classe_id.'|'.$couple->etudiant_id.'|'.$systemes->normalize($couple->systeme_academique);
+            $existantes = $lignes->get($cle);
+            if ($existantes === null) {
+                $sansLigne++;
+            } elseif ($existantes->contains(fn ($ligne): bool => (bool) $ligne->is_dirty)) {
+                $ligneSale++;
+            } else {
+                $exploitable++;
+            }
+        }
+
+        return [
+            'annee_universitaire_id' => $anneeId,
+            'period' => $periode,
+            'couples_cohorte' => $couples->count(),
+            'etudiants_distincts' => $couples->pluck('etudiant_id')->unique()->count(),
+            'exploitable' => $exploitable,
+            'sans_ligne' => $sansLigne,
+            'ligne_sale' => $ligneSale,
+            'sans_instantane_exploitable' => $sansLigne + $ligneSale,
+        ];
+    }
+
+    private function anneeCourante(): ?int
+    {
+        return ESBTPAnneeUniversitaire::query()
+            ->where('is_active', true)
+            ->latest('annee_debut')
+            ->value('id');
     }
 
     private function gradeSheets(array $filters): array
@@ -79,6 +159,13 @@ class AcademicPilotageDiagnoseCommand extends Command
             'total' => (clone $query)->count(),
             'open' => (clone $query)->whereIn('status', ['open', 'acknowledged', 'in_progress'])->count(),
             'blocking' => (clone $query)->where('severity', 'blocking')->count(),
+            'ouvertes_par_type' => (clone $query)
+                ->whereIn('status', ['open', 'acknowledged', 'in_progress'])
+                ->selectRaw('type, count(*) as total')
+                ->groupBy('type')
+                ->orderByDesc('total')
+                ->pluck('total', 'type')
+                ->all(),
         ];
     }
 
