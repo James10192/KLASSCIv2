@@ -21,6 +21,11 @@ on:
       - 'routes/nanan-mcp-accounts.php'
       - 'routes/web.php'
       - 'tests/Unit/Domain/Assistant/McpBridgeLogPrivacyTest.php'
+      - 'tests/Feature/Permissions/**'
+      - 'app/Policies/ESBTPSeanceCoursPolicy.php'
+      - 'app/Http/Controllers/ESBTPSeanceCoursController.php'
+      - 'app/Http/Controllers/Exploitation/ControlCenterController.php'
+      - 'config/permissions.php'
       - '.github/workflows/nanan-mcp.yml'
   push:
     branches: [presentation]
@@ -43,6 +48,11 @@ on:
       - 'routes/nanan-mcp-accounts.php'
       - 'routes/web.php'
       - 'tests/Unit/Domain/Assistant/McpBridgeLogPrivacyTest.php'
+      - 'tests/Feature/Permissions/**'
+      - 'app/Policies/ESBTPSeanceCoursPolicy.php'
+      - 'app/Http/Controllers/ESBTPSeanceCoursController.php'
+      - 'app/Http/Controllers/Exploitation/ControlCenterController.php'
+      - 'config/permissions.php'
       - '.github/workflows/nanan-mcp.yml'
 
 jobs:
@@ -122,3 +132,8 @@ jobs:
           php vendor/bin/phpunit tests/Feature/Assistant/McpConnectionControlTest.php --no-coverage
           php vendor/bin/phpunit tests/Feature/Assistant/McpOneTimePairingTest.php --no-coverage
           php vendor/bin/phpunit tests/Unit/Domain/Assistant/McpBridgeLogPrivacyTest.php --no-coverage
+      - name: Tests RBAC des séances, exploitation, MCP et mutations de rôles (MariaDB 10.11)
+        run: |
+          php vendor/bin/phpunit tests/Feature/Permissions/TimetableAndExploitationScopeTest.php --no-coverage
+          php vendor/bin/phpunit tests/Feature/Permissions/McpAndMobilePermissionOnlyTest.php --no-coverage
+          php vendor/bin/phpunit tests/Feature/Permissions/LegacyCoordinateurRoleMutationTest.php --no-coverage
