@@ -17,6 +17,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Sécurité API CLI (PR #1687, en validation) :** la liste des comptes exige désormais un droit de consultation effectif en plus du token ; tous les rôles sont exposés sans N+1, le champ ancien `role` reste disponible, et les erreurs techniques ne journalisent plus leurs traces intégrales.
 - **Superadministrateur (PR #1687, en validation) :** création initiale d'un nouveau compte via la CLI sous trois permissions effectives et ability de token, avec attribution et audit atomiques ; promotions et changements de comptes sensibles existants toujours interdits sans Maker-Checker.
 - **Sécurité (Policies, PR #1687) :** suppression de six passe-droits `before()` fondés sur `superAdmin` pour les notes, inscriptions, paiements, bulletins, matières et séances ; autorisations du Gate vérifiées par les permissions effectives avec tests de révocation.
 - **Refus propre si permission manquante :** le Gate `users.manage` renvoie une interdiction (au lieu de `PermissionDoesNotExist` → HTTP 500) lorsque la permission du tenant n'est pas encore synchronisée.

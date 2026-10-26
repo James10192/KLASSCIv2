@@ -29,8 +29,14 @@ class CLIUserController extends BaseApiController
         if (!$request->user()->tokenCan('cli:read')) {
             return $this->errorResponse('Token missing cli:read ability', [], 403);
         }
+        // Les abilities du token limitent son usage, mais ne remplacent jamais
+        // le droit métier effectif de consulter les comptes.
+        if (! $request->user()->checkPermissionTo('personnel.view', 'web')
+            && ! $request->user()->checkPermissionTo('users.manage', 'web')) {
+            return $this->errorResponse('Permission de consultation du personnel absente.', [], 403);
+        }
 
-        $query = User::query();
+        $query = User::query()->with('roles');
 
         if ($role = $request->input('role')) {
             $query->role($role);
@@ -44,16 +50,18 @@ class CLIUserController extends BaseApiController
             });
         }
 
-        $perPage = min((int) ($request->input('limit', 50)), 100);
+        $perPage = max(1, min((int) ($request->input('limit', 50)), 100));
         $paginated = $query->orderBy('id')->paginate($perPage);
 
         $users = collect($paginated->items())->map(function ($user) {
+            $roles = $user->getRoleNames();
             return [
                 'id' => $user->id,
                 'name' => $user->name,
                 'username' => $user->username,
                 'email' => $user->email,
-                'role' => $user->getRoleNames()->first() ?? '-',
+                'role' => $roles->first() ?? '-', // Champ legacy : ne plus le traiter comme rôle unique.
+                'roles' => $roles->values()->all(),
                 'is_active' => $user->is_active,
                 'created_at' => $user->created_at?->toIso8601String(),
             ];
@@ -284,7 +292,11 @@ class CLIUserController extends BaseApiController
             // Une donnée invalide ne doit jamais devenir une erreur 500.
             throw $e;
         } catch (\Exception $e) {
-            Log::error('CLI: user deletion failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::error('CLI: user deletion failed', [
+                'actor_id' => $request->user()?->id,
+                'target_user_id' => (int) $id,
+                'exception_class' => get_class($e),
+            ]);
             return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);
         }
     }

@@ -51,6 +51,15 @@ un remplacement ou une modification d'un compte sensible déjà existant reste
 refusé (403) tant que le processus Maker-Checker n'est pas livré. L'attribution
 de serviceTechnique est interdite par ce parcours.
 
+## GET /api/cli/users
+
+Lister les comptes nécessite **les deux couches** : `cli:read` et
+`personnel.view` **ou** `users.manage` attribué à l'auteur. L'ability
+Sanctum seule ne suffit plus (403). `role` est conservé pour les anciens
+clients, mais il ne représente qu'un des rôles. Le nouveau champ `roles`
+est un tableau de tous les rôles du compte. `limit` est borné à 1–100.
+La lecture charge les rôles sans requête N+1 et ne retourne pas les empreintes.
+
 ## POST /api/cli/user/create
 
 Création + premier rôle + audit dans une même transaction. Conditions :
@@ -85,6 +94,11 @@ Les capacités sont évaluées directement sur les permissions effectives,
 pas sur le nom du rôle de l'opérateur.
 
 ## Historique et compatibilité
+
+- 26/10/2026 (PR #1687, non fusionnée) : BREAKING CHANGE en lecture :
+  GET /api/cli/users exige désormais la permission effective de consultation
+  en plus de cli:read ; nouveau tableau roles, champ role conservé.
+
 
 - 26/10/2026 (PR #1687, non fusionnée) : création Superadmin initiale corrigée,
   sans promotion d'un compte existant et avec transaction/audit atomiques.

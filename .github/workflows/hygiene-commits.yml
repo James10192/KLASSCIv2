@@ -544,6 +544,7 @@ jobs:
             tests/Feature/API/CLI/UserDeletionGuardTest.php \
             tests/Feature/API/CLI/CustomRoleCliTest.php \
             tests/Feature/API/CLI/SuperAdminInitialCreationCliTest.php \
+            tests/Feature/API/CLI/CliUsersReadPermissionsTest.php \
             tests/Feature/Permissions/CustomRoleManagementHardeningTest.php \
             tests/Feature/Permissions/PersonnelUnifiedUniqueEntryTest.php \
             tests/Feature/Scolarite/ExtensionRoleSurvitSynchronisationTest.php \
