@@ -66,27 +66,32 @@ class AcademicPilotageDiagnoseCommand extends Command
     /**
      * Couples (classe, étudiant) de la cohorte sans instantané exploitable.
      *
-     * Cohorte : ESBTPInscription::cohorteAcademique, la même que ClassAcademicHealthService,
-     * restreinte aux classes actives (périmètre de academic-pilotage:refresh-alerts).
-     * Lecture des instantanés : AcademicMetricSnapshot::pourCohorte et exploitable,
-     * la même que AcademicMetricSnapshotCohortProvider. Une ligne propre prime sur une sale.
+     * Cohorte : ESBTPInscription::cohorteAcademique (inscriptions actives, étudiant créé),
+     * limitée aux classes actives (is_active). Pas de filtre d'année sur la classe.
+     * Instantanés : AcademicMetricSnapshot::pourCohorte, puis ->exploitable() pour les
+     * lignes propres, comme AcademicMetricSnapshotCohortProvider. Une ligne propre prime.
      */
     private function cohorte(array $filters): array
     {
+        $brutPeriode = filled($filters['period'] ?? null) ? (string) $filters['period'] : 'semestre1';
         try {
-            $periode = app(AcademicPeriodNormalizer::class)->normalize($filters['period'] ?? 'semestre1');
+            $periode = app(AcademicPeriodNormalizer::class)->normalize($brutPeriode);
         } catch (InvalidArgumentException) {
             return $this->cohorteSansMesure('période non reconnue : rien n\'a été compté', null);
         }
 
-        $anneeId = (int) ($filters['year_id'] ?? ESBTPAnneeUniversitaire::anneeCourante()?->id ?? 0);
+        $brutAnnee = $filters['year_id'] ?? null;
+        if (filled($brutAnnee) && ! $this->identifiantValide($brutAnnee)) {
+            return $this->cohorteSansMesure('identifiant d\'année non valide : rien n\'a été compté', $periode);
+        }
+        $anneeId = filled($brutAnnee) ? (int) $brutAnnee : (int) (ESBTPAnneeUniversitaire::anneeCourante()?->id ?? 0);
         if ($anneeId <= 0) {
             return $this->cohorteSansMesure('aucune année universitaire courante : rien n\'a été compté', $periode);
         }
 
         $brutClasse = $filters['class_id'] ?? null;
-        if ($brutClasse !== null && $brutClasse !== '' && ! ctype_digit((string) $brutClasse)) {
-            return $this->cohorteSansMesure('identifiant de classe non numérique : rien n\'a été compté', $periode);
+        if (filled($brutClasse) && ! $this->identifiantValide($brutClasse)) {
+            return $this->cohorteSansMesure('identifiant de classe non valide : rien n\'a été compté', $periode);
         }
         $classeId = filled($brutClasse) ? (int) $brutClasse : null;
 
@@ -111,16 +116,16 @@ class AcademicPilotageDiagnoseCommand extends Command
                 continue;
             }
 
-            $lignes = AcademicMetricSnapshot::query()
-                ->pourCohorte((int) $classeCourante, $anneeId, $systeme, $periode)
-                ->get(['etudiant_id', 'is_dirty'])
-                ->groupBy('etudiant_id');
+            $lecteur = fn () => AcademicMetricSnapshot::query()
+                ->pourCohorte((int) $classeCourante, $anneeId, $systeme, $periode);
+            $presents = $lecteur()->distinct()->pluck('etudiant_id')->map(fn ($id): int => (int) $id)->flip();
+            $propres = $lecteur()->exploitable()->distinct()->pluck('etudiant_id')->map(fn ($id): int => (int) $id)->flip();
 
             foreach ($couplesDeClasse as $couple) {
-                $existantes = $lignes->get($couple->etudiant_id);
-                if ($existantes === null) {
+                $etudiant = (int) $couple->etudiant_id;
+                if (! $presents->has($etudiant)) {
                     $compteurs['sans_ligne']++;
-                } elseif ($existantes->contains(fn ($ligne): bool => ! $ligne->is_dirty)) {
+                } elseif ($propres->has($etudiant)) {
                     $compteurs['exploitable']++;
                 } else {
                     $compteurs['ligne_sale']++;
@@ -131,7 +136,7 @@ class AcademicPilotageDiagnoseCommand extends Command
         return [
             'annee_universitaire_id' => $anneeId,
             'period' => $periode,
-            'perimetre' => 'inscriptions actives et étudiant créé, classes actives',
+            'perimetre' => 'inscriptions actives et étudiant créé, classes actives (is_active), sans filtre d\'année sur la classe',
             'motif' => null,
             'couples_cohorte' => $couples->count(),
             'etudiants_distincts' => $couples->pluck('etudiant_id')->unique()->count(),
@@ -143,13 +148,19 @@ class AcademicPilotageDiagnoseCommand extends Command
         ];
     }
 
+    /** Vide = absent (géré par l'appelant) ; un identifiant doit être un entier strictement positif. */
+    private function identifiantValide(mixed $valeur): bool
+    {
+        return ctype_digit((string) $valeur) && (int) $valeur > 0;
+    }
+
     /** @return array<string, mixed> */
     private function cohorteSansMesure(string $motif, ?string $periode): array
     {
         return [
             'annee_universitaire_id' => null,
             'period' => $periode,
-            'perimetre' => 'inscriptions actives et étudiant créé, classes actives',
+            'perimetre' => 'inscriptions actives et étudiant créé, classes actives (is_active), sans filtre d\'année sur la classe',
             'motif' => $motif,
             'couples_cohorte' => null,
             'etudiants_distincts' => null,

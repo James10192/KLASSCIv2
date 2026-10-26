@@ -8,7 +8,7 @@ Ces endpoints sont réservés aux jetons Sanctum CLI. Ils permettent de diagnost
 - `POST /api/cli/academic-pilotage/backfill` nécessite `cli:admin`.
 - `POST /api/cli/academic-pilotage/refresh` nécessite `cli:admin`.
 
-Le diagnostic retourne `cohorte` : la cohorte active (inscriptions actives, étudiant créé, classes actives, année et période données), réparties en `sans_ligne` (aucun instantané pour le lecteur), `ligne_sale` (instantané invalidé seulement), `exploitable` et `systeme_non_classable`. `sans_instantane_exploitable` additionne les deux premières. Sans année courante ou avec une période non reconnue, les compteurs valent `null` et `motif` explique pourquoi.
+Le diagnostic retourne `cohorte` : la cohorte active (inscriptions actives, étudiant créé, classes actives, année et période données), réparties en `sans_ligne` (aucun instantané pour le lecteur), `ligne_sale` (instantané invalidé seulement), `exploitable` et `systeme_non_classable`. `sans_instantane_exploitable` additionne les deux premières. Le bloc porte `perimetre` (classes actives, sans filtre d'année sur la classe) et `couples_cohorte`, le total des couples comptés. Sans année courante, avec une période non reconnue, un identifiant d'année ou de classe non valide, les compteurs valent `null` et `motif` explique pourquoi. Une option vide est traitée comme absente.
 
 Le diagnostic retourne aussi `snapshots.failed_samples`, limité aux dix derniers échecs. Chaque élément expose le scope, le nombre de tentatives et une empreinte de corrélation. Le message technique reste exclusivement dans les logs serveur.
 

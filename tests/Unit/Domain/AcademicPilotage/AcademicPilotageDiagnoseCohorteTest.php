@@ -25,6 +25,7 @@ class AcademicPilotageDiagnoseCohorteTest extends AcademicPilotageDatabaseTestCa
                 $table->boolean('is_active')->default(false);
                 $table->boolean('is_current')->default(false);
                 $table->timestamps();
+                $table->softDeletes();
             });
         }
 
@@ -137,6 +138,49 @@ class AcademicPilotageDiagnoseCohorteTest extends AcademicPilotageDatabaseTestCa
 
         $this->assertSame(1, $cohorte['systeme_non_classable']);
         $this->assertSame(1, $cohorte['sans_ligne']);
+    }
+
+    public function test_option_annee_vide_vaut_absente_et_non_numerique_donne_un_motif(): void
+    {
+        $this->inscription(1, 10);
+
+        $vide = $this->diagnoseCohorte(['--year-id' => '']);
+        $this->assertSame(1, $vide['couples_cohorte']);
+
+        $invalide = $this->diagnoseCohorte(['--year-id' => 'abc']);
+        $this->assertNull($invalide['couples_cohorte']);
+        $this->assertStringContainsString('année', $invalide['motif']);
+    }
+
+    public function test_classe_zero_donne_un_motif(): void
+    {
+        $this->inscription(1, 10);
+
+        $cohorte = $this->diagnoseCohorte(['--class-id' => 0]);
+
+        $this->assertNull($cohorte['couples_cohorte']);
+        $this->assertStringContainsString('classe', $cohorte['motif']);
+    }
+
+    public function test_les_compteurs_additionnent_les_couples(): void
+    {
+        $this->inscription(1, 10);
+        $this->snapshot(1, 10, isDirty: false, hash: 'propre');
+        $this->inscription(2, 10);
+        $this->snapshot(2, 10, isDirty: true, hash: 'sale');
+        $this->inscription(3, 10);
+        $this->inscription(4, 14);
+
+        $cohorte = $this->diagnoseCohorte();
+
+        $this->assertSame(
+            $cohorte['couples_cohorte'],
+            $cohorte['exploitable'] + $cohorte['sans_ligne'] + $cohorte['ligne_sale'] + $cohorte['systeme_non_classable'],
+        );
+        $this->assertSame(1, $cohorte['exploitable']);
+        $this->assertSame(1, $cohorte['ligne_sale']);
+        $this->assertSame(1, $cohorte['sans_ligne']);
+        $this->assertSame(1, $cohorte['systeme_non_classable']);
     }
 
     public function test_une_ligne_propre_prime_sur_une_ligne_sale_pour_le_meme_couple(): void
