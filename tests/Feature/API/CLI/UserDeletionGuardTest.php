@@ -450,6 +450,10 @@ class UserDeletionGuardTest extends TestCase
 
         $this->postJson($url, ['password' => 'MotDePasseUnique89#'])->assertForbidden();
         $actor->givePermissionTo('personnel.users.password.reset');
+        // La capacité sensible seule ne suffit pas : l'opérateur doit aussi
+        // avoir le droit de gérer la cible (UserManagementService::canManage).
+        $this->postJson($url, ['password' => 'MotDePasseUnique89#'])->assertForbidden();
+        $actor->givePermissionTo(Permission::findOrCreate('personnel.manage', 'web'));
         $this->postJson($url, ['password' => 'MotDePasseUnique89#'])->assertOk();
 
         $admin = User::factory()->create();
@@ -469,6 +473,9 @@ class UserDeletionGuardTest extends TestCase
 
         $this->getJson("/api/cli/user/{$target->id}/credentials")->assertForbidden();
         $actor->givePermissionTo('personnel.users.credentials.export');
+        // Même invariant pour l'export sensible : droit d'action + gestion de cible.
+        $this->getJson("/api/cli/user/{$target->id}/credentials")->assertForbidden();
+        $actor->givePermissionTo(Permission::findOrCreate('personnel.manage', 'web'));
         $this->getJson("/api/cli/user/{$target->id}/credentials")
             ->assertOk()->assertJsonPath('data.user_id', $target->id);
 
