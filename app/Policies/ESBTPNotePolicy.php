@@ -3,7 +3,6 @@
 namespace App\Policies;
 
 use App\Models\ESBTPNote;
-use App\Models\ESBTPTeacher;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
@@ -31,9 +30,11 @@ class ESBTPNotePolicy
             return true;
         }
 
-        // Conserver la portée métier de l'enseignant : son droit notes.view
-        // ne lui ouvre pas les évaluations des collègues. Le rôle étudiant
-        // secondaire ne doit toutefois pas écraser ses permissions de prof.
+        // Le droit global explicite reste effectif quel que soit le cumul de rôles.
+        // notes.view seul demeure borné pour l'enseignant (compatibilité).
+        if ($user->can('notes.view_all')) {
+            return true;
+        }
         if ($user->hasRole(['teacher', 'enseignant'])) {
             return $user->can('notes.view') && $this->teacherOwnsEvaluation($user, $note);
         }
