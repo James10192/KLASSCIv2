@@ -119,7 +119,7 @@
     </style>
 
     {{-- Au decoupage par lots (PdfParLots), les indicateurs ne paraissent qu'une fois. --}}
-    @if($isFirstChunk ?? true)
+    @if($isFirstChunk)
     <table class="pdf-kpi-table">
         <tr>
             <td class="pdf-kpi-cell" style="width:33.33%;">
@@ -195,7 +195,7 @@
     </table>
 
     {{-- Recapitulatif et signatures : seulement en fin de document. --}}
-    @if($isLastChunk ?? true)
+    @if($isLastChunk)
     <table class="pdf-detail-table">
         <thead>
             <tr>

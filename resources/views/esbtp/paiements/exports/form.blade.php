@@ -537,10 +537,10 @@
                         </button>
                     </label>
                     <div class="pe-checkbox-group" id="pe-modes-group">
-                        @forelse($modes as $mode)
+                        @forelse($modes as $valeur => $libelle)
                             <label class="pe-checkbox">
-                                <input type="checkbox" name="modes[]" value="{{ $mode }}">
-                                <span>{{ ucfirst($mode) }}</span>
+                                <input type="checkbox" name="modes[]" value="{{ $valeur }}">
+                                <span>{{ $libelle }}</span>
                             </label>
                         @empty
                             <span class="pe-field-hint">Aucun mode disponible</span>

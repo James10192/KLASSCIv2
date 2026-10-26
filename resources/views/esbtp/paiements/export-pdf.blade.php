@@ -237,6 +237,7 @@
         $filterItems[] = ['label' => 'Statut', 'value' => $statusMap[$filters['status']] ?? $statusFallback];
     }
     if (!empty($filters['frais_category'])) $filterItems[] = ['label' => 'Frais', 'value' => $filters['frais_category']];
+    if (!empty($filters['mode_paiement'])) $filterItems[] = ['label' => 'Mode de règlement', 'value' => $filters['mode_paiement']];
     if (!empty($filters['date_debut'])) $filterItems[] = ['label' => 'Date encaissement du', 'value' => $formatDate($filters['date_debut'])];
     if (!empty($filters['date_fin'])) $filterItems[] = ['label' => 'Date encaissement au', 'value' => $formatDate($filters['date_fin'])];
     if (empty($filters['date_debut']) && empty($filters['date_fin'])) $filterItems[] = ['label' => 'Date du versement', 'value' => 'Toutes les dates'];

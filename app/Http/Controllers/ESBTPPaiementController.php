@@ -10,7 +10,6 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Exceptions\RepartitionRefuseeException;
 use App\Exceptions\ExportPdfTropVolumineuxException;
 use App\Services\Exports\PdfParLots;
-use App\Enums\ModePaiement;
 use App\Support\ListeInfinie;
 use App\Http\Requests\Paiement\StorePaiementRequest;
 use App\Http\Requests\Paiement\UpdatePaiementRequest;
@@ -146,6 +145,9 @@ class ESBTPPaiementController extends Controller
             // Le filtre par frais. Seule la vue complete en a besoin : les
             // reponses AJAX ne re-rendent que le tableau et les indicateurs.
             'modesReglement' => $this->modesDeReglement(),
+            // Etat de depart du polling : sans lui, le premier poll le prend pour
+            // la reference et un versement enregistre juste apres le rendu est perdu.
+            'checkpoint' => $this->filterService->pointDeControle($request),
             'fraisCategories' => \App\Models\ESBTPFraisCategory::active()
                 ->ordered()
                 ->pluck('name', 'id'),
@@ -320,29 +322,15 @@ class ESBTPPaiementController extends Controller
     }
 
     /**
-     * Options du filtre « Mode de règlement » : les modes canoniques, plus les
-     * valeurs libres déjà en base (héritées), pour que chaque valeur stockée
-     * soit filtrable telle quelle.
+     * Options du filtre « Mode de règlement » : les valeurs réellement stockées,
+     * telles quelles. Une option qui ne correspond à aucune ligne afficherait un
+     * faux zéro ; la saisie enregistre des libellés, pas les codes de l'enum.
      *
      * @return array<string, string>
      */
     private function modesDeReglement(): array
     {
-        $options = ModePaiement::selectOptions();
-
-        $valeursStockees = ESBTPPaiement::query()
-            ->whereNotNull('mode_paiement')
-            ->distinct()
-            ->orderBy('mode_paiement')
-            ->pluck('mode_paiement');
-
-        foreach ($valeursStockees as $valeur) {
-            if ($valeur !== '' && ! array_key_exists($valeur, $options)) {
-                $options[$valeur] = ucfirst((string) $valeur);
-            }
-        }
-
-        return $options;
+        return PaymentFilterService::optionsDesModes();
     }
 
     /**
@@ -2623,14 +2611,7 @@ class ESBTPPaiementController extends Controller
         // Eager load createdBy si on va afficher la colonne (évite N+1)
         $paiements->loadMissing('createdBy:id,name');
 
-        $filters = [
-            'search' => $request->input('search'),
-            'status' => $request->input('status'),
-            'date_debut' => $request->input('date_debut'),
-            'date_fin' => $request->input('date_fin'),
-            'frais_category_id' => $request->input('frais_category_id'),
-            'portee' => $request->input('portee', 'tous'),
-        ];
+        $filters = $this->filterService->filtresDocument($request);
 
         $settings = $this->getReceiptSettings();
         $schoolInfo = \App\Helpers\SettingsHelper::getSchoolInfo();
