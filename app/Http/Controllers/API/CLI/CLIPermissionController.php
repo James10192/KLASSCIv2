@@ -97,8 +97,9 @@ class CLIPermissionController extends BaseApiController
                 'audit' => $payload,
             ], 'Audit completed');
         } catch (\Throwable $e) {
-            Log::error('CLI: permissions audit failed', ['error' => $e->getMessage()]);
-            return $this->errorResponse('Audit failed', ['error' => $e->getMessage()], 500);
+            Log::error('CLI: permissions audit failed', ['exception_type' => get_class($e)]);
+            // Ne jamais divulguer au consommateur API les chemins ou SQL internes.
+            return $this->errorResponse('Audit failed', [], 500);
         }
     }
 
