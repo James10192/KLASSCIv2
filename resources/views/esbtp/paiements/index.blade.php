@@ -956,7 +956,7 @@
 @section('content')
 @php
     $anneeNom = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->value('name') ?? (date('Y').'-'.(date('Y')+1));
-    $activeFilters = collect(['search', 'status', 'frais_category_id', 'date_debut', 'date_fin'])
+    $activeFilters = collect(['search', 'status', 'frais_category_id', 'mode_paiement', 'date_debut', 'date_fin'])
         ->filter(fn($k) => filled(request($k)))
         ->count();
     // Shell mobile actif : le DOM de bureau ci-dessous se cache sous 992px au
@@ -1194,6 +1194,16 @@
                             icon="fa-tags"
                             :searchable="($fraisCategories ?? collect())->count() > 8"
                             :options="$fraisCategories ?? []" />
+                    </div>
+                    <div class="pi-field">
+                        <label for="mode_paiement">Mode de règlement</label>
+                        <x-au-select
+                            name="mode_paiement"
+                            :value="request('mode_paiement')"
+                            placeholder="Tous les modes"
+                            icon="fa-wallet"
+                            :searchable="count($modesReglement ?? []) > 8"
+                            :options="$modesReglement ?? []" />
                     </div>
                     <div class="pi-field">
                         <label for="date_debut">Date début</label>
@@ -1449,6 +1459,9 @@ function showYearChangeInfo() {
     const pollingInterval = 30000; // 30 secondes
     let pollingTimer = null;
     let lastUpdatedAt = null;
+    // Empreinte de la liste (nombre + derniere modification) telle que le
+    // serveur la calcule : le polling ne recharge que si elle change.
+    let pointDeControle = null;
     let currentPaiementsCount = 0; // Nombre actuel de paiements
     let currentUrl = window.location.href;
 
@@ -1808,6 +1821,11 @@ function showYearChangeInfo() {
                     lastUpdatedAt = data.last_updated_at;
                 }
 
+                // Nouvel etat de reference pour le polling (meme forme que checkForUpdates)
+                if (data.checkpoint) {
+                    pointDeControle = JSON.stringify([data.checkpoint.count, data.checkpoint.last_updated_at]);
+                }
+
                 if (showLog) {
                     debugLog('✅ Données rafraîchies avec succès');
                 }
@@ -1852,18 +1870,18 @@ function showYearChangeInfo() {
         })
         .then(response => response.json())
         .then(data => {
-            // Comparer avec l'état actuel
-            const hasChanges = (
-                data.count !== currentPaiementsCount ||
-                data.last_updated_at !== lastUpdatedAt
-            );
+            const empreinte = JSON.stringify([data.count, data.last_updated_at]);
 
-            if (hasChanges) {
-                debugLog('🆕 Changements détectés! Count:', currentPaiementsCount, '→', data.count, '| Last update:', lastUpdatedAt, '→', data.last_updated_at);
+            // Premiere lecture : on note l'etat de depart, sans recharger la liste
+            // (sinon chaque ouverture de page la remettrait a la premiere tranche).
+            if (pointDeControle === null) {
+                pointDeControle = empreinte;
+                return;
+            }
 
-                // Mettre à jour les valeurs courantes
-                currentPaiementsCount = data.count;
-                lastUpdatedAt = data.last_updated_at;
+            if (empreinte !== pointDeControle) {
+                debugLog('🆕 Changements détectés! Count:', data.count, '| Last update:', data.last_updated_at);
+                pointDeControle = empreinte;
 
                 // Rafraîchir les données SANS overlay (polling automatique non-intrusif)
                 fetchPaiementsData(false, false);
@@ -2280,133 +2298,6 @@ function showYearChangeInfo() {
     };
 
     /* ═══════════════════════════════════════════════
-       Infinite scroll : IntersectionObserver
-       ═══════════════════════════════════════════════ */
-    let _isLoadingMore = false;
-    let _infiniteObserver = null;
-
-    function getInfiniteState() {
-        const card = document.querySelector('.pi-table-card');
-        if (!card) return null;
-        return {
-            card,
-            hasMore: card.getAttribute('data-has-more') === '1',
-            nextPage: parseInt(card.getAttribute('data-next-page') || '2', 10),
-            total: parseInt(card.getAttribute('data-total') || '0', 10),
-        };
-    }
-
-    function setInfiniteState({ hasMore, nextPage, total }) {
-        const card = document.querySelector('.pi-table-card');
-        if (!card) return;
-        if (typeof hasMore !== 'undefined') card.setAttribute('data-has-more', hasMore ? '1' : '0');
-        if (typeof nextPage !== 'undefined') card.setAttribute('data-next-page', String(nextPage));
-        if (typeof total !== 'undefined') card.setAttribute('data-total', String(total));
-        const endMarker = document.getElementById('pi-end-marker');
-        if (endMarker) {
-            endMarker.style.display = hasMore ? 'none' : 'flex';
-            const span = endMarker.querySelector('span');
-            if (span && !hasMore) {
-                span.textContent = (total > 0) ? 'Tous les résultats sont affichés' : '';
-            }
-        }
-    }
-
-    async function loadMoreRows() {
-        const state = getInfiniteState();
-        if (!state || !state.hasMore || _isLoadingMore) return;
-        _isLoadingMore = true;
-        const loader = document.getElementById('pi-loader');
-        if (loader) loader.style.display = 'flex';
-
-        try {
-            const params = new URLSearchParams(window.location.search);
-            params.set('mode', 'rows');
-            params.set('page', state.nextPage);
-
-            const res = await fetch('{{ route('esbtp.paiements.index') }}?' + params.toString(), {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json',
-                },
-            });
-
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            const data = await res.json();
-
-            if (data.rows) {
-                const tbody = document.getElementById('pi-tbody');
-                if (tbody) {
-                    // Retirer empty row si presente
-                    const emptyRow = document.getElementById('pi-empty-row');
-                    if (emptyRow) emptyRow.remove();
-
-                    const tmpl = document.createElement('template');
-                    tmpl.innerHTML = data.rows.trim();
-
-                    const newRows = Array.from(tmpl.content.querySelectorAll('tr[data-paiement-id]'));
-
-
-                    newRows.forEach((row) => {
-                        // Une ligne deja affichee (versement saisi en tete pendant
-                        // qu'on defile) n'est pas repetee.
-                        if (tbody.querySelector('tr[data-paiement-id="' + CSS.escape(row.dataset.paiementId) + '"]')) return;
-                        row.classList.add('pi-row-enter');
-                        tbody.appendChild(row);
-                        // Cleanup animation class
-                        setTimeout(() => row.classList.remove('pi-row-enter'), 600);
-                    });
-                    // Modales rejeter / mode / avoir / supprimer, toutes dans le
-                    // même hôte stable que la première page.
-                    piMountModals(tmpl.content);
-
-                    // Update compteur affiche
-                    const shown = document.getElementById('pi-rows-shown');
-                    if (shown) shown.textContent = tbody.querySelectorAll('tr[data-paiement-id]').length;
-                }
-            }
-
-            setInfiniteState({
-                hasMore: !!data.has_more,
-                nextPage: data.next_page || (state.nextPage + 1),
-                total: data.total || state.total,
-            });
-        } catch (err) {
-            debugError('❌ Erreur infinite scroll:', err);
-            if (typeof window.showToast === 'function') {
-                window.showToast('Impossible de charger plus de résultats : ' + err.message, 'error');
-            }
-        } finally {
-            if (loader) loader.style.display = 'none';
-            _isLoadingMore = false;
-            // Re-observe pour relancer le check meme si le sentinel reste
-            // dans le viewport (IntersectionObserver ne refire pas sans transition)
-            setTimeout(() => {
-                setupInfiniteObserver();
-            }, 50);
-        }
-    }
-    // Expose pour tests / scroll fallback
-    window.__piLoadMoreRows = loadMoreRows;
-
-    function setupInfiniteObserver() {
-        if (_infiniteObserver) {
-            _infiniteObserver.disconnect();
-            _infiniteObserver = null;
-        }
-        const sentinel = document.getElementById('pi-sentinel');
-        if (!sentinel || !('IntersectionObserver' in window)) return;
-
-        _infiniteObserver = new IntersectionObserver((entries) => {
-            entries.forEach((entry) => {
-                if (entry.isIntersecting) loadMoreRows();
-            });
-        }, { rootMargin: '200px 0px 200px 0px', threshold: 0.01 });
-
-        _infiniteObserver.observe(sentinel);
-    }
-
-    /* ═══════════════════════════════════════════════
        Intercepter clics sur les KPI links (AJAX no-reload)
        ═══════════════════════════════════════════════ */
     document.addEventListener('click', function(ev) {
@@ -2446,16 +2337,21 @@ function showYearChangeInfo() {
         onScroll();
     }
 
-    // Reinstaller l'observer apres chaque fetchPaiementsData (table replaced)
-    const _origFetchPaiementsData = fetchPaiementsData;
-    fetchPaiementsData = function(showLog, showOverlay) {
-        const result = _origFetchPaiementsData.apply(this, arguments);
-        // Reinstaller observer apres replace innerHTML
-        setTimeout(() => {
-            setupInfiniteObserver();
-        }, 50);
-        return result;
-    };
+    /**
+     * Lignes ajoutees au defilement (composant x-liste-infinie) : leurs modales
+     * montent dans l'hote stable, et le compteur du haut suit ce qui est affiche.
+     */
+    document.addEventListener('liste-infinie:ajout', function (ev) {
+        if (!ev.target || ev.target.id !== 'pi-tbody') return;
+        ev.detail.lignes.forEach(function (ligne) {
+            const boite = ligne.querySelector ? ligne.querySelector('.pi-row-modales') : null;
+            if (!boite) return;
+            piMountModals(boite);
+            boite.remove();
+        });
+        const shown = document.getElementById('pi-rows-shown');
+        if (shown) shown.textContent = document.querySelectorAll('#pi-tbody tr[data-paiement-id]').length;
+    });
 
     /**
      * Initialisation au chargement de la page
@@ -2468,9 +2364,6 @@ function showYearChangeInfo() {
 
         // Initialiser les listeners de checkboxes
         initCheckboxListeners();
-
-        // Setup infinite scroll observer
-        setupInfiniteObserver();
 
         // Setup scroll-to-top button
         setupScrollTop();
@@ -2488,8 +2381,8 @@ function showYearChangeInfo() {
         updateBulkActionsBar();
 
         // Auto-submit quand on change un select ou une date
-        $('#paiements-filter-form').off('change', 'select[name="status"], select[name="frais_category_id"], input[name="date_debut"], input[name="date_fin"]')
-            .on('change', 'select[name="status"], select[name="frais_category_id"], input[name="date_debut"], input[name="date_fin"]', function() {
+        $('#paiements-filter-form').off('change', 'select[name="status"], select[name="frais_category_id"], select[name="mode_paiement"], input[name="date_debut"], input[name="date_fin"]')
+            .on('change', 'select[name="status"], select[name="frais_category_id"], select[name="mode_paiement"], input[name="date_debut"], input[name="date_fin"]', function() {
                 debugLog('📝 Changement détecté, soumission automatique du formulaire');
                 $('#paiements-filter-form').submit();
             });

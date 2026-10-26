@@ -10,6 +10,8 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Exceptions\RepartitionRefuseeException;
 use App\Exceptions\ExportPdfTropVolumineuxException;
 use App\Services\Exports\PdfParLots;
+use App\Enums\ModePaiement;
+use App\Support\ListeInfinie;
 use App\Http\Requests\Paiement\StorePaiementRequest;
 use App\Http\Requests\Paiement\UpdatePaiementRequest;
 use App\Services\Frais\RepartitionDuVersement;
@@ -113,18 +115,9 @@ class ESBTPPaiementController extends Controller
                 $navUrl .= '?' . $request->getQueryString();
             }
 
-            // Mode "rows-only" pour infinite scroll (append batch)
-            if ($request->input('mode') === 'rows') {
-                return response()->json([
-                    'rows' => view('esbtp.paiements.partials._table-rows', [
-                        'paiements' => $data['paiements'],
-                    ])->render(),
-                    'has_more' => method_exists($data['paiements'], 'hasMorePages') ? $data['paiements']->hasMorePages() : false,
-                    'next_page' => method_exists($data['paiements'], 'currentPage') ? ($data['paiements']->currentPage() + 1) : 2,
-                    'current_page' => method_exists($data['paiements'], 'currentPage') ? $data['paiements']->currentPage() : 1,
-                    'total' => $data['summary']['total'],
-                    'count' => $data['paiements']->count(),
-                ]);
+            // Suite de la liste au defilement : le contrat partage ListeInfinie.
+            if (ListeInfinie::demandee($request)) {
+                return ListeInfinie::reponse($data['paiements'], fn (ESBTPPaiement $p) => $this->ligneDePaiement($p));
             }
 
             return response()->json([
@@ -140,6 +133,7 @@ class ESBTPPaiementController extends Controller
                 'url' => $navUrl,  // URL navigable
                 'summary' => $data['summary'],
                 'last_updated_at' => optional($data['last_updated_at'])->toIso8601String(),
+                'checkpoint' => $this->filterService->pointDeControle($request),
             ]);
         }
 
@@ -151,6 +145,7 @@ class ESBTPPaiementController extends Controller
             'lastUpdatedAt' => $data['last_updated_at'],
             // Le filtre par frais. Seule la vue complete en a besoin : les
             // reponses AJAX ne re-rendent que le tableau et les indicateurs.
+            'modesReglement' => $this->modesDeReglement(),
             'fraisCategories' => \App\Models\ESBTPFraisCategory::active()
                 ->ordered()
                 ->pluck('name', 'id'),
@@ -288,18 +283,9 @@ class ESBTPPaiementController extends Controller
             $navUrl .= '?' . $request->getQueryString();
         }
 
-        // Mode "rows-only" pour infinite scroll (append batch)
-        if ($request->input('mode') === 'rows') {
-            return response()->json([
-                'rows' => view('esbtp.paiements.partials._table-rows', [
-                    'paiements' => $data['paiements'],
-                ])->render(),
-                'has_more' => method_exists($data['paiements'], 'hasMorePages') ? $data['paiements']->hasMorePages() : false,
-                'next_page' => method_exists($data['paiements'], 'currentPage') ? ($data['paiements']->currentPage() + 1) : 2,
-                'current_page' => method_exists($data['paiements'], 'currentPage') ? $data['paiements']->currentPage() : 1,
-                'total' => $data['summary']['total'],
-                'count' => $data['paiements']->count(),
-            ]);
+        // Suite de la liste au defilement : le contrat partage ListeInfinie.
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($data['paiements'], fn (ESBTPPaiement $p) => $this->ligneDePaiement($p));
         }
 
         return response()->json([
@@ -315,7 +301,48 @@ class ESBTPPaiementController extends Controller
             'url' => $navUrl,  // URL navigable (pas /refresh)
             'summary' => $data['summary'],
             'last_updated_at' => optional($data['last_updated_at'])->toIso8601String(),
+            'checkpoint' => $this->filterService->pointDeControle($request),
         ]);
+    }
+
+    /**
+     * Une ligne du tableau, modales comprises (dans une cellule masquee) : une
+     * ligne ajoutee au defilement arrive seule, sans rien hors du <tr>.
+     */
+    private function ligneDePaiement(ESBTPPaiement $paiement): string
+    {
+        return view('esbtp.paiements.partials.ligne-paiement', [
+            'paiement' => $paiement,
+            'showCreatorColumn' => auth()->user()?->can('paiements.view') ?? false,
+            'renderPaiementModals' => false,
+            'modalesDansLigne' => true,
+        ])->render();
+    }
+
+    /**
+     * Options du filtre « Mode de règlement » : les modes canoniques, plus les
+     * valeurs libres déjà en base (héritées), pour que chaque valeur stockée
+     * soit filtrable telle quelle.
+     *
+     * @return array<string, string>
+     */
+    private function modesDeReglement(): array
+    {
+        $options = ModePaiement::selectOptions();
+
+        $valeursStockees = ESBTPPaiement::query()
+            ->whereNotNull('mode_paiement')
+            ->distinct()
+            ->orderBy('mode_paiement')
+            ->pluck('mode_paiement');
+
+        foreach ($valeursStockees as $valeur) {
+            if ($valeur !== '' && ! array_key_exists($valeur, $options)) {
+                $options[$valeur] = ucfirst((string) $valeur);
+            }
+        }
+
+        return $options;
     }
 
     /**
@@ -324,43 +351,9 @@ class ESBTPPaiementController extends Controller
      */
     public function checkForUpdates(Request $request)
     {
-        $status = $request->input('status');
-        $dateDebut = $request->input('date_debut');
-        $dateFin = $request->input('date_fin');
-
-        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        $anneeId = $anneeEnCours?->id;
-
-        // Construire une requête minimale avec les mêmes filtres
-        $query = ESBTPPaiement::query();
-
-        if ($status) {
-            $query->where('status', $status);
-        }
-
-        if ($dateDebut) {
-            $query->whereDate('date_paiement', '>=', $dateDebut);
-        }
-
-        if ($dateFin) {
-            $query->whereDate('date_paiement', '<=', $dateFin);
-        }
-
-        if ($anneeId) {
-            $query->whereHas('inscription', function ($q) use ($anneeId) {
-                $q->where('annee_universitaire_id', $anneeId);
-            });
-        }
-
-        // Récupérer seulement le count et le dernier updated_at/created_at
-        $count = $query->count();
-        $lastPaiement = $query->orderByDesc('updated_at')->first(['id', 'updated_at']);
-
-        return response()->json([
-            'count' => $count,
-            'last_updated_at' => optional($lastPaiement)->updated_at?->toIso8601String(),
-            'last_paiement_id' => optional($lastPaiement)->id,
-        ]);
+        // Meme perimetre et memes filtres que la liste : sinon le polling
+        // comparerait deux ensembles differents et rechargerait sans raison.
+        return response()->json($this->filterService->pointDeControle($request));
     }
 
     /**
