@@ -173,6 +173,7 @@ class CLIPermissionController extends BaseApiController
         // En cas d'échec, pas de rôle créé à moitié ni de permissions non tracées.
         try {
             [$role, $granted, $missing] = DB::transaction(function () use ($validated, $request) {
+                $this->assertRoleMutationScopeLocked($request, 'personnel.roles.create', $validated['permissions'] ?? [], true);
                 $existing = Role::query()->where('name', $validated['name'])
                     ->where('guard_name', 'web')->first();
                 if ($existing) {
@@ -285,6 +286,7 @@ class CLIPermissionController extends BaseApiController
         // un role modifie a moitie.
         $revoquees = DB::transaction(function () use ($roleModel, $perms, $extensions, $role, $request) {
             app(\App\Services\Personnel\RolePermissionMutationGuard::class)->lockAndAssertSafe($roleModel);
+            $this->assertRoleMutationScopeLocked($request, 'personnel.manage', $perms);
             $existantes = $roleModel->permissions()->pluck('name')->all();
             $revoquees = [];
             foreach ($perms as $perm) {
@@ -351,6 +353,7 @@ class CLIPermissionController extends BaseApiController
         $extensions = app(\App\Services\ExtensionsDeRole::class);
         [$granted, $missing] = DB::transaction(function () use ($roleModel, $perms, $extensions, $role, $request) {
             app(\App\Services\Personnel\RolePermissionMutationGuard::class)->lockAndAssertSafe($roleModel);
+            $this->assertRoleMutationScopeLocked($request, 'personnel.manage', $perms);
             $avant = $roleModel->permissions()->pluck('name')->all();
             $granted = [];
             $missing = [];
@@ -458,6 +461,30 @@ class CLIPermissionController extends BaseApiController
                 'extra' => $extraVsDefaults,
             ],
         ], "Role {$role} details");
+    }
+
+    /**
+     * Revalidation au moment de l'écriture : la permission Spatie et l'ability
+     * CLI doivent encore être valides APRES les verrous de mutation du rôle.
+     * Exécuté uniquement dans une transaction DB.
+     *
+     * @param list<string> $permissionNames
+     */
+    private function assertRoleMutationScopeLocked(Request $request, string $action, array $permissionNames, bool $allowUnknown = false): void
+    {
+        $actor = User::query()->whereKey($request->user()->id)->lockForUpdate()->first();
+
+        abort_unless($actor?->is_active
+            && $request->user()->tokenCan('cli:admin')
+            && $actor->checkPermissionTo($action, 'web'), 403);
+
+        foreach (array_unique($permissionNames) as $name) {
+            abort_unless(is_string($name), 403);
+            if ($allowUnknown && ! Permission::query()->where('name', $name)->where('guard_name', 'web')->exists()) {
+                continue;
+            }
+            abort_unless($actor->checkPermissionTo($name, 'web'), 403);
+        }
     }
 
     /**
