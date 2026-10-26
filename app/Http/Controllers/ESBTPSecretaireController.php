@@ -55,6 +55,8 @@ class ESBTPSecretaireController extends Controller
      */
     public function store(Request $request)
     {
+        abort_unless(app(\App\Services\UserManagementService::class)->canAssignRole($request->user(), 'secretaire'), 403);
+
         // Capturer les données validées pour éviter la vulnérabilité mass assignment
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',

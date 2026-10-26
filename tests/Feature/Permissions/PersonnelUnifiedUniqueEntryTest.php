@@ -299,4 +299,56 @@ class PersonnelUnifiedUniqueEntryTest extends TestCase
             ])->assertForbidden();
         $this->assertDatabaseMissing('users', ['email' => 'legacy-role-hors-perimetre@example.test']);
     }
+
+    public function test_autres_creations_legacy_exigent_aussi_la_delegation_effective(): void
+    {
+        // L'entrée 'system.manage' ou 'teachers.create' ne dispense jamais
+        // de la permission distincte d'affecter le rôle et son périmètre.
+        $routes = [
+            'esbtp.secretaires.store',
+            'esbtp.comptables.store',
+            'esbtp.caissiers.store',
+            'esbtp.enseignants.store',
+            'esbtp.enseignants.quick-create',
+        ];
+        foreach (['secretaire', 'comptable', 'caissier', 'enseignant'] as $role) {
+            Role::findOrCreate($role, 'web');
+        }
+
+        $acteur = User::factory()->create(['is_active' => true]);
+        foreach (['system.manage', 'admin.access', 'teachers.create', 'module.enseignants.access', 'identity.direct_studies'] as $name) {
+            $acteur->givePermissionTo(Permission::findOrCreate($name, 'web'));
+        }
+
+        $this->actingAs($acteur);
+        foreach ($routes as $i => $route) {
+            $email = 'legacy-create-no-delegation-'.$i.'@example.test';
+            $this->postJson(route($route), [
+                'name' => 'Ancien formulaire bloqué',
+                'email' => $email,
+                'phone' => '0700000000',
+                'specialization' => 'Informatique',
+            ])->assertForbidden();
+
+            $this->assertDatabaseMissing('users', ['email' => $email]);
+        }
+    }
+
+    public function test_creation_comptable_refuse_de_deleguer_un_role_plus_privilegie(): void
+    {
+        $role = Role::findOrCreate('comptable', 'web');
+        $role->givePermissionTo(Permission::findOrCreate('paiements.restore', 'web'));
+        $acteur = User::factory()->create(['is_active' => true]);
+        foreach (['system.manage', 'personnel.roles.assign'] as $name) {
+            $acteur->givePermissionTo(Permission::findOrCreate($name, 'web'));
+        }
+
+        $this->actingAs($acteur)
+            ->postJson(route('esbtp.comptables.store'), [
+                'name' => 'Hors périmètre comptable',
+                'email' => 'legacy-comptable-no-grant@example.test',
+            ])->assertForbidden();
+
+        $this->assertDatabaseMissing('users', ['email' => 'legacy-comptable-no-grant@example.test']);
+    }
 }
