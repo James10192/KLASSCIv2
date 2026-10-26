@@ -2423,6 +2423,11 @@ return [
         ],
         'superAdmin' => [
             'superadmin.accounts.create',
+            // Permission d'exploitation, approbation d'identité MCP et aperçu
+            // transversal : accordés seulement après délégation explicite auditée.
+            'exploitation.control_center.view',
+            'mcp.connections.approve',
+            'mobile.profile.preview',
             // Maintenance ADC uniquement par défaut ; l'école peut accorder
             // explicitement ces droits, avec audit et sans rôle obligatoire.
             'paywall.manage',
