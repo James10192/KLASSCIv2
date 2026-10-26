@@ -53,7 +53,7 @@ class ModeReglementModalUiContractTest extends TestCase
             'if (paiementModalEnCours())',
             'refreshDiffere = true',
             'piMountModals(nouveauTableau.content, { replaceAll: true })',
-            'piMountModals(tmpl.content)',
+            'piMountModals(boite)',
             'piMountModals(template.content, { updateExisting: true',
             'window.Alpine?.initTree?.(el)',
         ] as $garde) {
