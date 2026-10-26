@@ -10,6 +10,8 @@ use App\Rules\MotDePasseNonGenerique;
 use App\Services\CLI\UserDeletionService;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use App\Services\Personnel\RoleAssignmentService;
+use App\Services\UserManagementService;
+use App\Listeners\AuditPermissionChange;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
@@ -166,6 +168,7 @@ class CLIUserController extends BaseApiController
         Request $request,
         $id,
         SuperAdminLifecycleGuard $lifecycle,
+        UserManagementService $management,
     ): JsonResponse
     {
         if (!$request->user()->tokenCan('cli:admin')) {
@@ -183,7 +186,10 @@ class CLIUserController extends BaseApiController
                     'password_changed_at' => now(),
                     'must_change_password' => false,
                 ],
-                authorize: function (User $target) use ($caller): void {
+                authorize: function (User $target) use ($caller, $management): void {
+                    if (! $management->canManage($caller, $target)) {
+                        throw new AuthorizationException('Compte hors de votre périmètre de gestion.');
+                    }
                     // Classification de la cible, jamais habilitation via nom de rôle.
                     if ($target->getRoleNames()->intersect(['superAdmin', 'serviceTechnique'])->isNotEmpty()) {
                         throw new AuthorizationException('Compte sensible : changement de mot de passe refusé par la CLI.');
@@ -218,7 +224,7 @@ class CLIUserController extends BaseApiController
      * reset-password (cible privilegiee interdite hors superAdmin) et un log
      * systematique. L'empreinte n'est jamais ecrite dans les logs.
      */
-    public function userCredentials(Request $request, $id): JsonResponse
+    public function userCredentials(Request $request, $id, UserManagementService $management): JsonResponse
     {
         if (!$request->user()->tokenCan('cli:admin')) {
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
@@ -233,6 +239,10 @@ class CLIUserController extends BaseApiController
         }
 
         $caller = $request->user();
+        // L'export de l'empreinte est limité au périmètre de gestion effectif.
+        if (! $management->canManage($caller, $user)) {
+            return $this->errorResponse('Compte hors de votre périmètre de gestion.', [], 403);
+        }
         if ($user->getRoleNames()->intersect(['superAdmin', 'serviceTechnique'])->isNotEmpty()) {
             Log::warning('CLI: credentials export DENIED on privileged target', [
                 'target_user_id' => $user->id,
@@ -301,58 +311,66 @@ class CLIUserController extends BaseApiController
         }
     }
 
-    public function userResetPassword(Request $request, $id): JsonResponse
-    {
-        if (!$request->user()->tokenCan('cli:admin')) {
+    public function userResetPassword(
+        Request $request, $id, SuperAdminLifecycleGuard $lifecycle,
+        UserManagementService $management, AuditPermissionChange $audit
+    ): JsonResponse {
+        $caller = $request->user();
+        if (! $caller->tokenCan('cli:admin')) {
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
-        if (! $request->user()->checkPermissionTo('personnel.users.password.reset', 'web')) {
+        if (! $caller->checkPermissionTo('personnel.users.password.reset', 'web')) {
             return $this->errorResponse('Permission de réinitialisation absente.', [], 403);
         }
 
-        $user = User::find($id);
-        if (!$user) {
-            return $this->errorResponse("User #{$id} not found", [], 404);
-        }
-
-        // Guard target = superAdmin/serviceTechnique (audit sécurité 2026-05-21).
-        // Avant ce fix : un token cli:admin volé pouvait reset le mot de passe
-        // d'un superAdmin et compromettre tout le tenant. Seul un superAdmin
-        // (via son propre token) peut désormais reset un compte privilégié.
-        $caller = $request->user();
-        if ($user->getRoleNames()->intersect(['superAdmin', 'serviceTechnique'])->isNotEmpty()) {
-            Log::warning('CLI: reset-password DENIED on privileged target', [
-                'target_user_id' => $user->id,
-                'target_roles' => $user->getRoleNames()->toArray(),
-                'caller_user_id' => $caller->id,
-                'caller_roles' => $caller->getRoleNames()->toArray(),
-                'ip' => $request->ip(),
-            ]);
-
-            return $this->errorResponse(
-                'Compte sensible : mot de passe non modifiable par ce parcours CLI.',
-                [],
-                403
-            );
-        }
-
-        $validated = $request->validate(['password' => ['required', 'string', 'min:8', new MotDePasseNonGenerique]]);
-
-        $user->update([
-            'password'             => bcrypt($validated['password']),
-            'must_change_password' => false,
-            'password_changed_at'  => now(),
+        $validated = $request->validate([
+            'password' => ['required', 'string', 'min:8', new MotDePasseNonGenerique],
         ]);
 
-        // Audit log enrichi pour traçabilité forensique (les tokens du target
-        // sont automatiquement révoqués par User::booted, voir audit Phase B1).
+        try {
+            // Relecture et verrouillage atomiques : une promotion concurrente
+            // ne peut pas rendre caduque le contrôle de cible sensible.
+            $user = $lifecycle->updateUser(
+                (int) $id,
+                [
+                    'password' => Hash::make($validated['password']),
+                    'must_change_password' => false,
+                    'password_changed_at' => now(),
+                ],
+                afterUpdate: function (User $target) use ($caller, $audit): void {
+                    // Audit durable dans la même transaction, sans secret.
+                    $audit->enregistrerDecisionDeCompte(
+                        $target,
+                        ['security_action' => 'before_cli_password_reset'],
+                        ['security_action' => 'cli_password_reset'],
+                        $caller->id,
+                        'Réinitialisation du mot de passe via API CLI'
+                    );
+                },
+                authorize: function (User $target) use ($caller, $management): void {
+                    if (! $management->canManage($caller, $target)) {
+                        throw new AuthorizationException('Compte hors de votre périmètre de gestion.');
+                    }
+                    if ($target->getRoleNames()->intersect(['superAdmin', 'serviceTechnique'])->isNotEmpty()) {
+                        throw new AuthorizationException('Compte sensible : réinitialisation refusée par la CLI.');
+                    }
+                },
+            );
+        } catch (AuthorizationException $e) {
+            return $this->errorResponse($e->getMessage(), [], 403);
+        } catch (ModelNotFoundException) {
+            return $this->errorResponse('Compte introuvable.', [], 404);
+        } catch (\Throwable $e) {
+            Log::error('CLI: password reset transaction rolled back', [
+                'target_user_id' => (int) $id,
+                'exception_class' => get_class($e),
+            ]);
+            return $this->errorResponse('Réinitialisation annulée sans modification partielle.', [], 500);
+        }
+
         Log::info('CLI: password reset', [
             'target_user_id' => $user->id,
-            'target_roles' => $user->getRoleNames()->toArray(),
             'caller_user_id' => $caller->id,
-            'caller_roles' => $caller->getRoleNames()->toArray(),
-            'ip' => $request->ip(),
-            'user_agent' => $request->userAgent(),
         ]);
 
         return $this->successResponse(
@@ -360,7 +378,8 @@ class CLIUserController extends BaseApiController
             'Password reset successfully.'
         );
     }
-/**
+
+    /**
      * POST /api/cli/user/{id}/role — Change or add a role on an existing account.
      *
      * Le CLI ne savait attribuer un role qu'a la creation : corriger un compte
