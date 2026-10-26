@@ -3,11 +3,15 @@
 namespace Tests\Feature\Permissions;
 
 use App\Models\ESBTPBulletin;
+use App\Models\ESBTPInscription;
+use App\Models\ESBTPPaiement;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
 use App\Models\User;
 use App\Policies\ESBTPBulletinPolicy;
+use App\Policies\ESBTPInscriptionPolicy;
+use App\Policies\ESBTPPaiementPolicy;
 use App\Policies\ESBTPNotePolicy;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Spatie\Permission\Models\Permission;
@@ -113,5 +117,31 @@ final class NoteBulletinPropertyScopeTest extends TestCase
 
         $record->user_id = $viewer->id;
         $this->assertTrue($policy->view($viewer, $bulletin));
+    }
+
+    public function test_un_compte_etudiant_et_financier_conserve_les_permissions_globales(): void
+    {
+        Role::findOrCreate('comptable', 'web');
+        foreach (['inscriptions.view', 'paiements.view'] as $name) {
+            Permission::findOrCreate($name, 'web');
+        }
+        $actor = User::factory()->create(['is_active' => true]);
+        $actor->assignRole(['etudiant', 'comptable']);
+        $inscription = new ESBTPInscription();
+        $paiement = new ESBTPPaiement();
+
+        $inscriptions = app(ESBTPInscriptionPolicy::class);
+        $paiements = app(ESBTPPaiementPolicy::class);
+
+        $this->assertFalse($inscriptions->view($actor, $inscription));
+        $this->assertFalse($paiements->view($actor, $paiement));
+
+        $actor->givePermissionTo(['inscriptions.view', 'paiements.view']);
+        $this->assertTrue($inscriptions->view($actor, $inscription));
+        $this->assertTrue($paiements->view($actor, $paiement));
+
+        $actor->revokePermissionTo(['inscriptions.view', 'paiements.view']);
+        $this->assertFalse($inscriptions->view($actor, $inscription));
+        $this->assertFalse($paiements->view($actor, $paiement));
     }
 }

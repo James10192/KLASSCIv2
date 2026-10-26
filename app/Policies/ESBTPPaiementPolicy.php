@@ -24,12 +24,9 @@ class ESBTPPaiementPolicy
      */
     public function view(User $user, ESBTPPaiement $paiement)
     {
+        // "paiements.view" est global : aucun rôle secondaire étudiant ne
+        // peut annuler une permission financière explicitement accordée.
         if ($user->can('paiements.view')) {
-            if ($user->hasRole('etudiant')) {
-                return $paiement->etudiant
-                    && $paiement->etudiant->user_id === $user->id;
-            }
-
             return true;
         }
 
