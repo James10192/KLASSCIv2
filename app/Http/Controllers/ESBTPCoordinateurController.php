@@ -281,6 +281,7 @@ class ESBTPCoordinateurController extends Controller
      */
     public function resetPassword(User $coordinateur)
     {
+        abort_unless(auth()->user()?->can('personnel.users.password.reset'), 403);
         $this->authorize('users.manage');
         $this->authorize('update', $coordinateur);
 
