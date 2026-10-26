@@ -527,8 +527,13 @@ class CLIPermissionController extends BaseApiController
                 'aliases_healed' => $result['aliases_healed'],
             ], 'Permissions and roles synced from registry');
         } catch (\Throwable $e) {
-            Log::error('CLI: permissions sync failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return $this->errorResponse('Sync failed: ' . $e->getMessage(), [], 500);
+            // La synchronisation peut échouer sur une contrainte SQL. Jamais
+            // exposer au client le SQL, les chemins, les valeurs ou la stack.
+            Log::error('CLI: permissions sync failed', [
+                'exception_class' => get_class($e),
+                'actor_user_id' => $request->user()?->id,
+            ]);
+            return $this->errorResponse('Synchronisation impossible. Vérifiez les journaux serveur.', [], 500);
         }
     }
 }
