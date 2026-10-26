@@ -35,6 +35,19 @@ final class NoteBulletinPropertyScopeTest extends TestCase
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
+    public function test_compte_inactif_ne_peut_ni_lire_ni_modifier_les_notes(): void
+    {
+        Permission::findOrCreate('module.notes_evaluations.access', 'web');
+        $actor = User::factory()->create(['is_active' => false]);
+        $actor->givePermissionTo(['notes.view_all', 'notes.edit', 'module.notes_evaluations.access']);
+        $note = new ESBTPNote();
+        $policy = app(ESBTPNotePolicy::class);
+
+        $this->assertFalse($policy->viewAny($actor));
+        $this->assertFalse($policy->view($actor, $note));
+        $this->assertFalse($policy->update($actor, $note));
+    }
+
     public function test_un_enseignant_proprietaire_sans_permission_ne_peut_pas_modifier_la_note(): void
     {
         $teacher = User::factory()->create(['is_active' => true]);
