@@ -103,24 +103,36 @@ class CLIUserController extends BaseApiController
         }
 
         try {
-            $user = DB::transaction(function () use ($request, $validated, $roles): User {
-                $user = User::create([
-                    'name' => $validated['name'],
-                    'email' => $validated['email'] ?? null,
-                    'username' => $validated['username'],
-                    'password' => isset($validated['password_hash'])
-                        ? $validated['password_hash']
-                        : Hash::make($validated['password']),
-                    'phone' => $validated['phone'] ?? null,
-                    'is_active' => true,
-                    'must_change_password' => $validated['must_change_password']
-                        ?? ! isset($validated['password_hash']),
-                    'created_by' => $request->user()->id,
-                ]);
-                // Le service écrit l'audit des rôles DANS la même transaction.
-                $roles->change($request->user(), $user->id, 'add', $validated['role'], $validated['motif']);
-                return $user;
-            }, 3);
+            $attributes = [
+                'name' => $validated['name'],
+                'email' => $validated['email'] ?? null,
+                'username' => $validated['username'],
+                'password' => isset($validated['password_hash'])
+                    ? $validated['password_hash']
+                    : Hash::make($validated['password']),
+                'phone' => $validated['phone'] ?? null,
+                'is_active' => true,
+                'must_change_password' => $validated['must_change_password']
+                    ?? ! isset($validated['password_hash']),
+                'created_by' => $request->user()->id,
+            ];
+
+            if ($validated['role'] === 'superAdmin') {
+                // Impossible d'invoquer change() pour promouvoir une cible :
+                // seule cette opération insère un NOUVEAU compte et l'audite.
+                $user = $roles->createInitialSuperAdmin(
+                    $request->user(), $attributes, $validated['motif']
+                );
+            } else {
+                $user = DB::transaction(function () use ($request, $validated, $roles, $attributes): User {
+                    $user = User::create($attributes);
+                    $roles->change(
+                        $request->user(), $user->id, 'add',
+                        $validated['role'], $validated['motif']
+                    );
+                    return $user;
+                }, 3);
+            }
 
             return $this->successResponse([
                 'user_id' => $user->id,
