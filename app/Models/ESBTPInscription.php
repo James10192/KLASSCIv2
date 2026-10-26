@@ -456,22 +456,6 @@ class ESBTPInscription extends Model implements Auditable
     }
 
     /**
-     * Cohorte académique : inscriptions actives, étudiant créé, pour une année (et une
-     * classe si fournie). Lu par ClassAcademicHealthService::cohortIds et par
-     * academic-pilotage:diagnose. Les autres lecteurs inline (BtsBulkBulletinGenerationService,
-     * AcademicPilotageManualSyncService, ExpectedGradeSheetEntrySynchronizer,
-     * AcademicNoteCoverageService) ne lisent pas ce scope.
-     */
-    public function scopeCohorteAcademique($query, int $anneeId, ?int $classeId = null)
-    {
-        return $query
-            ->where('annee_universitaire_id', $anneeId)
-            ->where('status', 'active')
-            ->where('workflow_step', 'etudiant_cree')
-            ->when($classeId !== null, fn ($scope) => $scope->where('classe_id', $classeId));
-    }
-
-    /**
      * Scope pour filtrer les inscriptions actives.
      *
      * @param \Illuminate\Database\Eloquent\Builder $query

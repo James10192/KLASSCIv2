@@ -5,14 +5,9 @@ namespace App\Console\Commands;
 use App\Domain\AcademicPilotage\Models\AcademicAlert;
 use App\Domain\AcademicPilotage\Models\AcademicMetricSnapshot;
 use App\Domain\AcademicPilotage\Models\GradeSheet;
-use App\Domain\AcademicPilotage\Services\AcademicPeriodNormalizer;
 use App\Domain\AcademicPilotage\Services\AcademicPilotageBackfillService;
-use App\Domain\AcademicPilotage\Services\AcademicSystemNormalizer;
-use App\Models\ESBTPAnneeUniversitaire;
-use App\Models\ESBTPInscription;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use InvalidArgumentException;
 
 class AcademicPilotageDiagnoseCommand extends Command
 {
@@ -36,7 +31,6 @@ class AcademicPilotageDiagnoseCommand extends Command
             'grade_sheets' => $this->gradeSheets($filters),
             'alerts' => $this->alerts($filters),
             'snapshots' => $this->snapshots($filters),
-            'cohorte' => $this->cohorte($filters),
         ];
 
         if ($this->option('json')) {
@@ -52,123 +46,9 @@ class AcademicPilotageDiagnoseCommand extends Command
             ['Open alerts', $diagnosis['alerts']['open']],
             ['Dirty snapshots', $diagnosis['snapshots']['dirty']],
             ['Insufficient score coverage', $diagnosis['snapshots']['insufficient_data']],
-            ['Cohort scope', $diagnosis['cohorte']['motif'] ?? sprintf('year %s, period %s', $diagnosis['cohorte']['annee_universitaire_id'], $diagnosis['cohorte']['period'])],
-            ['Cohort pairs (total)', $diagnosis['cohorte']['couples_cohorte'] ?? 'n/a'],
-            ['Cohort pairs without usable snapshot', $diagnosis['cohorte']['sans_instantane_exploitable'] ?? 'n/a'],
-            ['  of which: no snapshot row', $diagnosis['cohorte']['sans_ligne'] ?? 'n/a'],
-            ['  of which: dirty snapshot only', $diagnosis['cohorte']['ligne_sale'] ?? 'n/a'],
-            ['  of which: system not classable', $diagnosis['cohorte']['systeme_non_classable'] ?? 'n/a'],
         ]);
 
         return self::SUCCESS;
-    }
-
-    /**
-     * Couples (classe, étudiant) de la cohorte sans instantané exploitable.
-     *
-     * Cohorte : ESBTPInscription::cohorteAcademique, exactement celle que lit
-     * ClassAcademicHealthService::cohortIds (aucun filtre de classe en plus).
-     * Instantanés : AcademicMetricSnapshot::pourCohorte, puis ->exploitable() pour les
-     * lignes propres, comme AcademicMetricSnapshotCohortProvider. Une ligne propre prime.
-     */
-    private function cohorte(array $filters): array
-    {
-        $brutPeriode = filled($filters['period'] ?? null) ? (string) $filters['period'] : 'semestre1';
-        try {
-            $periode = app(AcademicPeriodNormalizer::class)->normalize($brutPeriode);
-        } catch (InvalidArgumentException) {
-            return $this->cohorteSansMesure('période non reconnue : rien n\'a été compté', null);
-        }
-
-        $brutAnnee = $filters['year_id'] ?? null;
-        if (filled($brutAnnee) && ! $this->identifiantValide($brutAnnee)) {
-            return $this->cohorteSansMesure('identifiant d\'année non valide : rien n\'a été compté', $periode);
-        }
-        $anneeId = filled($brutAnnee) ? (int) $brutAnnee : (int) (ESBTPAnneeUniversitaire::anneeCourante()?->id ?? 0);
-        if ($anneeId <= 0) {
-            return $this->cohorteSansMesure('aucune année universitaire courante : rien n\'a été compté', $periode);
-        }
-
-        $brutClasse = $filters['class_id'] ?? null;
-        if (filled($brutClasse) && ! $this->identifiantValide($brutClasse)) {
-            return $this->cohorteSansMesure('identifiant de classe non valide : rien n\'a été compté', $periode);
-        }
-        $classeId = filled($brutClasse) ? (int) $brutClasse : null;
-
-        // Comme le lecteur (cohortIds, authoritativeSystem) : inscriptions supprimées exclues, classes supprimées lues.
-        $couples = ESBTPInscription::query()
-            ->cohorteAcademique($anneeId, $classeId)
-            ->with(['classe' => fn ($classe) => $classe->withTrashed()->without(['filiere', 'niveau', 'annee'])
-                ->select(['id', 'systeme_academique'])])
-            ->get(['id', 'etudiant_id', 'classe_id'])
-            ->unique(fn ($inscription): string => $inscription->classe_id.'|'.$inscription->etudiant_id);
-
-        $systemes = app(AcademicSystemNormalizer::class);
-        $compteurs = ['exploitable' => 0, 'sans_ligne' => 0, 'ligne_sale' => 0, 'systeme_non_classable' => 0];
-
-        foreach ($couples->groupBy('classe_id') as $classeCourante => $couplesDeClasse) {
-            try {
-                $systeme = $systemes->normalize($couplesDeClasse->first()->classe->systeme_academique);
-            } catch (InvalidArgumentException) {
-                $compteurs['systeme_non_classable'] += $couplesDeClasse->count();
-
-                continue;
-            }
-
-            $lecteur = fn () => AcademicMetricSnapshot::query()
-                ->pourCohorte((int) $classeCourante, $anneeId, $systeme, $periode);
-            $presents = $lecteur()->distinct()->pluck('etudiant_id')->map(fn ($id): int => (int) $id)->flip();
-            $propres = $lecteur()->exploitable()->distinct()->pluck('etudiant_id')->map(fn ($id): int => (int) $id)->flip();
-
-            foreach ($couplesDeClasse as $couple) {
-                $etudiant = (int) $couple->etudiant_id;
-                if (! $presents->has($etudiant)) {
-                    $compteurs['sans_ligne']++;
-                } elseif ($propres->has($etudiant)) {
-                    $compteurs['exploitable']++;
-                } else {
-                    $compteurs['ligne_sale']++;
-                }
-            }
-        }
-
-        return [
-            'annee_universitaire_id' => $anneeId,
-            'period' => $periode,
-            'perimetre' => 'inscriptions actives et étudiant créé, comme la santé de classe',
-            'motif' => null,
-            'couples_cohorte' => $couples->count(),
-            'etudiants_distincts' => $couples->pluck('etudiant_id')->unique()->count(),
-            'exploitable' => $compteurs['exploitable'],
-            'sans_ligne' => $compteurs['sans_ligne'],
-            'ligne_sale' => $compteurs['ligne_sale'],
-            'systeme_non_classable' => $compteurs['systeme_non_classable'],
-            'sans_instantane_exploitable' => $compteurs['sans_ligne'] + $compteurs['ligne_sale'],
-        ];
-    }
-
-    /** Vide = absent (géré par l'appelant) ; un identifiant doit être un entier strictement positif. */
-    private function identifiantValide(mixed $valeur): bool
-    {
-        return ctype_digit((string) $valeur) && (int) $valeur > 0;
-    }
-
-    /** @return array<string, mixed> */
-    private function cohorteSansMesure(string $motif, ?string $periode): array
-    {
-        return [
-            'annee_universitaire_id' => null,
-            'period' => $periode,
-            'perimetre' => 'inscriptions actives et étudiant créé, comme la santé de classe',
-            'motif' => $motif,
-            'couples_cohorte' => null,
-            'etudiants_distincts' => null,
-            'exploitable' => null,
-            'sans_ligne' => null,
-            'ligne_sale' => null,
-            'systeme_non_classable' => null,
-            'sans_instantane_exploitable' => null,
-        ];
     }
 
     private function gradeSheets(array $filters): array

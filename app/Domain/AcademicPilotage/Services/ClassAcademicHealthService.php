@@ -74,7 +74,10 @@ final class ClassAcademicHealthService
     private function cohortIds(int $classId, int $academicYearId): Collection
     {
         return ESBTPInscription::query()
-            ->cohorteAcademique($academicYearId, $classId)
+            ->where('classe_id', $classId)
+            ->where('annee_universitaire_id', $academicYearId)
+            ->where('status', 'active')
+            ->where('workflow_step', 'etudiant_cree')
             ->pluck('etudiant_id')
             ->unique()
             ->values();

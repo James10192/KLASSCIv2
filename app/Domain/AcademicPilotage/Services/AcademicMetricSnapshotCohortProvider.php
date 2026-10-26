@@ -54,8 +54,13 @@ final class AcademicMetricSnapshotCohortProvider implements AcademicCohortHealth
         $snapshots = [];
         foreach (array_chunk($studentIds, self::CHUNK_SIZE) as $chunk) {
             AcademicMetricSnapshot::query()
-                ->pourCohorte($classId, $academicYearId, $academicSystem, $period)
-                ->exploitable()
+                ->where('scope_type', 'student')
+                ->where('classe_id', $classId)
+                ->where('annee_universitaire_id', $academicYearId)
+                ->where('academic_system', $academicSystem)
+                ->where('semester', $period)
+                ->where('engine_version', (string) config('academic_pilotage.engine_version', '1.0.0'))
+                ->where('is_dirty', false)
                 ->whereIn('etudiant_id', $chunk)
                 ->get()
                 ->each(function (AcademicMetricSnapshot $snapshot) use (&$snapshots): void {
