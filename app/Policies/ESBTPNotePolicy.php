@@ -23,16 +23,20 @@ class ESBTPNotePolicy
      */
     public function view(User $user, ESBTPNote $note)
     {
+        // La propriété d'une note ne donne JAMAIS à elle seule la permission
+        // de lire : cela reste vrai pour l'étudiant et l'enseignant.
         if ($user->hasRole('etudiant')) {
-            return $note->etudiant
-                && $note->etudiant->user_id === $user->id;
+            return $user->can('notes.view_own')
+                && $note->etudiant
+                && (int) $note->etudiant->user_id === (int) $user->id;
         }
 
         if ($user->hasRole(['teacher', 'enseignant'])) {
-            return $this->teacherOwnsEvaluation($user, $note);
+            return $user->can('notes.view')
+                && $this->teacherOwnsEvaluation($user, $note);
         }
 
-        return $user->can('module.notes_evaluations.access');
+        return $user->can('notes.view');
     }
 
     /**
@@ -41,15 +45,19 @@ class ESBTPNotePolicy
      */
     public function update(User $user, ESBTPNote $note)
     {
-        if ($user->hasRole('coordinateur')) {
+        if (! $user->can('notes.edit')) {
             return false;
         }
 
+        // Une permission d'édition seule ne permet pas à un enseignant
+        // de modifier les évaluations confiées à ses collègues.
         if ($user->hasRole(['teacher', 'enseignant'])) {
             return $this->teacherOwnsEvaluation($user, $note);
         }
 
-        return $user->can('module.notes_evaluations.access');
+        // Le coordinateur n'est plus bloqué par son nom de rôle :
+        // une permission notes.edit attribuée explicitement est effective.
+        return true;
     }
 
     /**
