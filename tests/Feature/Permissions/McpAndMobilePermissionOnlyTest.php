@@ -3,6 +3,8 @@
 namespace Tests\Feature\Permissions;
 
 use App\Models\User;
+use App\Http\Middleware\CheckInstalled;
+use App\Http\Middleware\EnsureInstalled;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -16,6 +18,9 @@ final class McpAndMobilePermissionOnlyTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Isoler le RBAC : l'écran d'installation ne fait pas partie de cette recette.
+        // Authentification, permissions et policies restent actifs.
+        $this->withoutMiddleware([CheckInstalled::class, EnsureInstalled::class]);
         foreach (['mcp.connections.connect', 'mcp.connections.approve', 'mobile.profile.preview'] as $name) {
             Permission::findOrCreate($name, 'web');
         }
