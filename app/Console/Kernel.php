@@ -24,6 +24,26 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+        $this->planifier($schedule);
+
+        // Une école qui vient d'être déployée n'a pas encore de tables : chaque
+        // tâche y échouait chaque minute (« table doesn't exist ») et le journal
+        // gonflait de plusieurs Mo avant même la fin de l'assistant. Les tâches
+        // restent déclarées (schedule:list inchangé) ; elles sont seulement
+        // sautées au lancement, la base n'étant interrogée qu'une fois par passage.
+        $baseVide = null;
+        foreach ($schedule->events() as $tache) {
+            $tache->skip(function () use (&$baseVide) {
+                return $baseVide ??= $this->baseVideAvantInstallation();
+            });
+        }
+    }
+
+    /**
+     * Les tâches de l'école.
+     */
+    private function planifier(Schedule $schedule): void
+    {
         // Pouls du planificateur : prouve de l'exterieur que cette tache cron
         // tourne (GET /api/cli/planificateur, tenant:planificateur d'adminKlassci).
         // En tete : une tache synchrone plus haut le retarderait au-dela du seuil.
@@ -330,4 +350,19 @@ class Kernel extends ConsoleKernel
         SendInscriptionPaiementReminders::class,
         MarkTeacherAbsences::class,
     ];
+
+    /**
+     * Vrai seulement quand la base répond ET n'a pas encore de table `users`.
+     *
+     * Base injoignable : on planifie comme avant (les tâches échoueront et le
+     * diront), jamais de silence sur une école en service.
+     */
+    private function baseVideAvantInstallation(): bool
+    {
+        try {
+            return ! \Illuminate\Support\Facades\Schema::hasTable('users');
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
 }

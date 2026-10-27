@@ -207,6 +207,8 @@ class InstallController extends Controller
                     'db_port' => $request->port,
                     'db_database' => $request->database,
                     'db_username' => $request->username,
+                    // Repris à l'initialisation comme nom de l'établissement.
+                    'install_app_name' => $request->input('app_name'),
                 ]);
                 
                 // Debug information
@@ -362,6 +364,10 @@ class InstallController extends Controller
                 );
             }
 
+            $this->nommerEtablissement((string) session('install_app_name', ''));
+            // Les tables existent désormais : le statut mémorisé avant ne vaut plus.
+            InstallationHelper::flushCachedStatus();
+
             $esbtpDataCheck = InstallationHelper::checkESBTPData();
             session(['esbtp_data_check' => $esbtpDataCheck]);
 
@@ -479,33 +485,26 @@ class InstallController extends Controller
                 'password' => 'required|string|min:8|confirmed',
             ]);
             
-            // Création de l'utilisateur admin
-            $admin = new User();
-            $admin->name = $validated['name'];
-            $admin->username = $validated['username'];
-            $admin->email = $validated['email'];
-            $admin->password = Hash::make($validated['password']);
-            $admin->save();
-            
-            // Assignation du rôle superAdmin
-            try {
-                if (Schema::hasTable('roles')) {
-                    $superAdminRole = Role::where('name', 'superAdmin')->first();
-                    if ($superAdminRole) {
-                        $admin->assignRole($superAdminRole);
-                    } else {
-                        \Log::warning("Rôle superAdmin non trouvé. Création d'un nouveau rôle.");
-                        $superAdminRole = Role::create(['name' => 'superAdmin']);
-                        $admin->assignRole($superAdminRole);
-                    }
-                } else {
-                    \Log::warning("La table des rôles n'existe pas encore.");
-                }
-            } catch (\Exception $e) {
-                \Log::error("Erreur lors de l'assignation du rôle: " . $e->getMessage());
-                // Continue execution - role assignment is not critical for installation
-            }
-            
+            // Compte et rôle ensemble ou pas du tout : un compte créé sans
+            // son rôle bloquait toute relance (nom d'utilisateur déjà pris)
+            // et laissait une école sans superAdmin.
+            DB::transaction(function () use ($validated) {
+                $admin = new User();
+                $admin->name = $validated['name'];
+                $admin->username = $validated['username'];
+                $admin->email = $validated['email'];
+                $admin->password = Hash::make($validated['password']);
+                $admin->save();
+
+                $superAdminRole = Role::firstOrCreate(['name' => 'superAdmin', 'guard_name' => 'web']);
+                $admin->assignRole($superAdminRole);
+            });
+
+            // « Un superAdmin existe ? » est gardé une heure, et les étapes
+            // précédentes l'ont mémorisé à non : sans ceci, la finalisation
+            // renvoyait vers la création d'un administrateur déjà créé.
+            InstallationHelper::flushCachedStatus();
+
             $request->session()->put('admin_created', true);
             $request->session()->put('admin_name', $validated['name']);
             $request->session()->put('admin_username', $validated['username']);
@@ -524,6 +523,10 @@ class InstallController extends Controller
             }
 
             return redirect()->route('install.complete')->with('success', 'Administrateur créé avec succès');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Champ invalide ou identifiant déjà pris : un 422 avec le détail
+            // par champ, que l'écran sait afficher, et non une erreur 500.
+            throw $e;
         } catch (\Exception $e) {
             \Log::error("Error creating admin: " . $e->getMessage());
             
@@ -580,8 +583,14 @@ class InstallController extends Controller
                     ->with('error', 'Vous devez d\'abord créer un compte administrateur');
             }
             
-            // Marquer l'application comme installée UNIQUEMENT si un admin existe
-            InstallationHelper::markAsInstalled();
+            // Marquer l'application comme installée UNIQUEMENT si un admin existe.
+            // Sans .env inscriptible, l'école retomberait sur l'assistant à la
+            // requête suivante : on le dit au lieu d'annoncer un succès.
+            if (!InstallationHelper::markAsInstalled()) {
+                Log::error("Finalisation impossible : .env absent ou non inscriptible");
+                return redirect()->route('install.complete')
+                    ->with('error', 'Impossible d\'enregistrer la fin de l\'installation : le fichier .env est absent ou non inscriptible.');
+            }
             
             // Nettoyer la session d'installation
             session()->forget('installation_in_progress');
@@ -657,7 +666,7 @@ class InstallController extends Controller
             ];
         }
 
-        $command = '"' . PHP_BINARY . '" "' . $script . '" --force 2>&1';
+        $command = escapeshellarg($this->binairePhpEnLigneDeCommande()) . ' ' . escapeshellarg($script) . ' --force 2>&1';
         $output = [];
         $exitCode = 0;
         exec($command, $output, $exitCode);
@@ -675,6 +684,43 @@ class InstallController extends Controller
             'exit_code' => $exitCode,
             'output' => $cleanOutput,
         ];
+    }
+
+    /**
+     * Donne à l'école le nom saisi dans l'assistant.
+     *
+     * Les paramètres sont semés avec le nom d'une école existante : sans cette
+     * étape, une école neuve s'affichait sous ce nom, en-têtes et PDF compris.
+     * Seule la valeur semée est remplacée : un nom déjà réglé reste intact.
+     */
+    private function nommerEtablissement(string $nom): void
+    {
+        $nom = trim($nom);
+        $reglage = $nom === '' ? null : Setting::where('key', 'school_name')->first();
+
+        if ($reglage && in_array((string) $reglage->value, ['', 'ESBTP-yAKRO'], true)) {
+            $reglage->value = $nom;
+            $reglage->save();
+        }
+    }
+
+    /**
+     * Le PHP « en ligne de commande » qui doit exécuter setup.php.
+     *
+     * Sous PHP-FPM ou LiteSpeed, PHP_BINARY désigne le binaire du serveur
+     * (php-fpm, lsphp), qui ne sait pas exécuter un script : setup.php
+     * échouait alors à coup sûr. On prend le `php` installé à côté, et on
+     * ne retombe sur le PATH que s'il n'existe pas.
+     */
+    private function binairePhpEnLigneDeCommande(): string
+    {
+        if (PHP_SAPI === 'cli') {
+            return PHP_BINARY;
+        }
+
+        $voisin = PHP_BINDIR . DIRECTORY_SEPARATOR . 'php';
+
+        return is_executable($voisin) ? $voisin : 'php';
     }
 
     /**
@@ -982,30 +1028,56 @@ class InstallController extends Controller
         if (File::exists($path)) {
             $content = File::get($path);
 
-            foreach ($data as $key => $value) {
-                // If the key exists, replace it
-                if (strpos($content, $key . '=') !== false) {
-                    $content = preg_replace('/^' . preg_quote($key, '/') . '=.*/m', $key . '=' . $this->formatEnvValue($value), $content);
-                } else {
-                    // Otherwise, add it
-                    $content .= "\n" . $key . '=' . $value;
-                }
-            }
-
-            File::put($path, $content);
+            File::put($path, $this->ecrireValeursEnv($content, $data));
         } else {
-            // If .env doesn't exist, create it from .env.example
+            // Pas de .env : on part de .env.example s'il existe, sinon d'un
+            // fichier vide — l'image Docker n'embarque pas .env.example.
             $example = base_path('.env.example');
-            if (File::exists($example)) {
-                $content = File::get($example);
+            $content = File::exists($example) ? File::get($example) : '';
 
-                foreach ($data as $key => $value) {
-                    $content = preg_replace('/' . $key . '=(.*)/', $key . '=' . $value, $content);
-                }
+            File::put($path, $this->ecrireValeursEnv($content, $data));
+        }
+    }
 
-                File::put($path, $content);
+    /**
+     * Remplace ou ajoute chaque clé, valeur mise en forme pour dotenv.
+     *
+     * Une clé existante est remplacée par une fonction de rappel : un mot de
+     * passe contenant `$1` ou `\\` serait sinon lu comme une référence de
+     * remplacement par preg_replace.
+     */
+    private function ecrireValeursEnv(string $content, array $data): string
+    {
+        foreach ($data as $key => $value) {
+            $ligne = $key . '=' . $this->formatEnvValue($value);
+            $motif = '/^' . preg_quote($key, '/') . '=.*$/m';
+
+            if (preg_match($motif, $content)) {
+                $content = preg_replace_callback($motif, fn () => $ligne, $content);
+            } else {
+                $content = rtrim($content, "\n") . "\n" . $ligne . "\n";
             }
         }
+
+        return $content;
+    }
+
+    /**
+     * Met une valeur sous une forme que dotenv relit telle quelle.
+     *
+     * Un nom d'école avec espaces (« PRESENTATION-TEST KLASSCI ») écrit nu
+     * rend tout le fichier illisible au démarrage suivant : on entoure de
+     * guillemets dès qu'un caractère l'exige, en échappant `\` et `"`.
+     */
+    private function formatEnvValue($value): string
+    {
+        $value = (string) ($value ?? '');
+
+        if ($value === '' || preg_match('/^[A-Za-z0-9_.:\/@+,-]+$/', $value)) {
+            return $value;
+        }
+
+        return '"' . str_replace(['\\', '"', '$'], ['\\\\', '\\"', '\\$'], $value) . '"';
     }
 
     /**

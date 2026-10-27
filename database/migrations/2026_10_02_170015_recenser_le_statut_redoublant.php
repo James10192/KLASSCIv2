@@ -2,6 +2,7 @@
 
 use App\Domain\Inscriptions\RecensementDesRedoublants;
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -26,6 +27,14 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Base neuve : aucune inscription à recenser. Le recensement interroge
+        // une colonne posée par une migration plus loin dans la liste et
+        // laissait, dans le journal d'une école qui s'installe, un « à
+        // relancer » sans objet.
+        if (! DB::table('esbtp_inscriptions')->exists()) {
+            return;
+        }
+
         try {
             app(RecensementDesRedoublants::class)->executer(true);
         } catch (\Throwable $e) {
