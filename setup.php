@@ -40,6 +40,7 @@ class KLASSCISetup
     private $skip = [];
     private $lockData = [];
     private $baseDir;
+    private $php;
 
     // Codes couleur ANSI
     private $colors = [
@@ -56,6 +57,14 @@ class KLASSCISetup
     public function __construct()
     {
         $this->baseDir = __DIR__;
+        // L'assistant web lance ce script depuis le dossier courant de PHP-FPM,
+        // qui n'est pas la racine du projet : sans ce chdir, chaque
+        // `php artisan …` répondait « Could not open input file: artisan »
+        // et les seeders échouaient sans que l'installation le dise.
+        chdir($this->baseDir);
+        // Le binaire qui exécute ce script, et pas le premier `php` du PATH :
+        // sur un hébergement à plusieurs versions, ce n'est pas le même.
+        $this->php = escapeshellarg(PHP_BINARY);
         $this->loadLockFile();
     }
 
@@ -101,7 +110,9 @@ class KLASSCISetup
             $this->saveLockFile();
             $this->printSummary();
 
-            return 0;
+            // Un seeder en échec laisse une école sans paramètres ni service
+            // technique : l'installation ne peut pas se dire réussie.
+            return $this->seedersEnEchec() === [] ? 0 : 1;
         } catch (Exception $e) {
             $this->error("❌ ERREUR FATALE: " . $e->getMessage());
             $this->error("Stack trace: " . $e->getTraceAsString());
@@ -124,7 +135,7 @@ class KLASSCISetup
 
         $output = [];
         $returnCode = 0;
-        exec("php \"$script\" 2>&1", $output, $returnCode);
+        exec("{$this->php} \"$script\" 2>&1", $output, $returnCode);
 
         foreach ($output as $line) {
             echo $line . "\n";
@@ -136,7 +147,7 @@ class KLASSCISetup
         if (!is_link($publicStoragePath) && !is_dir($publicStoragePath)) {
             $this->warning("⚠️  Symlink manquant, essai avec php artisan storage:link...");
             $artisanCode = 0;
-            exec("php artisan storage:link 2>&1", $artisanOutput, $artisanCode);
+            exec("{$this->php} artisan storage:link 2>&1", $artisanOutput, $artisanCode);
             if ($artisanCode === 0) {
                 $this->success("✅ Symlink créé avec artisan storage:link");
             } else {
@@ -168,7 +179,7 @@ class KLASSCISetup
 
         $output = [];
         $returnCode = 0;
-        exec("php \"$script\" 2>&1", $output, $returnCode);
+        exec("{$this->php} \"$script\" 2>&1", $output, $returnCode);
 
         if ($returnCode !== 0) {
             $this->lockData['permissions'] = [
@@ -207,7 +218,7 @@ class KLASSCISetup
 
         $output = [];
         $returnCode = 0;
-        exec("php \"$script\" 2>&1", $output, $returnCode);
+        exec("{$this->php} \"$script\" 2>&1", $output, $returnCode);
 
         if ($returnCode !== 0) {
             $this->lockData['settings'] = [
@@ -254,7 +265,7 @@ class KLASSCISetup
 
             // Ajouter --force pour éviter la confirmation interactive en production
             $returnCode = 0;
-            passthru("php artisan db:seed --class=$seeder --force 2>&1", $returnCode);
+            passthru("{$this->php} artisan db:seed --class=$seeder --force 2>&1", $returnCode);
 
             if ($returnCode !== 0) {
                 $this->lockData['seeders'][$seeder] = [
@@ -274,6 +285,17 @@ class KLASSCISetup
         }
 
         $this->success("✅ Seeders exécutés");
+    }
+
+    /**
+     * Seeders qui ont échoué lors de cette exécution.
+     */
+    private function seedersEnEchec(): array
+    {
+        return array_keys(array_filter(
+            $this->lockData['seeders'] ?? [],
+            fn ($resultat) => ($resultat['status'] ?? null) === 'failed'
+        ));
     }
 
     /**
@@ -431,6 +453,11 @@ class KLASSCISetup
         }
 
         echo "\n";
+        $enEchec = $this->seedersEnEchec();
+        if ($enEchec !== []) {
+            $this->error("❌ Initialisation incomplète : " . implode(', ', $enEchec) . " en échec (voir la sortie ci-dessus).");
+            return;
+        }
         $this->success("🎉 Initialisation terminée !");
         $this->info("📋 Exécutez 'php verify.php' pour vérifier l'état du système");
     }
