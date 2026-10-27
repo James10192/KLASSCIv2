@@ -184,6 +184,8 @@ enum ModePaiement: string
             str_contains($normalized, 'mobile') => self::MOBILE_MONEY,
             str_contains($normalized, 'virement') || str_contains($normalized, 'bank') => self::VIREMENT,
             str_contains($normalized, 'cheque') || str_contains($normalized, 'cheq') => self::CHEQUE,
+            // « Carte bancaire » est un libelle saisi : sans ce cas, il ne rend rien.
+            str_contains($normalized, 'carte') => self::CARTE,
             default => self::tryFrom($normalized),
         };
     }

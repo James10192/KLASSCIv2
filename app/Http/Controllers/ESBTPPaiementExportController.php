@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ModePaiement;
+use App\Services\PaymentFilterService;
+
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
@@ -190,26 +193,8 @@ class ESBTPPaiementExportController extends Controller
      */
     private function availableModes(): array
     {
-        $modes = ESBTPPaiement::query()
-            ->select('mode_paiement')
-            ->distinct()
-            ->whereNotNull('mode_paiement')
-            ->orderBy('mode_paiement')
-            ->pluck('mode_paiement')
-            ->filter()
-            ->values()
-            ->toArray();
-
-        if (! empty($modes)) {
-            return $modes;
-        }
-
-        return [
-            'espèces',
-            'chèque',
-            'virement',
-            'mobile money',
-            'carte bancaire',
-        ];
+        // Meme regroupement que le filtre de la liste : une option par mode,
+        // cle = code canonique, libelle affiche.
+        return PaymentFilterService::optionsDesModes() ?: ModePaiement::selectOptions();
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\ModePaiement;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Services\Frais\MontantsParFrais;
@@ -78,7 +79,7 @@ class PaymentFilterService
         // Valeur exacte, telle que stockee : les valeurs legacy (« espèces »)
         // se filtrent comme les canoniques, sans reecriture de la donnee.
         if ($mode = $request->input('mode_paiement')) {
-            $query->where('mode_paiement', (string) $mode);
+            $query->whereIn('mode_paiement', self::variantesDuMode((string) $mode));
         }
 
         // Une seule règle métier pour liste, exports simplifiés et export détaillé.
@@ -388,6 +389,124 @@ class PaymentFilterService
                 'page' => $paiements->currentPage(),
                 'per_page' => $paiements->perPage(),
             ],
+        ];
+    }
+
+    /**
+     * Cle canonique d'une valeur stockee : le code du mode reconnu (« especes »
+     * pour « Espèces »), sinon la valeur telle quelle. Source unique du
+     * regroupement : options, filtre et recapitulatif passent tous par elle.
+     */
+    public static function cleDuMode(string $valeur): string
+    {
+        return ModePaiement::fromLegacy($valeur)?->value ?? $valeur;
+    }
+
+    /** Libelle affiche pour une cle : celui du mode, sinon la valeur en majuscule initiale. */
+    public static function libelleDuMode(string $cle): string
+    {
+        return ModePaiement::tryFrom($cle)?->label()
+            ?? mb_strtoupper(mb_substr($cle, 0, 1, 'UTF-8'), 'UTF-8').mb_substr($cle, 1, null, 'UTF-8');
+    }
+
+    /**
+     * Options du filtre « Mode de règlement » : cle = code canonique, libelle
+     * affiche. Une option par mode, meme si la base l'a ecrit en code et en libelle.
+     *
+     * @return array<string, string>
+     */
+    public static function optionsDesModes(): array
+    {
+        $options = [];
+        foreach (self::valeursStockeesDesModes() as $valeur) {
+            $cle = self::cleDuMode($valeur);
+            $options[$cle] ??= self::libelleDuMode($cle);
+        }
+
+        asort($options);
+
+        return $options;
+    }
+
+    /**
+     * Valeurs distinctes non vides de mode_paiement telles qu'elles sont en base.
+     * Lue a chaque appel : pas de memoire statique, qui survivrait aux ecritures
+     * d'un test et donnerait un resultat dependant de l'ordre d'execution.
+     *
+     * @return list<string>
+     */
+    public static function valeursStockeesDesModes(): array
+    {
+        return ESBTPPaiement::query()
+            ->whereNotNull('mode_paiement')
+            ->where('mode_paiement', '!=', '')
+            ->distinct()
+            ->pluck('mode_paiement')
+            ->map(fn ($valeur) => (string) $valeur)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Toutes les formes stockees d'un mode canonique (code ou libelle) : un
+     * filtre sur « especes » doit aussi prendre les lignes ecrites « Espèces ».
+     *
+     * @return list<string>
+     */
+    public static function variantesDuMode(string $cle): array
+    {
+        return self::variantesDesModes([$cle]);
+    }
+
+    /**
+     * Les formes stockees de plusieurs modes, en une seule lecture de la table.
+     *
+     * @param  array<int, string>  $cles
+     * @return list<string>
+     */
+    public static function variantesDesModes(array $cles): array
+    {
+        // Une valeur ancienne (« mobile ») est ramenee a sa cle canonique.
+        $cles = array_map(fn ($cle) => self::cleDuMode((string) $cle), $cles);
+        $variantes = collect(self::valeursStockeesDesModes())
+            ->filter(fn (string $valeur) => in_array(self::cleDuMode($valeur), $cles, true))
+            ->values()
+            ->all();
+
+        // Un mode choisi sans aucune ligne stockee reste dans le filtre : il ne
+        // ramene rien, plutot que d'elargir le filtre a tous les modes.
+        return array_values(array_unique(array_merge($variantes, $cles)));
+    }
+
+    /**
+     * Les filtres tels qu'ils s'impriment dans le recapitulatif d'un document.
+     * Le libelle du frais, pas son id ; une categorie archivee garde son nom,
+     * sinon le filtre serait applique sans etre imprime.
+     *
+     * @return array<string, mixed>
+     */
+    public function filtresDocument(Request $request): array
+    {
+        $categorieId = $request->input('frais_category_id');
+
+        $libelleFrais = null;
+        if ($categorieId) {
+            $libelleFrais = \App\Models\ESBTPFraisCategory::withTrashed()
+                ->whereKey($categorieId)
+                ->value('name') ?? "Frais supprimé (n° {$categorieId})";
+        }
+
+        return [
+            'search' => $request->input('search'),
+            'status' => $request->input('status'),
+            'date_debut' => $request->input('date_debut'),
+            'date_fin' => $request->input('date_fin'),
+            'frais_category_id' => $categorieId,
+            'frais_category' => $libelleFrais,
+            'mode_paiement' => ($mode = (string) $request->input('mode_paiement')) !== ''
+                ? self::libelleDuMode(self::cleDuMode($mode))
+                : null,
+            'portee' => $request->input('portee', 'tous'),
         ];
     }
 

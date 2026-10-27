@@ -23,9 +23,9 @@ class PaiementExportServiceTest extends TestCase
         $this->service = new PaiementExportService();
     }
 
-    public function test_pdf_max_rows_constant_is_500(): void
+    public function test_pdf_max_rows_constant_is_400(): void
     {
-        $this->assertSame(500, PaiementExportService::PDF_MAX_ROWS);
+        $this->assertSame(400, PaiementExportService::PDF_MAX_ROWS);
     }
 
     public function test_excel_max_rows_constant_is_50000(): void
@@ -120,7 +120,8 @@ class PaiementExportServiceTest extends TestCase
 
         $this->assertCount(1, $summary);
         $this->assertSame('Mode(s) de paiement', $summary[0]['label']);
-        $this->assertSame('espèces, mobile money', $summary[0]['value']);
+        // Chaque mode, code ou libelle ancien, est imprime sous son libelle canonique.
+        $this->assertSame('Espèces, Mobile Money (générique)', $summary[0]['value']);
     }
 
     public function test_build_filters_summary_skips_empty_modes_array(): void

@@ -6,6 +6,7 @@ use App\Exports\PaiementDetailleExport;
 use App\Models\ESBTPPaiement;
 use App\Models\User;
 use App\Services\Exports\PdfParLots;
+use App\Services\PaymentFilterService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
@@ -29,7 +30,7 @@ class PaiementExportService
      * Nombre maximum de lignes pour un export PDF.
      * Au-delà, l'utilisateur doit choisir Excel.
      */
-    public const PDF_MAX_ROWS = 500;
+    public const PDF_MAX_ROWS = 400;
 
     /**
      * Plafond Excel (sécurité contre les exports massifs).
@@ -127,9 +128,11 @@ class PaiementExportService
         }
 
         // Modes de paiement (multi)
+        // Chaque mode choisi couvre toutes ses formes stockees (code et libelle).
         $modes = array_values(array_filter($filters['modes'] ?? []));
         if (! empty($modes)) {
-            $query->whereIn('mode_paiement', $modes);
+            // Une seule lecture des valeurs stockees, regroupees en memoire.
+            $query->whereIn('mode_paiement', PaymentFilterService::variantesDesModes($modes));
         }
     }
 
@@ -138,13 +141,9 @@ class PaiementExportService
      */
     public function exportPdf(array $filters, ?User $user = null): Response
     {
-        [$lignes, $donnees] = $this->donneesPdf($filters, $user);
         $filename = 'etat-paiements-detaille_' . now()->format('Y-m-d_His') . '.pdf';
 
-        return app(PdfParLots::class)->reponse(
-            'esbtp.paiements.exports.pdf-detaille', $lignes, $donnees, 'paiements', $filename,
-            inline: false, orientation: 'landscape'
-        );
+        return $this->rendreDetaille($filters, $user, $filename, inline: false);
     }
 
     /**
@@ -153,19 +152,32 @@ class PaiementExportService
      */
     public function previewPdf(array $filters, ?User $user = null): Response
     {
-        [$lignes, $donnees] = $this->donneesPdf($filters, $user);
         $filename = 'apercu-paiements-detaille_' . now()->format('Y-m-d_His') . '.pdf';
+
+        return $this->rendreDetaille($filters, $user, $filename, inline: true);
+    }
+
+    /**
+     * Le detail des paiements, rendu en une passe : le volume est borne a
+     * PDF_MAX_ROWS par le controleur, donc PdfParLots ne decoupe pas (et ne
+     * repete pas le bandeau). La limite memoire et le temps sont relevés pour
+     * ce rendu ; le pic reel n'est pas mesure, a verifier sur presentation.
+     */
+    private function rendreDetaille(array $filters, ?User $user, string $filename, bool $inline): Response
+    {
+        ini_set('memory_limit', '512M');
+        set_time_limit(300);
+
+        [$lignes, $donnees] = $this->donneesPdf($filters, $user);
 
         return app(PdfParLots::class)->reponse(
             'esbtp.paiements.exports.pdf-detaille', $lignes, $donnees, 'paiements', $filename,
-            inline: true, orientation: 'landscape'
+            inline: $inline, orientation: 'landscape', seuil: self::PDF_MAX_ROWS
         );
     }
 
     /**
-     * Les lignes et les donnees de la vue. Un tableau de plusieurs centaines de
-     * lignes ne tient pas dans une seule passe de DomPDF : PdfParLots le rend
-     * par lots au-dela de son seuil (meme chemin que les autres exports).
+     * Les lignes et les donnees de la vue.
      *
      * @return array{0: \Illuminate\Database\Eloquent\Collection, 1: array<string, mixed>}
      */
@@ -405,7 +417,10 @@ class PaiementExportService
         if (! empty($filters['modes']) && is_array($filters['modes'])) {
             $modes = array_values(array_filter($filters['modes']));
             if (! empty($modes)) {
-                $summary[] = ['label' => 'Mode(s) de paiement', 'value' => implode(', ', $modes)];
+                $summary[] = ['label' => 'Mode(s) de paiement', 'value' => implode(', ', array_map(
+                    fn ($mode) => PaymentFilterService::libelleDuMode(PaymentFilterService::cleDuMode((string) $mode)),
+                    $modes
+                ))];
             }
         }
 

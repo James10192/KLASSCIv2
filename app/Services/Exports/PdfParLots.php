@@ -43,6 +43,25 @@ class PdfParLots
     public const LIGNES_PAR_LOT = 200;
 
     /**
+     * Rendu d'un seul tenant, sans decoupage. Les trois reperes sont toujours
+     * passes : la vue ne doit pas porter de valeur par defaut pour eux.
+     */
+    public function enUnePasse(
+        string $vue,
+        Collection $lignes,
+        array $donnees,
+        string $cleLignes,
+        string $orientation = 'portrait'
+    ): \Barryvdh\DomPDF\PDF {
+        return Pdf::loadView($vue, $donnees + [
+            $cleLignes => $lignes,
+            'isFirstChunk' => true,
+            'isLastChunk' => true,
+            'rowOffset' => 0,
+        ])->setPaper('a4', $orientation);
+    }
+
+    /**
      * @param  Collection<int, mixed>  $lignes  Ce qui doit etre reparti entre les lots.
      * @param  array<string, mixed>  $donnees  Passe tel quel a la vue, a chaque lot.
      * @param  string  $cleLignes  Nom sous lequel la vue attend le lot courant.
@@ -54,15 +73,13 @@ class PdfParLots
         string $cleLignes,
         string $filename,
         bool $inline = false,
-        string $orientation = 'portrait'
+        string $orientation = 'portrait',
+        ?int $seuil = null
     ): Response {
-        if ($lignes->count() <= self::SEUIL_DECOUPAGE) {
-            $pdf = Pdf::loadView($vue, $donnees + [
-                $cleLignes => $lignes,
-                'isFirstChunk' => true,
-                'isLastChunk' => true,
-                'rowOffset' => 0,
-            ])->setPaper('a4', $orientation);
+        // Un appelant qui borne lui-meme son volume (le detail des paiements) passe
+        // son plafond : au-dessous, le rendu reste en une passe, sans decoupage.
+        if ($lignes->count() <= ($seuil ?? self::SEUIL_DECOUPAGE)) {
+            $pdf = $this->enUnePasse($vue, $lignes, $donnees, $cleLignes, $orientation);
 
             if (! $inline) {
                 return $pdf->download($filename);

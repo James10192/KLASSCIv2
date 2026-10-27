@@ -1248,7 +1248,8 @@
         {{-- Tableau des Paiements --}}
         <div id="paiements-table-container"
              data-refresh-url="{{ route('esbtp.paiements.refresh') }}"
-             data-last-updated="{{ optional($lastUpdatedAt)->toIso8601String() }}">
+             data-last-updated="{{ optional($lastUpdatedAt)->toIso8601String() }}"
+             data-checkpoint="{{ json_encode([$checkpoint['count'] ?? null, $checkpoint['last_updated_at'] ?? null]) }}">
             @include('esbtp.paiements.partials.table', ['paiements' => $paiements])
         </div>
     </div>
@@ -1461,7 +1462,10 @@ function showYearChangeInfo() {
     let lastUpdatedAt = null;
     // Empreinte de la liste (nombre + derniere modification) telle que le
     // serveur la calcule : le polling ne recharge que si elle change.
-    let pointDeControle = null;
+    let pointDeControle = (() => {
+        const boite = document.getElementById('paiements-table-container');
+        try { return boite && boite.dataset.checkpoint ? boite.dataset.checkpoint : null; } catch (e) { return null; }
+    })();
     let currentPaiementsCount = 0; // Nombre actuel de paiements
     let currentUrl = window.location.href;
 
