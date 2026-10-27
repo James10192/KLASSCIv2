@@ -689,16 +689,16 @@ class InstallController extends Controller
     /**
      * Donne à l'école le nom saisi dans l'assistant.
      *
-     * Les paramètres sont semés avec le nom d'une école existante : sans cette
-     * étape, une école neuve s'affichait sous ce nom, en-têtes et PDF compris.
-     * Seule la valeur semée est remplacée : un nom déjà réglé reste intact.
+     * Les paramètres sont semés avec le nom neutre « KLASSCI » (celui de
+     * SettingsHelper::initializeDefaults) : seul ce nom, ou une valeur vide,
+     * est remplacé. Un nom déjà réglé reste intact.
      */
     private function nommerEtablissement(string $nom): void
     {
         $nom = trim($nom);
         $reglage = $nom === '' ? null : Setting::where('key', 'school_name')->first();
 
-        if ($reglage && in_array((string) $reglage->value, ['', 'ESBTP-yAKRO'], true)) {
+        if ($reglage && in_array((string) $reglage->value, ['', 'KLASSCI'], true)) {
             $reglage->value = $nom;
             $reglage->save();
         }

@@ -31,10 +31,27 @@ class Kernel extends ConsoleKernel
         // gonflait de plusieurs Mo avant même la fin de l'assistant. Les tâches
         // restent déclarées (schedule:list inchangé) ; elles sont seulement
         // sautées au lancement, la base n'étant interrogée qu'une fois par passage.
+        // Le pouls ne touche pas la base : il bat toujours, sinon une école
+        // déployée mais pas encore passée par l'assistant paraîtrait sans
+        // planificateur (GET /api/cli/planificateur → actif: false).
         $baseVide = null;
         foreach ($schedule->events() as $tache) {
+            if ($tache->description === 'pouls-planificateur') {
+                continue;
+            }
+
             $tache->skip(function () use (&$baseVide) {
-                return $baseVide ??= $this->baseVideAvantInstallation();
+                if ($baseVide === null) {
+                    $baseVide = $this->baseVideAvantInstallation();
+                    if ($baseVide) {
+                        // Une ligne par passage, pas une par tâche : sans elle, une
+                        // école dont DB_DATABASE vise une base vide perdrait toutes
+                        // ses tâches sans un mot.
+                        \Illuminate\Support\Facades\Log::notice('Planificateur : base sans table users, tâches sautées jusqu\'à l\'installation.');
+                    }
+                }
+
+                return $baseVide;
             });
         }
     }

@@ -11,6 +11,7 @@ x-app-common: &app-common
   volumes:
     - app-storage:/var/www/html/storage/app
     - app-logs:/var/www/html/storage/logs
+    - app-instance:/var/www/html/storage/instance
   depends_on:
     mysql:
       condition: service_healthy
@@ -32,7 +33,9 @@ services:
   # Planificateur : une seule réplique, jamais en double avec un autre serveur.
   scheduler:
     <<: *app-common
-    command: ["sh", "-c", "while true; do php artisan schedule:run; sleep 60; done"]
+    # En www-data, comme PHP-FPM : en root, le premier fichier de journal du jour
+    # lui appartiendrait et l'application ne pourrait plus y écrire (500 jusqu'à minuit).
+    command: ["sh", "-c", "while true; do su -s /bin/sh www-data -c 'php artisan schedule:run'; sleep 60; done"]
     mem_limit: 384m
 
   mysql:
@@ -52,4 +55,5 @@ services:
 volumes:
   app-storage:
   app-logs:
+  app-instance:
   mysql-data:

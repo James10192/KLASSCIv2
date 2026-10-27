@@ -41,6 +41,9 @@ class KLASSCISetup
     private $lockData = [];
     private $baseDir;
     private $php;
+    // Seeders en échec pendant CETTE exécution : le fichier verrou garde ceux
+    // des passages précédents, qui ne doivent pas faire échouer `--only=storage`.
+    private $seedersEnEchec = [];
 
     // Codes couleur ANSI
     private $colors = [
@@ -268,6 +271,7 @@ class KLASSCISetup
             passthru("{$this->php} artisan db:seed --class=$seeder --force 2>&1", $returnCode);
 
             if ($returnCode !== 0) {
+                $this->seedersEnEchec[] = $seeder;
                 $this->lockData['seeders'][$seeder] = [
                     'status' => 'failed',
                     'date' => date('Y-m-d H:i:s'),
@@ -288,14 +292,11 @@ class KLASSCISetup
     }
 
     /**
-     * Seeders qui ont échoué lors de cette exécution.
+     * Seeders qui ont échoué lors de cette exécution (pas ceux du verrou).
      */
     private function seedersEnEchec(): array
     {
-        return array_keys(array_filter(
-            $this->lockData['seeders'] ?? [],
-            fn ($resultat) => ($resultat['status'] ?? null) === 'failed'
-        ));
+        return $this->seedersEnEchec;
     }
 
     /**
