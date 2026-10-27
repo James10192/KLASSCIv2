@@ -21,7 +21,7 @@
             <i class="fas fa-spinner fa-spin"></i>
             <div>
                 <strong>Initialisation en cours</strong>
-                <div>Gardez cette page ouverte jusqu’au retour JSON.</div>
+                <div>Une à deux minutes. Vous pouvez recharger la page : l’initialisation continue sur le serveur.</div>
             </div>
         </div>
         <div v-if="status === 'success'" class="notice success">
@@ -87,7 +87,14 @@ new Vue({
         status: 'idle',
         message: '',
         terminal: [],
-        nextUrl: ''
+        nextUrl: '',
+        suivi: null,
+        debut: 0
+    },
+    mounted() {
+        // Une initialisation lancée avant un rechargement continue sur le
+        // serveur : on reprend son suivi au lieu de proposer de la relancer.
+        this.lireEtat(true);
     },
     methods: {
         run() {
@@ -95,22 +102,55 @@ new Vue({
             this.message = '';
             this.nextUrl = '';
             this.terminal = ['Démarrage de l’initialisation Laravel...'];
+            this.debut = Date.now() - 5000;
+            this.suivre();
 
             axios.post('{{ route("install.run-migration") }}', {})
-                .then(({ data }) => {
-                    this.status = data.ok ? 'success' : 'error';
-                    this.message = data.message || 'Initialisation terminée.';
-                    this.nextUrl = data.next_url || data.redirect || '';
-                    this.terminal = (data.data && data.data.terminal && data.data.terminal.length)
-                        ? data.data.terminal
-                        : ['Commande terminée, aucune sortie retournée.'];
-                })
+                .then(({ data }) => this.conclure(data))
                 .catch((error) => {
                     const data = error.response?.data;
-                    this.status = 'error';
-                    this.message = window.klassciInstall.message(error, 'Initialisation échouée.');
-                    this.terminal = data?.data?.terminal || [this.message];
+                    // 409 : déjà en cours ; pas de JSON : délai dépassé ou
+                    // connexion coupée. Dans les deux cas le serveur continue,
+                    // c'est son état qui tranchera.
+                    if (error.response?.status === 409 || !data || typeof data !== 'object') {
+                        return;
+                    }
+                    this.conclure(data);
                 });
+        },
+        suivre() {
+            clearInterval(this.suivi);
+            this.suivi = setInterval(() => this.lireEtat(false), 3000);
+        },
+        lireEtat(auChargement) {
+            axios.get('{{ route("install.migration-etat") }}')
+                .then(({ data }) => {
+                    const statut = data.data?.statut;
+                    // Un échec écrit avant ce lancement est celui d'une tentative passée.
+                    const ancien = this.debut && Date.parse(data.data?.maj || 0) < this.debut;
+                    if (statut === 'echec' && ancien) return;
+                    if (data.data?.terminal?.length) {
+                        this.terminal = data.data.terminal;
+                    }
+                    if (statut === 'en_cours') {
+                        this.status = 'running';
+                        this.message = data.message || '';
+                        if (auChargement) this.suivre();
+                    } else if (statut === 'reussie' || (statut === 'echec' && !auChargement)) {
+                        this.conclure(data);
+                    }
+                })
+                .catch(() => {});
+        },
+        conclure(data) {
+            clearInterval(this.suivi);
+            this.suivi = null;
+            this.status = data.ok ? 'success' : 'error';
+            this.message = data.message || (data.ok ? 'Initialisation terminée.' : 'Initialisation échouée.');
+            this.nextUrl = data.next_url || data.redirect || '';
+            if (data.data?.terminal?.length) {
+                this.terminal = data.data.terminal;
+            }
         }
     }
 });

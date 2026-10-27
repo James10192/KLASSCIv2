@@ -134,6 +134,7 @@ Route::prefix('install')->middleware('install.lock')->group(function () {
     Route::post('/database', [InstallController::class, 'setupDatabase'])->name('install.setup-database');
     Route::get('/migration', [InstallController::class, 'migration'])->name('install.migration');
     Route::post('/migration', [InstallController::class, 'runMigration'])->name('install.run-migration');
+    Route::get('/migration/etat', [InstallController::class, 'etatInitialisation'])->name('install.migration-etat');
     Route::get('/check-migrations', [InstallController::class, 'checkMigrations'])->name('install.check-migrations');
     Route::get('/admin', [InstallController::class, 'admin'])->name('install.admin');
     Route::post('/admin', [InstallController::class, 'setupAdmin'])->name('install.setup-admin');

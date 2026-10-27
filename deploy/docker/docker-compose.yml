@@ -1,0 +1,92 @@
+# Une école KLASSCI sur Dokploy — service de type « Compose ».
+#
+# Ce fichier crée tout : l'application, le planificateur, la base MySQL et les
+# volumes. Dans Dokploy, seules quatre variables sont à remplir (onglet
+# Environment) ; la fiche docs/runbooks/nouvelle-ecole-dokploy.md les décrit.
+#
+# Rien à générer à la main : la clé APP_KEY est tirée au premier démarrage et
+# gardée dans le volume `instance`, le mot de passe root de MySQL est tiré au
+# hasard par l'image et ne sert à personne.
+
+x-ecole: &ecole
+  build:
+    context: ../..
+    dockerfile: Dockerfile
+  restart: unless-stopped
+  environment:
+    APP_NAME: ${NOM_ECOLE:?Renseignez NOM_ECOLE (nom affiché de l'école) dans l'onglet Environment}
+    APP_URL: https://${DOMAINE:?Renseignez DOMAINE (ex. lycee-x.klassci.com) dans l'onglet Environment}
+    TENANT_CODE: ${CODE_ECOLE:?Renseignez CODE_ECOLE (ex. lycee-x) dans l'onglet Environment}
+    APP_TIMEZONE: ${FUSEAU:-UTC}
+    APP_KEY: ${APP_KEY:-}
+    DB_CONNECTION: mysql
+    DB_HOST: base
+    DB_PORT: "3306"
+    DB_DATABASE: klassci
+    DB_USERNAME: klassci
+    DB_PASSWORD: ${MOT_DE_PASSE_BASE:?Renseignez MOT_DE_PASSE_BASE (au moins 16 caractères) dans l'onglet Environment}
+    CACHE_DRIVER: file
+    SESSION_DRIVER: file
+    # Aucun worker de file ne tourne : en `database`, les envois s'empileraient
+    # sans partir. En `sync`, ils partent pendant la requête.
+    QUEUE_CONNECTION: ${QUEUE_CONNECTION:-sync}
+    MAIL_MAILER: ${MAIL_MAILER:-log}
+    MAIL_HOST: ${MAIL_HOST:-}
+    MAIL_PORT: ${MAIL_PORT:-}
+    MAIL_USERNAME: ${MAIL_USERNAME:-}
+    MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+    MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-}
+    MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-}
+    MASTER_API_URL: ${MASTER_API_URL:-}
+    MASTER_API_TOKEN: ${MASTER_API_TOKEN:-}
+    GROUP_SSO_SHARED_SECRET: ${GROUP_SSO_SHARED_SECRET:-}
+  volumes:
+    - documents:/var/www/html/storage/app
+    - instance:/var/www/html/storage/instance
+    - journaux:/var/www/html/storage/logs
+  depends_on:
+    base:
+      condition: service_healthy
+
+services:
+  app:
+    <<: *ecole
+    # Dokploy → onglet Domains : service « app », port 80.
+    expose:
+      - "80"
+    mem_limit: 768m
+
+  # Une seule réplique, jamais en double avec un autre serveur pour cette école.
+  # En www-data, comme PHP-FPM : en root, le premier fichier de journal du jour
+  # lui appartiendrait et l'application ne pourrait plus y écrire.
+  planificateur:
+    <<: *ecole
+    command: ["sh", "-c", "while true; do su -s /bin/sh www-data -c 'php artisan schedule:run'; sleep 60; done"]
+    healthcheck:
+      disable: true
+    mem_limit: 384m
+
+  base:
+    image: mysql:8.0
+    restart: unless-stopped
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci", "--innodb-buffer-pool-size=256M"]
+    environment:
+      MYSQL_DATABASE: klassci
+      MYSQL_USER: klassci
+      MYSQL_PASSWORD: ${MOT_DE_PASSE_BASE:?Renseignez MOT_DE_PASSE_BASE dans l'onglet Environment}
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    volumes:
+      - base:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 10
+    mem_limit: 768m
+
+volumes:
+  documents:
+  instance:
+  journaux:
+  base:
