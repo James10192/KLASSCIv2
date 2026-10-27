@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Log;
 use App\Models\Setting;
+use App\Support\Installation\InitialisationInstance;
 
 class InstallController extends Controller
 {
@@ -69,7 +70,38 @@ class InstallController extends Controller
             return redirect('/login');
         }
 
+        if ($this->adopterBaseFournie()) {
+            return redirect()->route('install.migration');
+        }
+
         return view('install.database');
+    }
+
+    /**
+     * Base déjà configurée et joignable (Dokploy, ou un .env déjà rempli) :
+     * rien à saisir, on passe à l'initialisation.
+     *
+     * Le critère est que la connexion réponde, pas l'origine des variables :
+     * un .env neuf (DB_HOST=127.0.0.1, base « laravel ») ne répond pas, et le
+     * formulaire s'affiche comme avant.
+     */
+    private function adopterBaseFournie(): bool
+    {
+        if (session('db_configured')) {
+            return true;
+        }
+
+        if (!getenv('DB_HOST') || !getenv('DB_DATABASE') || !InstallationHelper::isDatabaseConfigured()) {
+            return false;
+        }
+
+        session([
+            'db_configured' => true,
+            'database_exists' => true,
+            'install_app_name' => $this->tenantNameFromRequest($this->tenantCodeFromHost(request()->getHost())),
+        ]);
+
+        return true;
     }
 
     /**
@@ -255,7 +287,7 @@ class InstallController extends Controller
         }
 
         // Check if database is configured
-        if (!session('db_configured')) {
+        if (!$this->adopterBaseFournie()) {
             return redirect()->route('install.database')
                 ->with('error', 'Veuillez configurer la base de données avant de continuer.');
         }
@@ -341,32 +373,23 @@ class InstallController extends Controller
                 }
             }
 
-            Artisan::call('config:clear');
-            Artisan::call('cache:clear');
-            $terminal[] = trim(Artisan::output()) ?: 'Caches Laravel vidés.';
+            // Migrations, setup.php et nom de l'école : verrouillé, et l'état
+            // est publié pour l'écran, qui le relit si cette réponse se perd.
+            $resultat = app(InitialisationInstance::class)->lancer((string) session('install_app_name', ''));
+            $terminal = array_merge($terminal, $resultat['terminal']);
 
-            Artisan::call('migrate', ['--force' => true]);
-            $terminal[] = trim(Artisan::output()) ?: 'Migrations vérifiées.';
-
-            $setupResult = $this->runSetupScript();
-            $terminal = array_merge($terminal, $setupResult['output']);
-
-            if (!$setupResult['ok']) {
-                session(['migration_errors' => $setupResult['message']]);
+            if (!$resultat['ok']) {
+                session(['migration_errors' => $resultat['message']]);
 
                 return $this->installJson(
                     false,
-                    'install.setup.failed',
-                    ['terminal' => $terminal, 'exit_code' => $setupResult['exit_code']],
-                    $setupResult['message'],
+                    $resultat['code'],
+                    ['terminal' => $terminal],
+                    $resultat['message'],
                     null,
-                    422
+                    $resultat['code'] === 'install.migration.en_cours' ? 409 : 422
                 );
             }
-
-            $this->nommerEtablissement((string) session('install_app_name', ''));
-            // Les tables existent désormais : le statut mémorisé avant ne vaut plus.
-            InstallationHelper::flushCachedStatus();
 
             $esbtpDataCheck = InstallationHelper::checkESBTPData();
             session(['esbtp_data_check' => $esbtpDataCheck]);
@@ -375,7 +398,7 @@ class InstallController extends Controller
                 'database_created' => $databaseCreated,
                 'esbtp_data_check' => $esbtpDataCheck,
                 'terminal' => $terminal,
-            ], 'Migrations, permissions, paramètres et seeders terminés.', route('install.admin'));
+            ], $resultat['message'], route('install.admin'));
         } catch (\Exception $e) {
             \Log::error("Erreur critique lors de l'exécution des migrations: " . $e->getMessage());
             session(['migration_errors' => $e->getMessage()]);
@@ -389,6 +412,23 @@ class InstallController extends Controller
                 500
             );
         }
+    }
+
+    /**
+     * Où en est l'initialisation : l'écran l'interroge pendant qu'elle tourne,
+     * et après coup si la réponse de runMigration s'est perdue en route.
+     */
+    public function etatInitialisation()
+    {
+        $etat = app(InitialisationInstance::class)->etat();
+
+        return $this->installJson(
+            ($etat['statut'] ?? null) === InitialisationInstance::REUSSIE,
+            'install.migration.etat',
+            ['statut' => $etat['statut'] ?? null, 'terminal' => $etat['terminal'] ?? [], 'maj' => $etat['maj'] ?? null],
+            (string) ($etat['message'] ?? ''),
+            ($etat['statut'] ?? null) === InitialisationInstance::REUSSIE ? route('install.admin') : null
+        );
     }
 
     /**
@@ -651,76 +691,6 @@ class InstallController extends Controller
         }
 
         return strtoupper($tenantCode) . ' KLASSCI';
-    }
-
-    private function runSetupScript(): array
-    {
-        $script = base_path('setup.php');
-
-        if (!File::exists($script)) {
-            return [
-                'ok' => false,
-                'message' => 'Le fichier setup.php est introuvable à la racine du projet.',
-                'exit_code' => 127,
-                'output' => ['setup.php introuvable.'],
-            ];
-        }
-
-        $command = escapeshellarg($this->binairePhpEnLigneDeCommande()) . ' ' . escapeshellarg($script) . ' --force 2>&1';
-        $output = [];
-        $exitCode = 0;
-        exec($command, $output, $exitCode);
-
-        $cleanOutput = array_values(array_filter(array_map(
-            fn ($line) => trim(preg_replace('/\x1b\[[0-9;]*m/', '', (string) $line)),
-            $output
-        )));
-
-        return [
-            'ok' => $exitCode === 0,
-            'message' => $exitCode === 0
-                ? 'Initialisation setup.php terminée.'
-                : 'setup.php a échoué. Consultez la sortie terminal et corrigez le point bloquant.',
-            'exit_code' => $exitCode,
-            'output' => $cleanOutput,
-        ];
-    }
-
-    /**
-     * Donne à l'école le nom saisi dans l'assistant.
-     *
-     * Les paramètres sont semés avec le nom neutre « KLASSCI » (celui de
-     * SettingsHelper::initializeDefaults) : seul ce nom, ou une valeur vide,
-     * est remplacé. Un nom déjà réglé reste intact.
-     */
-    private function nommerEtablissement(string $nom): void
-    {
-        $nom = trim($nom);
-        $reglage = $nom === '' ? null : Setting::where('key', 'school_name')->first();
-
-        if ($reglage && in_array((string) $reglage->value, ['', 'KLASSCI'], true)) {
-            $reglage->value = $nom;
-            $reglage->save();
-        }
-    }
-
-    /**
-     * Le PHP « en ligne de commande » qui doit exécuter setup.php.
-     *
-     * Sous PHP-FPM ou LiteSpeed, PHP_BINARY désigne le binaire du serveur
-     * (php-fpm, lsphp), qui ne sait pas exécuter un script : setup.php
-     * échouait alors à coup sûr. On prend le `php` installé à côté, et on
-     * ne retombe sur le PATH que s'il n'existe pas.
-     */
-    private function binairePhpEnLigneDeCommande(): string
-    {
-        if (PHP_SAPI === 'cli') {
-            return PHP_BINARY;
-        }
-
-        $voisin = PHP_BINDIR . DIRECTORY_SEPARATOR . 'php';
-
-        return is_executable($voisin) ? $voisin : 'php';
     }
 
     /**

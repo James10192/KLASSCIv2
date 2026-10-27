@@ -48,7 +48,7 @@ class Kernel extends ConsoleKernel
                         // école dont DB_DATABASE vise une base vide perdrait toutes
                         // ses tâches sans un mot.
                         // warning, pas notice : l'image fixe LOG_LEVEL=warning.
-                        \Illuminate\Support\Facades\Log::warning('Planificateur : base sans table users, tâches sautées jusqu\'à l\'installation.');
+                        \Illuminate\Support\Facades\Log::warning('Planificateur : base pas encore installée (ou initialisation en cours), tâches sautées.');
                     }
                 }
 
@@ -370,13 +370,20 @@ class Kernel extends ConsoleKernel
     ];
 
     /**
-     * Vrai seulement quand la base répond ET n'a pas encore de table `users`.
+     * Vrai quand une initialisation tourne, ou quand la base répond ET n'a pas
+     * encore de table `users`.
      *
      * Base injoignable : on planifie comme avant (les tâches échoueront et le
      * diront), jamais de silence sur une école en service.
      */
     private function baseVideAvantInstallation(): bool
     {
+        // Pendant l'initialisation, `users` existe déjà mais pas les tables
+        // suivantes : on attend qu'elle soit finie.
+        if (app(\App\Support\Installation\InitialisationInstance::class)->enCours()) {
+            return true;
+        }
+
         try {
             return ! \Illuminate\Support\Facades\Schema::hasTable('users');
         } catch (\Throwable $e) {
