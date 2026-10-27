@@ -21,7 +21,7 @@ Ayez sous la main :
 | Nom de l'école | `Lycée Moderne de Cocody` | Tel qu'il doit s'afficher partout (en-têtes, PDF). |
 | Code de l'école | `lmc-cocody` | Minuscules, chiffres et tirets seulement. Il ne change plus ensuite. |
 | Domaine | `lmc-cocody.klassci.com` | Le code suivi de `.klassci.com`. |
-| Mot de passe de la base | 20 caractères au hasard | Générez-le avec votre gestionnaire de mots de passe. Personne n'aura à le retaper. |
+| Mot de passe de la base | 24 caractères au hasard | **Lettres et chiffres seulement** (pas de `$`, `#`, guillemets ni espaces : Dokploy les modifierait sans prévenir). Générez-le avec votre gestionnaire de mots de passe. Personne n'aura à le retaper. |
 
 ## 1. Créer le service dans Dokploy
 
@@ -40,7 +40,7 @@ Onglet **Environment**, collez en remplaçant les valeurs :
 NOM_ECOLE=Lycée Moderne de Cocody
 CODE_ECOLE=lmc-cocody
 DOMAINE=lmc-cocody.klassci.com
-MOT_DE_PASSE_BASE=le-mot-de-passe-de-20-caracteres
+MOT_DE_PASSE_BASE=lettresEtChiffresSeulement24
 ```
 
 Puis **Save**.
