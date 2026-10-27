@@ -75,10 +75,11 @@ class InstallationHelper
                 $envContent = File::get($envPath);
 
                 // Check if APP_INSTALLED already exists in .env
-                if (strpos($envContent, 'APP_INSTALLED') !== false) {
-                    // Replace existing APP_INSTALLED value
+                if (preg_match('/^APP_INSTALLED=.*$/m', $envContent)) {
+                    // Toute valeur, vide comprise : `APP_INSTALLED=` restait vide
+                    // avec l'ancien motif, et la méthode annonçait pourtant true.
                     $envContent = preg_replace(
-                        '/APP_INSTALLED=(true|false|null)/',
+                        '/^APP_INSTALLED=.*$/m',
                         'APP_INSTALLED=true',
                         $envContent
                     );
