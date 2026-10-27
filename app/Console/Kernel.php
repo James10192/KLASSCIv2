@@ -36,7 +36,7 @@ class Kernel extends ConsoleKernel
         // planificateur (GET /api/cli/planificateur → actif: false).
         $baseVide = null;
         foreach ($schedule->events() as $tache) {
-            if ($tache->description === 'pouls-planificateur') {
+            if ($tache->description === \App\Domain\Exploitation\PoulsPlanificateur::NOM_TACHE) {
                 continue;
             }
 
@@ -47,7 +47,8 @@ class Kernel extends ConsoleKernel
                         // Une ligne par passage, pas une par tâche : sans elle, une
                         // école dont DB_DATABASE vise une base vide perdrait toutes
                         // ses tâches sans un mot.
-                        \Illuminate\Support\Facades\Log::notice('Planificateur : base sans table users, tâches sautées jusqu\'à l\'installation.');
+                        // warning, pas notice : l'image fixe LOG_LEVEL=warning.
+                        \Illuminate\Support\Facades\Log::warning('Planificateur : base sans table users, tâches sautées jusqu\'à l\'installation.');
                     }
                 }
 
@@ -66,7 +67,7 @@ class Kernel extends ConsoleKernel
         // En tete : une tache synchrone plus haut le retarderait au-dela du seuil.
         $schedule->call(fn () => \App\Domain\Exploitation\PoulsPlanificateur::battre())
             ->everyMinute()
-            ->name('pouls-planificateur');
+            ->name(\App\Domain\Exploitation\PoulsPlanificateur::NOM_TACHE);
 
         // PR6 Réconciliation : check overdue sessions daily à 8h (heure du matin = pertinent)
         $schedule->command('reconciliation:check-overdue')
