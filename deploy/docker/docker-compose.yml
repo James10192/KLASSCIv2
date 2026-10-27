@@ -24,7 +24,7 @@ x-ecole: &ecole
     DB_PORT: "3306"
     DB_DATABASE: klassci
     DB_USERNAME: klassci
-    DB_PASSWORD: ${MOT_DE_PASSE_BASE:?Renseignez MOT_DE_PASSE_BASE (au moins 16 caractères) dans l'onglet Environment}
+    DB_PASSWORD: ${MOT_DE_PASSE_BASE:?Renseignez MOT_DE_PASSE_BASE (24 lettres et chiffres, sans symbole) dans l'onglet Environment}
     CACHE_DRIVER: file
     SESSION_DRIVER: file
     # Aucun worker de file ne tourne : en `database`, les envois s'empileraient
