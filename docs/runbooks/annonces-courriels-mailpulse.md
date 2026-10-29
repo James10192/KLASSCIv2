@@ -58,3 +58,11 @@ Sans `MAILPULSE_ANNOUNCEMENT_WEBHOOK_SECRET`, le serveur refuse toute mise à jo
 L'annonce « Reprise des cours » est publiée ; sa remise a eu lieu avec l'ancien transport. La capture MailPulse « Envoyé » montre l'acceptation en amont tandis que Resend affiche plusieurs `Delivery Delayed`. Certaines ont été délivrées, d'autres ont rebondi. **Ne pas relancer cette campagne** avant d'avoir rapproché les preuves, vérifié les inscriptions de l'année et confirmé un lot de test sous le nouveau contrat. Contrôler le domaine expéditeur (SPF/DKIM/DMARC), les retours SMTP détaillés et la réputation du domaine auprès des serveurs destinataires.
 
 La première reprise est à diagnostiquer et n'est pas un échec de toutes les adresses. Voir la documentation Resend sur `email.delivery_delayed` et les webhooks de livraison.
+
+## Reprise manuelle et rendu HTML
+
+La fiche annonce expose une action permissionnée « Reprendre les envois non soumis ». Elle planifie une reprise asynchrone unique qui reprogramme toutes les adresses existantes par tranches bornées (`MAILPULSE_ANNOUNCEMENT_RESUME_MAX`) et cadence par minute, UNIQUEMENT les lignes `pending/retrying` sans `submitted_at` ni identifiant MailPulse. L'envoi physique reste protégé par la transition atomique du job. Les statuts `delivered`, `submitted`, `delayed`, `awaiting_dispatch`, `processing` et `failed` ne sont pas automatiquement réémis. Les lignes sans preuve de réception ne doivent pas être relancées aveuglément.
+
+Le gabarit d'e-mail d'annonce dérive de `esbtp.emails.parents.recu`, et utilise les couleurs/logo/contact de l'établissement ; il est transmis dans `metadata.email_html` via MailPulse, le contenu texte restant la version alternative. Le même service sert l'aperçu isolé de KLASSCI. Les nouveaux messages peuvent être visualisés depuis MailPulse via l'aperçu HTML sandboxé. **Les anciens messages texte ne sont pas transformés rétroactivement**.
+
+La liste des destinataires est filtrable par état et chargée par tranches via `ListeInfinie`, sans rechargement. La reprise s'arrête automatiquement lorsqu'il n'y a aucun destinataire non soumis ; lorsque tous les statuts sont `delivered`, l'interface affiche « Tous les courriels ont été délivrés » et aucune relance n'est proposée. Les erreurs définitives nécessitent un diagnostic et non un renvoi aveugle.

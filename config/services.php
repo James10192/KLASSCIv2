@@ -81,6 +81,8 @@ return [
     ],
 
     'mailpulse' => [
+        // Volume maximal d'emplois reenfiles sur une action manuelle, par instance.
+        'announcement_resume_max' => (int) env('MAILPULSE_ANNOUNCEMENT_RESUME_MAX', 100),
         'announcement_webhook_secret' => env('MAILPULSE_ANNOUNCEMENT_WEBHOOK_SECRET'),
         'enabled' => env('MAILPULSE_ENABLED', true),
         'base_url' => env('MAILPULSE_BASE_URL', 'https://mailpulse-two.vercel.app'),
