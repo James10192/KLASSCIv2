@@ -17,7 +17,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('support_demandes_suivies', function (Blueprint $table) {
-            $table->dropColumn('derniere_action_administration_le');
+            $table->dropColumn(['derniere_action_administration_le', 'action_administration_en_attente_le']);
         });
     }
 };
