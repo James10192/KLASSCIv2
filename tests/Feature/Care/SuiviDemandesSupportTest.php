@@ -184,6 +184,47 @@ class SuiviDemandesSupportTest extends TestCase
         $this->assertNull(\App\Domain\Support\Models\DemandeSuivie::sole()->derniere_action_administration_le);
     }
 
+    public function test_une_action_sans_destinataire_est_reprise_quand_les_droits_sont_attribues_plus_tard(): void
+    {
+        $etudiant = $this->utilisateur(true);
+        $scolarite = $this->utilisateur(true);
+        Permission::firstOrCreate(['name' => 'support.tickets.view_school', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'support.tickets.respond_school', 'guard_name' => 'web']);
+
+        $avant = $this->resume($etudiant);
+        $apres = $this->resume($etudiant, 'ACTION_REQUISE', null, '2026-10-01T09:25:00+00:00');
+        $apres['action_cible'] = 'ETABLISSEMENT';
+        $apres['derniere_demande_etablissement_le'] = '2026-10-01T09:25:00+00:00';
+        $this->master([$avant], [$apres]);
+
+        $this->artisan('support:suivre-demandes')->assertSuccessful();
+        $this->artisan('support:suivre-demandes')->assertSuccessful();
+        $suivie = \App\Domain\Support\Models\DemandeSuivie::sole();
+        $this->assertNotNull($suivie->action_administration_en_attente_le);
+        $this->assertSame(0, Notification::count());
+
+        $scolarite->givePermissionTo(['support.tickets.view_school', 'support.tickets.respond_school']);
+        $suivie->forceFill(['updated_at' => now()->subMinutes(16)])->saveQuietly();
+        Cache::flush();
+        Http::swap(new \Illuminate\Http\Client\Factory());
+        Http::fake([
+            'master.test/api/v1/support/bootstrap' => Http::response([
+                'fonctionnalites' => ['support_widget' => true, 'support_customer_portal' => true],
+                'portees' => ['support:read'],
+            ]),
+            'master.test/api/v1/support/tickets/KC-*' => Http::response($apres),
+            'master.test/api/v1/support/tickets*' => Http::response([
+                'data' => [], 'meta' => ['page' => 1, 'pages' => 1, 'total' => 0],
+            ]),
+        ]);
+
+        $this->artisan('support:suivre-demandes')->assertSuccessful();
+
+        $this->assertSame($scolarite->id, (int) Notification::sole()->user_id);
+        $this->assertNull($suivie->fresh()->action_administration_en_attente_le);
+        $this->assertNotNull($suivie->fresh()->derniere_action_administration_le);
+    }
+
     public function test_master_injoignable_le_curseur_ne_bouge_pas(): void
     {
         Http::fake([
