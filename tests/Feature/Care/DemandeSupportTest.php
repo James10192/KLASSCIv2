@@ -226,6 +226,40 @@ class DemandeSupportTest extends TestCase
     }
 
     /** @test */
+    public function une_action_reservee_a_l_administration_exige_lecture_et_reponse(): void
+    {
+        $responsable = $this->utilisateur();
+        $lecture = Permission::firstOrCreate(['name' => 'support.tickets.view_school', 'guard_name' => 'web']);
+        $reponse = Permission::firstOrCreate(['name' => 'support.tickets.respond_school', 'guard_name' => 'web']);
+        $responsable->givePermissionTo($lecture);
+
+        $detail = $this->detail('ACTION_REQUISE', [[
+            'auteur' => 'SUPPORT', 'nom' => 'Support KLASSCI',
+            'destinataire' => 'ETABLISSEMENT', 'corps' => 'Merci de valider une inscription.',
+            'le' => now()->toIso8601String(),
+        ]], rapporteurId: $responsable->id + 500);
+        $detail['action_cible'] = 'ETABLISSEMENT';
+        $this->master(Http::response($detail));
+
+        $lien = route('support.demandes.repondre', ['KC-2026-000042', 'portee' => 'ecole']);
+        $this->actingAs($responsable->fresh())->postJson($lien, [
+            'corps' => 'Inscription validée.', 'cle' => self::CLE,
+        ])->assertForbidden();
+
+        $responsable->givePermissionTo($reponse);
+        $this->actingAs($responsable->fresh())
+            ->get(route('support.demandes.show', ['KC-2026-000042', 'portee' => 'ecole']))
+            ->assertOk()->assertSee("Réponse de l'administration à KLASSCI")
+            ->assertSee('Administration uniquement');
+        $this->actingAs($responsable->fresh())
+            ->postJson($lien, ['corps' => 'Inscription validée.', 'cle' => self::CLE])
+            ->assertOk();
+
+        Http::assertSent(fn (Request $req) => str_contains($req->url(), '/messages?')
+            && str_contains($req->url(), 'scope=school'));
+    }
+
+    /** @test */
     public function la_page_de_suivi_affiche_la_demande_du_master(): void
     {
         $this->master(Http::response([
