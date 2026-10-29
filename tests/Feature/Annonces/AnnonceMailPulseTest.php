@@ -388,4 +388,31 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertNull(DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('error_code'));
     }
 
+    public function test_tableau_de_suivi_ajax_retourne_les_vrais_statuts_sans_html_de_page_entiere(): void
+    {
+        $this->withoutMiddleware();
+        $annonce = $this->annonce();
+        foreach (['pending', 'delivered', 'delayed'] as $status) {
+            DB::table('esbtp_annonce_email_deliveries')->insert([
+                'annonce_id' => $annonce->id, 'email' => "{$status}@etudiants.test",
+                'status' => $status, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+
+        $this->withHeader('X-Requested-With', 'XMLHttpRequest')
+            ->getJson("/esbtp/annonces/{$annonce->id}?courriels_fragment=stats")
+            ->assertOk()->assertJsonPath('total', 3)
+            ->assertJsonPath('counts.delivered', 1)
+            ->assertJsonPath('counts.delayed', 1)
+            ->assertJsonPath('counts.pending', 1)
+            ->assertJsonPath('terminal', false);
+
+        $response = $this->withHeader('X-Requested-With', 'XMLHttpRequest')
+            ->getJson("/esbtp/annonces/{$annonce->id}?courriels_fragment=1&courriels_statut=delivered");
+        $response->assertOk()->assertJsonPath('next', null);
+        $this->assertStringContainsString('delivered@etudiants.test', $response->json('html'));
+        $this->assertStringNotContainsString('delayed@etudiants.test', $response->json('html'));
+        $this->assertStringNotContainsString('<html', $response->json('html'));
+    }
+
 }
