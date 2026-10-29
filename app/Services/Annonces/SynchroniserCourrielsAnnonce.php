@@ -56,8 +56,9 @@ final class SynchroniserCourrielsAnnonce
                 ->whereIn('status', ['submitted', 'awaiting_dispatch', 'delayed']);
             $correction = ['updated_at' => now()];
 
-            if (in_array($status, ['delivered', 'read'], true) && !empty($etat['delivered_at'])) {
-                $correction += ['status' => 'delivered', 'provider_delivered_at' => $etat['delivered_at']];
+            $dateRemise = $this->normaliserDate($etat['delivered_at'] ?? null);
+            if (in_array($status, ['delivered', 'read'], true) && $dateRemise !== null) {
+                $correction += ['status' => 'delivered', 'provider_delivered_at' => $dateRemise];
                 $bilan['delivrees']++;
             } elseif (in_array($status, ['failed', 'cancelled', 'template_required'], true)) {
                 $correction += [
@@ -69,7 +70,7 @@ final class SynchroniserCourrielsAnnonce
                 $horodatage = $etat['delivery_delays'][0]['occurred_at'] ?? null;
                 $correction += [
                     'status' => 'delayed',
-                    'provider_delayed_at' => is_string($horodatage) ? $horodatage : now(),
+                    'provider_delayed_at' => $this->normaliserDate($horodatage) ?? now(),
                 ];
                 $bilan['retardees']++;
             } else {
@@ -83,4 +84,20 @@ final class SynchroniserCourrielsAnnonce
 
         return $bilan;
     }
+
+    private function normaliserDate(mixed $valeur): ?string
+    {
+        if (! is_string($valeur) || trim($valeur) === '') {
+            return null;
+        }
+        try {
+            // DATETIME MySQL/MariaDB n'accepte pas les ISO8601 avec T et +00:00.
+            return \Illuminate\Support\Carbon::parse($valeur)
+                ->setTimezone(config('app.timezone', 'UTC'))->format('Y-m-d H:i:s');
+        } catch (\Throwable) {
+            // Ne jamais affirmer une livraison sur une date fournisseur illisible.
+            return null;
+        }
+    }
+
 }
