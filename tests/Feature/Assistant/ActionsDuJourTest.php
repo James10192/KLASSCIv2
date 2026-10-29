@@ -335,6 +335,81 @@ class ActionsDuJourTest extends TestCase
         $this->assertStringContainsString('Aucun parcours', implode(' ', $r['manques']));
     }
 
+    public function test_nanan_demande_la_structure_manquante_et_cree_parcours_et_classes_apres_validation(): void
+    {
+        $filiere = ESBTPFiliere::factory()->create(['code' => 'GGT-WIZ-26', 'name' => 'Géomètre Topographe']);
+        $outil = app(AjouterClassesLmd::class);
+
+        $incomplet = $outil->executeAuthorized([
+            'cible' => 'GGT-WIZ-26', 'niveaux' => ['L1', 'L2', 'L3'], 'places' => 30,
+        ], $this->admin);
+        $this->assertArrayNotHasKey('widget', $incomplet);
+        $this->assertStringContainsString('CODE du domaine', implode(' ', $incomplet['manques']));
+        $this->assertNull(ESBTPLMDParcours::where('code', 'GGT-PAR-WIZ-26')->first());
+
+        $args = [
+            'cible' => 'GGT-WIZ-26', 'type_cible' => 'parcours', 'niveaux' => ['L1', 'L2', 'L3'], 'places' => 30,
+            'structure' => [
+                'domaine' => ['code' => 'D-GGT-WIZ-26', 'name' => 'Sciences et technologies'],
+                'mention' => ['code' => 'M-GGT-WIZ-26', 'name' => 'Topographie'],
+                'parcours' => ['code' => 'GGT-PAR-WIZ-26', 'name' => 'Géomètre Topographe'],
+                // L'établissement possède déjà la filière : ne jamais la recréer.
+                'filiere' => ['code' => 'GGT-WIZ-26', 'name' => 'Géomètre Topographe'],
+            ],
+        ];
+        $proposition = $outil->executeAuthorized($args, $this->admin);
+        $this->assertSame('approbation', $proposition['widget']['kind'] ?? null,
+            json_encode($proposition, JSON_UNESCAPED_UNICODE));
+        $this->assertNull(ESBTPLMDParcours::where('code', 'GGT-PAR-WIZ-26')->first(), 'pas de création avant Valider');
+        $this->assertSame(0, ESBTPClasse::where('filiere_id', $filiere->id)->count());
+
+        $this->valider($proposition);
+
+        $parcours = ESBTPLMDParcours::where('code', 'GGT-PAR-WIZ-26')->sole();
+        $this->assertSame((int) $filiere->id, (int) $parcours->filiere_id);
+        $classes = ESBTPClasse::where('parcours_id', $parcours->id)->orderBy('code')->get();
+        $this->assertSame(['GGT-WIZ-26 L1A', 'GGT-WIZ-26 L2A', 'GGT-WIZ-26 L3A'], $classes->pluck('name')->all());
+        $this->assertSame([30, 30, 30], $classes->pluck('places_totales')->all());
+        $this->assertSame('LMD', $classes[0]->systeme_academique);
+        $this->assertSame([(int) $filiere->id], $classes->pluck('filiere_id')->unique()->values()->all());
+    }
+
+    public function test_nanan_refuse_de_renommer_une_mention_existante_pendant_une_creation_de_classe(): void
+    {
+        $domaine = \App\Models\ESBTPLMDDomaine::create([
+            'code' => 'D-GGT-CONF-26', 'name' => 'Sciences', 'is_active' => true,
+        ]);
+        $mention = \App\Models\ESBTPLMDMention::create([
+            'code' => 'M-GGT-CONF-26', 'name' => 'Géomètre', 'domaine_id' => $domaine->id, 'is_active' => true,
+        ]);
+        $r = app(AjouterClassesLmd::class)->executeAuthorized([
+            'cible' => 'P-GGT-CONF-26', 'niveaux' => ['L1'], 'places' => 30,
+            'structure' => [
+                'domaine' => ['code' => $domaine->code],
+                'mention' => ['code' => $mention->code, 'name' => 'Autre filière'],
+                'parcours' => ['code' => 'P-GGT-CONF-26', 'name' => 'Parcours'],
+            ],
+        ], $this->admin);
+        $this->assertArrayNotHasKey('widget', $r);
+        $this->assertStringContainsString('sans la renommer', implode(' ', $r['manques']));
+        $this->assertSame('Géomètre', $mention->fresh()->name);
+    }
+
+    public function test_nanan_refuse_un_mauvais_rattachement_de_filiere_au_parcours(): void
+    {
+        $r = app(AjouterClassesLmd::class)->executeAuthorized([
+            'cible' => 'GGT-CIBLE-26', 'niveaux' => ['L1'], 'places' => 30,
+            'structure' => [
+                'domaine' => ['code' => 'D-MIS-26', 'name' => 'Domaine'],
+                'mention' => ['code' => 'M-MIS-26', 'name' => 'Mention'],
+                'parcours' => ['code' => 'P-MIS-26', 'name' => 'Parcours'],
+                'filiere' => ['code' => 'AUTRE-CODE-26', 'name' => 'Filière autre'],
+            ],
+        ], $this->admin);
+        $this->assertArrayNotHasKey('widget', $r);
+        $this->assertStringContainsString('ne correspond ni au parcours', implode(' ', $r['manques']));
+    }
+
     public function test_creation_lmd_et_bts_sont_des_outils_distincts_avec_la_meme_permission(): void
     {
         $schemas = app(CatalogueOutils::class)->schemas($this->admin);
