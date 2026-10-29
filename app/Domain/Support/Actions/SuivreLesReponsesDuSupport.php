@@ -169,6 +169,49 @@ class SuivreLesReponsesDuSupport
         return $averti || $administrationNotifiee;
     }
 
+    /**
+     * Retente les actions administratives non livrées même après expiration du
+     * filtre de mise à jour. Borne à 20 dossiers par passage ; si l'action a
+     * été satisfaite ou annulée, ne crée plus de notification obsolète.
+     */
+    private function reprendreActionsAdministrationEnAttente(): int
+    {
+        $averties = 0;
+        $aRevoir = DemandeSuivie::query()
+            ->whereNotNull('action_administration_en_attente_le')
+            ->where('updated_at', '<=', now()->subMinutes(15))
+            ->orderBy('id')->limit(20)->get();
+
+        foreach ($aRevoir as $suivie) {
+            try {
+                $detail = $this->master->afficher($suivie->reference, 1, 'school');
+                if ($detail === null
+                    || ($detail['statut']['code'] ?? null) !== 'ACTION_REQUISE'
+                    || ($detail['action_cible'] ?? null) !== 'ETABLISSEMENT') {
+                    $suivie->update(['action_administration_en_attente_le' => null]);
+                    continue;
+                }
+                if ($this->avertirAdministration->executer($detail) > 0) {
+                    $suivie->update([
+                        'derniere_action_administration_le' => $suivie->action_administration_en_attente_le,
+                        'action_administration_en_attente_le' => null,
+                    ]);
+                    $averties++;
+                } else {
+                    // Retenter dans quinze minutes, pas à chaque tick.
+                    $suivie->touch();
+                }
+            } catch (Throwable $e) {
+                Log::warning('KLASSCI Care : reprise notification scolarité impossible', [
+                    'reference' => $suivie->reference, 'erreur' => $e->getMessage(),
+                ]);
+                $suivie->touch();
+            }
+        }
+
+        return $averties;
+    }
+
     /** Une date du Master, a l'heure de l'instance ; absente ou illisible → null. */
     private static function date(mixed $iso): ?CarbonInterface
     {
