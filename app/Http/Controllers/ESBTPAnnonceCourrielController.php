@@ -69,7 +69,13 @@ final class ESBTPAnnonceCourrielController extends Controller
             'total' => (int) $compteurs->sum(),
             'pending' => (int) ($compteurs['pending'] ?? 0)
                 + (int) ($compteurs['processing'] ?? 0) + (int) ($compteurs['retrying'] ?? 0),
-            'replayable' => (int) ($compteurs['pending'] ?? 0) + (int) ($compteurs['retrying'] ?? 0),
+            // Une ligne en attente avec un message MailPulse connu ne peut
+            // pas etre reemise en toute securite, meme si son etat local a diverge.
+            'replayable' => (int) DB::table('esbtp_annonce_email_deliveries')
+                ->where('annonce_id', $annonce->id)
+                ->whereIn('status', ['pending', 'retrying'])
+                ->whereNull('submitted_at')->whereNull('mailpulse_message_id')
+                ->count(),
             'can_resume' => $annonce->isActive() && $annonce->email_notification_enabled
                 && ! \Illuminate\Support\Facades\Cache::has(\App\Jobs\Annonces\RelancerCampagneCourriels::cle($annonce->id)),
             'submitted' => (int) ($compteurs['submitted'] ?? 0),
