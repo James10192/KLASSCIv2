@@ -28,6 +28,20 @@ Configurer `MAILPULSE_API_KEY`, `MAILPULSE_ENABLED=true`, une file asynchrone r�
 
 Ne jamais relancer en masse les anciennes lignes `processing`, `submitted`, `awaiting_dispatch`, `delayed` ou `delivered` ; les idempotences du transport ancien étaient bornées à l'heure, et une reprise pourrait provoquer des doublons. Les premiers envois existants ne gagnent pas des preuves de livraison rétroactives.
 
+## Lecture automatique des états (sans webhook supplémentaire)
+
+Le planificateur KLASSCI exécute `annonces:synchroniser-courriels --max=60 --budget=45` toutes les cinq minutes.
+Il relit l'API officielle `GET /api/v1/messages/{id}` de MailPulse, déjà utilisée
+par le suivi des convocations. `delivery_delays` sont des événements réels Resend
+conservés par MailPulse ; un statut `sent` accompagné de retards reste non livré.
+Les erreurs/bounces sont enregistrés, mais **le rapprochement ne réémet jamais d'e-mail**.
+
+La fenêtre de rapprochement et le budget réseau sont bornés ; en cas de panne MailPulse,
+l'opération conserve les statuts existants et les réexamine au passage suivant.
+La présence d'une confirmation `delivered_at` est indispensable pour compter
+une remise. Vérifier le cron `schedule:run` sur chaque instance : sans cron,
+aucune mise à jour automatique n'a lieu.
+
 ## Rapprochement sécurisé avec MailPulse : intégration à compléter côté fournisseur
 
 KLASSCI propose `POST /api/v1/mailpulse/announcement-events`. Il **ne remplace pas** les webhooks Resend : MailPulse doit recevoir les événements de son fournisseur, les associer à `metadata.external_reference`, puis transmettre un événement réduit à KLASSCI. Le système n'affichera des délivrances confirmées qu'une fois ce relais configuré et testé.
