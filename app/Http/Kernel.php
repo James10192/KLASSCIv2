@@ -10,7 +10,6 @@ use Illuminate\Routing\Router;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
-use Spatie\Permission\Middlewares\PermissionMiddleware;
 
 class Kernel extends HttpKernel
 {
@@ -25,7 +24,7 @@ class Kernel extends HttpKernel
         \App\Http\Middleware\CheckInstalled::class,
         // \App\Http\Middleware\TrustHosts::class,
         \App\Http\Middleware\TrustProxies::class,
-        \Fruitcake\Cors\HandleCors::class,
+        \Illuminate\Http\Middleware\HandleCors::class,
         \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
@@ -97,8 +96,8 @@ class Kernel extends HttpKernel
         'installed' => \App\Http\Middleware\EnsureInstalled::class,
         'install.lock' => \App\Http\Middleware\BlockInstallIfReady::class,
         'role' => \App\Http\Middleware\CheckRole::class,
-        'permission' => \Spatie\Permission\Middlewares\PermissionMiddleware::class,
-        'role_or_permission' => \Spatie\Permission\Middlewares\RoleOrPermissionMiddleware::class,
+        'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+        'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         'comptabilite.access' => \App\Http\Middleware\CheckComptabiliteAccess::class,
         'validate.device' => \App\Http\Middleware\ValidateAttendanceDevice::class,
         'attendance.rate_limit' => \App\Http\Middleware\AttendanceRateLimiter::class,
