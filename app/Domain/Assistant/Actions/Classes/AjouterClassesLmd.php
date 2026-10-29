@@ -158,14 +158,16 @@ class AjouterClassesLmd extends ActionAgent
             };
             $rang = $niveau->type === 'Master' ? (int) $niveau->year - 3
                 : ($niveau->type === 'Doctorat' ? (int) $niveau->year - 5 : (int) $niveau->year);
-            $prefixe = mb_strtoupper((string) $choix['code']).' '.$cycle.$rang;
+            // Conserver le code donné par l'école (GGT), même si le parcours
+            // interne lié possède un autre code (ex. PAR-GGT).
+            $prefixe = $cible.' '.$cycle.$rang;
             $max = 0;
             foreach ($existantes as $s) {
                 if (preg_match('/^'.preg_quote($prefixe, '/').'([A-Z])?$/ui', trim($s->name), $m)) {
                     $max = max($max, empty($m[1]) ? 1 : ord(mb_strtoupper($m[1])) - 64);
                 }
             }
-            $codeBase = mb_strtoupper(preg_replace('/[^A-Z0-9]+/i', '_', (string) $choix['code'])).'_'.$cycle.$rang;
+            $codeBase = mb_strtoupper(preg_replace('/[^A-Z0-9]+/i', '_', $cible)).'_'.$cycle.$rang;
             $nouvelle = null;
             for ($i = $max + 1; $i <= 26; $i++) {
                 $lettre = chr(64 + $i);
