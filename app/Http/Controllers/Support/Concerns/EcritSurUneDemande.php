@@ -15,11 +15,21 @@ use Illuminate\Http\JsonResponse;
  */
 trait EcritSurUneDemande
 {
-    private function peutRepondre(array $demande, int $utilisateurId): bool
+    private function peutRepondre(array $demande, int $utilisateurId, bool $pourAdministration = false): bool
     {
-        return ($demande['statut']['code'] ?? null) !== 'FERME'
-            && (string) ($demande['rapporteur']['id'] ?? '') === (string) $utilisateurId
-            && in_array('support:update', $this->master->portees(), true);
+        if (! in_array('support:update', $this->master->portees(), true)
+            || ($demande['statut']['code'] ?? null) === 'FERME') {
+            return false;
+        }
+
+        if ($pourAdministration) {
+            return ($demande['statut']['code'] ?? null) === 'ACTION_REQUISE'
+                && ($demande['action_cible'] ?? null) === 'ETABLISSEMENT'
+                && auth()->user()?->can('support.tickets.view_school') === true
+                && auth()->user()?->can('support.tickets.respond_school') === true;
+        }
+
+        return (string) ($demande['rapporteur']['id'] ?? '') === (string) $utilisateurId;
     }
 
     private function peutJoindre(array $demande, int $utilisateurId): bool
