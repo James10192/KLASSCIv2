@@ -25,6 +25,9 @@ x-ecole: &ecole
     DB_DATABASE: klassci
     DB_USERNAME: klassci
     DB_PASSWORD: ${MOT_DE_PASSE_BASE:?Renseignez MOT_DE_PASSE_BASE (24 lettres et chiffres, sans symbole) dans l'onglet Environment}
+    # La base est un MySQL 8 : modes stricts sans ONLY_FULL_GROUP_BY, comme sous
+    # MariaDB où le code a été éprouvé (voir config/database.php).
+    DB_SQL_MODES: ${DB_SQL_MODES:-STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION}
     CACHE_DRIVER: file
     SESSION_DRIVER: file
     # Aucun worker de file ne tourne : en `database`, les envois s'empileraient

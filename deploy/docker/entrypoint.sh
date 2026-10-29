@@ -25,6 +25,13 @@ chown www-data:www-data "$DOSSIER_INSTANCE" "$ENV_PERSISTANT"
 chmod 700 "$DOSSIER_INSTANCE"
 chmod 600 "$ENV_PERSISTANT"
 ln -sfn "$ENV_PERSISTANT" /var/www/html/.env
+# Le lien doit appartenir à www-data. /var/www/html est en 1777 et le noyau de
+# l'hôte refuse de suivre, dans un tel dossier, un lien dont le propriétaire
+# n'est ni le lecteur ni le propriétaire du dossier (fs.protected_symlinks=1).
+# Créé par root, il est invisible pour PHP-FPM et pour le config:cache plus bas :
+# APP_INSTALLED n'est jamais lu, et RouteServiceProvider renvoie toute page
+# authentifiée vers /install, qui la renvoie vers /dashboard, sans fin.
+chown -h www-data:www-data /var/www/html/.env
 
 # Clé de chiffrement : fournie par Dokploy, ou générée UNE fois et gardée dans
 # le volume. Elle chiffre sessions et données : la régénérer à chaque
@@ -53,6 +60,11 @@ fi
 # Un fichier de journal créé par root (planificateur lancé à la main, version
 # précédente de l'image) bloquerait toute écriture de PHP-FPM jusqu'à minuit.
 chown -R www-data:www-data storage/logs
+
+# public/storage vit dans le conteneur, pas dans un volume : sans ce lien
+# recréé à chaque démarrage, logos, photos et pièces jointes ne s'affichent plus
+# après un redéploiement.
+su -s /bin/sh www-data -c "php artisan storage:link" >/dev/null 2>&1 || true
 
 su -s /bin/sh www-data -c "php artisan config:cache"
 su -s /bin/sh www-data -c "php artisan view:cache"
