@@ -315,7 +315,9 @@ class AnnonceMailPulseTest extends TestCase
                 'created_at' => now(), 'updated_at' => now(),
             ]);
         }
-        $this->withoutMiddleware();
+        // La désactivation globale des middlewares supprimerait aussi
+        // SubstituteBindings et injecterait une annonce vierge : tester
+        // ici le contrôleur avec le modèle effectivement résolu.
         DB::table('esbtp_annonce_email_deliveries')->where('annonce_id', $annonce->id)
             ->whereIn('status', ['pending','retrying'])
             ->update(['updated_at' => now()->subHours(4)]);
@@ -324,8 +326,15 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertTrue((bool) $annonce->is_published, 'annonce non publiée');
         $this->assertTrue((bool) $annonce->email_notification_enabled, 'option e-mail désactivée');
         $this->assertFalse($annonce->isExpired(), 'annonce expirée');
-        $response = $this->postJson(route('esbtp.annonces.relancer-courriels', $annonce));
-        $response->assertStatus(200)->assertJsonPath('queued', 2);
+        $route = \Illuminate\Support\Facades\Route::getRoutes()
+            ->getByName('esbtp.annonces.relancer-courriels');
+        $this->assertNotNull($route);
+        $this->assertContains('permission:annonces.create|create_annonces', $route->gatherMiddleware());
+
+        $response = app(\App\Http\Controllers\ESBTPAnnonceController::class)
+            ->relancerCourriels($annonce);
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame(2, $response->getData(true)['queued']);
         Bus::assertDispatchedTimes(EnvoyerAnnonceCourriel::class, 2);
 
         // Test de la condition SQL effective sans contourner les permissions des routes.
