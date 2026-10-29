@@ -332,6 +332,11 @@ class AnnonceMailPulseTest extends TestCase
         $this->withoutMiddleware();
         Bus::fake([EnvoyerAnnonceCourriel::class]);
         $annonce = $this->annonce();
+        $annonce->forceFill([
+            'date_publication' => now()->subMinutes(5),
+            'date_expiration' => now()->addDays(2),
+            'is_published' => true, 'email_notification_enabled' => true,
+        ])->save();
         $ids = [];
         foreach (['pending', 'submitted', 'delayed', 'delivered', 'failed'] as $status) {
             $ids[$status] = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
@@ -363,6 +368,11 @@ class AnnonceMailPulseTest extends TestCase
         $this->withoutMiddleware();
         Bus::fake([EnvoyerAnnonceCourriel::class]);
         $annonce = $this->annonce();
+        $annonce->forceFill([
+            'date_publication' => now()->subMinutes(5),
+            'date_expiration' => now()->addDays(2),
+            'is_published' => true, 'email_notification_enabled' => true,
+        ])->save();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
             'annonce_id' => $annonce->id,
             'email' => 'queue-failed@etudiants.test',
