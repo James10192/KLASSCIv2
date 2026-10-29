@@ -340,8 +340,8 @@
                 if (!response.ok) throw new Error('preview');
                 frame.srcdoc = await response.text();
                 bootstrap.Modal.getOrCreateInstance(modal).show();
-            } catch (_) {
-                notifyUser('Aperçu indisponible. Vérifiez la taille et le contenu du message.', 'warning');
+            } catch (error) {
+                notifyUser('Aperçu indisponible ou message trop long pour MailPulse. Vérifiez le contenu.', 'warning');
             } finally { this.disabled = false; }
         });
 

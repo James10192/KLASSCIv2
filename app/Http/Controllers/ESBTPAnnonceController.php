@@ -175,6 +175,11 @@ class ESBTPAnnonceController extends Controller
     {
         $request->validate($this->annonceValidationRules(), $this->annonceValidationMessages());
         $this->verifierAnneeDesCourriels($request, $request->get('action') === 'publish');
+        if ($request->get('action') === 'publish' && $request->boolean('send_email')) {
+            app(\App\Services\Annonces\ApercuCourrielAnnonce::class)->verifierTaille(
+                $request->titre, $request->contenu, (int) $request->priorite
+            );
+        }
 
         DB::beginTransaction();
         try {
@@ -279,6 +284,7 @@ class ESBTPAnnonceController extends Controller
             'contenu' => ['required', 'string', 'max:16000'],
             'priorite' => ['nullable', 'integer', 'in:0,1,2'],
         ]);
+        $apercu->verifierTaille($donnees['titre'], $donnees['contenu'], (int) ($donnees['priorite'] ?? 0));
         return response($apercu->htmlAvantPublication(
             $donnees['titre'], $donnees['contenu'], (int) ($donnees['priorite'] ?? 0)
         ), 200, [
@@ -413,6 +419,11 @@ class ESBTPAnnonceController extends Controller
 
         $request->validate($this->annonceValidationRules(), $this->annonceValidationMessages());
         $this->verifierAnneeDesCourriels($request, ! $annonce->is_published && $request->get('action') === 'publish');
+        if (! $annonce->is_published && $request->get('action') === 'publish' && $request->boolean('send_email')) {
+            app(\App\Services\Annonces\ApercuCourrielAnnonce::class)->verifierTaille(
+                $request->titre, $request->contenu, (int) $request->priorite
+            );
+        }
 
         DB::beginTransaction();
         try {
