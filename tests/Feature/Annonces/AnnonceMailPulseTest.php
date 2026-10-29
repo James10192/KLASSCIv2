@@ -113,7 +113,11 @@ class AnnonceMailPulseTest extends TestCase
             $configurer($message);
             return true;
         });
-        Mail::shouldReceive('mailer')->once()->with('mailpulse')->andReturn($mailer);
+        // MailManagerDeLEcole est final ; substituer une façade factice plutôt que
+        // demander à Mockery d'étendre le gestionnaire réel.
+        $manager = Mockery::mock();
+        $manager->shouldReceive('mailer')->once()->with('mailpulse')->andReturn($mailer);
+        Mail::swap($manager);
 
         (new EnvoyerAnnonceCourriel($id))->handle();
         (new EnvoyerAnnonceCourriel($id))->handle();
