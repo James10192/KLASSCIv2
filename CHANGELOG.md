@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **KLASSCI Care — suivi des demandes de support :** la personne ayant signalé une difficulté reçoit désormais une notification dans KLASSCI lorsque le support commence le traitement ou attend une action de sa part, en complément des alertes de réponse et de résolution. Notification dans l'application et courriel pour les adresses confirmées ; pas de doublon lors des synchronisations, ni d'alerte pour les notes internes ou les simples affectations.
 - **Reçus de paiement — espace pour la signature et le cachet (#1677) :** zone manuscrite de 15 mm sur les deux exemplaires, sans changer le design ni dépasser une page A4.
 - **Validation des réinscriptions depuis la fiche inscription :** le bouton « Valider définitivement » réutilise le moteur de validation de la fiche étudiant pour une réinscription en « Documents complets ». Observations, auteur et historique conservés ; aucun paiement ni exonération artificiels.
 - **Reçus de paiement — deux exemplaires sur un A4 (#1675) :** les espaces verticaux du reçu PDF sont resserrés pour garder l’exemplaire élève/parent et l’exemplaire caisse sur une seule feuille, sans changement de design, de données ni de montants.
