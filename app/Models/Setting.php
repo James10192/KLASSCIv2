@@ -1,0 +1,515 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+
+class Setting extends Model
+{
+    use HasFactory;
+
+    /**
+     * Les attributs qui peuvent être assignés en masse.
+     *
+     * @var array
+     */
+    protected $fillable = [
+        'key',
+        'value',
+        'type',
+        'group',
+        'description',
+        'is_required',
+        'default_value',
+        'validation_rules',
+        'is_active',
+        'requires_restart',
+        'category',
+        'sort_order',
+        'created_by',
+        'updated_by'
+    ];
+
+    protected $casts = [
+        'validation_rules' => 'json',
+        'is_required' => 'boolean',
+        'is_active' => 'boolean',
+        'requires_restart' => 'boolean',
+        'sort_order' => 'integer'
+    ];
+
+    // Relations
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updater()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    // Scopes
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopeRequired($query)
+    {
+        return $query->where('is_required', true);
+    }
+
+    public function scopeByGroup($query, $group)
+    {
+        return $query->where('group', $group);
+    }
+
+    public function scopeByCategory($query, $category)
+    {
+        return $query->where('category', $category);
+    }
+
+    /**
+     * Récupère un paramètre par sa clé.
+     *
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public static function get($key, $default = null)
+    {
+        try {
+            $lu = static::lireMemorise((string) $key);
+
+            return $lu['present'] ? $lu['valeur'] : $default;
+        } catch (\Exception $e) {
+            // Fallback sans cache en cas d'erreur
+            try {
+                $setting = static::where('key', $key)->where('is_active', true)->first();
+            } catch (\Exception $echecBase) {
+                // La base elle-meme ne repond pas : la relire une seconde fois
+                // relevait la meme exception, que plus rien ne rattrapait. Ce
+                // repli rend la valeur par defaut, et le dit : un defaut
+                // servi en silence ressemble exactement a un reglage lu.
+                static::journaliserRepliSurDefaut($key, $echecBase);
+
+                return $default;
+            }
+
+            if (!$setting) {
+                return $default;
+            }
+
+            return static::castValue($setting->value, $setting->type);
+        }
+    }
+
+    /**
+     * Les reglages deja lus pendant cette requete.
+     *
+     * Une page lit des dizaines de reglages, parfois la meme cle plusieurs fois
+     * (le gabarit appelle getSchoolInfo() deux fois, soit 26 lectures) : chaque
+     * lecture ouvrait un fichier de cache. Hors console seulement : un worker de
+     * file d'attente vit des heures et ne verrait jamais un reglage modifie
+     * depuis l'ecran.
+     *
+     * @var array<string, array{present: bool, valeur: mixed}>
+     */
+    private static array $memoire = [];
+
+    /**
+     * Un reglage present va dans le cache partage pour une heure, sous sa cle
+     * brute `setting_<cle>` (d'autres lecteurs et les tests la posent ou la
+     * lisent directement).
+     *
+     * Une cle ABSENTE est retenue aussi, mais a part et brievement
+     * (`setting_absent_<cle>`, cinq minutes) : les ecrans PDF et analytics lisent
+     * des dizaines de cles jamais creees, et sans cela chacune repartait en base
+     * a chaque page. Une creation par le modele efface ce marqueur (`oublier()`,
+     * via les evenements saved/deleted). Une creation qui contourne le modele
+     * (`DB::table`, migration) est vue au plus tard cinq minutes apres : c'est la
+     * meme peremption, en plus court, que celle d'une cle presente modifiee ainsi.
+     *
+     * @return array{present: bool, valeur: mixed}
+     */
+    private static function lireMemorise(string $key): array
+    {
+        if (isset(static::$memoire[$key])) {
+            return static::$memoire[$key];
+        }
+
+        // Valeur brute sous `setting_<cle>`, comme avant : d'autres lecteurs
+        // (et les tests) posent ou lisent directement cette entree.
+        $enCache = Cache::get("setting_{$key}");
+        if ($enCache !== null) {
+            $lu = ['present' => true, 'valeur' => $enCache];
+        } elseif (Cache::has("setting_absent_{$key}")) {
+            $lu = ['present' => false, 'valeur' => null];
+        } else {
+            $setting = static::where('key', $key)->where('is_active', true)->first();
+            $lu = [
+                'present' => (bool) $setting,
+                'valeur' => $setting ? static::castValue($setting->value, $setting->type) : null,
+            ];
+            if ($lu['valeur'] !== null) {
+                Cache::put("setting_{$key}", $lu['valeur'], 3600);
+            } elseif (! $lu['present']) {
+                Cache::put("setting_absent_{$key}", true, 300);
+            }
+        }
+
+        if (! app()->runningInConsole()) {
+            static::$memoire[$key] = $lu;
+        }
+
+        return $lu;
+    }
+
+    /** Retire une cle du cache et de la memoire de la requete. */
+    public static function oublier(string $key): void
+    {
+        unset(static::$memoire[$key]);
+        Cache::forget("setting_{$key}");
+        Cache::forget("setting_absent_{$key}");
+    }
+
+    /**
+     * Derniere journalisation par cle, en horodatage. Une panne de base touche
+     * des centaines de lectures par page : sans plafond, le journal noierait la
+     * cause.
+     *
+     * C'est une memoire de PROCESSUS. Sous PHP-FPM ou LiteSpeed, elle meurt
+     * avec la requete : le plafond y vaut une ligne par cle et par requete, pas
+     * par minute. Il ne vaut une ligne par cle et par minute que dans un
+     * processus qui dure — worker de file, commande longue. C'est pour lui que
+     * la memoire porte une echeance : sans elle, un worker vivant des heures
+     * tairait toute panne suivante sur une cle deja signalee.
+     */
+    private static array $replisJournalises = [];
+
+    private const INTERVALLE_JOURNAL_SECONDES = 60;
+
+    private static function journaliserRepliSurDefaut(string $key, \Throwable $e): void
+    {
+        $maintenant = now()->getTimestamp();
+        $dernier = static::$replisJournalises[$key] ?? null;
+        if ($dernier !== null && $maintenant - $dernier < self::INTERVALLE_JOURNAL_SECONDES) {
+            return;
+        }
+        static::$replisJournalises[$key] = $maintenant;
+
+        Log::warning('Reglage illisible en base : valeur par defaut servie.', [
+            'key' => $key,
+            'exception' => get_class($e),
+            'message' => $e->getMessage(),
+        ]);
+    }
+
+    /**
+     * Définit ou met à jour un paramètre.
+     *
+     * @param string $key
+     * @param mixed $value
+     * @param string $group
+     * @return bool
+     */
+    public static function set($key, $value, $userId = null)
+    {
+        try {
+            $setting = static::where('key', $key)->first();
+
+            if (!$setting) {
+                throw new \Exception("Configuration '{$key}' non trouvée");
+            }
+
+            // Validation de la valeur
+            if (!static::validateValue($value, $setting)) {
+                throw new \Exception("Valeur invalide pour la configuration '{$key}'");
+            }
+
+            // Sauvegarde automatique avant modification
+            static::createAutoBackup($userId);
+
+            $setting->update([
+                'value' => $value,
+                'updated_by' => $userId
+            ]);
+
+            // Vider le cache (avec gestion d'erreur)
+            try {
+                static::oublier((string) $key);
+            } catch (\Exception $e) {
+                // Ignorer les erreurs de cache
+            }
+
+            Log::info("Configuration mise à jour", [
+                'key' => $key,
+                'value' => $value,
+                'user_id' => $userId
+            ]);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Erreur lors de la mise à jour de la configuration", [
+                'key' => $key,
+                'error' => $e->getMessage()
+            ]);
+
+            throw $e;
+        }
+    }
+
+    public static function getByGroup($group)
+    {
+        try {
+            $cacheKey = "settings_group_{$group}";
+
+            return Cache::remember($cacheKey, 3600, function () use ($group) {
+                return static::where('group', $group)
+                    ->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->get()
+                    ->mapWithKeys(function ($setting) {
+                        return [$setting->key => static::castValue($setting->value, $setting->type)];
+                    });
+            });
+        } catch (\Exception $e) {
+            // Fallback sans cache
+            return static::where('group', $group)
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->get()
+                ->mapWithKeys(function ($setting) {
+                    return [$setting->key => static::castValue($setting->value, $setting->type)];
+                });
+        }
+    }
+
+    public static function getByCategory($category)
+    {
+        try {
+            $cacheKey = "settings_category_{$category}";
+
+            return Cache::remember($cacheKey, 3600, function () use ($category) {
+                return static::where('category', $category)
+                    ->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->get();
+            });
+        } catch (\Exception $e) {
+            // Fallback sans cache
+            return static::where('category', $category)
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->get();
+        }
+    }
+
+    // Vérification des configurations requises
+    public static function checkRequiredSettings()
+    {
+        $missing = static::where('is_required', true)
+            ->where('is_active', true)
+            ->where(function ($query) {
+                $query->whereNull('value')
+                    ->orWhere('value', '')
+                    ->orWhere('value', '[]')
+                    ->orWhere('value', '{}');
+            })
+            ->get();
+
+        return $missing;
+    }
+
+    // Validation des valeurs
+    protected static function validateValue($value, $setting)
+    {
+        if (!$setting->validation_rules) {
+            return true;
+        }
+
+        $validator = Validator::make(
+            ['value' => $value],
+            ['value' => $setting->validation_rules]
+        );
+
+        return !$validator->fails();
+    }
+
+    // Cast des valeurs selon le type
+    protected static function castValue($value, $type)
+    {
+        switch ($type) {
+            case 'boolean':
+                return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+            case 'integer':
+                return (int) $value;
+            case 'float':
+                return (float) $value;
+            case 'json':
+                return json_decode($value, true);
+            case 'array':
+                return is_array($value) ? $value : json_decode($value, true);
+            default:
+                return $value;
+        }
+    }
+
+    // Sauvegarde automatique
+    protected static function createAutoBackup($userId = null)
+    {
+        try {
+            $settings = static::all()->toArray();
+
+            SettingsBackup::create([
+                'backup_name' => 'Auto Backup - ' . now()->format('Y-m-d H:i:s'),
+                'description' => 'Sauvegarde automatique avant modification',
+                'settings_data' => $settings,
+                'backup_type' => 'automatic',
+                'backup_date' => now(),
+                'created_by' => $userId ?? 1
+            ]);
+
+            // Nettoyer les anciennes sauvegardes automatiques (garder les 10 dernières)
+            $oldBackups = SettingsBackup::where('backup_type', 'automatic')
+                ->orderBy('backup_date', 'desc')
+                ->skip(10)
+                ->take(100)
+                ->get();
+
+            foreach ($oldBackups as $backup) {
+                $backup->delete();
+            }
+
+        } catch (\Exception $e) {
+            Log::warning("Impossible de créer une sauvegarde automatique", [
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    // Vider tous les caches
+    public static function clearCache()
+    {
+        try {
+            $groups = static::distinct('group')->pluck('group');
+            $categories = static::distinct('category')->whereNotNull('category')->pluck('category');
+            $keys = static::pluck('key');
+
+            foreach ($keys as $key) {
+                try {
+                    static::oublier((string) $key);
+                } catch (\Exception $e) {
+                    // Ignorer les erreurs de cache individuelles
+                }
+            }
+
+            foreach ($groups as $group) {
+                try {
+                    Cache::forget("settings_group_{$group}");
+                } catch (\Exception $e) {
+                    // Ignorer les erreurs de cache individuelles
+                }
+            }
+
+            foreach ($categories as $category) {
+                try {
+                    Cache::forget("settings_category_{$category}");
+                } catch (\Exception $e) {
+                    // Ignorer les erreurs de cache individuelles
+                }
+            }
+        } catch (\Exception $e) {
+            // Ignorer les erreurs de cache globales
+            Log::warning("Erreur lors du nettoyage du cache des settings", [
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    // Événements du modèle
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saved(function ($setting) {
+            try {
+                static::oublier((string) $setting->key);
+                Cache::forget("settings_group_{$setting->group}");
+                if ($setting->category) {
+                    Cache::forget("settings_category_{$setting->category}");
+                }
+            } catch (\Exception $e) {
+                // Ignorer les erreurs de cache
+            }
+        });
+
+        static::deleted(function ($setting) {
+            try {
+                static::oublier((string) $setting->key);
+                Cache::forget("settings_group_{$setting->group}");
+                if ($setting->category) {
+                    Cache::forget("settings_category_{$setting->category}");
+                }
+            } catch (\Exception $e) {
+                // Ignorer les erreurs de cache
+            }
+        });
+    }
+
+    /**
+     * Définit un paramètre ou le crée s'il n'existe pas
+     *
+     * @param string $key
+     * @param mixed $value
+     * @param string $group
+     * @param string $type
+     * @return bool
+     */
+    public static function setOrCreate($key, $value, $group = 'general', $type = 'string')
+    {
+        try {
+            $setting = static::updateOrCreate(
+                ['key' => $key],
+                [
+                    'value' => $value,
+                    'group' => $group,
+                    'type' => $type,
+                    'is_active' => true,
+                    'updated_by' => auth()->id()
+                ]
+            );
+
+            // Vider le cache (avec gestion d'erreur)
+            try {
+                static::oublier((string) $key);
+                Cache::forget("settings_group_{$group}");
+            } catch (\Exception $e) {
+                // Ignorer les erreurs de cache
+            }
+
+            Log::info("Configuration mise à jour ou créée", [
+                'key' => $key,
+                'value' => $value,
+                'group' => $group,
+                'user_id' => auth()->id(),
+                'action' => $setting->wasRecentlyCreated ? 'created' : 'updated'
+            ]);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Erreur lors de la création/mise à jour de la configuration '{$key}'", [
+                'error' => $e->getMessage(),
+                'key' => $key,
+                'value' => $value,
+                'group' => $group
+            ]);
+            return false;
+        }
+    }
+}

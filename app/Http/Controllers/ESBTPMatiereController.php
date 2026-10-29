@@ -1,0 +1,1235 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Domain\BtsTroncCommun\LiaisonsDeMatiere;
+use App\Models\ESBTPClasse;
+use App\Models\ESBTPFiliere;
+use App\Models\ESBTPMatiere;
+use App\Models\ESBTPNiveauEtude;
+use App\Services\LMD\CodeDeMatiere;
+use App\Support\ListeInfinie;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
+
+class ESBTPMatiereController extends Controller
+{
+    /**
+     * Affiche la liste des matières.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index(Request $request)
+    {
+        // La suite de la liste : ses lignes seules, sans compteurs ni filtres.
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse(
+                $this->prepareMatieresListing($request, false)['matieres'],
+                fn ($matiere) => view('esbtp.matieres.partials.matiere-row', compact('matiere'))->render(),
+            );
+        }
+
+        $listing = $this->prepareMatieresListing($request);
+
+        $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
+        $niveaux = ESBTPNiveauEtude::where('is_active', true)
+            ->whereNotIn('type', \App\Models\ESBTPNiveauEtude::CYCLES_LMD) // Exclure niveaux LMD
+            ->orderBy('name')->get();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('esbtp.matieres.partials.results', [
+                    'matieres' => $listing['matieres'],
+                ])->render(),
+                'url' => $request->fullUrl(),
+                'summary' => $listing['summary'],
+                'kpis' => $listing['kpis'],
+            ]);
+        }
+
+        return view('esbtp.matieres.index', [
+            'matieres' => $listing['matieres'],
+            'filieres' => $filieres,
+            'niveaux' => $niveaux,
+            'summary' => $listing['summary'],
+            'kpis' => $listing['kpis'],
+            'filters' => [
+                'search' => $request->input('search', ''),
+                'filiere_filter' => $request->input('filiere_filter'),
+                'niveau_filter' => $request->input('niveau_filter'),
+                'statut_filter' => $request->input('statut_filter'),
+                'coefficient_min' => $request->input('coefficient_min'),
+                'coefficient_max' => $request->input('coefficient_max'),
+                'heures_min' => $request->input('heures_min'),
+                'heures_max' => $request->input('heures_max'),
+            ],
+        ]);
+    }
+
+    /**
+     * Rafraîchit la liste des matières sans recharger toute la page.
+     */
+    public function refresh(Request $request)
+    {
+        $listing = $this->prepareMatieresListing($request);
+
+        $navUrl = route('esbtp.matieres.index');
+        if ($request->getQueryString()) {
+            $navUrl .= '?'.$request->getQueryString();
+        }
+
+        return response()->json([
+            'html' => view('esbtp.matieres.partials.results', [
+                'matieres' => $listing['matieres'],
+            ])->render(),
+            'url' => $navUrl,
+            'summary' => $listing['summary'],
+            'kpis' => $listing['kpis'],
+        ]);
+    }
+
+    /**
+     * Rafraîchit uniquement la ligne d'une matière.
+     */
+    public function refreshLigne(ESBTPMatiere $matiere)
+    {
+        try {
+            $matiere->load([
+                'filieres:id,name,code',
+                'niveaux:id,name,code',
+                'liaisonsFilieresNiveaux.filiere:id,name,code',
+                'liaisonsFilieresNiveaux.niveauEtude:id,name,code',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'html' => view('esbtp.matieres.partials.matiere-row', [
+                    'matiere' => $matiere,
+                ])->render(),
+                'matiere_id' => $matiere->id,
+            ]);
+        } catch (\Throwable $throwable) {
+            \Log::error('Erreur lors du rafraîchissement de la matière', [
+                'matiere_id' => $matiere->id,
+                'error' => $throwable->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de rafraîchir la matière demandée.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Prépare la requête paginée des matières avec les filtres applicables.
+     *
+     * @return array{matieres:\Illuminate\Contracts\Pagination\LengthAwarePaginator,summary:array<string,int|null>}
+     */
+    private function prepareMatieresListing(Request $request, bool $avecKpis = true): array
+    {
+        $search = trim((string) $request->input('search'));
+        $filiere = $request->input('filiere_filter');
+        $niveau = $request->input('niveau_filter');
+        $statut = $request->input('statut_filter');
+        $coefficientMin = $request->input('coefficient_min');
+        $coefficientMax = $request->input('coefficient_max');
+        $heuresMin = $request->input('heures_min');
+        $heuresMax = $request->input('heures_max');
+        $perPage = min(100, max(1, (int) $request->input('per_page', 15)));
+
+        $totalHeuresExpression = 'COALESCE(heures_cm, 0) + COALESCE(heures_td, 0) + COALESCE(heures_tp, 0) + COALESCE(heures_stage, 0) + COALESCE(heures_perso, 0)';
+
+        $query = ESBTPMatiere::query()
+            ->whereNull('unite_enseignement_id') // Exclure les ECUE LMD (gérés dans ue.index)
+            ->with([
+                'filieres:id,name,code',
+                'niveaux:id,name,code',
+                'liaisonsFilieresNiveaux.filiere:id,name,code',
+                'liaisonsFilieresNiveaux.niveauEtude:id,name,code',
+            ])
+            ->orderBy('name')
+            // Departage stable : la liste se charge par tranches.
+            ->orderBy('esbtp_matieres.id');
+
+        // Filtres filière+niveau via pivot canonique (esbtp_matiere_filiere_niveau).
+        // Si les 2 filtres sont actifs → seules les matières liées à CETTE
+        // combinaison filière+niveau apparaissent (AND strict sur la même ligne du pivot).
+        // Si un seul filtre est actif → fallback sur la relation simple.
+        if ($filiere && $niveau) {
+            $query->whereHas('liaisonsFilieresNiveaux', function ($q) use ($filiere, $niveau) {
+                $q->where('filiere_id', $filiere)
+                  ->where('niveau_etude_id', $niveau);
+            });
+        } elseif ($filiere) {
+            $query->whereHas('liaisonsFilieresNiveaux', function ($q) use ($filiere) {
+                $q->where('filiere_id', $filiere);
+            });
+        } elseif ($niveau) {
+            $query->whereHas('liaisonsFilieresNiveaux', function ($q) use ($niveau) {
+                $q->where('niveau_etude_id', $niveau);
+            });
+        }
+
+        if ($statut !== null && $statut !== '') {
+            $query->where('is_active', $statut === '1');
+        }
+
+        if ($coefficientMin !== null && $coefficientMin !== '') {
+            $query->where('coefficient', '>=', (float) $coefficientMin);
+        }
+
+        if ($coefficientMax !== null && $coefficientMax !== '') {
+            $query->where('coefficient', '<=', (float) $coefficientMax);
+        }
+
+        if ($heuresMin !== null && $heuresMin !== '') {
+            $query->whereRaw("{$totalHeuresExpression} >= ?", [(float) $heuresMin]);
+        }
+
+        if ($heuresMax !== null && $heuresMax !== '') {
+            $query->whereRaw("{$totalHeuresExpression} <= ?", [(float) $heuresMax]);
+        }
+
+        if ($search !== '') {
+            // Recherche restreinte aux champs propres de la matière. Pour filtrer
+            // par filière ou niveau, l'utilisateur dispose des dropdowns dédiés
+            // (filiere_filter / niveau_filter). L'élargissement aux relations
+            // produisait des résultats contre-intuitifs : taper "Marketing"
+            // retournait toutes les matières liées à la filière Marketing au
+            // lieu de la seule matière dont le nom contient "Marketing".
+            $query->where(function ($q) use ($search) {
+                $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search).'%';
+
+                $q->where('name', 'like', $like)
+                    ->orWhere('code', 'like', $like)
+                    ->orWhere('description', 'like', $like);
+            });
+        }
+
+        // KPIs calculés sur la base filtrée (cohérent avec inscriptions/paiements
+        // premium). Une seule query avec agrégats conditionnels au lieu de 4 :
+        // -3 round-trips DB par render et par AJAX refresh sur cette page.
+        // reorder() retire l'ORDER BY name (incompatible avec SUM/COUNT global
+        // sur MariaDB strict mode).
+        $kpis = [];
+        if ($avecKpis) {
+            $row = (clone $query)
+                ->withoutEagerLoads()
+                ->reorder()
+                ->selectRaw("
+                    COUNT(*) AS total,
+                    SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS actifs,
+                    SUM(CASE WHEN EXISTS (
+                        SELECT 1 FROM esbtp_matiere_filiere_niveau
+                        WHERE esbtp_matiere_filiere_niveau.matiere_id = esbtp_matieres.id
+                    ) THEN 1 ELSE 0 END) AS avec_liaisons,
+                    SUM({$totalHeuresExpression}) AS heures_totales
+                ")
+                ->first();
+
+            $kpis = [
+                'total'           => (int) ($row->total ?? 0),
+                'actifs'          => (int) ($row->actifs ?? 0),
+                'avec_liaisons'   => (int) ($row->avec_liaisons ?? 0),
+                'heures_totales'  => (int) ($row->heures_totales ?? 0),
+            ];
+            $kpis['inactifs']     = $kpis['total'] - $kpis['actifs'];
+            $kpis['sans_liaison'] = $kpis['total'] - $kpis['avec_liaisons'];
+        }
+
+        $matieres = $query->paginate($perPage)->withQueryString();
+
+        return [
+            'matieres' => $matieres,
+            'summary' => [
+                'total' => $matieres->total(),
+                'page' => $matieres->currentPage(),
+                'per_page' => $matieres->perPage(),
+                'from' => $matieres->firstItem(),
+                'to' => $matieres->lastItem(),
+            ],
+            'kpis' => $kpis,
+        ];
+    }
+
+    /**
+     * Affiche le formulaire de création d'une nouvelle matière.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create(Request $request)
+    {
+        $this->authorize('create', ESBTPMatiere::class);
+
+        $filieres = ESBTPFiliere::where('is_active', true)->get();
+        $niveauxEtudes = ESBTPNiveauEtude::whereNotIn('type', \App\Models\ESBTPNiveauEtude::CYCLES_LMD)->get();
+        $unitesEnseignement = collect(); // Collection vide temporaire
+
+        // Récupérer les paramètres de pré-sélection depuis l'URL
+        $preselectedFiliereId = $request->get('filiere_id');
+        $preselectedNiveauId = $request->get('niveau_id');
+
+        return view('esbtp.matieres.create', compact(
+            'filieres',
+            'niveauxEtudes',
+            'unitesEnseignement',
+            'preselectedFiliereId',
+            'preselectedNiveauId'
+        ));
+    }
+
+    /**
+     * Enregistre une nouvelle matière dans la base de données.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request, LiaisonsDeMatiere $service, CodeDeMatiere $codes)
+    {
+        // Valider les données du formulaire
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            // Une matiere supprimee ne bloque pas son code : CodeDeMatiere le libere.
+            'code' => ['nullable', 'string', 'max:50', Rule::unique('esbtp_matieres', 'code')->whereNull('deleted_at')],
+            'description' => 'nullable|string',
+            'coefficient' => 'nullable|numeric|min:0',
+            'niveau_etude_id' => 'nullable|exists:esbtp_niveau_etudes,id',
+            'filiere_id' => 'nullable|exists:esbtp_filieres,id',
+            'liaisons' => 'nullable|array',
+            'liaisons.*.filiere_id' => 'required_with:liaisons|exists:esbtp_filieres,id',
+            'liaisons.*.niveau_id' => 'required_with:liaisons|exists:esbtp_niveau_etudes,id',
+            'type_formation' => 'required|in:generale,technologique_professionnelle',
+            'couleur' => 'nullable|string|max:50',
+            'is_active' => 'required|boolean',
+        ]);
+
+        if (empty($validatedData['code'])) {
+            $validatedData['code'] = $codes->genererDepuisLeNom($validatedData['name']);
+        }
+
+        // Default coefficient if not provided
+        if (!isset($validatedData['coefficient']) || $validatedData['coefficient'] === null) {
+            $validatedData['coefficient'] = 1;
+        }
+
+        // Ajouter l'identifiant de l'utilisateur courant
+        $validatedData['created_by'] = Auth::id();
+        $validatedData['updated_by'] = Auth::id();
+
+        // Créer la nouvelle matière, en liberant le code d'une matiere supprimee.
+        [$matiere, $codeLibere] = $codes->ecrireEnLiberant('code', $validatedData['code'], null, fn () => ESBTPMatiere::create($validatedData));
+
+        // CE FORMULAIRE N'A QU'UN SEUL MODE, ET C'EST UNE CORRECTION.
+        //
+        // Il a porte une branche « deux listes independantes » — des filieres,
+        // des niveaux — dont le produit etait ecrit dans les deux pivots plats
+        // PUIS dans le pivot canonique. Le formulaire ne l'emet plus depuis
+        // qu'il se remplit couple par couple : son inventaire complet est
+        // `name`, `code`, `description`, `couleur`, `is_active`,
+        // `type_formation`, et les `liaisons[i][...]` injectes par son script.
+        //
+        // La branche etait donc morte, mais son cout n'etait pas le code mort :
+        // trois paragraphes la justifiaient en decrivant un ecran qui n'existe
+        // plus (« Apercu des combinaisons »), sur l'invariant central de ce
+        // chantier — qui a le droit d'ecrire `esbtp_matiere_filiere_niveau`.
+        // Le prochain lecteur en aurait conclu que cet ecran en est un
+        // ecrivain legitime, et serait alle chercher la contamination ailleurs.
+        //
+        // Les pivots plats restent tenus, mais par `LiaisonsDeMatiere::poser()`
+        // et en AJOUT seulement : c'est lui qui sait ce qu'il ecrit.
+
+        // Mode liaisons précises (couples filière × niveau du formulaire de
+        // création). Le rattachement, avec sa tenue des pivots plats, vit dans
+        // `LiaisonsDeMatiere` : c'était ici la troisième copie, et elle
+        // utilisait `create()` — donc un doublon levait une erreur là où les
+        // deux autres copies ne faisaient rien.
+        if ($request->has('liaisons') && is_array($request->liaisons)) {
+            foreach ($request->liaisons as $liaison) {
+                if (empty($liaison['filiere_id']) || empty($liaison['niveau_id'])) {
+                    continue;
+                }
+
+                $service->poser(
+                    (int) $matiere->id,
+                    (int) $liaison['filiere_id'],
+                    (int) $liaison['niveau_id'],
+                );
+            }
+        }
+
+        // Rediriger avec un message de succès
+        return redirect()->route('esbtp.matieres.index')
+            ->with('success', trim('La matière a été créée avec succès. ' . ($codeLibere ?? '')));
+    }
+
+    /**
+     * Affiche les détails d'une matière spécifique.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function show(ESBTPMatiere $matiere)
+    {
+        // Charger les relations
+        $matiere->load(['filieres', 'niveaux', 'createdBy', 'updatedBy', 'enseignants']);
+
+        // Récupérer l'année universitaire courante
+        $anneeUniversitaireCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        // Récupérer les évaluations de cette matière pour l'année courante uniquement
+        $evaluationsQuery = $matiere->evaluations()->with(['classe', 'enseignant']);
+        if ($anneeUniversitaireCourante) {
+            $evaluationsQuery->where('annee_universitaire_id', $anneeUniversitaireCourante->id);
+        }
+        $evaluations = $evaluationsQuery->orderBy('date_evaluation', 'desc')->get();
+
+        // Récupérer les données de planification académique pour cette matière
+        $enseignantsAssignes = collect();
+        $parametresPlanning = [];
+        $planifications = collect(); // Initialiser comme collection vide
+
+        if ($anneeUniversitaireCourante) {
+            // Récupérer toutes les planifications pour cette matière et année
+            // en ciblant toutes les combinaisons filière/niveau configurées
+            $planifications = \App\Models\ESBTPPlanificationAcademique::where('matiere_id', $matiere->id)
+                ->where('annee_universitaire_id', $anneeUniversitaireCourante->id)
+                ->with(['enseignantPrincipal', 'filiere', 'niveauEtude'])
+                ->get();
+
+            // Calculer les totaux des volumes horaires depuis la planification
+            $totalVolumeHoraire = $planifications->sum('volume_horaire_total');
+            $totalHeuresCM = $planifications->sum('volume_horaire_cm');
+            $totalHeuresTD = $planifications->sum('volume_horaire_td');
+            $totalHeuresTP = $planifications->sum('volume_horaire_tp');
+            $totalHeuresStage = $planifications->sum('heures_stage');
+            $totalHeuresPerso = $planifications->sum('heures_perso');
+
+            $parametresPlanning = [
+                'volume_horaire_total' => $totalVolumeHoraire,
+                'heures_cm' => $totalHeuresCM,
+                'heures_td' => $totalHeuresTD,
+                'heures_tp' => $totalHeuresTP,
+                'heures_stage' => $totalHeuresStage,
+                'heures_perso' => $totalHeuresPerso,
+                'planifications_count' => $planifications->count(),
+            ];
+
+            foreach ($planifications as $planification) {
+                // Récupérer les enseignants assignés via la table de liaison esbtp_planification_teachers
+                $enseignantsLies = \Illuminate\Support\Facades\DB::table('esbtp_planification_teachers')
+                    ->join('esbtp_teachers', 'esbtp_planification_teachers.teacher_id', '=', 'esbtp_teachers.id')
+                    ->join('users', 'esbtp_teachers.user_id', '=', 'users.id')
+                    ->where('esbtp_planification_teachers.planification_id', $planification->id)
+                    ->select('users.*', 'esbtp_teachers.id as teacher_id')
+                    ->get();
+
+                foreach ($enseignantsLies as $enseignant) {
+                    $enseignantsAssignes->push([
+                        'enseignant' => (object) $enseignant,
+                        'filiere' => $planification->filiere,
+                        'niveau' => $planification->niveauEtude,
+                        'planification_id' => $planification->id,
+                        'volume_horaire' => $planification->volume_horaire_total,
+                    ]);
+                }
+
+                // Fallback : si pas d'enseignant dans la table de liaison, essayer enseignant_principal_id
+                if ($enseignantsLies->isEmpty() && $planification->enseignantPrincipal) {
+                    $enseignantsAssignes->push([
+                        'enseignant' => $planification->enseignantPrincipal,
+                        'filiere' => $planification->filiere,
+                        'niveau' => $planification->niveauEtude,
+                        'planification_id' => $planification->id,
+                        'volume_horaire' => $planification->volume_horaire_total,
+                    ]);
+                }
+            }
+        }
+
+        // Récupérer les séances de cours pour cette matière depuis les emplois du temps actifs de l'année courante
+        $seances = collect();
+        if ($anneeUniversitaireCourante) {
+            $seances = \App\Models\ESBTPSeanceCours::where('matiere_id', $matiere->id)
+                ->whereHas('emploiTemps', function ($query) use ($anneeUniversitaireCourante) {
+                    $query->where('annee_universitaire_id', $anneeUniversitaireCourante->id)
+                        ->where('is_current', true);
+                })
+                ->with(['emploiTemps.classe', 'teacher'])
+                ->orderBy('jour')
+                ->orderBy('heure_debut')
+                ->get();
+        }
+
+        $enseignantsParPlanification = $enseignantsAssignes
+            ->groupBy('planification_id')
+            ->map(function ($items) {
+                $first = $items->first();
+
+                return [
+                    'filiere' => $first['filiere'],
+                    'niveau' => $first['niveau'],
+                    'volume_horaire' => $first['volume_horaire'],
+                    'enseignants' => $items->pluck('enseignant')->unique('id')->values(),
+                ];
+            })
+            ->values();
+
+        return view('esbtp.matieres.show', compact('matiere', 'evaluations', 'enseignantsAssignes', 'enseignantsParPlanification', 'anneeUniversitaireCourante', 'parametresPlanning', 'seances', 'planifications'));
+    }
+
+    /**
+     * Une ECUE LMD ne se modifie pas par les ecrans BTS.
+     *
+     * `prepareMatieresListing()` les ecarte de l'index, donc le lien n'est
+     * jamais offert — mais la liaison de modele de route, elle, resout
+     * n'importe quel identifiant : /esbtp/matieres/174/edit s'ouvrait. Et
+     * l'enregistrement qui suit ecrit le produit filieres x niveaux dans le
+     * pivot canonique BTS, c'est-a-dire exactement la ligne qui fait sortir une
+     * ECUE sur un bulletin. Les ECUE se gerent dans /esbtp/lmd/ue.
+     *
+     * Symetrique de la garde que le cote LMD pose depuis toujours
+     * (`ESBTPLMDPlanningController` refuse en 422 une matiere sans unite).
+     */
+    private function refuserUneEcueLmd(ESBTPMatiere $matiere): void
+    {
+        abort_if(
+            $matiere->unite_enseignement_id !== null,
+            404,
+            "Cette matière est un élément constitutif LMD : elle se gère dans /esbtp/lmd/ue.",
+        );
+    }
+
+    /**
+     * Affiche le formulaire de modification d'une matière.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function edit(ESBTPMatiere $matiere)
+    {
+        $this->refuserUneEcueLmd($matiere);
+
+        // $this->authorize('update', $matiere); // Temporairement désactivé pour test
+
+        $filieres = ESBTPFiliere::where('is_active', true)->get();
+        $niveauxEtudes = ESBTPNiveauEtude::whereNotIn('type', \App\Models\ESBTPNiveauEtude::CYCLES_LMD)->get();
+        $unitesEnseignement = collect(); // Collection vide temporaire
+
+        // La maquette REELLE de cette matiere, telle que le bulletin la lit.
+        //
+        // Cet ecran ne l'ecrit pas, et celui de creation non plus : la maquette
+        // ne s'ecrit que couple par couple. Il la MONTRE, et renvoie vers celui
+        // qui sait la modifier. Auparavant il affichait a la place le produit cartesien des
+        // deux listes cochees, qui invente des combinaisons que la maquette ne
+        // porte pas : l'ecran promettait donc un rattachement qu'il n'avait pas
+        // les moyens de tenir, et l'enregistrement le posait pour de bon.
+        $couplesDeLaMaquette = $matiere->liaisonsFilieresNiveaux
+            ->map(fn ($liaison) => [
+                'filiere_id' => (int) $liaison->filiere_id,
+                'niveau_id' => (int) $liaison->niveau_etude_id,
+                'filiere' => optional($filieres->firstWhere('id', $liaison->filiere_id))->name
+                    ?? 'Filière #'.$liaison->filiere_id,
+                'niveau' => optional($niveauxEtudes->firstWhere('id', $liaison->niveau_etude_id))->name
+                    ?? 'Niveau #'.$liaison->niveau_etude_id,
+            ])
+            ->sortBy([['filiere', 'asc'], ['niveau', 'asc']])
+            ->values()
+            ->all();
+
+        return view('esbtp.matieres.edit', compact(
+            'matiere',
+            'filieres',
+            'niveauxEtudes',
+            'unitesEnseignement',
+            'couplesDeLaMaquette',
+        ));
+    }
+
+    /**
+     * Met à jour la matière spécifiée dans la base de données.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, ESBTPMatiere $matiere, CodeDeMatiere $codes)
+    {
+        $this->refuserUneEcueLmd($matiere);
+
+        // Valider les données du formulaire
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'code' => ['required', 'string', 'max:50', Rule::unique('esbtp_matieres', 'code')->ignore($matiere->id)->whereNull('deleted_at')],
+            'description' => 'nullable|string',
+            'coefficient' => 'required|numeric|min:0',
+            'niveau_etude_id' => 'nullable|exists:esbtp_niveau_etudes,id',
+            'filiere_id' => 'nullable|exists:esbtp_filieres,id',
+            // Ce que le formulaire envoie reellement. Leur absence de cette
+            // liste laissait `update()` ne lire que les deux cles au singulier,
+            // qui n'existent nulle part dans ce formulaire.
+            'filieres' => 'sometimes|array',
+            'filieres.*' => 'integer|exists:esbtp_filieres,id',
+            'niveaux' => 'sometimes|array',
+            'niveaux.*' => 'integer|exists:esbtp_niveau_etudes,id',
+            'liaisons_presentes' => 'sometimes|boolean',
+            'type_formation' => 'nullable|in:generale,technologique_professionnelle',
+            'couleur' => 'nullable|string|max:50',
+            'is_active' => 'required|boolean',
+        ]);
+
+        // `$validatedData` alimente `$matiere->update()` : les deux listes n'y
+        // ont pas leur place, elles se posent par leurs relations juste apres.
+        unset($validatedData['filieres'], $validatedData['niveaux'], $validatedData['liaisons_presentes']);
+
+        // Ajouter l'identifiant de l'utilisateur courant
+        $validatedData['updated_by'] = Auth::id();
+
+        // Mettre à jour la matière, en liberant le code d'une matiere supprimee.
+        [, $codeLibere] = $codes->ecrireEnLiberant('code', $validatedData['code'], (int) $matiere->id, fn () => $matiere->update($validatedData));
+
+        $this->synchroniserLesPivotsPlats($request, $matiere);
+
+        // CET ECRAN N'ECRIT PAS LA MAQUETTE, ET C'EST UNE CORRECTION.
+        //
+        // La premiere version de ce correctif y posait le PRODUIT CARTESIEN des
+        // deux listes — la meme faute que `SyncMatiereFilireNiveau` porte en
+        // avertissement dans son en-tete. Les cases sont precochees depuis les
+        // deux pivots plats, dont le produit sur-rapporte : une matiere en
+        // filieres [A, B] et niveaux [1, 2] dont la maquette ne porte que (A,1)
+        // gagnait (A,2), (B,1) et (B,2) au premier enregistrement venu, donc
+        // trois apparitions au bulletin de classes que personne n'a nommees.
+        // L'ecran l'annoncait, mais il ne savait pas RETIRER : deux listes ne
+        // decrivent pas un ensemble de couples qui n'est pas un rectangle
+        // plein. C'etait donc une roue a cliquet sur la table que lit le
+        // bulletin, et la porte meme que ce chantier existe pour fermer.
+        //
+        // La maquette s'edite la ou elle se VOIT, couple par couple :
+        // `/esbtp/matieres/classification`, vers lequel la fiche pointe
+        // maintenant, presélectionné sur les couples de cette matiere.
+        //
+        // La creation non plus n'ecrit la maquette : son formulaire poste des
+        // couples nommes (`liaisons[]`), jamais deux listes a croiser.
+
+        // Rediriger avec un message de succès
+        return redirect()->route('esbtp.matieres.index')
+            ->with('success', trim('La matière a été mise à jour avec succès. ' . ($codeLibere ?? '')));
+    }
+
+    /**
+     * Pose les deux listes du formulaire dans les pivots plats, et les rend.
+     *
+     * Le formulaire envoie `filieres[]` et `niveaux[]`. L'ancien code ne lisait
+     * que `filiere_id` et `niveau_etude_id`, absents de ce formulaire : les
+     * deux tests étaient donc toujours faux, les deux branches `else`
+     * s'exécutaient, et enregistrer une matière détachait TOUTES ses filières
+     * et TOUS ses niveaux, quoi qu'on ait coché.
+     *
+     * `liaisons_presentes` est le témoin posé par le formulaire. Sans lui,
+     * « aucune case cochée » et « champ absent » arrivent identiques, et on ne
+     * peut pas distinguer « tout retirer » d'une mise à jour partielle qui ne
+     * parle pas des liaisons.
+     *
+     * @return array{0: list<int>|null, 1: list<int>|null}
+     */
+    private function synchroniserLesPivotsPlats(Request $request, ESBTPMatiere $matiere): array
+    {
+        $listesSoumises = $request->boolean('liaisons_presentes');
+
+        $filiereIds = $this->identifiantsSoumis($request, 'filieres', 'filiere_id');
+        if ($filiereIds !== null || $listesSoumises) {
+            $matiere->filieres()->sync($filiereIds ?? []);
+        }
+
+        $niveauIds = $this->identifiantsSoumis($request, 'niveaux', 'niveau_etude_id');
+        if ($niveauIds !== null || $listesSoumises) {
+            $matiere->niveaux()->sync($niveauIds ?? []);
+        }
+
+        return [$filiereIds, $niveauIds];
+    }
+
+    /**
+     * Les identifiants qu'une requête pose pour une liste (filières, niveaux).
+     *
+     * Accepte la liste au pluriel comme la clé historique au singulier.
+     * Rend `null` quand la requête ne dit rien de cette liste — ce qui n'est
+     * pas la même chose qu'une liste vide, et c'est toute la différence entre
+     * « ne touche à rien » et « détache tout ».
+     *
+     * @return list<int>|null
+     */
+    private function identifiantsSoumis(Request $request, string $cleListe, string $cleUnique): ?array
+    {
+        if ($request->has($cleListe) && is_array($request->input($cleListe))) {
+            return array_values(array_unique(array_filter(
+                array_map('intval', $request->input($cleListe)),
+            )));
+        }
+
+        if ($request->filled($cleUnique)) {
+            return [(int) $request->input($cleUnique)];
+        }
+
+        return null;
+    }
+
+    /**
+     * Supprime la matière spécifiée de la base de données.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy(ESBTPMatiere $matiere)
+    {
+        // Détacher toutes les relations
+        $matiere->filieres()->detach();
+        $matiere->niveaux()->detach();
+        $matiere->classes()->detach();
+        $matiere->enseignants()->detach();
+
+        // Supprimer la matière
+        $matiere->delete();
+
+        // Rediriger avec un message de succès
+        return redirect()->route('esbtp.matieres.index')
+            ->with('success', 'La matière a été supprimée avec succès.');
+    }
+
+    /**
+     * Affiche le formulaire pour attacher des matières à une classe
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function showAttachForm()
+    {
+        return view('esbtp.matieres.attach-to-classe');
+    }
+
+    /**
+     * Associe des matières à une classe spécifique (méthode utilitaire)
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function attachToClasse(Request $request)
+    {
+        $validated = $request->validate([
+            'classe_id' => 'required|exists:esbtp_classes,id',
+            'matieres' => 'required|array',
+            'matieres.*' => 'exists:esbtp_matieres,id',
+        ]);
+
+        $classe = \App\Models\ESBTPClasse::findOrFail($validated['classe_id']);
+
+        // Préparation des données pour l'attachement
+        $matieresData = [];
+        foreach ($validated['matieres'] as $matiereId) {
+            $matiere = \App\Models\ESBTPMatiere::findOrFail($matiereId);
+            $matieresData[$matiereId] = [
+                'coefficient' => $matiere->coefficient_default ?? 1.0,
+                'total_heures' => $matiere->total_heures_default ?? 30,
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        // Attacher les matières à la classe
+        $classe->matieres()->attach($matieresData);
+
+        return redirect()->route('esbtp.classes.matieres', ['classe' => $classe->id])
+            ->with('success', count($matieresData).' matière(s) ajoutée(s) à la classe avec succès.');
+    }
+
+    /**
+     * Renvoie la liste des matières au format JSON pour les appels AJAX
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function getMatieresJson()
+    {
+        try {
+            \Log::info('Méthode getMatieresJson appelée');
+
+            // Log whether the model exists and is accessible
+            try {
+                $matieresCount = \App\Models\ESBTPMatiere::count();
+                \Log::info('Test de connexion à la table des matières réussi. Nombre total de matières (toutes): '.$matieresCount);
+            } catch (\Exception $dbEx) {
+                \Log::error('Erreur lors de l\'accès à la table des matières: '.$dbEx->getMessage());
+            }
+
+            // Vérifier si la colonne is_active existe
+            $hasIsActiveColumn = Schema::hasColumn('esbtp_matieres', 'is_active');
+
+            // Construire la requête en fonction de la disponibilité de la colonne
+            $query = \App\Models\ESBTPMatiere::query();
+            if ($hasIsActiveColumn) {
+                $query->where('is_active', true);
+            }
+
+            $matieres = $query->select('id', 'name', 'code', 'coefficient')
+                ->orderBy('name')
+                ->get();
+
+            \Log::info('Nombre de matières trouvées: '.$matieres->count());
+
+            if ($matieres->isEmpty()) {
+                \Log::warning('Aucune matière active trouvée');
+
+                return response()->json([]);
+            }
+
+            $formatted = $matieres->map(function ($matiere) {
+                return [
+                    'id' => $matiere->id,
+                    'name' => $matiere->name ?? $matiere->nom ?? 'Matière '.$matiere->id,
+                    'code' => $matiere->code ?? '',
+                    'coefficient' => $matiere->coefficient ?? 1,
+                ];
+            });
+
+            return response()->json($formatted);
+        } catch (\Exception $e) {
+            \Log::error('Erreur dans getMatieresJson: '.$e->getMessage());
+
+            return response()->json(['error' => 'Une erreur est survenue lors de la récupération des matières'], 500);
+        }
+    }
+
+    /**
+     * Renvoie toutes les matières actives en format JSON
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function getAllMatieresJson()
+    {
+        $matieres = \App\Models\ESBTPMatiere::where('is_active', true)->get();
+
+        $formattedMatieres = $matieres->map(function ($matiere) {
+            return [
+                'id' => $matiere->id,
+                'name' => $matiere->name ?? $matiere->nom ?? 'Matière '.$matiere->id,
+                'code' => $matiere->code ?? '',
+                'coefficient' => $matiere->coefficient ?? 1,
+            ];
+        });
+
+        return response()->json($formattedMatieres);
+    }
+
+    /**
+     * Supprime plusieurs matières en masse.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function bulkDelete(Request $request)
+    {
+        // Valider les données
+        $request->validate([
+            'matieres' => 'required|array',
+            'matieres.*' => 'exists:esbtp_matieres,id',
+        ]);
+
+        $count = 0;
+
+        // Supprimer chaque matière
+        foreach ($request->matieres as $id) {
+            $matiere = ESBTPMatiere::find($id);
+
+            if ($matiere) {
+                // Vérifier si la matière peut être supprimée (pas de dépendances)
+                $canDelete = true;
+
+                // Ajouter ici des vérifications supplémentaires si nécessaire
+                // Par exemple, vérifier si la matière est utilisée dans des emplois du temps, des évaluations, etc.
+
+                if ($canDelete) {
+                    $matiere->delete();
+                    $count++;
+                }
+            }
+        }
+
+        if ($count > 0) {
+            return redirect()->route('esbtp.matieres.index')
+                ->with('success', $count.' matière(s) supprimée(s) avec succès.');
+        } else {
+            return redirect()->route('esbtp.matieres.index')
+                ->with('error', 'Aucune matière n\'a pu être supprimée. Vérifiez qu\'elles ne sont pas utilisées ailleurs.');
+        }
+    }
+
+    /**
+     * Affiche l'interface d'attachement des matières aux classes.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function attachToClasses(Request $request)
+    {
+        $selectedMatieres = collect();
+        if ($request->has('matieres')) {
+            $matiereIds = explode(',', $request->matieres);
+            $selectedMatieres = ESBTPMatiere::whereIn('id', $matiereIds)->get();
+        }
+
+        $matieres = ESBTPMatiere::with(['filieres', 'niveaux'])->get();
+        $classes = ESBTPClasse::with(['filiere', 'niveau'])->get();
+        $filieres = ESBTPFiliere::where('is_active', true)->get();
+        $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
+
+        return view('esbtp.matieres.attach-to-classes', compact('matieres', 'classes', 'filieres', 'niveaux', 'selectedMatieres'));
+    }
+
+    /**
+     * Attache les matières sélectionnées aux classes sélectionnées.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function processAttachToClasses(Request $request)
+    {
+        $request->validate([
+            'matiere_ids' => 'required|array',
+            'matiere_ids.*' => 'exists:esbtp_matieres,id',
+            'classe_ids' => 'required|array',
+            'classe_ids.*' => 'exists:esbtp_classes,id',
+            'coefficient' => 'required|numeric|min:0',
+            'total_heures' => 'required|integer|min:0',
+        ]);
+
+        $matiereIds = $request->matiere_ids;
+        $classeIds = $request->classe_ids;
+        $coefficient = $request->coefficient;
+        $totalHeures = $request->total_heures;
+
+        foreach ($classeIds as $classeId) {
+            $classe = ESBTPClasse::find($classeId);
+            foreach ($matiereIds as $matiereId) {
+                $classe->matieres()->syncWithoutDetaching([
+                    $matiereId => [
+                        'coefficient' => $coefficient,
+                        'total_heures' => $totalHeures,
+                        'is_active' => true,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ],
+                ]);
+            }
+        }
+
+        return redirect()->back()->with('success', 'Les matières ont été attachées aux classes avec succès.');
+    }
+
+    /**
+     * Récupère les liaisons existantes d'une matière (filières et niveaux).
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getLiaisons(ESBTPMatiere $matiere)
+    {
+        try {
+            $liaisons = \App\Models\ESBTPMatiereFilierNiveau::where('matiere_id', $matiere->id)
+                ->get(['filiere_id', 'niveau_etude_id'])
+                ->map(fn($l) => ['filiere_id' => $l->filiere_id, 'niveau_id' => $l->niveau_etude_id])
+                ->values()
+                ->toArray();
+
+            return response()->json([
+                'success' => true,
+                'liaisons' => $liaisons,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la récupération des liaisons: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des liaisons',
+            ], 500);
+        }
+    }
+
+    /**
+     * Met à jour les liaisons d'une matière avec les combinaisons filière+niveau sélectionnées.
+     * Format attendu : { "liaisons": [ {"filiere_id": 1, "niveau_id": 1}, ... ] }
+     *
+     * `present` et NON `required`, et la nuance est tout le sujet. La clé ABSENTE
+     * est une requête malformée (que `?? []` transformait en « retire-les tous ») :
+     * 422. La liste VIDE est une instruction : l'écran propose « tout retirer »,
+     * ouvre une confirmation qui annonce « Cela supprimera toutes les liaisons
+     * existantes », puis poste `liaisons: []`. `required` refusait les deux.
+     *
+     * PAS DE GARDE `is_array()` ICI, ET C'EST MESURÉ (commit cbac675). La règle
+     * `array` semble sautée quand la valeur vaut `''` — `Array` n'est pas une règle
+     * implicite, donc `presentOrRuleIsImplicit()` l'ignore. Mais
+     * `ConvertEmptyStringsToNull` est dans la pile GLOBALE du Kernel : `''` arrive
+     * en `null`, et `array` le refuse. `''`, `null`, `'x'`, `3`, `true` et la clé
+     * absente rendent 422 ; seule `[]` passe, et retire tout. Un `abort()` posé ici
+     * serait du code mort, et piégé : son `HttpException` hérite d'`Exception`,
+     * le `catch (\Exception)` ci-dessous en ferait un 500. Le garde qui ne dépend
+     * de rien est le TYPE `array` de `LiaisonsDeMatiere::appliquerLEnsembleVoulu()`.
+     * `MaquetteBtsRefuseUneEcueTest` gèle la matrice des sept entrées.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateLiaisons(Request $request, ESBTPMatiere $matiere, LiaisonsDeMatiere $service)
+    {
+        try {
+            $validated = $request->validate([
+                'liaisons'              => 'present|array',
+                'liaisons.*.filiere_id' => 'required|exists:esbtp_filieres,id',
+                'liaisons.*.niveau_id'  => 'required|exists:esbtp_niveau_etudes,id',
+            ]);
+
+            $voulues = $service->appliquerLEnsembleVoulu($matiere, $validated['liaisons']);
+
+            return response()->json([
+                'success' => true,
+                'message' => $voulues > 0
+                    ? "Liaisons mises à jour avec succès ! {$voulues} combinaison(s) configurée(s)."
+                    : 'Liaisons mises à jour avec succès ! Toutes les liaisons ont été supprimées.',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Données invalides: '.implode(', ', $e->validator->errors()->all()),
+            ], 422);
+        } catch (\InvalidArgumentException $e) {
+            // `poser()` refuse une ECUE LMD. La règle vit là-bas, en UN endroit :
+            // ce contrôleur n'a pas à savoir ce qu'est une ECUE, il rend le refus lisible.
+            \Log::warning('Rattachement refuse par le domaine.', [
+                'matiere_id' => (int) $matiere->id,
+                'raison' => $e->getMessage(),
+                'user_id' => optional(auth()->user())->id,
+            ]);
+
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la mise à jour des liaisons: '.$e->getMessage());
+
+            return response()->json(['success' => false, 'message' => 'Erreur lors de la sauvegarde des liaisons'], 500);
+        }
+    }
+
+    /**
+     * Récupère les statistiques de liaisons pour une matière.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getStatistiquesLiaisons(ESBTPMatiere $matiere)
+    {
+        try {
+            $matiere->load(['filieres', 'niveaux', 'classes']);
+
+            $stats = [
+                'filieres_count' => $matiere->filieres->count(),
+                'niveaux_count' => $matiere->niveaux->count(),
+                'classes_count' => $matiere->classes->count(),
+                'combinations_count' => $matiere->filieres->count() * $matiere->niveaux->count(),
+                'filieres_names' => $matiere->filieres->pluck('name')->toArray(),
+                'niveaux_names' => $matiere->niveaux->pluck('name')->toArray(),
+            ];
+
+            return response()->json([
+                'success' => true,
+                'stats' => $stats,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la récupération des statistiques: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des statistiques',
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupère TOUTES les matières actives pour les assigner à une combinaison.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getAvailableForCombination(Request $request)
+    {
+        try {
+            $filiereId = $request->get('filiere_id');
+            $niveauId = $request->get('niveau_id');
+
+            if (! $filiereId || ! $niveauId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Les IDs filière et niveau sont requis',
+                ], 400);
+            }
+
+            // Récupérer les IDs des matières déjà liées en une seule requête
+            $linkedMatiereIds = \App\Models\ESBTPMatiereFilierNiveau::matiereIdsForCombo($filiereId, $niveauId)->toArray();
+
+            // Toutes les matières actives — BTS uniquement. Ce listing est
+            // GLOBAL (aucun filtre filière/niveau) : sans cette garde, les
+            // ECUE LMD y apparaissent et peuvent être rattachées à une
+            // maquette BTS, où plus rien ne sait les lire.
+            $matieres = ESBTPMatiere::where('is_active', true)
+                ->whereNull('unite_enseignement_id')
+                ->select('id', 'name', 'code', 'description', 'coefficient', 'heures_cm', 'heures_td', 'heures_tp')
+                ->orderBy('name')
+                ->get()
+                ->map(function ($matiere) use ($linkedMatiereIds) {
+                    $matiere->total_heures = $matiere->heures_cm + $matiere->heures_td + $matiere->heures_tp;
+                    $matiere->is_already_linked = in_array($matiere->id, $linkedMatiereIds);
+                    return $matiere;
+                });
+
+            return response()->json([
+                'success' => true,
+                'matieres' => $matieres,
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la récupération des matières: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des matières',
+            ], 500);
+        }
+    }
+
+    /**
+     * Ajoute des matières à une ou plusieurs combinaisons filière/niveau.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function addToCombination(Request $request, LiaisonsDeMatiere $service)
+    {
+        $request->validate([
+            'matiere_ids' => 'required|array',
+            'matiere_ids.*' => 'exists:esbtp_matieres,id',
+            'combinations' => 'required|array|min:1',
+            'combinations.*.filiere_id' => 'required|exists:esbtp_filieres,id',
+            'combinations.*.niveau_id' => 'required|exists:esbtp_niveau_etudes,id',
+        ]);
+
+        try {
+            $matiereIds = $request->matiere_ids;
+            $combinations = $request->combinations;
+            $addedCount = 0;
+
+            // Le rattachement, avec sa tenue des pivots plats, vit dans
+            // `LiaisonsDeMatiere` : il était recopié ici, et les deux copies
+            // avaient déjà commencé à diverger.
+            DB::transaction(function () use ($matiereIds, $combinations, $service, &$addedCount) {
+                // `getAvailableForCombination`, le lecteur jumeau, ecarte deja
+                // les ECUE LMD. L'ecrivain, lui, ne le faisait pas : garder la
+                // soumission revenait a garder la porte ouverte et a n'en
+                // fermer que l'affiche. Une page restee ouverte, un rejeu, un
+                // appel en masse suffisaient a poser une ECUE dans une maquette
+                // BTS — ou plus aucun ecran ne sait ensuite l'atteindre.
+                $matieres = ESBTPMatiere::whereIn('id', $matiereIds)->btsOnly()->get()->keyBy('id');
+
+                foreach ($matiereIds as $matiereId) {
+                    if (! $matieres->get($matiereId)) {
+                        // Un refus muet ne se cherche pas : on dit lequel, et
+                        // d'ou il venait.
+                        \Log::warning('Rattachement a une maquette BTS refuse : matiere absente ou ECUE LMD.', [
+                            'matiere_id' => (int) $matiereId,
+                            'user_id' => optional(auth()->user())->id,
+                        ]);
+
+                        continue;
+                    }
+
+                    foreach ($combinations as $combo) {
+                        $service->poser(
+                            (int) $matiereId,
+                            (int) $combo['filiere_id'],
+                            (int) $combo['niveau_id'],
+                        );
+                    }
+                    $addedCount++;
+                }
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => "{$addedCount} matière(s) ajoutée(s) avec succès aux combinaisons sélectionnées.",
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de l\'ajout des matières: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'ajout des matières',
+            ], 500);
+        }
+    }
+
+    /**
+     * API pour récupérer la liste des matières
+     * Utilisée pour les dropdowns et sélections AJAX
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function apiList(Request $request)
+    {
+        try {
+            // Listing GLOBAL : les filtres filiere/niveau ci-dessous sont
+            // optionnels, et le consommateur connu (la saisie de moyenne du
+            // bulletin) n'en passe aucun. Sans cette garde il propose les ECUE
+            // LMD a cote des matieres BTS.
+            $query = ESBTPMatiere::where('is_active', true)->btsOnly();
+
+            // Filtrer par terme de recherche si fourni
+            if ($request->has('search') && $request->search) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('code', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                });
+            }
+
+            // Filtres filière+niveau via pivot canonique pour combinaison stricte AND
+            $filiereId = $request->input('filiere_id');
+            $niveauId = $request->input('niveau_id');
+            if ($filiereId && $niveauId) {
+                $query->whereHas('liaisonsFilieresNiveaux', function ($q) use ($filiereId, $niveauId) {
+                    $q->where('filiere_id', $filiereId)
+                      ->where('niveau_etude_id', $niveauId);
+                });
+            } elseif ($filiereId) {
+                $query->whereHas('liaisonsFilieresNiveaux', fn ($q) => $q->where('filiere_id', $filiereId));
+            } elseif ($niveauId) {
+                $query->whereHas('liaisonsFilieresNiveaux', fn ($q) => $q->where('niveau_etude_id', $niveauId));
+            }
+
+            $matieres = $query->select('id', 'name', 'code', 'description', 'coefficient')
+                ->orderBy('name')
+                ->get();
+
+            return response()->json($matieres);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la récupération des matières via API: '.$e->getMessage());
+
+            return response()->json([
+                'error' => 'Erreur lors du chargement des matières',
+            ], 500);
+        }
+    }
+
+    /**
+     * Associe un enseignant à une matière via la planification académique
+     */
+    public function associateEnseignant(Request $request, ESBTPMatiere $matiere)
+    {
+        return back()->with('info', 'Pour associer un enseignant à cette matière, veuillez utiliser le module Planning Général. Cela permet une gestion centralisée et cohérente des affectations.')
+            ->with('planning_link', route('esbtp.planning-general.repartition-matieres'));
+    }
+
+    /**
+     * Dissocie un enseignant d'une matière via la planification académique
+     */
+    public function dissociateEnseignant(Request $request, ESBTPMatiere $matiere)
+    {
+        return back()->with('info', 'Pour modifier les affectations d\'enseignants, veuillez utiliser le module Planning Général. Cela garantit la cohérence avec la planification académique.')
+            ->with('planning_link', route('esbtp.planning-general.repartition-matieres'));
+    }
+}

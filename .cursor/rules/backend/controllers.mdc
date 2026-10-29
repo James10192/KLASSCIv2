@@ -1,0 +1,37 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# BACKEND CONTROLLER STANDARDS
+[base.mdc](mdc:.cursor/rules/base.mdc)
+
+Description: Standards for API controllers
+Globs: src/controllers/**/*.{js,ts} | app/controllers/**/*.{rb,py}
+
+## CONTROLLER RESPONSIBILITIES
+- Controllers should be thin and focused on HTTP concerns
+- Delegate business logic to services/use cases
+- Handle request validation, authorization, and response formatting
+- Follow RESTful conventions when appropriate
+
+## API DESIGN
+- Use consistent URL patterns (/resources/{id}/subresources)
+- Apply appropriate HTTP methods (GET, POST, PUT, DELETE)
+- Return appropriate status codes
+- Implement consistent error responses
+- Include pagination for collection endpoints
+- Support filtering and sorting where appropriate
+
+## SECURITY
+- Validate all input parameters
+- Implement proper authorization checks
+- Sanitize data before returning to clients
+- Use rate limiting for public endpoints
+- Log security-relevant events
+
+## PERFORMANCE
+- Keep response times under 300ms when possible
+- Implement caching for frequently accessed data
+- Use pagination for large data sets
+- Consider implementing ETags for caching

@@ -1,0 +1,508 @@
+{
+  "classes": [
+    {
+      "libelle": "2A BTS L Batiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 46
+    },
+    {
+      "libelle": "2A BTS P Bâtiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 41
+    },
+    {
+      "libelle": "2A BTS B Travaux Publics",
+      "filiere": "TRAVAUX_PUBLICS",
+      "niveau": "2A",
+      "effectif": 38
+    },
+    {
+      "libelle": "2A BTS A Batiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 35
+    },
+    {
+      "libelle": "2A BTS S Bâtiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 43
+    },
+    {
+      "libelle": "2A BTS D Batiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 43
+    },
+    {
+      "libelle": "1A BTS E Bâtiment",
+      "filiere": "BATIMENT",
+      "niveau": "1A",
+      "effectif": 34
+    },
+    {
+      "libelle": "L2 Transport, Infrastructure et Rout",
+      "filiere": "TRANSPORT",
+      "niveau": "L2",
+      "effectif": 15
+    },
+    {
+      "libelle": "2A BTS C Batiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 57
+    },
+    {
+      "libelle": "2A BTS O Bâtiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 53
+    },
+    {
+      "libelle": "2A BTS G Batiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 26
+    },
+    {
+      "libelle": "1A BTS A Bâtiment",
+      "filiere": "BATIMENT",
+      "niveau": "1A",
+      "effectif": 41
+    },
+    {
+      "libelle": "2A BTS C Travaux Publics",
+      "filiere": "TRAVAUX_PUBLICS",
+      "niveau": "2A",
+      "effectif": 74
+    },
+    {
+      "libelle": "1A BTS A Travaux Publics",
+      "filiere": "TRAVAUX_PUBLICS",
+      "niveau": "1A",
+      "effectif": 28
+    },
+    {
+      "libelle": "2A BTS B Batiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 29
+    },
+    {
+      "libelle": "2A BTS A Travaux Publics",
+      "filiere": "TRAVAUX_PUBLICS",
+      "niveau": "2A",
+      "effectif": 31
+    },
+    {
+      "libelle": "2A BTS F Travaux Publics",
+      "filiere": "TRAVAUX_PUBLICS",
+      "niveau": "2A",
+      "effectif": 38
+    },
+    {
+      "libelle": "2A BTS N Bâtiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 37
+    },
+    {
+      "libelle": "1A BTS D Bâtiment",
+      "filiere": "BATIMENT",
+      "niveau": "1A",
+      "effectif": 41
+    },
+    {
+      "libelle": "1A BTS C Bâtiment",
+      "filiere": "BATIMENT",
+      "niveau": "1A",
+      "effectif": 49
+    },
+    {
+      "libelle": "1A BTS D Géomètre Topographe",
+      "filiere": "GEOMETRE_TOPOGRAPHE",
+      "niveau": "1A",
+      "effectif": 32
+    },
+    {
+      "libelle": "2A BTS H Batiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 35
+    },
+    {
+      "libelle": "1A BTS A Mines Géologie Pétrole",
+      "filiere": "AUTRES",
+      "niveau": "1A",
+      "effectif": 32
+    },
+    {
+      "libelle": "2A BTS E Batiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 36
+    },
+    {
+      "libelle": "1A BTS L Bâtiment",
+      "filiere": "BATIMENT",
+      "niveau": "1A",
+      "effectif": 18
+    },
+    {
+      "libelle": "1A BTS B Travaux Publics",
+      "filiere": "TRAVAUX_PUBLICS",
+      "niveau": "1A",
+      "effectif": 38
+    },
+    {
+      "libelle": "2A BTS Q Bâtiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 44
+    },
+    {
+      "libelle": "2A BTS I Batiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 52
+    },
+    {
+      "libelle": "1A BTS I Bâtiment",
+      "filiere": "BATIMENT",
+      "niveau": "1A",
+      "effectif": 36
+    },
+    {
+      "libelle": "2A BTS B Géomètre Topographe",
+      "filiere": "GEOMETRE_TOPOGRAPHE",
+      "niveau": "2A",
+      "effectif": 40
+    },
+    {
+      "libelle": "2A BTS T Bâtiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 37
+    },
+    {
+      "libelle": "L3 Géomètre et Topographe",
+      "filiere": "GEOMETRE_TOPOGRAPHE",
+      "niveau": "L3",
+      "effectif": 16
+    },
+    {
+      "libelle": "L3 Bâtiment et Urbanisme",
+      "filiere": "BATIMENT",
+      "niveau": "L3",
+      "effectif": 39
+    },
+    {
+      "libelle": "1A BTS R Bâtiment",
+      "filiere": "BATIMENT",
+      "niveau": "1A",
+      "effectif": 7
+    },
+    {
+      "libelle": "1A BTS B Bâtiment",
+      "filiere": "BATIMENT",
+      "niveau": "1A",
+      "effectif": 40
+    },
+    {
+      "libelle": "2A BTS A Géomètre Topographe",
+      "filiere": "GEOMETRE_TOPOGRAPHE",
+      "niveau": "2A",
+      "effectif": 34
+    },
+    {
+      "libelle": "2A BTS H Travaux Publics",
+      "filiere": "TRAVAUX_PUBLICS",
+      "niveau": "2A",
+      "effectif": 26
+    },
+    {
+      "libelle": "L1 Licence1 Travaux Publiques",
+      "filiere": "AUTRES",
+      "niveau": "L1",
+      "effectif": 20
+    },
+    {
+      "libelle": "1A BTS G Travaux Publics",
+      "filiere": "TRAVAUX_PUBLICS",
+      "niveau": "1A",
+      "effectif": 3
+    },
+    {
+      "libelle": "2A BTS U Batiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 29
+    },
+    {
+      "libelle": "1A BTS D Travaux Publics",
+      "filiere": "TRAVAUX_PUBLICS",
+      "niveau": "1A",
+      "effectif": 29
+    },
+    {
+      "libelle": "L3 Bâtiment et Urbanisme Jour",
+      "filiere": "BATIMENT",
+      "niveau": "L3",
+      "effectif": 30
+    },
+    {
+      "libelle": "1A BTS J Bâtiment",
+      "filiere": "BATIMENT",
+      "niveau": "1A",
+      "effectif": 19
+    },
+    {
+      "libelle": "2A BTS I Travaux Publics",
+      "filiere": "TRAVAUX_PUBLICS",
+      "niveau": "2A",
+      "effectif": 39
+    },
+    {
+      "libelle": "Master1  Bâtiment & Urbanisme",
+      "filiere": "BATIMENT",
+      "niveau": "M1",
+      "effectif": 22
+    },
+    {
+      "libelle": "2A BTS R Batiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 39
+    },
+    {
+      "libelle": "1A BTS H Bâtiment",
+      "filiere": "BATIMENT",
+      "niveau": "1A",
+      "effectif": 38
+    },
+    {
+      "libelle": "2A BTS D Géomètre Topographe",
+      "filiere": "GEOMETRE_TOPOGRAPHE",
+      "niveau": "2A",
+      "effectif": 33
+    },
+    {
+      "libelle": "1A BTS A Géomètre Topographe",
+      "filiere": "GEOMETRE_TOPOGRAPHE",
+      "niveau": "1A",
+      "effectif": 28
+    },
+    {
+      "libelle": "L2A  Bâtiment et Urbanisme",
+      "filiere": "BATIMENT",
+      "niveau": "L2",
+      "effectif": 39
+    },
+    {
+      "libelle": "L3 Transport, Infrastructure et Route Jour",
+      "filiere": "TRANSPORT",
+      "niveau": "L3",
+      "effectif": 19
+    },
+    {
+      "libelle": "1A BTS O Bâtiment",
+      "filiere": "BATIMENT",
+      "niveau": "1A",
+      "effectif": 21
+    },
+    {
+      "libelle": "1A BTS C Travaux Publics",
+      "filiere": "TRAVAUX_PUBLICS",
+      "niveau": "1A",
+      "effectif": 33
+    },
+    {
+      "libelle": "1A BTS C Géomètre Topographe",
+      "filiere": "GEOMETRE_TOPOGRAPHE",
+      "niveau": "1A",
+      "effectif": 20
+    },
+    {
+      "libelle": "L1A  Bâtiment et Urbanisme",
+      "filiere": "BATIMENT",
+      "niveau": "L1",
+      "effectif": 43
+    },
+    {
+      "libelle": "1A BTS Bâtiment (Soir)",
+      "filiere": "BATIMENT",
+      "niveau": "1A",
+      "effectif": 9
+    },
+    {
+      "libelle": "2A BTS C Géomètre Topographe",
+      "filiere": "GEOMETRE_TOPOGRAPHE",
+      "niveau": "2A",
+      "effectif": 26
+    },
+    {
+      "libelle": "1A BTS B Géomètre Topographe",
+      "filiere": "GEOMETRE_TOPOGRAPHE",
+      "niveau": "1A",
+      "effectif": 59
+    },
+    {
+      "libelle": "L3 Bâtiment et Urbanisme Soir",
+      "filiere": "BATIMENT",
+      "niveau": "L3",
+      "effectif": 35
+    },
+    {
+      "libelle": "2A BTS E Travaux Publics",
+      "filiere": "TRAVAUX_PUBLICS",
+      "niveau": "2A",
+      "effectif": 29
+    },
+    {
+      "libelle": "2A BTS G Travaux Publics",
+      "filiere": "TRAVAUX_PUBLICS",
+      "niveau": "2A",
+      "effectif": 35
+    },
+    {
+      "libelle": "2A BTS V Bâtiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 8
+    },
+    {
+      "libelle": "2A BTS A Mines Géologie et Pétrole",
+      "filiere": "AUTRES",
+      "niveau": "2A",
+      "effectif": 21
+    },
+    {
+      "libelle": "2A BTS D Travaux Publics",
+      "filiere": "TRAVAUX_PUBLICS",
+      "niveau": "2A",
+      "effectif": 44
+    },
+    {
+      "libelle": "2A BTS F Géomètre Topographe",
+      "filiere": "GEOMETRE_TOPOGRAPHE",
+      "niveau": "2A",
+      "effectif": 38
+    },
+    {
+      "libelle": "1A BTS Bâtiment (Soir.)",
+      "filiere": "BATIMENT",
+      "niveau": "1A",
+      "effectif": 7
+    },
+    {
+      "libelle": "2A BTS M Batiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 26
+    },
+    {
+      "libelle": "1A BTS E Travaux Publics",
+      "filiere": "TRAVAUX_PUBLICS",
+      "niveau": "1A",
+      "effectif": 24
+    },
+    {
+      "libelle": "1A BTS G Bâtiment",
+      "filiere": "BATIMENT",
+      "niveau": "1A",
+      "effectif": 27
+    },
+    {
+      "libelle": "1A BTS F Bâtiment",
+      "filiere": "BATIMENT",
+      "niveau": "1A",
+      "effectif": 35
+    },
+    {
+      "libelle": "L3 Transport, Infrastructure et Route Soir",
+      "filiere": "TRANSPORT",
+      "niveau": "L3",
+      "effectif": 9
+    },
+    {
+      "libelle": "2A BTS K Batiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 29
+    },
+    {
+      "libelle": "2A BTS J Batiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 26
+    },
+    {
+      "libelle": "2A BTS Bâtiment (Soir)",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 6
+    },
+    {
+      "libelle": "2A BTS F Batiment",
+      "filiere": "BATIMENT",
+      "niveau": "2A",
+      "effectif": 49
+    },
+    {
+      "libelle": "1A BTS F Travaux Publics",
+      "filiere": "TRAVAUX_PUBLICS",
+      "niveau": "1A",
+      "effectif": 33
+    },
+    {
+      "libelle": "L3 Transport, Infrastructure et Rout",
+      "filiere": "TRANSPORT",
+      "niveau": "L3",
+      "effectif": 10
+    },
+    {
+      "libelle": "Master2 Bâtiement et Urbanisme",
+      "filiere": "AUTRES",
+      "niveau": "5A",
+      "effectif": 1
+    }
+  ],
+  "filieres": [
+    "BATIMENT",
+    "TRAVAUX_PUBLICS",
+    "TRANSPORT",
+    "GEOMETRE_TOPOGRAPHE",
+    "AUTRES"
+  ],
+  "niveaux": [
+    "2A",
+    "1A",
+    "L2",
+    "L3",
+    "L1",
+    "M1",
+    "5A"
+  ],
+  "stats": {
+    "total_etudiants": 2451,
+    "total_classes": 78,
+    "filieres_count": {
+      "BATIMENT": 1456,
+      "TRAVAUX_PUBLICS": 542,
+      "TRANSPORT": 53,
+      "GEOMETRE_TOPOGRAPHE": 326,
+      "AUTRES": 74
+    },
+    "niveaux_count": {
+      "2A": 1372,
+      "1A": 781,
+      "L2": 54,
+      "L3": 158,
+      "L1": 63,
+      "M1": 22,
+      "5A": 1
+    }
+  }
+}

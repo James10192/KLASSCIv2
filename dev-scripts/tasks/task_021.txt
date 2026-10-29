@@ -1,0 +1,62 @@
+# Task ID: 21
+# Title: Implement Department and Laboratory View Models, Controllers, and Sidebar Navigation
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Create view models and controllers for Department and Laboratory modules, and integrate them into the application's sidebar navigation in app.blade.php.
+# Details:
+This task involves several components:
+
+1. Create view models for both Department and Laboratory:
+   - Implement DepartmentViewModel and LaboratoryViewModel classes
+   - Include necessary properties for data binding
+   - Implement validation rules and error handling
+   - Add any required data transformation methods
+
+2. Develop controllers for both modules:
+   - Create DepartmentController and LaboratoryController classes
+   - Implement CRUD operations (index, create, store, show, edit, update, destroy)
+   - Add proper request validation
+   - Implement appropriate response handling and redirects
+   - Ensure proper authorization checks are in place
+
+3. Update the sidebar navigation in app.blade.php:
+   - Add new menu items for Department and Laboratory
+   - Use appropriate icons that match the application's design system
+   - Implement proper routing links to the new controllers
+   - Ensure the sidebar items are only visible to users with appropriate permissions
+   - Maintain consistent styling with existing sidebar elements
+
+4. Create necessary blade views for both modules:
+   - index.blade.php (listing view)
+   - create.blade.php and edit.blade.php (forms)
+   - show.blade.php (details view)
+
+Ensure all components follow the existing application architecture patterns and coding standards.
+
+# Test Strategy:
+Testing should cover all implemented components:
+
+1. Unit Tests:
+   - Test view model validation rules with valid and invalid data
+   - Test controller methods return correct responses
+   - Verify proper authorization checks in controllers
+
+2. Integration Tests:
+   - Test the complete CRUD workflow for both Department and Laboratory
+   - Verify database operations work correctly
+   - Test relationships between these models and existing models
+
+3. UI/Navigation Tests:
+   - Verify sidebar items appear correctly for users with appropriate permissions
+   - Confirm sidebar items are hidden for unauthorized users
+   - Test that clicking sidebar links navigates to the correct pages
+   - Verify breadcrumb navigation works correctly with the new routes
+
+4. Manual Testing:
+   - Navigate through all new pages to verify UI consistency
+   - Test responsive design on different screen sizes
+   - Verify that form validation messages appear correctly
+   - Test with different user roles to ensure proper access control
+
+Document any issues found during testing with screenshots and detailed reproduction steps.

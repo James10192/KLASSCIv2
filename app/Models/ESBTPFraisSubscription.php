@@ -1,0 +1,321 @@
+<?php
+
+namespace App\Models;
+
+use App\Services\FraisScopeResolver;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use OwenIt\Auditing\Contracts\Auditable;
+
+class ESBTPFraisSubscription extends Model implements Auditable
+{
+    use \Illuminate\Database\Eloquent\Factories\HasFactory;
+    use \OwenIt\Auditing\Auditable;
+
+    protected $table = 'esbtp_frais_subscriptions';
+
+    protected $fillable = [
+        'inscription_id',
+        'frais_category_id',
+        'selected_option_id',
+        'amount',
+        'is_active',
+        'satisfied_in_kind',
+        'deposited_at',
+        'deposited_by',
+        'subscribed_at',
+        'created_by',
+        'notes',
+    ];
+
+    protected $casts = [
+        'amount' => 'decimal:2',
+        'is_active' => 'boolean',
+        'satisfied_in_kind' => 'boolean',
+        'deposited_at' => 'datetime',
+        'subscribed_at' => 'datetime',
+    ];
+
+    protected $auditInclude = [
+        'inscription_id',
+        'frais_category_id',
+        'selected_option_id',
+        'amount',
+        'is_active',
+        'satisfied_in_kind',
+        'deposited_at',
+        'deposited_by',
+        'subscribed_at',
+        'notes',
+    ];
+
+    protected $auditEvents = [
+        'created',
+        'updated',
+        'deleted',
+        'restored',
+    ];
+
+    /**
+     * Marque l'ecriture en cours comme un realignement automatique sur le bareme.
+     *
+     * Sans ce marqueur, la regeneration ne pourrait pas distinguer ses propres
+     * ecritures d'une decision humaine : au deuxieme passage, chaque montant
+     * qu'elle a elle-meme corrige lui reviendrait signale « retouche a la main »,
+     * et l'alerte censee proteger les arrangements negocies se serait diluee
+     * dans le bruit jusqu'a ne plus rien vouloir dire.
+     *
+     * Transitoire : ne vit que le temps de l'appel a save().
+     */
+    public bool $realignementSurBareme = false;
+
+    /** Accord explicite et motivé d'un montant nul, uniquement pendant save(). */
+    public bool $exonerationExplicite = false;
+
+    public const TAG_REALIGNEMENT = 'frais:realignement-bareme';
+    public const TAG_EXONERATION = 'frais:exoneration-explicite';
+
+    /**
+     * @return array<int, string>
+     */
+    public function generateTags(): array
+    {
+        return array_values(array_filter([
+            $this->realignementSurBareme ? self::TAG_REALIGNEMENT : null,
+            $this->exonerationExplicite ? self::TAG_EXONERATION : null,
+        ]));
+    }
+
+    public function inscription(): BelongsTo
+    {
+        return $this->belongsTo(ESBTPInscription::class, 'inscription_id');
+    }
+
+    public function fraisCategory(): BelongsTo
+    {
+        return $this->belongsTo(ESBTPFraisCategory::class, 'frais_category_id');
+    }
+
+    public function selectedOption(): BelongsTo
+    {
+        return $this->belongsTo(ESBTPFraisOption::class, 'selected_option_id');
+    }
+
+    public function getFraisConfigurationAttribute()
+    {
+        if ($this->selected_option_id && $this->selectedOption) {
+            return $this->selectedOption->configuration
+                ?? $this->selectedOption->fraisConfiguration
+                ?? null;
+        }
+
+        $this->loadMissing('inscription.classe.parcours.mention.domaine');
+
+        if ($this->inscription) {
+            $scope = app(FraisScopeResolver::class)->resolveForInscription($this->inscription);
+            return ESBTPFraisConfiguration::getApplicableForScope($this->frais_category_id, $scope);
+        }
+
+        return ESBTPFraisConfiguration::where('frais_category_id', $this->frais_category_id)
+            ->where('is_active', true)
+            ->first();
+    }
+
+    public function getConfigurationNameAttribute()
+    {
+        $config = $this->frais_configuration;
+
+        return $config
+            ? ($config->fraisCategory->name ?? $this->fraisCategory?->name ?? 'N/A')
+            : ($this->fraisCategory ? $this->fraisCategory->name : 'N/A');
+    }
+
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function depositedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'deposited_by');
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopeCharged($query)
+    {
+        return $query->where('is_active', true)->where('satisfied_in_kind', false);
+    }
+
+    public function scopeInactive($query)
+    {
+        return $query->where('is_active', false);
+    }
+
+    public function scopeForInscription($query, $inscriptionId)
+    {
+        return $query->where('inscription_id', $inscriptionId);
+    }
+
+    public function scopeForCategory($query, $categoryId)
+    {
+        return $query->where('frais_category_id', $categoryId);
+    }
+
+    public static function isSubscribed($inscriptionId, $fraisCategoryId): bool
+    {
+        return self::where('inscription_id', $inscriptionId)
+            ->where('frais_category_id', $fraisCategoryId)
+            ->where('is_active', true)
+            ->exists();
+    }
+
+    public static function subscribe($inscriptionId, $fraisCategoryId, $amount, $userId, $notes = null)
+    {
+        // Ne jamais autoriser une seconde souscription à réécrire une
+        // décision de frais (remise, exonération, paiement), ni à écraser
+        // silencieusement une souscription déjà active.
+        $existante = self::query()->where('inscription_id', $inscriptionId)
+            ->where('frais_category_id', $fraisCategoryId)->first();
+        if ($existante && (
+            $existante->is_active
+            || app(\App\Domain\Comptabilite\Souscriptions\PreuveExonerationSouscription::class)->estProtegee($existante)
+        )) {
+            throw new \DomainException('Frais déjà souscrit ou protégé par une décision financière : utilisez un ajustement autorisé et audité.');
+        }
+
+        return self::updateOrCreate(
+            [
+                'inscription_id' => $inscriptionId,
+                'frais_category_id' => $fraisCategoryId,
+            ],
+            [
+                'amount' => $amount,
+                'is_active' => true,
+                'subscribed_at' => Carbon::now(),
+                'created_by' => $userId,
+                'notes' => $notes,
+            ]
+        );
+    }
+
+    public static function unsubscribe($inscriptionId, $fraisCategoryId)
+    {
+        return self::where('inscription_id', $inscriptionId)
+            ->where('frais_category_id', $fraisCategoryId)
+            ->update(['is_active' => false]);
+    }
+
+    public static function getActiveSubscriptions($inscriptionId)
+    {
+        return self::with(['fraisCategory'])
+            ->where('inscription_id', $inscriptionId)
+            ->where('is_active', true)
+            ->get();
+    }
+
+    public static function resolveSubscriptionsForStudentContext(ESBTPInscription $inscription)
+    {
+        return self::with(['fraisCategory', 'selectedOption', 'inscription.classe.parcours.mention.domaine'])
+            ->where('inscription_id', $inscription->id)
+            ->where('is_active', true)
+            ->get();
+    }
+
+    public static function getSubscribedOptionalFeesForInscription(ESBTPInscription $inscription)
+    {
+        return self::resolveSubscriptionsForStudentContext($inscription)
+            ->filter(fn (self $subscription) => optional($subscription->fraisCategory)->is_mandatory === false)
+            ->values();
+    }
+
+    public static function dueAmountForInscription($inscriptionId): float
+    {
+        return (float) self::where('inscription_id', $inscriptionId)
+            ->charged()
+            ->sum('amount');
+    }
+
+    public function chargedAmount(): float
+    {
+        return $this->satisfied_in_kind ? 0.0 : (float) $this->amount;
+    }
+
+    /**
+     * Ce frais est-il REGLE, au vu de ce qui a ete paye dessus ?
+     *
+     * La question vivait dans une methode privee de ESBTPPaiementController, ou
+     * elle s'ecrivait `$restant <= 0` avec `$restant = max(0, $du - $paye)`.
+     * Cette forme confond deux situations que rien ne rapproche : « le du est
+     * couvert » et « on ignore le du ». Quand la categorie n'a pas de montant
+     * configure, $du et $paye valent zero, le reste tombe a zero — et le recu
+     * cochait la ligne.
+     *
+     * Un montant nul veut dire INCONNU. Il ne prouve rien, et surtout pas un
+     * paiement. Un depot en nature, ou un montant reel integralement couvert,
+     * valent quittance : la coche dit que l'etudiant s'est acquitte. Le recu
+     * precise ensuite COMMENT (argent ou nature).
+     *
+     * Ici plutot que dans le controleur parce que c'est la souscription qui
+     * sait ce qu'elle reclame ; et parce que la regle se teste alors sans base
+     * de donnees, ce qui n'etait pas le cas d'une methode privee derriere une
+     * requete Eloquent.
+     */
+    public function estSolde(float $montantPaye): bool
+    {
+        if ($this->satisfied_in_kind) {
+            return true;
+        }
+
+        $du = $this->chargedAmount();
+
+        return $du > 0 && $montantPaye >= $du;
+    }
+
+    /**
+     * L'etablissement n'a pas encore dit ce que ce frais coute.
+     *
+     * A distinguer d'un frais a zero franc : ici il n'y a pas de montant du
+     * tout. Le recu l'affiche en toutes lettres, sans quoi la ligne sort vide —
+     * sans coche et sans chiffre — et le caissier ne peut pas trancher entre
+     * « rien a payer » et « montant pas encore defini ».
+     */
+    public function montantNonDefini(): bool
+    {
+        return ! $this->satisfied_in_kind && $this->chargedAmount() <= 0;
+    }
+
+    public static function getCategoryStats($fraisCategoryId)
+    {
+        return [
+            'total_subscriptions' => self::where('frais_category_id', $fraisCategoryId)
+                ->where('is_active', true)
+                ->count(),
+            'total_amount' => self::where('frais_category_id', $fraisCategoryId)
+                ->charged()
+                ->sum('amount'),
+            'average_amount' => self::where('frais_category_id', $fraisCategoryId)
+                ->charged()
+                ->avg('amount'),
+        ];
+    }
+
+    public function getFormattedAmountAttribute()
+    {
+        return number_format($this->amount, 0, ',', ' ') . ' FCFA';
+    }
+
+    public function getIsRecentAttribute()
+    {
+        return $this->subscribed_at->gt(Carbon::now()->subDay());
+    }
+
+    public function getStudentNameAttribute()
+    {
+        return $this->inscription->etudiant->nom . ' ' . $this->inscription->etudiant->prenom;
+    }
+}

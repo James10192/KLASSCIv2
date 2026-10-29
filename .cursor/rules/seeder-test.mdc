@@ -1,0 +1,74 @@
+---
+description: Regles de seeder
+globs: 
+alwaysApply: false
+---
+---
+description: Pas de seeders pour le superadmin c'est à lui même de créer son compte dans l'installation Enfin crée des seeders pour tout tester complètement de l'application (   * les filières (génie civile, mine - géologie - pétrole), il y a des sous éléments à génie civile qui sont : bâtiments, travaux 		publics,  géomètre topographe et urbanisme 		Résumé: Génie civil option BATIMENT, Génie civil option TRAVAUX PUBLICS, Génie civil option URBANISM, Génie civil option 		GEOMETRE-TOPOGRAPHE, MINE - GEOLOGIE - PETROLE  les niveaux d'études :          * BTS: première année BTS( ça dure 30 semaines), deuxième année BTS( ça dure 28 semaines). Sur chaque année il y a un nombre d'heures que doit faire chaque classe pour chaque matière que je renseignerai quand je citerais les différentes matières des différentes filières. 		 		La filière MINE - GEOLOGIE - PETROLE: Cet élément contient des matières subdivisé en deux groupes Formation Générale et Formation technologique et professionnelle. 			Formation Générale: Cet élement contient comme matières: Technique d'expression écrite et orale/communication/documentation(1ère année: 40 heures/2e année: 20 heures) - Anglais technique (1ere année: 40 heures/2e Année: 30 heures) - Economie et Gestion - Droit - Mathématiques - Physique (statique et résistance des matériaux) - Chimie Informatique appliqué - CAO/DAO - Entreprenariat                          Formation Technologie et professionnelle: Cet élément contient comme matières: Géologie générale - Calculs topométriques - Dessins plans topographiques - Travaux pratiques de topométrie - Topométrie appliquée - Lotissement - Travaux de photogramétrie/cartographie - Géodésie (canevas géodésiques) - Travaux d'aménagement foncier et cadastral( Droit foncier et cadastre) - Organisation et gestion des chantiers et des cabinets - Photographie aérienne (Cours, TD, TP) - Système d'informations géographiques - Télédetection - Travaux d'auscultation d'ouvrages et de génie civil - Informatique appliquée - Projet de fin d'études  )  Vérifies que tout a été fait que tout est okay, grep codebase pour une vérification complète et sûre
+globs: 
+---
+
+La liste de matière ci-dessous est prioritaire
+
+MATIERES DES FILIERES DE PREMIERE ANNEE
+
+BTS1 TRONC COMMUN
+Matières : Anglais, Chimie, Dessin Technique, Droit, Economie, Entrepreneuriat, EPS, Français, Géologie Générale, Geotechnique, Hydraulique Générale, Informatique, Maths, Physique (Mécanique), Statique-RDM, Technique Doc, Topographie.
+
+BTS1 BATIMENT
+Matières : Architecture, Dessin Bâtiment, Electricité, Géotechnique, Informatique, Matériaux, Métré et Etude de Prix, OGC, Sécurité, Statique RDM, Technologie du Bâtiment-Pathologie, Urbanisme.
+
+BTS1 GTP
+Matières : Hydrologie, Hydraulique, Géotechnique, Technique des Engins, IHH, RDM, Electricité, Sécurité, Matériaux, IGC, Informatique, GRV.
+
+BTS1 GGT
+Matières : Maths, Calcul Topo, Topo Générale, Electricité, Sécurité, Informatique, TP Topo.
+
+BTS1 MGP
+Matières : Electricité, Géochimie, Géologie Générale, Géologie Historique, Hydrologie, Informatique, Meca Sol, Meca-Roche, Minéralogie, Sécurité, Meca fluides, Topo minière.
+
+BTS1 URBANISME
+Matières : Architecture, Démographie, Dessin Bâtiment, Electricité, Géographie Urbaine, IHH, Informatique, Introduction à l'urbanisme, Lecture Photo, Métré et Etude de prix, Sécurité, Sociologie Urbaine, Technique Graphique, Techno-Bat.
+
+BTS1 TRONC COMMUN
+Matières : Anglais, Chimie, Dessin Technique, Droit, Economie, Entrepreneuriat, EPS, Français, Géologie Générale, Geotechnique, Hydraulique Générale, Informatique, Maths, Mécanique, Statique-RDM, Technique Doc, Topographie.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+MATIERES DES FILIERES DE DEUXIEME ANNEE
+
+BTS2 BATIMENT A
+Matières : Anglais, Architecture, Archicad, Béton Armé, CAO-DAO, Dessin Bâtiment, Droit, Droit de la Construction, Entrepreneuriat, Géotechnique, Gestion, Informatique, Matériaux, Mathématiques, Métré et Etude de Prix, OGC, Optique, Projet, Statique RDM, Technique de Recherche d'emploi, Technique d'expression, Technologie du Bâtiment-Pathologie, Topographie, Urbanisme, VRD.
+
+BTS2 GTP A
+Matières : Alimentation en Eau potable, Anglais, Assainissement, Barrage, Béton Armé, CAO-DAO, Circulation Routière, COVADIS, DESSIN, Drainage, Droit, Entrepreneuriat, Entretien Routier, Environnement, Géométrie Routière et Voirie, Géotechnique, Gestion, Hydraulique, Informatique, Matériaux, Mathématiques, Métré et étude de Prix, OGC, Optique, Projet, Qualité et Traitement des Eaux, Signalisation Routière, Statique RDM, Technique de Recherche d'emploi, Technique d'expression, Techniques Routières, Topographie, VRD.
+
+BTS2 GGT A
+Matières : Aménagement Foncier Cadastre, Anglais, Calculs Topo, CAO-DAO, Cartographie, COVADIS, DESSIN TOPO, Droit, Entrepreneuriat, Géodésie, Gestion, Informatique, Informatique du géomètre, LOTISSEMENT, Mathématiques, OGC, Photogrammétrie analogique, Photogrammétrie Numérique, Projet, SIG, Technique de Recherche d'emploi, Technique d'expression, Télédétection, Topo Appliquée au Génie Civil, Topo Appliquée au Génie Rural, Topo Générale, TP Géodésie, TP Topométrie Générale, TRAITEMENT DE DONNEE.
+
+BTS2 MGP A
+Matières : Anglais, CAO-DAO, Cartographie Géologique, Droit, Droit commercial, Economie minière, Entrepreneuriat, Environnement minier, Exploitation Minière, Exploration Production des Hyd, Géochimie, Géologie de CI, Géologie du Pétrole, Géologie sédimentaire, Géologie Structurale, Géomorphologie, Géophysique, Gestion, Gîtologie Métallogénie, Hydrogéologie, Informatique, Législation minière et Pétrolière, Mathématiques, METALLOGIE-GEOLOGIE, OGC Minier, Pétrographie, Projet, Prospection Minière, Raffinage, STDH, SYNTHESE GEOLOGIQUE, Technique de Recherche d'emploi, Technique d'expression, Topographie minière, Télédétection, TP Paléontologie, TP PETROGRAPHIE, Traitement et Valorisation des Minérais, TRAVAUX EN ATELIER.
+
+BTS2 URBANISME
+Matières : Aménagement espace vert, Anglais, ARCHICAD, Architecture, Atélier d'urbanisme, Assainissement, CAO-DAO, Démographie, Dessin Bâtiment, Droit, Droit de la construction, Droit de l'urbanisme, Economie Urbaine, Entrepreneuriat, Environnement, Urbanisme prévisionnel, Gestion, Informatique, Introduction à l'urbanisme, Lotissement, Mathématiques, Métré et étude de Prix, Optique, Projet, Qualité et Traitement des Eaux, Sociologie Urbaine, TECH graphique et Maquette, Technique de recherche d'emploi, Technique d'expression, Technologie du Bâtiment, Topographie, Urbanisme operationnelle, VRD.
+
+
+
+
+
+

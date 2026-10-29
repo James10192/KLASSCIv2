@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API Matières</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        button {
+            padding: 8px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test API - Récupération des matières d'une classe</h1>
+    
+    <div class="form-group">
+        <label for="classe_id">ID de la Classe:</label>
+        <input type="number" id="classe_id" min="1" value="1">
+    </div>
+    
+    <button onclick="testAPI()">Tester l'API</button>
+    
+    <h2>Résultat:</h2>
+    <pre id="result">Aucun résultat</pre>
+    
+    <script>
+        function testAPI() {
+            const classeId = document.getElementById('classe_id').value;
+            const resultElement = document.getElementById('result');
+            
+            resultElement.textContent = 'Chargement...';
+            
+            fetch(`/api/classes/${classeId}/matieres`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Erreur HTTP: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    resultElement.textContent = JSON.stringify(data, null, 2);
+                })
+                .catch(error => {
+                    resultElement.textContent = `Erreur: ${error.message}`;
+                });
+        }
+    </script>
+</body>
+</html> 

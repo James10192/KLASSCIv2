@@ -1,0 +1,31 @@
+# Task ID: 9
+# Title: Implement Offline Mode and Fallback Procedures
+# Status: done
+# Dependencies: 4, 6
+# Priority: low
+# Description: Create fallback mechanisms for connectivity issues and forgotten codes
+# Details:
+Implement offline mode with local storage and synchronization when connectivity is restored. Create secretary interface for handling forgotten code scenarios. Add manual attendance marking capability for administrators with proper audit logging.
+
+# Test Strategy:
+Test offline functionality by simulating network disconnections. Verify data synchronizes correctly when connection is restored. Test manual attendance procedures and verify audit trail.
+
+# Subtasks:
+## 1. Implement Offline Mode with Local Storage [done]
+### Dependencies: None
+### Description: Create a mechanism to store attendance data locally when internet connectivity is unavailable and synchronize it when connection is restored
+### Details:
+Implement a service that detects network status changes. When offline, store attendance records in IndexedDB or localStorage with timestamps. Create a background sync mechanism that attempts to send stored records to the server when connectivity is restored. Add visual indicators in the UI to show sync status and pending offline records. Include conflict resolution logic for handling records that may have been modified on the server during offline period.
+
+## 2. Create Secretary Interface for Forgotten Codes [done]
+### Dependencies: None
+### Description: Develop an interface for secretaries to assist users who have forgotten their attendance codes
+### Details:
+Build a secure verification workflow for secretaries to authenticate users who have forgotten their codes. Implement a temporary code generation system with expiration times. Create an interface for secretaries to search for users by name, ID, or other identifiers. Add audit logging for all secretary-assisted code retrievals. Include security measures to prevent abuse, such as rate limiting and notification to the original user when their code is accessed.
+
+## 3. Implement Manual Attendance Marking for Administrators [done]
+### Dependencies: 9.1
+### Description: Create functionality for administrators to manually mark or modify attendance records with comprehensive audit logging
+### Details:
+Develop an admin interface for searching and selecting users whose attendance needs manual marking. Implement form controls for administrators to specify attendance details including date, time, reason for manual entry, and supporting documentation. Create a comprehensive audit logging system that records all manual attendance actions with administrator identity, timestamp, reason, and before/after states. Add approval workflows for manual attendance changes that require secondary verification for sensitive modifications. Ensure this system works both online and integrates with the offline mode implemented in subtask 1.
+

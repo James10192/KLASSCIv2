@@ -1,0 +1,55 @@
+# Task ID: 5
+# Title: Workflow de bons de sortie numérisés
+# Status: done
+# Dependencies: 1, 2, 3
+# Priority: high
+# Description: Développer le système de bons de sortie numérisés avec workflow d'approbation multi-niveaux, prévisualisation en temps réel et génération PDF automatique.
+# Details:
+1. Créer un contrôleur `BonsSortieController.php` avec:
+   - Création/édition de bons
+   - Prévisualisation temps réel
+   - Soumission pour approbation
+   - Suivi du workflow
+
+2. Implémenter le workflow d'approbation:
+   ```php
+   // Exemple de machine à états pour le workflow
+   class WorkflowBonSortie {
+       const STATUT_BROUILLON = 'brouillon';
+       const STATUT_SOUMIS = 'soumis';
+       const STATUT_VALIDE_N1 = 'valide_niveau1';
+       const STATUT_VALIDE_FINAL = 'valide_final';
+       const STATUT_REJETE = 'rejete';
+       
+       public function peutTransitionner($bonId, $statutActuel, $nouveauStatut, $userId) {
+           // Logique de vérification des permissions
+       }
+       
+       public function transitionner($bonId, $nouveauStatut, $userId, $commentaire = null) {
+           // Logique de transition avec historique
+       }
+   }
+   ```
+
+3. Développer l'interface JavaScript pour la prévisualisation:
+   - Mise à jour en temps réel du PDF
+   - Validation côté client des champs
+   - Interface drag-and-drop pour signatures
+
+4. Intégrer la génération PDF:
+   - Template dynamique avec DomPDF
+   - Intégration QR code pour vérification
+   - Numérotation automatique des bons
+
+5. Créer le système de notifications:
+   - Alertes pour approbateurs
+   - Notifications de changement de statut
+   - Rappels automatiques
+
+# Test Strategy:
+1. Tests unitaires pour la machine à états du workflow
+2. Tests d'intégration pour les transitions de statut
+3. Tests JavaScript pour la prévisualisation
+4. Tests de génération PDF avec différents contenus
+5. Tests de permissions pour différents rôles utilisateurs
+6. Tests de bout en bout pour le workflow complet

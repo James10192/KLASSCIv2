@@ -1,0 +1,51 @@
+# Task ID: 9
+# Title: Optimisation des performances et mise en cache
+# Status: done
+# Dependencies: 3, 6, 7
+# Priority: medium
+# Description: Implémenter une stratégie de cache Redis pour optimiser les performances du dashboard, des rapports et des calculs fréquents.
+# Details:
+1. Configurer Redis pour Laravel:
+   - Installation et configuration
+   - Définition des stores de cache
+
+2. Implémenter le cache pour les KPIs:
+   ```php
+   // Exemple de méthode avec cache dans ComptabiliteService
+   public function getKPIsDashboard() {
+       return Cache::remember('kpis_dashboard', now()->addMinutes(15), function () {
+           return [
+               'total_recettes' => $this->calculerTotalRecettes(),
+               'total_depenses' => $this->calculerTotalDepenses(),
+               'taux_recouvrement' => $this->calculerTauxRecouvrement(),
+               'projections_mois' => $this->calculerProjectionsMois()
+           ];
+       });
+   }
+   ```
+
+3. Développer l'invalidation intelligente du cache:
+   - Tags pour grouper les caches liés
+   - Invalidation sélective lors des mises à jour
+
+4. Optimiser les requêtes database:
+   - Eager loading des relations
+   - Index composites sur les colonnes de filtrage fréquent
+   - Query caching pour requêtes lourdes
+
+5. Implémenter le lazy loading des assets frontend:
+   - Chargement différé des graphiques
+   - Pagination côté client pour grandes listes
+
+6. Mettre en place le monitoring de performance:
+   - Logging des temps de réponse
+   - Alertes pour requêtes lentes
+   - Dashboard de métriques
+
+# Test Strategy:
+1. Tests de benchmark avant/après optimisation
+2. Tests de charge avec simulation d'utilisateurs multiples
+3. Tests d'invalidation de cache
+4. Profiling des requêtes SQL
+5. Tests de performance frontend (Lighthouse)
+6. Monitoring en environnement de test avec données volumineuses

@@ -1,0 +1,54 @@
+{
+  "title": "Service Workflow Inscription vers Étudiant",
+  "description": "Développement service complet workflow inscription → étudiant avec validation paiement et gestion places classes",
+  "type": "Backend Development",
+  "priority": "high", 
+  "status": "pending",
+  "version": "v2.0",
+  "dependencies": ["task-15-infrastructure"],
+  "technical_details": {
+    "services": [
+      "InscriptionWorkflowService.php : validateInscription(), checkClassAvailability()",
+      "ClasseManagementService.php : gestion places et attribution automatique",
+      "Extension ESBTPEtudiantController : createFromInscription(), assignClasse()",
+      "Events Laravel : InscriptionValidated, EtudiantCreated avec listeners"
+    ],
+    "workflow_states": [
+      "prospect → documents_complets → en_validation → valide → etudiant_cree"
+    ],
+    "deliverables": [
+      "2 nouveaux services Laravel complets",
+      "6 nouvelles méthodes contrôleur",
+      "2 événements Laravel avec listeners", 
+      "Documentation workflow et API"
+    ],
+    "estimation": "3-4 jours"
+  },
+  "subtasks": [
+    {
+      "title": "InscriptionWorkflowService création",
+      "description": "Service principal gestion workflow avec validateInscription(), checkClassAvailability()",
+      "status": "pending"
+    },
+    {
+      "title": "ClasseManagementService création", 
+      "description": "Service gestion places classes avec attribution automatique et alternatives",
+      "status": "pending"
+    },
+    {
+      "title": "Extension ESBTPEtudiantController",
+      "description": "Méthodes createFromInscription(), assignClasse() pour création automatique",
+      "status": "pending"
+    },
+    {
+      "title": "Events et Listeners Laravel",
+      "description": "InscriptionValidated, EtudiantCreated avec listeners activation comptabilité",
+      "status": "pending"
+    },
+    {
+      "title": "Tests intégration workflow",
+      "description": "Tests complets workflow inscription → étudiant avec tous scénarios",
+      "status": "pending"
+    }
+  ]
+}

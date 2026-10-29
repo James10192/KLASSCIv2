@@ -1,0 +1,64 @@
+# Task ID: 14
+# Title: Infrastructure Liaison Comptabilité-Inscription
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Mise en place infrastructure base pour liaison comptabilité-inscription avec workflow inscription → étudiant sécurisé
+# Details:
+1. Extensions tables existantes:
+   - `esbtp_inscriptions`: ajouter workflow_step ENUM('prospect', 'documents_complets', 'en_validation', 'valide', 'etudiant_cree')
+   - Ajouter paiement_validation_id, classe_alternative_id, comptabilite_activee
+   - `esbtp_classes`: ajouter places_totales, places_occupees, places_disponibles (colonne calculée)
+
+2. Nouvelles tables:
+   - `esbtp_inscription_workflow_history` pour audit trail complet
+   - Traçabilité étapes validation avec utilisateur/timestamp/commentaires
+
+3. Modèles Laravel mis à jour:
+   - Relations ESBTPInscription → ESBTPEtudiant → ESBTPPaiement clarifiées
+   - Scopes pour workflow states (prospect, validé, etc.)
+   - Validations business rules (places disponibles, paiement requis)
+
+4. Seeders données test:
+   - Inscriptions différents états workflow
+   - Classes avec places limitées
+   - Historique workflow pour tests
+
+# Test Strategy:
+1. Tests migrations sécurisées sans perte données
+2. Tests relations modèles avec eager loading
+3. Tests contraintes business (places classes, workflow states)
+4. Tests rollback migrations
+5. Validation seeders avec données cohérentes
+
+# Subtasks:
+## 14.1. Migration extension esbtp_inscriptions [done]
+### Dependencies: None
+### Description: Ajouter workflow_step, paiement_validation_id, classe_alternative_id, comptabilite_activee
+### Details:
+
+
+## 14.2. Migration esbtp_inscription_workflow_history [done]
+### Dependencies: None
+### Description: Créer table traçabilité workflow avec historique actions
+### Details:
+
+
+## 14.3. Migration extension esbtp_classes [done]
+### Dependencies: None
+### Description: Ajouter gestion places : places_totales, places_occupees, places_disponibles
+### Details:
+
+
+## 14.4. Mise à jour modèles Laravel [done]
+### Dependencies: None
+### Description: Relations et méthodes ESBTPInscription, ESBTPClasse, validations
+### Details:
+
+
+## 14.5. Seeders et tests [done]
+### Dependencies: None
+### Description: Données test workflow inscription et tests unitaires complets
+### Details:
+
+

@@ -1,0 +1,253 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class ESBTPNiveauEtude extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    /**
+     * La table associée au modèle.
+     *
+     * @var string
+     */
+    protected $table = 'esbtp_niveau_etudes';
+
+    /**
+     * Les annees qu'un niveau LMD peut porter, par cycle.
+     *
+     * L'annee est comptee EN CONTINU d'un cycle a l'autre : Master 1 est l'annee
+     * 4, pas l'annee 1. C'est la convention sur laquelle repose la correspondance
+     * niveau → semestres (`ESBTPClasse::getSemestresLMD()`, annee 4 → S7-S8) et
+     * tout ce qui la lit.
+     *
+     * Un Master saisi en annee 1 ne leve aucune erreur : il est range en S1-S2,
+     * c'est-a-dire traite comme une Licence 1, et recoit ses unites. C'est
+     * exactement ce qui est arrive a une ecole avant que cette liste existe.
+     */
+    /**
+     * Les cycles du systeme LMD (directive UEMOA 03/2007). Source unique : toute
+     * liste « est-ce du LMD ? » passe par ici.
+     *
+     * Le Bachelor n'en fait PAS partie. C'est un diplome de tradition
+     * anglo-saxonne, hors du cadre LMD francophone et non regi par l'UEMOA :
+     * le ranger ici lui appliquerait credits ECTS, semestres continus et
+     * deliberation UEMOA qui ne le concernent pas.
+     */
+    public const CYCLES_LMD = ['Licence', 'Master', 'Doctorat'];
+
+    public const ANNEES_PAR_CYCLE_LMD = [
+        'Licence' => [1, 2, 3],
+        'Master' => [4, 5],
+        'Doctorat' => [6, 7, 8],
+    ];
+
+    /**
+     * Dernier semestre LMD : celui du Master 2 (annee 5 → S9-S10). Le doctorat
+     * ne se decoupe pas en semestres.
+     *
+     * Les listes et validations de semestre s'arretaient a 6 ou 8, heritage
+     * d'ecoles qui n'ouvraient que la Licence : un Master 2 ne pouvait ni
+     * planifier, ni deliberer, ni filtrer son S9 et son S10.
+     */
+    public const SEMESTRE_LMD_MAX = 10;
+
+    /** @return list<int> */
+    public static function semestresLmd(): array
+    {
+        return range(1, self::SEMESTRE_LMD_MAX);
+    }
+
+    /**
+     * Vrai si l'annee est de celles de son cycle, faux sinon, et null pour un
+     * niveau qui n'est pas un cycle LMD (BTS, Ingenieur...) : la question ne se
+     * pose pas pour lui.
+     */
+    public function anneeCoherenteAvecSonCycle(): ?bool
+    {
+        if (! $this->estUnCycleLmd()) {
+            return null;
+        }
+
+        return in_array((int) $this->year, self::ANNEES_PAR_CYCLE_LMD[$this->type], true);
+    }
+
+    /** Le cycle LMD auquel une annee appartient (4 → Master), null hors plage. */
+    public static function cycleLmdPourAnnee(int $annee): ?string
+    {
+        foreach (self::ANNEES_PAR_CYCLE_LMD as $cycle => $annees) {
+            if (in_array($annee, $annees, true)) {
+                return $cycle;
+            }
+        }
+
+        return null;
+    }
+
+    public function estUnCycleLmd(): bool
+    {
+        return in_array((string) $this->type, self::CYCLES_LMD, true);
+    }
+
+    public function etiquetteCycle(): string
+    {
+        return $this->estUnCycleLmd() ? 'LMD' : (string) ($this->type !== '' && $this->type !== null ? $this->type : 'BTS');
+    }
+
+    /**
+     * Les deux semestres de cette annee : annee 1 → S1-S2, annee 4 (Master 1) → S7-S8.
+     *
+     * @return list<int>
+     */
+    public function semestres(): array
+    {
+        $annee = (int) $this->year;
+        if ($annee < 1) {
+            return [];
+        }
+
+        $premier = ($annee - 1) * 2 + 1;
+
+        return [$premier, $premier + 1];
+    }
+
+    /**
+     * Les attributs qui sont assignables en masse.
+     *
+     * @var array
+     */
+    protected $fillable = [
+        'name',
+        'libelle',
+        'code',
+        'type',
+        'year',
+        'description',
+        'is_active',
+    ];
+
+    /**
+     * Les attributs qui doivent être convertis en types natifs.
+     *
+     * @var array
+     */
+    protected $casts = [
+        'year' => 'integer',
+        'is_active' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
+    ];
+
+    /**
+     * Obtenir les étudiants inscrits à ce niveau d'études.
+     *
+     * Un niveau d'études peut avoir plusieurs étudiants.
+     * Par exemple, "Première année BTS" peut avoir plusieurs étudiants inscrits.
+     */
+    public function students()
+    {
+        return $this->hasMany(Student::class, 'niveau_etude_id');
+    }
+
+    /**
+     * Relation avec les classes associées à ce niveau d'études.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function classes()
+    {
+        return $this->hasMany(ESBTPClasse::class, 'niveau_etude_id');
+    }
+
+    /**
+     * Accesseur pour le niveau (basé sur year).
+     *
+     * @return int
+     */
+    public function getNiveauAttribute()
+    {
+        return $this->year;
+    }
+
+    /**
+     * Mutateur pour le niveau (stocké dans year).
+     *
+     * @param int $value
+     * @return void
+     */
+    public function setNiveauAttribute($value)
+    {
+        $this->attributes['year'] = $value;
+    }
+
+    /**
+     * Scope pour récupérer uniquement les niveaux d'études actifs.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope pour récupérer uniquement les niveaux d'études inactifs.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeInactive($query)
+    {
+        return $query->where('is_active', false);
+    }
+
+    /**
+     * Obtenir le nom complet du niveau d'études.
+     *
+     * @return string
+     */
+    public function getFullNameAttribute()
+    {
+        return $this->type . ' - ' . $this->name;
+    }
+
+
+    /**
+     * Relation avec les matières associées à ce niveau d'études.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function matieres()
+    {
+        return $this->belongsToMany(ESBTPMatiere::class, 'esbtp_matiere_niveau', 'niveau_etude_id', 'matiere_id')
+                    ->withPivot('coefficient', 'heures_cours', 'is_active')
+                    ->withTimestamps();
+    }
+
+    /**
+     * Relation avec les inscriptions associées à ce niveau d'études.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function inscriptions()
+    {
+        return $this->hasMany(ESBTPInscription::class, 'niveau_id');
+    }
+
+    /**
+     * Relation avec les filières associées à ce niveau d'études.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function filieres()
+    {
+        return $this->belongsToMany(ESBTPFiliere::class, 'esbtp_filiere_niveau', 'niveau_etude_id', 'filiere_id')
+                    ->withTimestamps();
+    }
+}

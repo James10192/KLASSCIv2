@@ -1,0 +1,382 @@
+---
+description: Système d'Authentification et d'Autorisation ESBTP
+globs:
+alwaysApply: true
+---
+# Système d'Authentification et d'Autorisation ESBTP
+
+## Vue d'Ensemble
+
+ESBTP utilise un système d'authentification et d'autorisation basé sur les rôles et les permissions :
+
+- **Authentification** : Gestion des utilisateurs et de la connexion
+- **Autorisation** : Contrôle des accès basé sur les rôles et permissions
+
+## Rôles et Permissions
+
+### Rôles Principaux
+
+L'application ESBTP définit trois rôles principaux :
+
+1. **superAdmin** : Administrateur avec accès complet
+2. **secretaire** : Personnel administratif avec accès limité
+3. **etudiant** : Étudiant avec accès restreint
+
+### Permissions
+
+Chaque rôle possède un ensemble de permissions spécifiques :
+
+#### Permissions SuperAdmin
+
+```
+- filières (create filières, view filières, edit filières, delete filières)
+- formations (create formations, view formations, edit formations, delete formations)
+- niveaux d'études (create niveau d'études, view niveaux d'études, edit niveau d'études, delete niveaux d'études)
+- classes (create classe, view classes, edit classes, delete classes)
+- students (create student, views students, edit students, delete students)
+- exams (create exam, view exams, edit exams, delete exams)
+- matières (create matière, view matières, edit matières, delete matières)
+- grades (create grade, view grades, edit grades, delete grades)
+- bulletin (generate bulletin, view bulletins, edit bulletins, delete bulletins)
+- timetable (create timetable, view timetables, edit timetables, delete timetables)
+- messages (send messages)
+- attendance (create attendance, view attendances, edit attendances, delete attendances)
+```
+
+#### Permissions Secrétaire
+
+```
+- filières (view filières)
+- formations (view formations)
+- niveaux d'études (view niveaux d'études)
+- classes (view classes)
+- students (create students, view students)
+- exams (view exams)
+- matières (view matières)
+- grades (create grades, view grades)
+- bulletin (generate bulletin, view bulletins)
+- timetable (create timetable, view timetables)
+- messages (send messages)
+- attendance (create attendance, view attendances)
+```
+
+#### Permissions Étudiant
+
+```
+- students (view own profile)
+- exams (view own exams)
+- grades (view own grades)
+- bulletin (view own bulletin)
+- timetables (view own timetable)
+- messages (receive own messages)
+- attendance (view own attendances, view own %attendance)
+```
+
+## Implémentation avec Spatie Laravel-Permission
+
+ESBTP utilise le package Spatie Laravel-Permission pour gérer les rôles et permissions :
+
+### Configuration
+
+```php
+// config/permission.php
+return [
+    'models' => [
+        'permission' => Spatie\Permission\Models\Permission::class,
+        'role' => Spatie\Permission\Models\Role::class,
+    ],
+    'table_names' => [
+        'roles' => 'roles',
+        'permissions' => 'permissions',
+        'model_has_permissions' => 'model_has_permissions',
+        'model_has_roles' => 'model_has_roles',
+        'role_has_permissions' => 'role_has_permissions',
+    ],
+    'column_names' => [
+        'model_morph_key' => 'model_id',
+    ],
+    'cache' => [
+        'expiration_time' => \DateInterval::createFromDateString('24 hours'),
+        'key' => 'spatie.permission.cache',
+        'store' => 'default',
+    ],
+];
+```
+
+### Initialisation des Rôles et Permissions
+
+```php
+// database/seeders/RolesAndPermissionsSeeder.php
+use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
+
+class RolesAndPermissionsSeeder extends Seeder
+{
+    public function run()
+    {
+        // Réinitialiser les caches
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+        // Créer les permissions
+        // Filières
+        Permission::create(['name' => 'create filieres']);
+        Permission::create(['name' => 'view filieres']);
+        Permission::create(['name' => 'edit filieres']);
+        Permission::create(['name' => 'delete filieres']);
+
+        // Formations
+        Permission::create(['name' => 'create formations']);
+        Permission::create(['name' => 'view formations']);
+        Permission::create(['name' => 'edit formations']);
+        Permission::create(['name' => 'delete formations']);
+
+        // Autres permissions...
+
+        // Créer les rôles et assigner les permissions
+        $superAdmin = Role::create(['name' => 'superAdmin']);
+        $superAdmin->givePermissionTo(Permission::all());
+
+        $secretaire = Role::create(['name' => 'secretaire']);
+        $secretaire->givePermissionTo([
+            'view filieres',
+            'view formations',
+            'view niveaux etudes',
+            'view classes',
+            'create students',
+            'view students',
+            'view exams',
+            'view matieres',
+            'create grades',
+            'view grades',
+            'generate bulletin',
+            'view bulletins',
+            'create timetable',
+            'view timetables',
+            'send messages',
+            'create attendance',
+            'view attendances',
+        ]);
+
+        $etudiant = Role::create(['name' => 'etudiant']);
+        $etudiant->givePermissionTo([
+            'view own profile',
+            'view own exams',
+            'view own grades',
+            'view own bulletin',
+            'view own timetable',
+            'receive own messages',
+            'view own attendances',
+        ]);
+    }
+}
+```
+
+### Utilisation dans les Modèles
+
+```php
+// app/Models/User.php
+namespace App\Models;
+
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Spatie\Permission\Traits\HasRoles;
+
+class User extends Authenticatable
+{
+    use HasRoles;
+
+    // ...
+}
+```
+
+### Vérification des Autorisations dans les Contrôleurs
+
+```php
+// Exemple de vérification des permissions
+public function index()
+{
+    if (auth()->user()->can('view students')) {
+        // L'utilisateur peut voir la liste des étudiants
+        $etudiants = ESBTPEtudiant::all();
+        return view('etudiants.index', compact('etudiants'));
+    }
+
+    return abort(403);
+}
+
+// Utilisation des Policies
+public function show(ESBTPEtudiant $etudiant)
+{
+    $this->authorize('view', $etudiant);
+    return view('etudiants.show', compact('etudiant'));
+}
+```
+
+### Vérification des Autorisations dans les Vues
+
+```blade
+<!-- Exemple de vérification des permissions dans une vue -->
+@can('create filieres')
+    <a href="{{ route('filieres.create') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Nouvelle Filière
+    </a>
+@endcan
+
+<!-- Vérification de rôle -->
+@role('superAdmin')
+    <div class="admin-controls">
+        <!-- Contrôles spécifiques à l'administrateur -->
+    </div>
+@endrole
+
+<!-- Vérification d'accès aux éléments de menu -->
+@if(auth()->user()->hasPermissionTo('view students'))
+    <li class="nav-item">
+        <a href="{{ route('etudiants.index') }}" class="nav-link">
+            <i class="nav-icon fas fa-users"></i>
+            <p>Étudiants</p>
+        </a>
+    </li>
+@endif
+```
+
+## Création de Compte et Authentification
+
+### Processus d'Inscription pour les Étudiants
+
+1. Le secrétaire ou l'administrateur crée un compte étudiant
+2. Le système génère automatiquement un nom d'utilisateur (`prenom.nom`) et un mot de passe aléatoire
+3. Le compte est associé au rôle "etudiant"
+4. Les identifiants sont communiqués à l'étudiant
+
+```php
+// Exemple de création d'un compte étudiant
+public function store(ESBTPEtudiantRequest $request)
+{
+    // Créer l'étudiant
+    $etudiant = ESBTPEtudiant::create($request->validated());
+
+    // Générer un nom d'utilisateur et mot de passe
+    $username = strtolower($etudiant->prenom . '.' . $etudiant->nom);
+    $password = Str::random(8);
+
+    // Créer un compte utilisateur
+    $user = User::create([
+        'name' => $etudiant->nom . ' ' . $etudiant->prenom,
+        'email' => $etudiant->email,
+        'password' => Hash::make($password),
+    ]);
+
+    // Assigner le rôle étudiant
+    $user->assignRole('etudiant');
+
+    // Lier l'utilisateur à l'étudiant
+    $etudiant->user_id = $user->id;
+    $etudiant->save();
+
+    // Retourner les identifiants pour affichage
+    return redirect()
+        ->route('etudiants.show', $etudiant)
+        ->with([
+            'success' => 'Étudiant créé avec succès.',
+            'username' => $username,
+            'password' => $password
+        ]);
+}
+```
+
+### Processus d'Installation et Création du SuperAdmin
+
+Lors de l'installation de l'application :
+
+1. L'utilisateur remplit un formulaire avec les informations du SuperAdmin
+2. Le compte SuperAdmin est créé avec le rôle et toutes les permissions
+3. Aucun seeder n'est utilisé pour créer le SuperAdmin
+
+```php
+// Exemple de création du SuperAdmin lors de l'installation
+public function createSuperAdmin(Request $request)
+{
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|string|email|max:255|unique:users',
+        'password' => 'required|string|min:8|confirmed',
+    ]);
+
+    // Créer l'utilisateur
+    $user = User::create([
+        'name' => $request->name,
+        'email' => $request->email,
+        'password' => Hash::make($request->password),
+    ]);
+
+    // Assigner le rôle SuperAdmin
+    $user->assignRole('superAdmin');
+
+    // Marquer l'installation comme terminée
+    $this->markInstallationComplete();
+
+    // Connecter l'utilisateur
+    Auth::login($user);
+
+    return redirect()->route('dashboard');
+}
+```
+
+## Adaptations des Interfaces selon les Rôles
+
+### Dashboard SuperAdmin
+
+Le tableau de bord du SuperAdmin affiche :
+- Statistiques globales (nombre d'étudiants, classes, filières)
+- Accès à toutes les fonctionnalités administratives
+- Journal des activités récentes
+
+### Dashboard Secrétaire
+
+Le tableau de bord du secrétaire affiche :
+- Statistiques pertinentes (étudiants récemment inscrits)
+- Accès aux fonctionnalités de gestion des étudiants
+- Liste des tâches à effectuer (présences à saisir, notes à enregistrer)
+
+### Dashboard Étudiant
+
+Le tableau de bord de l'étudiant affiche :
+- Emploi du temps personnel
+- Prochaines évaluations
+- Dernières notes obtenues
+- Annonces et messages récents
+
+## Middleware de Protection des Routes
+
+```php
+// routes/web.php
+Route::middleware(['auth', 'role:superAdmin'])->group(function () {
+    Route::resource('filieres', 'ESBTPFiliereController');
+    Route::resource('niveaux-etudes', 'ESBTPNiveauEtudeController');
+    // Autres routes réservées au SuperAdmin...
+});
+
+Route::middleware(['auth', 'role:superAdmin|secretaire'])->group(function () {
+    Route::resource('etudiants', 'ESBTPEtudiantController');
+    Route::resource('bulletins', 'ESBTPBulletinController');
+    // Autres routes accessibles au SuperAdmin et au secrétaire...
+});
+
+Route::middleware(['auth', 'role:etudiant'])->prefix('etudiant')->group(function () {
+    Route::get('profil', 'ESBTPEtudiant\ProfilController@index')->name('etudiant.profil');
+    Route::get('bulletins', 'ESBTPEtudiant\BulletinController@index')->name('etudiant.bulletins');
+    // Autres routes réservées à l'étudiant...
+});
+```
+
+## Sécurité et Meilleures Pratiques
+
+- Utiliser HTTPS pour toutes les communications
+- Activer l'authentification à deux facteurs (si nécessaire)
+- Implémenter des politiques de mot de passe robustes
+- Journaliser les tentatives de connexion et les actions importantes
+- Mettre en place des sessions avec expiration
+- Limiter les tentatives de connexion échouées
+- Valider toutes les entrées utilisateur
+- Protéger contre les attaques CSRF

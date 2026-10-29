@@ -1,0 +1,273 @@
+<?php
+
+namespace App\Services\Chatbot\Tools;
+
+use App\Models\ESBTPPaiement;
+use Illuminate\Support\Facades\Route;
+
+class SearchPaymentsTool extends ChatbotTool
+{
+    public function name(): string
+    {
+        return 'search_payments';
+    }
+
+    public function description(): string
+    {
+        return 'Rechercher des paiements groupés par inscription. Si l\'étudiant a plusieurs inscriptions et que inscription_id n\'est pas fourni, retourne la liste des inscriptions pour clarification. Utilise inscription_id pour une inscription spécifique, ou all_inscriptions=true pour voir les paiements de toutes les inscriptions.';
+    }
+
+    public function parameters(): array
+    {
+        return [
+            'type' => 'object',
+            'properties' => [
+                'student_name' => [
+                    'type' => 'string',
+                    'description' => 'Nom de l\'étudiant',
+                ],
+                'inscription_id' => [
+                    'type' => 'integer',
+                    'description' => 'ID de l\'inscription spécifique (fourni dans le champ inscription_id des options de clarification)',
+                ],
+                'all_inscriptions' => [
+                    'type' => 'boolean',
+                    'description' => 'Si true, retourne les paiements de TOUTES les inscriptions de l\'étudiant. Utiliser quand l\'utilisateur dit "les deux", "toutes", ou "pour toutes les inscriptions".',
+                ],
+                'status' => [
+                    'type' => 'string',
+                    'description' => 'Statut du paiement: "en_attente", "validé", "rejeté", "annulé"',
+                ],
+                'month' => [
+                    'type' => 'integer',
+                    'description' => 'Mois (1-12). Utiliser le mois en cours si "ce mois".',
+                ],
+                'date_from' => [
+                    'type' => 'string',
+                    'description' => 'Date de début au format YYYY-MM-DD',
+                ],
+                'date_to' => [
+                    'type' => 'string',
+                    'description' => 'Date de fin au format YYYY-MM-DD',
+                ],
+                'limit' => [
+                    'type' => 'integer',
+                    'description' => 'Nombre max de résultats (défaut: 10, max: 25)',
+                ],
+            ],
+        ];
+    }
+
+    public function execute(array $args, $user): array
+    {
+        if (! $this->isAvailableFor($user)) {
+            return $this->unavailableResponse();
+        }
+
+        $canViewAll = $user->can('paiements.view');
+        if (! $canViewAll && ! $user->can('paiements.view_own')) {
+            return $this->unavailableResponse();
+        }
+
+        $ownPaymentScope = fn ($query) => $query->where('created_by', $user->id);
+        $visibleInscriptionIds = $canViewAll
+            ? null
+            : ESBTPPaiement::query()->where('created_by', $user->id)->select('inscription_id');
+        $visibleStudentIds = $canViewAll
+            ? null
+            : ESBTPPaiement::query()->where('created_by', $user->id)->select('etudiant_id');
+
+        // Si student_name fourni sans inscription_id et sans all_inscriptions
+        if (!empty($args['student_name']) && empty($args['inscription_id']) && empty($args['all_inscriptions'])) {
+            $inscriptions = \App\Models\ESBTPInscription::query()
+                ->with(['classe.filiere', 'etudiant', 'anneeUniversitaire'])
+                ->when(! $canViewAll, fn ($q) => $q->whereIn('id', $visibleInscriptionIds))
+                ->whereHas('etudiant', function ($q) use ($args) {
+                    $this->applyFuzzyNameSearch($q, $args['student_name']);
+                })
+                ->orderByDesc('date_inscription')
+                ->get();
+
+            // Grouper par étudiant et prendre celui qui matche le mieux (le plus d'inscriptions ou LIKE exact)
+            $byEtudiant = $inscriptions->groupBy('etudiant_id');
+            if ($byEtudiant->count() > 1) {
+                // Plusieurs étudiants matchent → garder celui avec LIKE exact sur nom
+                $search = $args['student_name'];
+                $bestMatch = $byEtudiant->filter(function ($group) use ($search) {
+                    $e = $group->first()->etudiant;
+                    $fullName = mb_strtolower(trim(($e->nom ?? '') . ' ' . ($e->prenoms ?? '')));
+                    return str_contains($fullName, mb_strtolower($search));
+                })->first();
+                $inscriptions = $bestMatch ?? $byEtudiant->first();
+            } else {
+                $inscriptions = $byEtudiant->first();
+            }
+
+            if ($inscriptions->count() > 1) {
+                // Plusieurs inscriptions → demander clarification
+                $etudiantName = $inscriptions->first()->etudiant
+                    ? trim($inscriptions->first()->etudiant->nom . ' ' . $inscriptions->first()->etudiant->prenoms)
+                    : $args['student_name'];
+
+                $options = $inscriptions->map(function ($i) {
+                    $label = ($i->classe?->name ?? '') . ' (' . ($i->classe?->filiere?->name ?? '') . ')';
+                    $label .= ' — ' . ($i->anneeUniversitaire?->name ?? 'N/A');
+                    $label .= ' — ' . \App\Services\Inscriptions\NormalisationTypeInscription::libelle($i->type_inscription);
+                    return [
+                        'inscription_id' => $i->id,
+                        'label' => $label,
+                    ];
+                })->toArray();
+
+                // Retourner les options avec un mapping clair pour Claude
+                return [
+                    'results' => [],
+                    'count' => 0,
+                    'needs_clarification' => true,
+                    'etudiant' => $etudiantName,
+                    'nb_inscriptions' => $inscriptions->count(),
+                    'inscriptions' => $options,
+                    'instructions' => "Présente les inscriptions à l'utilisateur avec classe, année et type. NE MONTRE PAS inscription_id. Quand il choisit une inscription spécifique, rappelle search_payments avec le inscription_id EXACT de cette inscription (voir le champ inscription_id dans chaque option). Si l'utilisateur dit 'les deux', 'toutes' ou 'pour tout', rappelle search_payments UNE SEULE FOIS avec all_inscriptions=true et student_name.",
+                    'display_type' => 'text',
+                ];
+            }
+        }
+
+        $query = ESBTPPaiement::query()->with(['etudiant', 'inscription.classe.filiere', 'inscription.anneeUniversitaire', 'fraisCategory']);
+        if (! $canViewAll) {
+            $ownPaymentScope($query);
+        }
+
+        // Filtre par inscription_id spécifique
+        if (!empty($args['inscription_id'])) {
+            $query->where('inscription_id', $args['inscription_id']);
+        }
+
+        if (!empty($args['status'])) {
+            $status = $this->normalizeStatus($args['status']);
+            $query->where('status', $status);
+        }
+
+        if (!empty($args['student_name']) && empty($args['inscription_id'])) {
+            // Trouver le meilleur match étudiant (filtrer les faux positifs SOUNDEX)
+            $matchedStudents = \App\Models\ESBTPEtudiant::query()
+                ->when(! $canViewAll, fn ($q) => $q->whereIn('id', $visibleStudentIds))
+                ->where(function ($q) use ($args) {
+                    $this->applyFuzzyNameSearch($q, $args['student_name']);
+                })->get();
+
+            // Un matricule tapé tel quel désigne un seul élève : il passe avant
+            // les noms voisins que le SOUNDEX remonte avec lui.
+            $parMatricule = $matchedStudents->firstWhere('matricule', trim($args['student_name']));
+
+            if ($parMatricule) {
+                $bestId = $parMatricule->id;
+            } elseif ($matchedStudents->count() > 1) {
+                $search = mb_strtolower($args['student_name']);
+                $exact = $matchedStudents->filter(function ($e) use ($search) {
+                    $fullName = mb_strtolower(trim(($e->nom ?? '') . ' ' . ($e->prenoms ?? '')));
+                    return str_contains($fullName, $search);
+                });
+                $bestId = $exact->isNotEmpty() ? $exact->first()->id : $matchedStudents->first()->id;
+            } else {
+                $bestId = $matchedStudents->first()?->id;
+            }
+
+            if ($bestId) {
+                $query->whereHas('etudiant', fn($q) => $q->where('id', $bestId));
+            }
+        }
+
+        if (!empty($args['month'])) {
+            $query->whereMonth('date_paiement', (int) $args['month']);
+        }
+
+        if (!empty($args['date_from'])) {
+            $query->whereDate('date_paiement', '>=', $args['date_from']);
+        }
+
+        if (!empty($args['date_to'])) {
+            $query->whereDate('date_paiement', '<=', $args['date_to']);
+        }
+
+        $limit = min(max((int) ($args['limit'] ?? 10), 1), 25);
+        $total = (clone $query)->count();
+        $results = $query->orderByDesc('date_paiement')->limit($limit)->get();
+
+        // Grouper les paiements par inscription
+        $grouped = $results->groupBy('inscription_id');
+        $groups = [];
+
+        // Si all_inscriptions, ajouter aussi les inscriptions SANS paiements
+        if (!empty($args['all_inscriptions']) && !empty($bestId)) {
+            $allInscriptions = \App\Models\ESBTPInscription::with(['classe.filiere', 'anneeUniversitaire'])
+                ->where('etudiant_id', $bestId)
+                ->when(! $canViewAll, fn ($q) => $q->whereIn('id', $visibleInscriptionIds))
+                ->orderByDesc('date_inscription')
+                ->get();
+            foreach ($allInscriptions as $insc) {
+                if (!$grouped->has($insc->id)) {
+                    $grouped[$insc->id] = collect(); // inscription vide
+                }
+            }
+        }
+
+        foreach ($grouped as $inscriptionId => $paiements) {
+            $first = $paiements->first();
+            $inscription = $first ? $first->inscription : \App\Models\ESBTPInscription::with(['classe.filiere', 'anneeUniversitaire'])->find($inscriptionId);
+            $etudiant = $first ? $first->etudiant : $inscription?->etudiant;
+            $classe = $inscription?->classe;
+
+            $inscriptionInfo = [
+                'etudiant' => $etudiant ? trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? '')) : 'Inconnu',
+                'classe' => $classe?->name ?? 'N/A',
+                'filiere' => $classe?->filiere?->name ?? 'N/A',
+                'annee' => $inscription?->anneeUniversitaire?->name ?? 'N/A',
+                'type' => \App\Services\Inscriptions\NormalisationTypeInscription::libelle($inscription?->type_inscription),
+                'statut' => ucfirst(str_replace('_', ' ', $inscription?->status ?? 'N/A')),
+                'lien' => $inscriptionId && Route::has('esbtp.inscriptions.show')
+                    ? route('esbtp.inscriptions.show', $inscriptionId) : null,
+            ];
+
+            $items = $paiements->map(function ($p) {
+                return [
+                    'categorie' => $p->fraisCategory?->name ?? 'N/A',
+                    'montant' => number_format($p->montant ?? 0, 0, ',', ' ') . ' FCFA',
+                    'statut' => ucfirst(str_replace('_', ' ', $p->status ?? 'inconnu')),
+                    'date' => $p->date_paiement?->format('d/m/Y') ?? 'N/A',
+                    'mode' => ucfirst($p->mode_paiement ?? 'N/A'),
+                    'tranche' => $p->tranche ? 'Tranche ' . $p->tranche : null,
+                ];
+            })->toArray();
+
+            $totalMontant = \App\Models\ESBTPPaiement::netCashFrom($paiements);
+
+            $groups[] = [
+                'inscription' => $inscriptionInfo,
+                'payments' => $items,
+                'total_paye' => number_format($totalMontant, 0, ',', ' ') . ' FCFA',
+                'nb_paiements' => count($items),
+            ];
+        }
+
+        return [
+            'results' => $groups,
+            'count' => $total,
+            'total' => $total,
+            'display_type' => 'payment_groups',
+            'deep_link' => Route::has('esbtp.paiements.index') ? route('esbtp.paiements.index') : null,
+        ];
+    }
+
+    private function normalizeStatus(string $status): string
+    {
+        $status = mb_strtolower(trim($status), 'UTF-8');
+        return match (true) {
+            str_contains($status, 'attente') => 'en_attente',
+            str_contains($status, 'valid') => 'validé',
+            str_contains($status, 'rejet') => 'rejeté',
+            str_contains($status, 'annul') => 'annulé',
+            default => $status,
+        };
+    }
+}

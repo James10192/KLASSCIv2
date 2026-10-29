@@ -1,0 +1,154 @@
+# ESBTP-yAKROv2 Project Memory
+
+## Identifiants de connexion Super Admin
+
+Les identifiants suivants ont été créés pour accéder au système en tant que super administrateur :
+
+- **Nom d'utilisateur :** superadmin
+- **Email :** superadmin@esbtp.com  
+- **Mot de passe :** SuperAdmin@2024
+
+Ces identifiants permettent d'accéder au tableau de bord du super administrateur avec toutes les permissions système.
+
+## Autres comptes Super Admin existants
+
+- Compte 1 :
+  - Nom d'utilisateur : ruben
+  - Email : ruben@gmail.com
+  
+- Compte 2 :
+  - Nom d'utilisateur : admin
+  - Email : admin@esbtp.com
+
+## Scripts utilitaires
+
+Les scripts suivants ont été créés pour faciliter la gestion des utilisateurs :
+
+- **check_super_admin.php** : Vérifie l'existence des comptes super admin
+- **create_super_admin.php** : Crée un nouveau compte super admin avec des identifiants connus
+- **list_users.php** : Liste tous les utilisateurs et leurs rôles
+- **promote_teacher_to_admin.php** : Promeut un enseignant au rang de Super Admin
+
+## Structure du système d'authentification
+
+Le système utilise Spatie Laravel-Permission pour la gestion des rôles et des permissions. Les principaux rôles sont :
+
+- superAdmin : Accès complet au système
+- secretaire : Accès limité pour la gestion administrative
+- etudiant : Accès restreint aux données personnelles
+- enseignant : Accès aux fonctionnalités pédagogiques
+
+## Corrections récentes
+
+### Correction des routes
+
+Le système présentait un problème de divergence entre la définition des routes et leur utilisation dans les vues. Les corrections suivantes ont été apportées:
+
+1. **Routes de gestion des enseignants**:
+   - Ancien: `Route::prefix('enseignants')->name('enseignants.')`
+   - Nouveau: `Route::prefix('esbtp/enseignants')->name('esbtp.enseignants.')`
+   
+2. **Routes du module comptabilité**:
+   - Ancien: `Route::prefix('comptabilite')->name('esbtp.comptabilite.')`
+   - Nouveau: `Route::prefix('esbtp/comptabilite')->name('esbtp.comptabilite.')`
+
+Cette standardisation assure la cohérence entre les routes définies dans `routes/web.php` et leur utilisation dans les fichiers Blade, notamment:
+- `resources/views/layouts/app.blade.php`
+- `resources/views/esbtp/enseignants/*.blade.php`
+- `resources/views/esbtp/comptabilite/*.blade.php`
+
+## Nouvelles fonctionnalités
+
+### 1. Gestion des Enseignants
+
+La fonctionnalité de gestion des enseignants a été ajoutée au tableau de bord du Super Admin, accessible via la sidebar. Elle permet de:
+
+- Lister tous les enseignants de l'établissement
+- Créer un nouveau compte enseignant
+- Modifier les informations d'un enseignant existant
+- Supprimer un compte enseignant
+- Promouvoir un enseignant au rang de Super Admin (double rôle)
+- Rétrograder un Super Admin-Enseignant
+
+#### Structure technique
+
+- **Contrôleur**: `ESBTPEnseignantController.php`
+- **Routes**: `/esbtp/enseignants/*` (préfixe)
+- **Vues**: `resources/views/esbtp/enseignants/*`
+- **Modèle**: Utilise le modèle `User` existant avec le rôle 'enseignant'
+
+### 2. Module de Comptabilité
+
+Un module complet de comptabilité a été intégré au tableau de bord du Super Admin pour gérer les aspects financiers de l'établissement.
+
+#### Fonctionnalités principales
+
+##### Tableau de bord financier
+- Vue d'ensemble des flux financiers
+- Indicateurs clés de performance (recettes, dépenses, trésorerie disponible)
+- Graphiques d'évolution mensuelle et annuelle
+- Alertes sur les seuils critiques (retards de paiement, budget dépassé)
+
+##### Gestion des frais de scolarité
+- Configuration des frais par filière/niveau
+- Options de paiement (intégral, trimestriel, mensuel)
+- Suivi des paiements par étudiant
+- Génération automatique de factures et reçus
+- Gestion des relances pour impayés
+
+##### Gestion des bourses et aides financières
+- Attribution de bourses complètes ou partielles
+- Suivi des étudiants boursiers
+- Gestion des financements externes
+- Statistiques sur les aides accordées
+
+##### Gestion des dépenses
+- Catégorisation des dépenses (salaires, équipements, maintenance, etc.)
+- Circuit de validation des dépenses
+- Suivi budgétaire par département
+- Rapprochement bancaire
+- Gestion des fournisseurs
+
+##### Gestion des salaires
+- Paramétrage de la grille salariale
+- Gestion des heures supplémentaires
+- Calcul automatique des salaires
+- Génération des bulletins de paie
+- Historique des versements
+
+##### Reporting financier
+- Génération de rapports financiers personnalisables
+- Export aux formats PDF, Excel et CSV
+- Bilan financier par période
+- Analyse de rentabilité par formation
+- Projections financières
+
+#### Structure de la base de données
+
+Nouvelles tables utilisées pour la gestion comptable :
+
+- `esbtp_comptabilite_configurations` : Paramètres généraux du module comptable
+- `esbtp_frais_scolarite` : Configuration des frais par filière et niveau
+- `esbtp_paiements` : Enregistrement des paiements étudiants
+- `esbtp_factures` : Factures générées
+- `esbtp_depenses` : Dépenses de l'établissement
+- `esbtp_categories_depenses` : Catégorisation des dépenses
+- `esbtp_fournisseurs` : Gestion des fournisseurs
+- `esbtp_bourses` : Attribution des bourses et aides
+- `esbtp_salaires` : Gestion des salaires du personnel
+- `esbtp_transactions_financieres` : Journal des transactions financières
+
+#### Structure technique
+
+- **Contrôleur**: `ESBTPComptabiliteController.php`
+- **Routes**: `/esbtp/comptabilite/*` (préfixe)
+- **Vues**: `resources/views/esbtp/comptabilite/*`
+- **Permissions**: 'access_comptabilite_module' requise pour accéder au module
+
+## Mise à jour de l'interface
+
+Le sidebar du dashboard a été mis à jour pour inclure:
+- Une section "Gestion des Enseignants" pour les superAdmins
+- Une section "Comptabilité" avec toutes les fonctionnalités financières pour les superAdmins
+
+Ces modifications permettent d'avoir un accès centralisé à la gestion des enseignants et à toutes les fonctionnalités comptables depuis le tableau de bord du super administrateur. 

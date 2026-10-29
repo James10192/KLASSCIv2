@@ -1,0 +1,76 @@
+# Task ID: 18
+# Title: Infrastructure Bon de Sortie - Approbation Simplifiée
+# Status: done
+# Dependencies: 14
+# Priority: high
+# Description: Infrastructure approbation bon de sortie avec sélection approbateur et notifications automatiques (4 rôles existants)
+# Details:
+1. Extensions base de données:
+   - `esbtp_bons_sortie`: ajouter approbateur_id, notification_sent_at, approved_at
+   - Table `esbtp_bon_sortie_notifications` pour traçabilité envois/lectures
+   - Contraintes: approbateur parmi 4 rôles (superadmin, secretaire, enseignant, etudiant)
+
+2. Workflow approbation simplifié:
+   - Créateur sélectionne approbateur lors création bon
+   - Notification automatique email + app à l'approbateur
+   - Interface approbation avec commentaires et historique
+   - États: brouillon → en_attente → approuve/rejete
+
+3. NotificationService étendu:
+   ```php
+   public function notifyBonApproval($bonId, $approbateurId) {
+       // Email + notification app
+       // Template avec détails bon
+       // Tracking envoi/lecture
+   }
+   ```
+
+4. Templates notifications:
+   - Email HTML responsive pour approbation
+   - Notification in-app avec actions (Approuver/Rejeter/Voir)
+   - SMS optionnel pour cas urgents
+
+5. Interface sélection approbateur:
+   - Dropdown filtré par rôle actif
+   - Suggestions basées historique
+   - Validation business rules (pas auto-approbation)
+
+# Test Strategy:
+1. Tests workflow approbation complet
+2. Tests notifications multi-canal
+3. Tests permissions approbation par rôle
+4. Tests templates email/app
+5. Tests interface sélection approbateur
+6. Tests cas limites (approbateur inactif, auto-approbation)
+
+# Subtasks:
+## 18.1. Migration extension esbtp_bons_sortie [done]
+### Dependencies: None
+### Description: Ajouter approbateur_id, notification_sent_at, approved_at pour workflow
+### Details:
+
+
+## 18.2. Table notifications bon sortie [done]
+### Dependencies: None
+### Description: esbtp_bon_sortie_notifications pour traçabilité envois/lectures
+### Details:
+
+
+## 18.3. Extension NotificationService [done]
+### Dependencies: None
+### Description: Méthodes notifyBonApproval(), getUsersByRole() pour workflow
+### Details:
+
+
+## 18.4. ESBTPBonSortieController workflow [done]
+### Dependencies: None
+### Description: Méthodes selectApprobateur(), sendNotification(), approve()
+### Details:
+
+
+## 18.5. Templates notifications [done]
+### Dependencies: None
+### Description: Templates email et app pour demandes approbation bon sortie
+### Details:
+
+

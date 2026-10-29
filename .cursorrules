@@ -1,0 +1,108 @@
+# ESBTP-yAKRO Project Intelligence
+
+## Design System
+
+The ESBTP-yAKRO application uses a modern design system inspired by NextAdmin with the following key components:
+
+### Color Palette
+
+- Primary: #6366f1 (Indigo)
+- Secondary: #ec4899 (Pink)
+- Success: #22c55e (Green)
+- Warning: #f59e0b (Amber)
+- Danger: #ef4444 (Red)
+- Info: #0ea5e9 (Light Blue)
+- Neutrals: Gradual scale from #f8fafc (lightest) to #0f172a (darkest)
+
+### Typography
+
+- Primary Font: 'Inter' with system fallbacks
+- Size Scale:
+  - xs: 0.75rem (12px)
+  - sm: 0.875rem (14px)
+  - base: 1rem (16px)
+  - lg: 1.125rem (18px)
+  - xl: 1.25rem (20px)
+  - 2xl: 1.5rem (24px)
+
+### Component Design Guidelines
+
+1. **Cards**: 
+   - White background
+   - Border radius: 10px
+   - Subtle shadow
+   - Hover effect with slightly larger shadow
+   - Consistent padding (24px)
+   - Headers with flexible space between title and actions
+
+2. **Buttons**:
+   - Primary action: var(--nextadmin-primary)
+   - Secondary action: var(--nextadmin-secondary)
+   - Danger action: var(--nextadmin-danger)
+   - Border radius: 6px
+   - Padding: 10px 16px
+   - Hover state with slight darken effect
+
+3. **Tables**:
+   - Header with light gray background
+   - Border spacing: 0
+   - Cell padding: 12px 16px
+   - Hover effect on rows
+   - Light border on bottom of cells
+
+4. **Forms**:
+   - Input border radius: 6px
+   - Consistent padding on inputs
+   - Focus state with primary color highlight
+   - Error state with danger color
+
+5. **Layout**:
+   - Sidebar width: 280px
+   - Collapsed sidebar: 70px
+   - Navbar height: 70px
+   - Page content padding: 24px
+
+## Code Organization Patterns
+
+1. **CSS Organization**:
+   - Base global styles in nextadmin.css
+   - Component-specific styles through classes
+   - Utility classes for common modifications
+   - Responsive breakpoints at 991.98px, 767.98px, and 575.98px
+
+2. **Blade Template Structure**:
+   - app.blade.php as the main layout template
+   - Section-specific templates extending the main layout
+   - Component separation for reusable UI elements
+
+3. **JavaScript Patterns**:
+   - Event listeners initialized on document ready
+   - Bootstrap components initialized via JavaScript
+   - Chart.js for data visualization
+   - Client-side validation with feedback
+
+## Common UI Patterns
+
+1. **Dashboard Cards**:
+   - Stat cards with icon, value, label, and optional change indicator
+   - Card sections with headers and actions
+   - Chart containers with controls
+   - Table sections with search/filter capabilities
+
+2. **Navigation**:
+   - Sidebar with categories, items, and optional submenus
+   - Navbar with search, notifications, and user profile
+   - Mobile-responsive collapsible sidebar
+
+3. **Data Tables**:
+   - Sortable columns
+   - Search/filter functionality
+   - Pagination
+   - Row actions
+   - Export options
+
+4. **Forms**:
+   - Grouped inputs with labels
+   - Validation feedback
+   - Consistent submit/cancel actions
+   - Select2 for enhanced dropdowns 

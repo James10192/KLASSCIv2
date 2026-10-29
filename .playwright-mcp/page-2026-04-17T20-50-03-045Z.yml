@@ -1,0 +1,2162 @@
+- generic [ref=e2]:
+  - navigation [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - list [ref=e7]:
+          - listitem [ref=e8]:
+            - link "Stack" [ref=e9] [cursor=pointer]:
+              - /url: "#stack"
+              - button "Stack" [ref=e10]:
+                - img [ref=e12]
+                - text: Stack
+          - listitem [ref=e14]:
+            - link "Context" [ref=e15] [cursor=pointer]:
+              - /url: "#context"
+              - button "Context" [ref=e16]:
+                - img [ref=e18]
+                - text: Context
+          - listitem [ref=e20]:
+            - link "Debug" [ref=e21] [cursor=pointer]:
+              - /url: "#debug"
+              - button "Debug" [ref=e22]:
+                - img [ref=e24]
+                - text: Debug
+          - listitem [ref=e26]:
+            - link "Flare" [ref=e27] [cursor=pointer]:
+              - /url: https://flareapp.io/?utm_campaign=ignition&utm_source=ignition
+              - button "Flare" [ref=e28]:
+                - img [ref=e30]
+                - text: Flare
+        - list [ref=e35]:
+          - listitem [ref=e36]:
+            - link "Share" [ref=e37] [cursor=pointer]:
+              - /url: "#share"
+              - button "Share" [ref=e38]:
+                - img [ref=e40]
+                - text: Share
+            - generic:
+              - generic:
+                - generic:
+                  - heading "Share with Flare" [level=4]
+                  - link "Docs":
+                    - /url: https://flareapp.io/docs/ignition/introducing-ignition/sharing-errors?utm_campaign=ignition&utm_source=ignition
+                    - text: Docs
+                    - img
+                - list:
+                  - listitem:
+                    - generic:
+                      - checkbox "Stack" [checked]
+                      - generic: Stack
+                  - listitem:
+                    - generic:
+                      - checkbox "Context" [checked]
+                      - generic: Context
+                  - listitem:
+                    - generic:
+                      - checkbox "Debug" [checked]
+                      - generic: Debug
+                - generic:
+                  - button "Create Share":
+                    - img
+                    - text: Create Share
+          - listitem [ref=e42]:
+            - link "Docs" [ref=e43] [cursor=pointer]:
+              - /url: https://laravel.com/docs/
+              - button "Docs" [ref=e44]:
+                - img [ref=e46]
+                - text: Docs
+          - listitem [ref=e48]:
+            - link [ref=e49] [cursor=pointer]:
+              - /url: "#settings"
+              - button [ref=e50]:
+                - img [ref=e52]
+            - generic:
+              - generic:
+                - generic:
+                  - heading "Ignition Settings" [level=4]
+                  - link "Docs":
+                    - /url: https://flareapp.io/ignition?utm_campaign=ignition&utm_source=ignition
+                    - text: Docs
+                    - img
+                - generic:
+                  - text: Editor
+                  - generic:
+                    - combobox "Editor":
+                      - option "Clipboard"
+                      - option "Sublime"
+                      - option "TextMate"
+                      - option "Emacs"
+                      - option "MacVim"
+                      - option "PhpStorm" [selected]
+                      - option "PHPStorm Remote"
+                      - option "Idea"
+                      - option "VS Code"
+                      - option "VS Code Insiders"
+                      - option "VS Code Remote"
+                      - option "VS Code Insiders Remote"
+                      - option "VS Codium"
+                      - option "Cursor"
+                      - option "Atom"
+                      - option "Nova"
+                      - option "NetBeans"
+                      - option "Xdebug"
+                    - generic:
+                      - img
+                - generic:
+                  - text: Theme
+                  - button "auto":
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - img
+                        - generic:
+                          - generic:
+                            - img
+                        - generic:
+                          - generic:
+                            - img
+                      - generic: auto
+                - generic:
+                  - button "Save settings"
+                - paragraph:
+                  - text: Settings will be saved locally in
+                  - code: ~/.ignition.json
+                  - text: .
+      - link "Undefined constant \"activeTypes\"" [ref=e56] [cursor=pointer]:
+        - /url: "#top"
+        - generic [ref=e57]: Undefined constant "activeTypes"
+  - main [ref=e58]:
+    - main [ref=e62]:
+      - generic [ref=e64]:
+        - generic [ref=e65]:
+          - generic [ref=e68]: Error
+          - generic [ref=e69]:
+            - generic [ref=e70]: PHP 8.2.12
+            - generic [ref=e71]:
+              - img [ref=e72]
+              - text: 9.52.21
+        - generic [ref=e75]: Undefined constant "activeTypes"
+    - generic [ref=e78]:
+      - complementary [ref=e79]:
+        - generic [ref=e80]:
+          - button "Expand vendor frames" [ref=e82] [cursor=pointer]:
+            - generic [ref=e83]:
+              - img [ref=e84]
+              - img [ref=e86]
+            - text: Expand vendor frames
+          - list [ref=e89]:
+            - listitem [ref=e90]:
+              - generic [ref=e92]:
+                - generic [ref=e93]: C:\Users\yabla\Downloads\DEV\KLASSCIv2\resources\views\components\emploi-temps\grille-horaire.blade
+                - generic [ref=e94]: .php
+                - generic [ref=e95]: ": 158"
+              - generic [ref=e96]: require
+            - listitem [ref=e97]
+            - listitem [ref=e98] [cursor=pointer]:
+              - text: 8 vendor frames
+              - img [ref=e99]
+            - listitem [ref=e101] [cursor=pointer]:
+              - generic [ref=e103]:
+                - generic [ref=e104]: C:\Users\yabla\Downloads\DEV\KLASSCIv2\resources\views\esbtp\emploi-temps\show.blade
+                - generic [ref=e105]: .php
+                - generic [ref=e106]: ": 919"
+              - generic [ref=e107]: require
+            - listitem [ref=e108] [cursor=pointer]:
+              - text: 17 vendor frames
+              - img [ref=e109]
+            - listitem [ref=e111] [cursor=pointer]:
+              - generic [ref=e113]:
+                - generic [ref=e114]: App
+                - generic [ref=e115]: \
+                - generic [ref=e116]: Http
+                - generic [ref=e117]: \
+                - generic [ref=e118]: Middleware
+                - generic [ref=e119]: \
+                - generic [ref=e120]: ContractExpiryMiddleware
+                - generic [ref=e121]: ": 69"
+              - generic [ref=e122]: handle
+            - listitem [ref=e123] [cursor=pointer]:
+              - text: 1 vendor frame
+              - img [ref=e124]
+            - listitem [ref=e126] [cursor=pointer]:
+              - generic [ref=e128]:
+                - generic [ref=e129]: App
+                - generic [ref=e130]: \
+                - generic [ref=e131]: Http
+                - generic [ref=e132]: \
+                - generic [ref=e133]: Middleware
+                - generic [ref=e134]: \
+                - generic [ref=e135]: RouteDebugMiddleware
+                - generic [ref=e136]: ": 31"
+              - generic [ref=e137]: handle
+            - listitem [ref=e138] [cursor=pointer]:
+              - text: 1 vendor frame
+              - img [ref=e139]
+            - listitem [ref=e141] [cursor=pointer]:
+              - generic [ref=e143]:
+                - generic [ref=e144]: App
+                - generic [ref=e145]: \
+                - generic [ref=e146]: Http
+                - generic [ref=e147]: \
+                - generic [ref=e148]: Middleware
+                - generic [ref=e149]: \
+                - generic [ref=e150]: UpdateLastLogin
+                - generic [ref=e151]: ": 32"
+              - generic [ref=e152]: handle
+            - listitem [ref=e153] [cursor=pointer]:
+              - text: 7 vendor frames
+              - img [ref=e154]
+            - listitem [ref=e156] [cursor=pointer]:
+              - generic [ref=e158]:
+                - generic [ref=e159]: App
+                - generic [ref=e160]: \
+                - generic [ref=e161]: Http
+                - generic [ref=e162]: \
+                - generic [ref=e163]: Middleware
+                - generic [ref=e164]: \
+                - generic [ref=e165]: ForceJsonOnAjax
+                - generic [ref=e166]: ": 26"
+              - generic [ref=e167]: handle
+            - listitem [ref=e168] [cursor=pointer]:
+              - text: 10 vendor frames
+              - img [ref=e169]
+            - listitem [ref=e171] [cursor=pointer]:
+              - generic [ref=e173]:
+                - generic [ref=e174]: App
+                - generic [ref=e175]: \
+                - generic [ref=e176]: Http
+                - generic [ref=e177]: \
+                - generic [ref=e178]: Middleware
+                - generic [ref=e179]: \
+                - generic [ref=e180]: LogRequestMiddleware
+                - generic [ref=e181]: ": 31"
+              - generic [ref=e182]: handle
+            - listitem [ref=e183] [cursor=pointer]:
+              - text: 8 vendor frames
+              - img [ref=e184]
+            - listitem [ref=e186] [cursor=pointer]:
+              - generic [ref=e188]:
+                - generic [ref=e189]: App
+                - generic [ref=e190]: \
+                - generic [ref=e191]: Http
+                - generic [ref=e192]: \
+                - generic [ref=e193]: Middleware
+                - generic [ref=e194]: \
+                - generic [ref=e195]: LogRequests
+                - generic [ref=e196]: ": 20"
+              - generic [ref=e197]: handle
+            - listitem [ref=e198] [cursor=pointer]:
+              - text: 15 vendor frames
+              - img [ref=e199]
+            - listitem [ref=e201] [cursor=pointer]:
+              - generic [ref=e203]:
+                - generic [ref=e204]: App
+                - generic [ref=e205]: \
+                - generic [ref=e206]: Http
+                - generic [ref=e207]: \
+                - generic [ref=e208]: Middleware
+                - generic [ref=e209]: \
+                - generic [ref=e210]: CheckInstalled
+                - generic [ref=e211]: ": 80"
+              - generic [ref=e212]: handle
+            - listitem [ref=e213] [cursor=pointer]:
+              - text: 4 vendor frames
+              - img [ref=e214]
+            - listitem [ref=e216] [cursor=pointer]:
+              - generic [ref=e218]:
+                - generic [ref=e219]: C:\Users\yabla\Downloads\DEV\KLASSCIv2\public\index
+                - generic [ref=e220]: .php
+                - generic [ref=e221]: ": 69"
+              - generic [ref=e222]: require_once
+            - listitem [ref=e223] [cursor=pointer]:
+              - generic [ref=e225]:
+                - generic [ref=e226]: C:\Users\yabla\Downloads\DEV\KLASSCIv2\server
+                - generic [ref=e227]: .php
+                - generic [ref=e228]: ": 21"
+              - generic [ref=e229]: "[top]"
+      - generic [ref=e230]:
+        - 'link "C:\\Users\\yabla\\Downloads\\DEV\\KLASSCIv2\\resources\\views\\components\\emploi-temps\\grille-horaire.blade .php : 158" [ref=e232] [cursor=pointer]':
+          - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=158
+          - generic [ref=e233]:
+            - generic [ref=e234]: C:\Users\yabla\Downloads\DEV\KLASSCIv2\resources\views\components\emploi-temps\grille-horaire.blade
+            - generic [ref=e235]: .php
+            - generic [ref=e236]: ": 158"
+        - main [ref=e237]:
+          - navigation [ref=e238]:
+            - generic [ref=e239]:
+              - paragraph [ref=e240]: "143"
+              - paragraph [ref=e241]: "144"
+              - paragraph [ref=e242]: "145"
+              - paragraph [ref=e243]: "146"
+              - paragraph [ref=e244]: "147"
+              - paragraph [ref=e245]: "148"
+              - paragraph [ref=e246]: "149"
+              - paragraph [ref=e247]: "150"
+              - paragraph [ref=e248]: "151"
+              - paragraph [ref=e249]: "152"
+              - paragraph [ref=e250]: "153"
+              - paragraph [ref=e251]: "154"
+              - paragraph [ref=e252]: "155"
+              - paragraph [ref=e253]: "156"
+              - paragraph [ref=e254]: "157"
+              - paragraph [ref=e255]: "158"
+              - paragraph [ref=e256]: "159"
+              - paragraph [ref=e257]: "160"
+              - paragraph [ref=e258]: "161"
+              - paragraph [ref=e259]: "162"
+              - paragraph [ref=e260]: "163"
+              - paragraph [ref=e261]: "164"
+              - paragraph [ref=e262]: "165"
+              - paragraph [ref=e263]: "166"
+              - paragraph [ref=e264]: "167"
+              - paragraph [ref=e265]: "168"
+              - paragraph [ref=e266]: "169"
+              - paragraph [ref=e267]: "170"
+              - paragraph [ref=e268]: "171"
+              - paragraph [ref=e269]: "172"
+          - code [ref=e272]:
+            - generic [ref=e273]:
+              - link [ref=e274] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=143
+                - button [ref=e275]:
+                  - img [ref=e276]
+              - generic [ref=e279]: "});"
+            - generic [ref=e280]:
+              - link [ref=e281] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=144
+                - button [ref=e282]:
+                  - img [ref=e283]
+              - generic [ref=e285]: "}"
+            - generic [ref=e286]:
+              - link [ref=e287] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=145
+                - button [ref=e288]:
+                  - img [ref=e289]
+              - generic [ref=e291]: "}\">"
+            - generic [ref=e292]:
+              - link [ref=e293] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=146
+                - button [ref=e294]:
+                  - img [ref=e295]
+              - generic [ref=e298]: <div class="egh-header">
+            - generic [ref=e299]:
+              - link [ref=e300] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=147
+                - button [ref=e301]:
+                  - img [ref=e302]
+              - generic [ref=e305]: <div class="egh-header-title">
+            - generic [ref=e306]:
+              - link [ref=e307] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=148
+                - button [ref=e308]:
+                  - img [ref=e309]
+              - generic [ref=e312]: <i class="fas fa-calendar-week"></i>
+            - generic [ref=e313]:
+              - link [ref=e314] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=149
+                - button [ref=e315]:
+                  - img [ref=e316]
+              - generic [ref=e318]: Grille horaire
+            - generic [ref=e319]:
+              - link [ref=e320] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=150
+                - button [ref=e321]:
+                  - img [ref=e322]
+              - generic [ref=e325]: </div>
+            - generic [ref=e326]:
+              - link [ref=e327] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=151
+                - button [ref=e328]:
+                  - img [ref=e329]
+              - generic [ref=e332]: <div class="egh-legend" role="group" aria-label="Filtrer les types de séance">
+            - generic [ref=e333]:
+              - link [ref=e334] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=152
+                - button [ref=e335]:
+                  - img [ref=e336]
+              - generic [ref=e339]: "@foreach($sessionTypeLabels as $type => $label)"
+            - generic [ref=e340]:
+              - link [ref=e341] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=153
+                - button [ref=e342]:
+                  - img [ref=e343]
+              - generic [ref=e346]: <button type="button"
+            - generic [ref=e347]:
+              - link [ref=e348] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=154
+                - button [ref=e349]:
+                  - img [ref=e350]
+              - generic [ref=e353]: class="egh-legend-chip is-active"
+            - generic [ref=e354]:
+              - link [ref=e355] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=155
+                - button [ref=e356]:
+                  - img [ref=e357]
+              - generic [ref=e360]: ":class=\"{ 'is-active': activeTypes.{{ $type }}, 'is-inactive': !activeTypes.{{ $type }} }\""
+            - generic [ref=e361]:
+              - link [ref=e362] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=156
+                - button [ref=e363]:
+                  - img [ref=e364]
+              - generic [ref=e367]: "@click=\"toggleType('{{ $type }}')\""
+            - generic [ref=e368]:
+              - link [ref=e369] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=157
+                - button [ref=e370]:
+                  - img [ref=e371]
+              - generic [ref=e374]: ":aria-pressed=\"activeTypes.{{ $type }}\""
+            - generic [ref=e375]:
+              - link [ref=e376] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=158
+                - button [ref=e377]:
+                  - img [ref=e378]
+              - generic [ref=e381]: "title=\"{{ activeTypes[$type] ?? true ? 'Masquer' : 'Afficher' }} les {{ strtolower($label) }}\">"
+            - generic [ref=e382]:
+              - link [ref=e383] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=159
+                - button [ref=e384]:
+                  - img [ref=e385]
+              - generic [ref=e388]: "<i class=\"fas {{ $sessionTypeIcons[$type] ?? 'fa-circle' }}\"></i>"
+            - generic [ref=e389]:
+              - link [ref=e390] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=160
+                - button [ref=e391]:
+                  - img [ref=e392]
+              - generic [ref=e395]: "<span>{{ $label }}</span>"
+            - generic [ref=e396]:
+              - link [ref=e397] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=161
+                - button [ref=e398]:
+                  - img [ref=e399]
+              - generic [ref=e402]: </button>
+            - generic [ref=e403]:
+              - link [ref=e404] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=162
+                - button [ref=e405]:
+                  - img [ref=e406]
+              - generic [ref=e409]: "@endforeach"
+            - generic [ref=e410]:
+              - link [ref=e411] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=163
+                - button [ref=e412]:
+                  - img [ref=e413]
+              - generic [ref=e416]: </div>
+            - generic [ref=e417]:
+              - link [ref=e418] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=164
+                - button [ref=e419]:
+                  - img [ref=e420]
+              - generic [ref=e423]: </div>
+            - generic [ref=e424]:
+              - link [ref=e425] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=165
+                - button [ref=e426]:
+                  - img [ref=e427]
+              - generic [ref=e430]: <div class="egh-body">
+            - generic [ref=e431]:
+              - link [ref=e432] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=166
+                - button [ref=e433]:
+                  - img [ref=e434]
+              - generic [ref=e437]: "@include('esbtp.emploi-temps.partials.timetable-grid', ["
+            - generic [ref=e438]:
+              - link [ref=e439] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=167
+                - button [ref=e440]:
+                  - img [ref=e441]
+              - generic [ref=e443]: "'seances' => $seances,"
+            - generic [ref=e444]:
+              - link [ref=e445] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=168
+                - button [ref=e446]:
+                  - img [ref=e447]
+              - generic [ref=e449]: "'timeSlots' => $timeSlots,"
+            - generic [ref=e450]:
+              - link [ref=e451] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=169
+                - button [ref=e452]:
+                  - img [ref=e453]
+              - generic [ref=e455]: "'days' => $days,"
+            - generic [ref=e456]:
+              - link [ref=e457] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=170
+                - button [ref=e458]:
+                  - img [ref=e459]
+              - generic [ref=e461]: "'sessionStyles' => $sessionTypeColors,"
+            - generic [ref=e462]:
+              - link [ref=e463] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=171
+                - button [ref=e464]:
+                  - img [ref=e465]
+              - generic [ref=e467]: "'sessionLabels' => $sessionTypeLabels,"
+            - generic [ref=e468]:
+              - link [ref=e469] [cursor=pointer]:
+                - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=172
+                - button [ref=e470]:
+                  - img [ref=e471]
+              - generic [ref=e473]: "'variant' => 'web',"
+    - generic [ref=e475]:
+      - navigation [ref=e476]:
+        - list [ref=e478]:
+          - listitem [ref=e479]:
+            - link "App" [ref=e480] [cursor=pointer]:
+              - /url: "#context-app"
+            - list [ref=e481]:
+              - listitem [ref=e482]:
+                - link "Routing" [ref=e483] [cursor=pointer]:
+                  - /url: "#context-app-routing"
+                  - img [ref=e485]
+                  - generic [ref=e487]: Routing
+              - listitem [ref=e488]:
+                - link "Views" [ref=e489] [cursor=pointer]:
+                  - /url: "#context-app-views"
+                  - img [ref=e491]
+                  - generic [ref=e493]: Views
+          - listitem [ref=e494]:
+            - link "Request" [ref=e495] [cursor=pointer]:
+              - /url: "#context-request"
+            - list [ref=e496]:
+              - listitem [ref=e497]:
+                - link "Browser" [ref=e498] [cursor=pointer]:
+                  - /url: "#context-request-browser"
+                  - img [ref=e500]
+                  - generic [ref=e502]: Browser
+              - listitem [ref=e503]:
+                - link "Headers" [ref=e504] [cursor=pointer]:
+                  - /url: "#context-request-headers"
+                  - img [ref=e506]
+                  - generic [ref=e508]: Headers
+              - listitem [ref=e509]:
+                - link "Body" [ref=e510] [cursor=pointer]:
+                  - /url: "#context-request-body"
+                  - img [ref=e512]
+                  - generic [ref=e514]: Body
+          - listitem [ref=e515]:
+            - link "Context" [ref=e516] [cursor=pointer]:
+              - /url: "#context-context"
+            - list [ref=e517]:
+              - listitem [ref=e518]:
+                - link "User" [ref=e519] [cursor=pointer]:
+                  - /url: "#context-user-user"
+                  - img [ref=e521]
+                  - generic [ref=e523]: User
+              - listitem [ref=e524]:
+                - link "Versions" [ref=e525] [cursor=pointer]:
+                  - /url: "#context-context-versions"
+                  - img [ref=e527]
+                  - generic [ref=e529]: Versions
+          - listitem [ref=e530]:
+            - link "Custom" [ref=e531] [cursor=pointer]:
+              - /url: "#context-custom-context"
+            - list [ref=e532]:
+              - listitem [ref=e533]:
+                - link "Context" [ref=e534] [cursor=pointer]:
+                  - /url: "#context-custom-context-context"
+                  - img [ref=e536]
+                  - generic [ref=e538]: Context
+      - generic [ref=e539]:
+        - generic [ref=e540]:
+          - heading "App" [level=2] [ref=e541]
+          - generic [ref=e542]:
+            - generic [ref=e543]:
+              - heading "Routing" [level=1] [ref=e544]:
+                - text: Routing
+                - img [ref=e546]
+              - generic [ref=e548]:
+                - generic [ref=e549]:
+                  - term [ref=e550]: Controller
+                  - definition [ref=e551]:
+                    - generic [ref=e552]:
+                      - code [ref=e555]: App\Http\Controllers\ESBTPEmploiTempsController@show
+                      - button "Copy to clipboard" [ref=e557] [cursor=pointer]:
+                        - img [ref=e558]
+                - generic [ref=e560]:
+                  - term [ref=e561]: Route name
+                  - definition [ref=e562]:
+                    - generic [ref=e563]:
+                      - code [ref=e566]: esbtp.emploi-temps.show
+                      - button "Copy to clipboard" [ref=e568] [cursor=pointer]:
+                        - img [ref=e569]
+                - generic [ref=e571]:
+                  - term [ref=e572]: Middleware
+                  - definition [ref=e573]:
+                    - list [ref=e574]:
+                      - listitem [ref=e575]:
+                        - generic [ref=e576]:
+                          - code [ref=e579]: web
+                          - button "Copy to clipboard" [ref=e581] [cursor=pointer]:
+                            - img [ref=e582]
+                      - listitem [ref=e584]:
+                        - generic [ref=e585]:
+                          - code [ref=e588]: auth
+                          - button "Copy to clipboard" [ref=e590] [cursor=pointer]:
+                            - img [ref=e591]
+                      - listitem [ref=e593]:
+                        - generic [ref=e594]:
+                          - code [ref=e597]: permission:access_admin
+                          - button "Copy to clipboard" [ref=e599] [cursor=pointer]:
+                            - img [ref=e600]
+                      - listitem [ref=e602]:
+                        - generic [ref=e603]:
+                          - code [ref=e606]: permission:view_timetables
+                          - button "Copy to clipboard" [ref=e608] [cursor=pointer]:
+                            - img [ref=e609]
+            - generic [ref=e611]:
+              - heading "Views" [level=1] [ref=e612]:
+                - text: Views
+                - img [ref=e614]
+              - generic [ref=e616]:
+                - generic [ref=e617]:
+                  - term [ref=e618]: View
+                  - definition [ref=e619]:
+                    - link "C:\\Users\\yabla\\Downloads\\DEV\\KLASSCIv2\\resources\\views\\components\\emploi-temps\\grille-horaire.blade .php" [ref=e620] [cursor=pointer]:
+                      - /url: phpstorm://open?file=C%3A%5CUsers%5Cyabla%5CDownloads%5CDEV%5CKLASSCIv2%5Cresources%5Cviews%5Ccomponents%5Cemploi-temps%5Cgrille-horaire.blade.php&line=1
+                      - generic [ref=e621]:
+                        - generic [ref=e622]: C:\Users\yabla\Downloads\DEV\KLASSCIv2\resources\views\components\emploi-temps\grille-horaire.blade
+                        - generic [ref=e623]: .php
+                - generic [ref=e624]:
+                  - term [ref=e625]: Data
+                  - definition [ref=e626]:
+                    - generic [ref=e627]:
+                      - generic [ref=e628]:
+                        - term [ref=e629]: errors
+                        - definition [ref=e630]:
+                          - generic [ref=e632]:
+                            - text: "Illuminate\\Support\\ViewErrorBag {"
+                            - generic "[Ctrl+click] Expand all children" [ref=e633] [cursor=pointer]:
+                              - text: "#2481"
+                              - generic [ref=e634]: ▼
+                            - generic [ref=e635]: "#bags: []"
+                            - text: "}"
+                      - generic [ref=e636]:
+                        - term [ref=e637]: seances
+                        - definition [ref=e638]:
+                          - generic [ref=e640]:
+                            - text: "Illuminate\\Database\\Eloquent\\Collection {"
+                            - generic "[Ctrl+click] Expand all children" [ref=e641] [cursor=pointer]:
+                              - text: "#2974"
+                              - generic [ref=e642]: ▼
+                            - generic [ref=e643]: "#items: [] #escapeWhenCastingToString: true"
+                            - text: "}"
+                      - generic [ref=e644]:
+                        - term [ref=e645]: emploiTemps
+                        - definition [ref=e646]:
+                          - generic [ref=e648]:
+                            - text: "App\\Models\\ESBTPEmploiTemps {"
+                            - generic "[Ctrl+click] Expand all children" [ref=e649] [cursor=pointer]:
+                              - text: "#2535"
+                              - generic [ref=e650]: ▼
+                            - generic [ref=e651]:
+                              - text: "#connection: \"mysql\" #table: \"esbtp_emploi_temps\" #primaryKey: \"id\" #keyType: \"int\" +incrementing: true #with: [] #withCount: [] +preventsLazyLoading: false #perPage: 15 +exists: true +wasRecentlyCreated: false #escapeWhenCastingToString: true #attributes: array:14 ["
+                              - generic "[Ctrl+click] Expand all children" [ref=e652] [cursor=pointer]:
+                                - generic [ref=e653]: ▶
+                              - text: "] #original: array:14 ["
+                              - generic "[Ctrl+click] Expand all children" [ref=e654] [cursor=pointer]:
+                                - generic [ref=e655]: ▶
+                              - text: "] #changes: [] #casts: array:7 ["
+                              - generic "[Ctrl+click] Expand all children" [ref=e656] [cursor=pointer]:
+                                - generic [ref=e657]: ▶
+                              - text: "] #classCastCache: [] #attributeCastCache: [] #dates: [] #dateFormat: null #appends: [] #dispatchesEvents: [] #observables: [] #relations: array:3 ["
+                              - generic "[Ctrl+click] Expand all children" [ref=e658] [cursor=pointer]:
+                                - generic [ref=e659]: ▶
+                              - text: "] #touches: [] +timestamps: true #hidden: [] #visible: [] #fillable: array:10 ["
+                              - generic "[Ctrl+click] Expand all children" [ref=e660] [cursor=pointer]:
+                                - generic [ref=e661]: ▶
+                              - text: "] #guarded: array:1 ["
+                              - generic "[Ctrl+click] Expand all children" [ref=e662] [cursor=pointer]:
+                                - generic [ref=e663]: ▶
+                              - text: "] #forceDeleting: false"
+                            - text: "}"
+                      - generic [ref=e664]:
+                        - term [ref=e665]: timeSlots
+                        - definition [ref=e666]:
+                          - generic [ref=e668]:
+                            - text: array:11 [
+                            - generic "[Ctrl+click] Expand all children" [ref=e669] [cursor=pointer]:
+                              - generic [ref=e670]: ▼
+                            - generic [ref=e671]: 0 => "07:00" 1 => "08:00" 2 => "09:00" 3 => "10:00" 4 => "11:00" 5 => "12:00" 6 => "13:00" 7 => "14:00" 8 => "15:00" 9 => "16:00" 10 => "17:00"
+                            - text: "]"
+                      - generic [ref=e672]:
+                        - term [ref=e673]: days
+                        - definition [ref=e674]:
+                          - generic [ref=e676]:
+                            - text: array:6 [
+                            - generic "[Ctrl+click] Expand all children" [ref=e677] [cursor=pointer]:
+                              - generic [ref=e678]: ▼
+                            - generic [ref=e679]: 0 => 1 1 => 2 2 => 3 3 => 4 4 => 5 5 => 6
+                            - text: "]"
+                      - generic [ref=e680]:
+                        - term [ref=e681]: attributes
+                        - definition [ref=e682]:
+                          - generic [ref=e684]:
+                            - text: "Illuminate\\View\\ComponentAttributeBag {"
+                            - generic "[Ctrl+click] Expand all children" [ref=e685] [cursor=pointer]:
+                              - text: "#3560"
+                              - generic [ref=e686]: ▼
+                            - generic [ref=e687]:
+                              - text: "#attributes: array:4 ["
+                              - generic "[Ctrl+click] Expand all children" [ref=e688] [cursor=pointer]:
+                                - generic [ref=e689]: ▶
+                              - text: "]"
+                            - text: "}"
+                      - generic [ref=e690]:
+                        - term [ref=e691]: slot
+                        - definition [ref=e692]:
+                          - generic [ref=e694]:
+                            - text: "Illuminate\\Support\\HtmlString {"
+                            - generic "[Ctrl+click] Expand all children" [ref=e695] [cursor=pointer]:
+                              - text: "#3551"
+                              - generic [ref=e696]: ▼
+                            - generic [ref=e697]: "#html: \"\""
+                            - text: "}"
+                      - generic [ref=e698]:
+                        - term [ref=e699]: __laravel_slots
+                        - definition [ref=e700]:
+                          - generic [ref=e702]:
+                            - text: array:1 [
+                            - generic "[Ctrl+click] Expand all children" [ref=e703] [cursor=pointer]:
+                              - generic [ref=e704]: ▼
+                            - generic [ref=e705]:
+                              - text: "\"__default\" =>"
+                              - generic "Illuminate\\Support\\HtmlString" [ref=e706]:
+                                - generic [ref=e707]: Illuminate\Support
+                                - generic [ref=e708]: \
+                                - text: HtmlString
+                              - text: "{"
+                              - generic "[Ctrl+click] Expand all children" [ref=e709] [cursor=pointer]:
+                                - text: "#3551"
+                                - generic [ref=e710]: ▶
+                              - text: "}"
+                            - text: "]"
+        - generic [ref=e711]:
+          - heading "Request" [level=2] [ref=e712]
+          - generic [ref=e713]:
+            - generic [ref=e714]:
+              - generic [ref=e715]:
+                - generic [ref=e716]: http://127.0.0.1:8000/esbtp/emploi-temps/1
+                - generic [ref=e717]: GET
+              - generic [ref=e719] [cursor=pointer]:
+                - code [ref=e722]:
+                  - code [ref=e724]: "curl \"http://127.0.0.1:8000/esbtp/emploi-temps/1\" \\ -X GET \\ -H 'host: 127.0.0.1:8000' \\ -H 'connection: keep-alive' \\ -H 'sec-ch-ua: \"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"' \\ -H 'sec-ch-ua-mobile: ?0' \\ -H 'sec-ch-ua-platform: \"Windows\"' \\ -H 'upgrade-insecure-requests: 1' \\ -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36' \\ -H 'accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7' \\ -H 'sec-fetch-site: none' \\ -H 'sec-fetch-mode: navigate' \\ -H 'sec-fetch-user: ?1' \\ -H 'sec-fetch-dest: document' \\ -H 'accept-encoding: gzip, deflate, br, zstd' \\ -H 'accept-language: en-GB,en-US;q=0.9,en;q=0.8' \\ -H 'cookie: XSRF-TOKEN=eyJpdiI6ImFuUU0xVzVqRFZHNldGdmErbXpLbFE9PSIsInZhbHVlIjoic2RxeWgxaHZVWDlSM0NaL3lWUnBWSzlyWVFGRXQyZjdpUjZqZk5SL0tMcEZQaFd0ZGhpQ2o5SkMrdW5JT3hXVE13dUkrQ0tRNmJLd3ZMektWb1FGOHpPRzFELy9VK2pFeEszclI3aFdsS0MvdEZZT3pZTUt1eWowTjJyd2FDVDAiLCJtYWMiOiJlOGM2ZjAwMTU0ODM4YjhiMmM1MDYzNzQ5NDYyNmZmYWYzYWM0ZWFkYzNhMTViNTM1NjQyNGE2ZWM1ODM5NjMwIiwidGFnIjoiIn0%3D; klassci_session=eyJpdiI6IjJuSXlNcWtROW51bmVKUjJWNkFvL1E9PSIsInZhbHVlIjoiWGVJa2pZeWZteVpYM2Fzcnd0WmNldkZPTWVpREJDU0FKVUFBN3FUaWJFR21hNVlPRWFrS2NIaGYwUW56VnhtK3JaVm00WGdJbXUrK2hldkZRNEpQRU1iZEpOQTc2djBHUzM5dHk2REtsaVNmc3JBSEtLb1F4MkZiL3JHbWV4VGgiLCJtYWMiOiJhZWFhMDc2ZjMwZmRmNzk3OGI4NjMwNTg2MTMxMjYzNTdmYzU2YmJlZmRjYTkzZGVlZjcxOThmN2NkODUxMTdiIiwidGFnIjoiIn0%3D';"
+                - button "Copy to clipboard" [ref=e726]:
+                  - img [ref=e727]
+                - button [ref=e729]:
+                  - img [ref=e730]
+            - generic [ref=e732]:
+              - heading "Browser" [level=1] [ref=e733]:
+                - text: Browser
+                - img [ref=e735]
+              - generic [ref=e737]:
+                - code [ref=e740]: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36
+                - button "Copy to clipboard" [ref=e742] [cursor=pointer]:
+                  - img [ref=e743]
+            - generic [ref=e745]:
+              - heading "Headers" [level=1] [ref=e746]:
+                - text: Headers
+                - img [ref=e748]
+              - generic [ref=e750]:
+                - generic [ref=e751]:
+                  - term [ref=e752]: host
+                  - definition [ref=e753]:
+                    - generic [ref=e754]:
+                      - code [ref=e757]: 127.0.0.1:8000
+                      - button "Copy to clipboard" [ref=e759] [cursor=pointer]:
+                        - img [ref=e760]
+                - generic [ref=e762]:
+                  - term [ref=e763]: connection
+                  - definition [ref=e764]:
+                    - generic [ref=e765]:
+                      - code [ref=e768]: keep-alive
+                      - button "Copy to clipboard" [ref=e770] [cursor=pointer]:
+                        - img [ref=e771]
+                - generic [ref=e773]:
+                  - term [ref=e774]: sec-ch-ua
+                  - definition [ref=e775]:
+                    - generic [ref=e776]:
+                      - code [ref=e779]: "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\""
+                      - button "Copy to clipboard" [ref=e781] [cursor=pointer]:
+                        - img [ref=e782]
+                - generic [ref=e784]:
+                  - term [ref=e785]: sec-ch-ua-mobile
+                  - definition [ref=e786]:
+                    - generic [ref=e787]:
+                      - code [ref=e790]: "?0"
+                      - button "Copy to clipboard" [ref=e792] [cursor=pointer]:
+                        - img [ref=e793]
+                - generic [ref=e795]:
+                  - term [ref=e796]: sec-ch-ua-platform
+                  - definition [ref=e797]:
+                    - generic [ref=e798]:
+                      - code [ref=e801]: "\"Windows\""
+                      - button "Copy to clipboard" [ref=e803] [cursor=pointer]:
+                        - img [ref=e804]
+                - generic [ref=e806]:
+                  - term [ref=e807]: upgrade-insecure-requests
+                  - definition [ref=e808]:
+                    - generic [ref=e809]:
+                      - code [ref=e812]: "1"
+                      - button "Copy to clipboard" [ref=e814] [cursor=pointer]:
+                        - img [ref=e815]
+                - generic [ref=e817]:
+                  - term [ref=e818]: user-agent
+                  - definition [ref=e819]:
+                    - generic [ref=e820]:
+                      - code [ref=e823]: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36
+                      - button "Copy to clipboard" [ref=e825] [cursor=pointer]:
+                        - img [ref=e826]
+                - generic [ref=e828]:
+                  - term [ref=e829]: accept
+                  - definition [ref=e830]:
+                    - generic [ref=e831]:
+                      - code [ref=e834]: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+                      - button "Copy to clipboard" [ref=e836] [cursor=pointer]:
+                        - img [ref=e837]
+                - generic [ref=e839]:
+                  - term [ref=e840]: sec-fetch-site
+                  - definition [ref=e841]:
+                    - generic [ref=e842]:
+                      - code [ref=e845]: none
+                      - button "Copy to clipboard" [ref=e847] [cursor=pointer]:
+                        - img [ref=e848]
+                - generic [ref=e850]:
+                  - term [ref=e851]: sec-fetch-mode
+                  - definition [ref=e852]:
+                    - generic [ref=e853]:
+                      - code [ref=e856]: navigate
+                      - button "Copy to clipboard" [ref=e858] [cursor=pointer]:
+                        - img [ref=e859]
+                - generic [ref=e861]:
+                  - term [ref=e862]: sec-fetch-user
+                  - definition [ref=e863]:
+                    - generic [ref=e864]:
+                      - code [ref=e867]: "?1"
+                      - button "Copy to clipboard" [ref=e869] [cursor=pointer]:
+                        - img [ref=e870]
+                - generic [ref=e872]:
+                  - term [ref=e873]: sec-fetch-dest
+                  - definition [ref=e874]:
+                    - generic [ref=e875]:
+                      - code [ref=e878]: document
+                      - button "Copy to clipboard" [ref=e880] [cursor=pointer]:
+                        - img [ref=e881]
+                - generic [ref=e883]:
+                  - term [ref=e884]: accept-encoding
+                  - definition [ref=e885]:
+                    - generic [ref=e886]:
+                      - code [ref=e889]: gzip, deflate, br, zstd
+                      - button "Copy to clipboard" [ref=e891] [cursor=pointer]:
+                        - img [ref=e892]
+                - generic [ref=e894]:
+                  - term [ref=e895]: accept-language
+                  - definition [ref=e896]:
+                    - generic [ref=e897]:
+                      - code [ref=e900]: en-GB,en-US;q=0.9,en;q=0.8
+                      - button "Copy to clipboard" [ref=e902] [cursor=pointer]:
+                        - img [ref=e903]
+                - generic [ref=e905]:
+                  - term [ref=e906]: cookie
+                  - definition [ref=e907]:
+                    - generic [ref=e908]:
+                      - code [ref=e911]: XSRF-TOKEN=eyJpdiI6ImFuUU0xVzVqRFZHNldGdmErbXpLbFE9PSIsInZhbHVlIjoic2RxeWgxaHZVWDlSM0NaL3lWUnBWSzlyWVFGRXQyZjdpUjZqZk5SL0tMcEZQaFd0ZGhpQ2o5SkMrdW5JT3hXVE13dUkrQ0tRNmJLd3ZMektWb1FGOHpPRzFELy9VK2pFeEszclI3aFdsS0MvdEZZT3pZTUt1eWowTjJyd2FDVDAiLCJtYWMiOiJlOGM2ZjAwMTU0ODM4YjhiMmM1MDYzNzQ5NDYyNmZmYWYzYWM0ZWFkYzNhMTViNTM1NjQyNGE2ZWM1ODM5NjMwIiwidGFnIjoiIn0%3D; klassci_session=eyJpdiI6IjJuSXlNcWtROW51bmVKUjJWNkFvL1E9PSIsInZhbHVlIjoiWGVJa2pZeWZteVpYM2Fzcnd0WmNldkZPTWVpREJDU0FKVUFBN3FUaWJFR21hNVlPRWFrS2NIaGYwUW56VnhtK3JaVm00WGdJbXUrK2hldkZRNEpQRU1iZEpOQTc2djBHUzM5dHk2REtsaVNmc3JBSEtLb1F4MkZiL3JHbWV4VGgiLCJtYWMiOiJhZWFhMDc2ZjMwZmRmNzk3OGI4NjMwNTg2MTMxMjYzNTdmYzU2YmJlZmRjYTkzZGVlZjcxOThmN2NkODUxMTdiIiwidGFnIjoiIn0%3D
+                      - button "Copy to clipboard" [ref=e913] [cursor=pointer]:
+                        - img [ref=e914]
+            - generic [ref=e916]:
+              - heading "Body" [level=1] [ref=e917]:
+                - text: Body
+                - img [ref=e919]
+              - generic [ref=e921]:
+                - code [ref=e924]: "[]"
+                - button "Copy to clipboard" [ref=e926] [cursor=pointer]:
+                  - img [ref=e927]
+        - generic [ref=e929]:
+          - heading "Context" [level=2] [ref=e930]
+          - generic [ref=e931]:
+            - generic [ref=e932]:
+              - heading "User" [level=1] [ref=e933]:
+                - text: User
+                - img [ref=e935]
+              - generic [ref=e937]:
+                - img "superadmin@example.com" [ref=e939]
+                - generic [ref=e940]:
+                  - paragraph [ref=e941]: N’GUESSAN Marcel Jacques Patrick
+                  - paragraph [ref=e942]: superadmin@example.com
+              - generic [ref=e943] [cursor=pointer]:
+                - code [ref=e946]:
+                  - code [ref=e948]: "{ \"id\": 1, \"name\": \"N’GUESSAN Marcel Jacques Patrick\", \"first_name\": null, \"last_name\": null, \"username\": \"superadmin\", \"email\": \"superadmin@example.com\", \"email_verified_at\": null, \"must_change_password\": false, \"password_changed_at\": \"2026-04-10T22:24:24.000000Z\", \"first_login_at\": \"2026-04-10T22:24:24.000000Z\", \"is_active\": true, \"created_at\": \"2025-09-10T12:49:24.000000Z\", \"updated_at\": \"2026-04-17T00:08:42.000000Z\", \"role\": \"etudiant\", \"last_login_at\": \"2026-04-17T00:08:42.000000Z\", \"last_login_ip\": null, \"phone\": null, \"address\": null, \"city\": null, \"position\": null, \"department\": null, \"office_location\": null, \"employee_id\": null, \"appointment_date\": null, \"birth_date\": null, \"deleted_at\": null, \"profile_photo_path\": null, \"created_by\": null, \"updated_by\": null, \"permissions\": [], \"roles\": [ { \"id\": 1, \"name\": \"superAdmin\", \"guard_name\": \"web\", \"description\": null, \"is_default\": 0, \"created_at\": \"2025-09-10T12:49:24.000000Z\", \"updated_at\": \"2025-09-10T12:49:24.000000Z\", \"pivot\": { \"model_id\": 1, \"role_id\": 1, \"model_type\": \"App\\\\Models\\\\User\" } } ] }"
+                - button "Copy to clipboard" [ref=e950]:
+                  - img [ref=e951]
+                - button [ref=e953]:
+                  - img [ref=e954]
+            - generic [ref=e956]:
+              - heading "Versions" [level=1] [ref=e957]:
+                - text: Versions
+                - img [ref=e959]
+              - generic [ref=e961]:
+                - generic [ref=e962]:
+                  - term [ref=e963]: Php Version
+                  - definition [ref=e964]:
+                    - generic [ref=e965]:
+                      - code [ref=e968]: 8.2.12
+                      - button "Copy to clipboard" [ref=e970] [cursor=pointer]:
+                        - img [ref=e971]
+                - generic [ref=e973]:
+                  - term [ref=e974]: Laravel Version
+                  - definition [ref=e975]:
+                    - generic [ref=e976]:
+                      - code [ref=e979]: 9.52.21
+                      - button "Copy to clipboard" [ref=e981] [cursor=pointer]:
+                        - img [ref=e982]
+                - generic [ref=e984]:
+                  - term [ref=e985]: Laravel Locale
+                  - definition [ref=e986]:
+                    - generic [ref=e987]:
+                      - code [ref=e990]: fr
+                      - button "Copy to clipboard" [ref=e992] [cursor=pointer]:
+                        - img [ref=e993]
+                - generic [ref=e995]:
+                  - term [ref=e996]: Laravel Config Cached
+                  - definition [ref=e997]:
+                    - generic [ref=e998]:
+                      - img [ref=e999]
+                      - generic [ref=e1001]: "false"
+                - generic [ref=e1002]:
+                  - term [ref=e1003]: App Debug
+                  - definition [ref=e1004]:
+                    - generic [ref=e1005]:
+                      - img [ref=e1006]
+                      - generic [ref=e1008]: "true"
+                - generic [ref=e1009]:
+                  - term [ref=e1010]: App Env
+                  - definition [ref=e1011]:
+                    - generic [ref=e1012]:
+                      - code [ref=e1015]: local
+                      - button "Copy to clipboard" [ref=e1017] [cursor=pointer]:
+                        - img [ref=e1018]
+        - generic [ref=e1020]:
+          - heading "Custom" [level=2] [ref=e1021]
+          - generic [ref=e1023]:
+            - heading "Context" [level=1] [ref=e1024]:
+              - text: Context
+              - img [ref=e1026]
+            - generic [ref=e1029]:
+              - term [ref=e1030]: View
+              - definition [ref=e1031]:
+                - generic [ref=e1032] [cursor=pointer]:
+                  - code [ref=e1035]:
+                    - code [ref=e1037]: "{ \"view\": \"C:\\\\Users\\\\yabla\\\\Downloads\\\\DEV\\\\KLASSCIv2\\\\resources\\\\views\\\\components\\\\emploi-temps\\\\grille-horaire.blade.php\", \"data\": { \"errors\": \"<pre class=sf-dump id=sf-dump-1813336602 data-indent-pad=\\\" \\\"><span class=sf-dump-note>Illuminate\\\\Support\\\\ViewErrorBag</span> {<a class=sf-dump-ref>#2481</a><samp data-depth=1 class=sf-dump-expanded>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">bags</span>: []\\n</samp>}\\n</pre><script>Sfdump(\\\"sf-dump-1813336602\\\", {\\\"maxDepth\\\":3,\\\"maxStringLength\\\":160})</script>\\n\", \"seances\": \"<pre class=sf-dump id=sf-dump-2100045414 data-indent-pad=\\\" \\\"><span class=sf-dump-note>Illuminate\\\\Database\\\\Eloquent\\\\Collection</span> {<a class=sf-dump-ref>#2974</a><samp data-depth=1 class=sf-dump-expanded>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">items</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">escapeWhenCastingToString</span>: <span class=sf-dump-const>true</span>\\n</samp>}\\n</pre><script>Sfdump(\\\"sf-dump-2100045414\\\", {\\\"maxDepth\\\":3,\\\"maxStringLength\\\":160})</script>\\n\", \"emploiTemps\": \"<pre class=sf-dump id=sf-dump-629870326 data-indent-pad=\\\" \\\"><span class=sf-dump-note>App\\\\Models\\\\ESBTPEmploiTemps</span> {<a class=sf-dump-ref>#2535</a><samp data-depth=1 class=sf-dump-expanded>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">connection</span>: \\\"<span class=sf-dump-str title=\\\"5 characters\\\">mysql</span>\\\"\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">table</span>: \\\"<span class=sf-dump-str title=\\\"18 characters\\\">esbtp_emploi_temps</span>\\\"\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">primaryKey</span>: \\\"<span class=sf-dump-str title=\\\"2 characters\\\">id</span>\\\"\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">keyType</span>: \\\"<span class=sf-dump-str title=\\\"3 characters\\\">int</span>\\\"\\n +<span class=sf-dump-public title=\\\"Public property\\\">incrementing</span>: <span class=sf-dump-const>true</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">with</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">withCount</span>: []\\n +<span class=sf-dump-public title=\\\"Public property\\\">preventsLazyLoading</span>: <span class=sf-dump-const>false</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">perPage</span>: <span class=sf-dump-num>15</span>\\n +<span class=sf-dump-public title=\\\"Public property\\\">exists</span>: <span class=sf-dump-const>true</span>\\n +<span class=sf-dump-public title=\\\"Public property\\\">wasRecentlyCreated</span>: <span class=sf-dump-const>false</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">escapeWhenCastingToString</span>: <span class=sf-dump-const>true</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">attributes</span>: <span class=sf-dump-note>array:14</span> [<samp data-depth=2 class=sf-dump-compact>\\n \\\"<span class=sf-dump-key>id</span>\\\" => <span class=sf-dump-num>1</span>\\n \\\"<span class=sf-dump-key>titre</span>\\\" => \\\"<span class=sf-dump-str title=\\\"9 characters\\\">Semaine 1</span>\\\"\\n \\\"<span class=sf-dump-key>classe_id</span>\\\" => <span class=sf-dump-num>2</span>\\n \\\"<span class=sf-dump-key>semestre</span>\\\" => \\\"<span class=sf-dump-str title=\\\"9 characters\\\">semestre1</span>\\\"\\n \\\"<span class=sf-dump-key>date_debut</span>\\\" => \\\"<span class=sf-dump-str title=\\\"10 characters\\\">2025-09-15</span>\\\"\\n \\\"<span class=sf-dump-key>date_fin</span>\\\" => \\\"<span class=sf-dump-str title=\\\"10 characters\\\">2025-09-19</span>\\\"\\n \\\"<span class=sf-dump-key>annee_universitaire_id</span>\\\" => <span class=sf-dump-num>1</span>\\n \\\"<span class=sf-dump-key>is_active</span>\\\" => <span class=sf-dump-num>0</span>\\n \\\"<span class=sf-dump-key>is_current</span>\\\" => <span class=sf-dump-num>0</span>\\n \\\"<span class=sf-dump-key>created_by</span>\\\" => <span class=sf-dump-num>1</span>\\n \\\"<span class=sf-dump-key>updated_by</span>\\\" => <span class=sf-dump-const>null</span>\\n \\\"<span class=sf-dump-key>created_at</span>\\\" => \\\"<span class=sf-dump-str title=\\\"19 characters\\\">2025-09-15 16:35:40</span>\\\"\\n \\\"<span class=sf-dump-key>updated_at</span>\\\" => \\\"<span class=sf-dump-str title=\\\"19 characters\\\">2026-02-02 08:37:25</span>\\\"\\n \\\"<span class=sf-dump-key>deleted_at</span>\\\" => <span class=sf-dump-const>null</span>\\n </samp>]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">original</span>: <span class=sf-dump-note>array:14</span> [<samp data-depth=2 class=sf-dump-compact>\\n \\\"<span class=sf-dump-key>id</span>\\\" => <span class=sf-dump-num>1</span>\\n \\\"<span class=sf-dump-key>titre</span>\\\" => \\\"<span class=sf-dump-str title=\\\"9 characters\\\">Semaine 1</span>\\\"\\n \\\"<span class=sf-dump-key>classe_id</span>\\\" => <span class=sf-dump-num>2</span>\\n \\\"<span class=sf-dump-key>semestre</span>\\\" => \\\"<span class=sf-dump-str title=\\\"9 characters\\\">semestre1</span>\\\"\\n \\\"<span class=sf-dump-key>date_debut</span>\\\" => \\\"<span class=sf-dump-str title=\\\"10 characters\\\">2025-09-15</span>\\\"\\n \\\"<span class=sf-dump-key>date_fin</span>\\\" => \\\"<span class=sf-dump-str title=\\\"10 characters\\\">2025-09-19</span>\\\"\\n \\\"<span class=sf-dump-key>annee_universitaire_id</span>\\\" => <span class=sf-dump-num>1</span>\\n \\\"<span class=sf-dump-key>is_active</span>\\\" => <span class=sf-dump-num>0</span>\\n \\\"<span class=sf-dump-key>is_current</span>\\\" => <span class=sf-dump-num>0</span>\\n \\\"<span class=sf-dump-key>created_by</span>\\\" => <span class=sf-dump-num>1</span>\\n \\\"<span class=sf-dump-key>updated_by</span>\\\" => <span class=sf-dump-const>null</span>\\n \\\"<span class=sf-dump-key>created_at</span>\\\" => \\\"<span class=sf-dump-str title=\\\"19 characters\\\">2025-09-15 16:35:40</span>\\\"\\n \\\"<span class=sf-dump-key>updated_at</span>\\\" => \\\"<span class=sf-dump-str title=\\\"19 characters\\\">2026-02-02 08:37:25</span>\\\"\\n \\\"<span class=sf-dump-key>deleted_at</span>\\\" => <span class=sf-dump-const>null</span>\\n </samp>]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">changes</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">casts</span>: <span class=sf-dump-note>array:7</span> [<samp data-depth=2 class=sf-dump-compact>\\n \\\"<span class=sf-dump-key>date_debut</span>\\\" => \\\"<span class=sf-dump-str title=\\\"4 characters\\\">date</span>\\\"\\n \\\"<span class=sf-dump-key>date_fin</span>\\\" => \\\"<span class=sf-dump-str title=\\\"4 characters\\\">date</span>\\\"\\n \\\"<span class=sf-dump-key>is_active</span>\\\" => \\\"<span class=sf-dump-str title=\\\"7 characters\\\">boolean</span>\\\"\\n \\\"<span class=sf-dump-key>is_current</span>\\\" => \\\"<span class=sf-dump-str title=\\\"7 characters\\\">boolean</span>\\\"\\n \\\"<span class=sf-dump-key>created_at</span>\\\" => \\\"<span class=sf-dump-str title=\\\"8 characters\\\">datetime</span>\\\"\\n \\\"<span class=sf-dump-key>updated_at</span>\\\" => \\\"<span class=sf-dump-str title=\\\"8 characters\\\">datetime</span>\\\"\\n \\\"<span class=sf-dump-key>deleted_at</span>\\\" => \\\"<span class=sf-dump-str title=\\\"8 characters\\\">datetime</span>\\\"\\n </samp>]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">classCastCache</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">attributeCastCache</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">dates</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">dateFormat</span>: <span class=sf-dump-const>null</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">appends</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">dispatchesEvents</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">observables</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">relations</span>: <span class=sf-dump-note>array:3</span> [<samp data-depth=2 class=sf-dump-compact>\\n \\\"<span class=sf-dump-key>seances</span>\\\" => <span class=\\\"sf-dump-note sf-dump-ellipsization\\\" title=\\\"Illuminate\\\\Database\\\\Eloquent\\\\Collection\\n\\\"><span class=\\\"sf-dump-ellipsis sf-dump-ellipsis-note\\\">Illuminate\\\\Database\\\\Eloquent</span><span class=\\\"sf-dump-ellipsis sf-dump-ellipsis-note\\\">\\\\</span><span class=\\\"sf-dump-ellipsis-tail\\\">Collection</span></span> {<a class=sf-dump-ref>#2974</a><samp data-depth=3 class=sf-dump-compact>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">items</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">escapeWhenCastingToString</span>: <span class=sf-dump-const>true</span>\\n </samp>}\\n \\\"<span class=sf-dump-key>classe</span>\\\" => <span class=\\\"sf-dump-note sf-dump-ellipsization\\\" title=\\\"App\\\\Models\\\\ESBTPClasse\\n\\\"><span class=\\\"sf-dump-ellipsis sf-dump-ellipsis-note\\\">App\\\\Models</span><span class=\\\"sf-dump-ellipsis sf-dump-ellipsis-note\\\">\\\\</span><span class=\\\"sf-dump-ellipsis-tail\\\">ESBTPClasse</span></span> {<a class=sf-dump-ref>#3019</a><samp data-depth=3 class=sf-dump-compact>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">connection</span>: \\\"<span class=sf-dump-str title=\\\"5 characters\\\">mysql</span>\\\"\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">table</span>: \\\"<span class=sf-dump-str title=\\\"13 characters\\\">esbtp_classes</span>\\\"\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">primaryKey</span>: \\\"<span class=sf-dump-str title=\\\"2 characters\\\">id</span>\\\"\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">keyType</span>: \\\"<span class=sf-dump-str title=\\\"3 characters\\\">int</span>\\\"\\n +<span class=sf-dump-public title=\\\"Public property\\\">incrementing</span>: <span class=sf-dump-const>true</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">with</span>: <span class=sf-dump-note>array:3</span> [ &#8230;3]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">withCount</span>: []\\n +<span class=sf-dump-public title=\\\"Public property\\\">preventsLazyLoading</span>: <span class=sf-dump-const>false</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">perPage</span>: <span class=sf-dump-num>15</span>\\n +<span class=sf-dump-public title=\\\"Public property\\\">exists</span>: <span class=sf-dump-const>true</span>\\n +<span class=sf-dump-public title=\\\"Public property\\\">wasRecentlyCreated</span>: <span class=sf-dump-const>false</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">escapeWhenCastingToString</span>: <span class=sf-dump-const>false</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">attributes</span>: <span class=sf-dump-note>array:18</span> [ &#8230;18]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">original</span>: <span class=sf-dump-note>array:18</span> [ &#8230;18]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">changes</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">casts</span>: <span class=sf-dump-note>array:4</span> [ &#8230;4]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">classCastCache</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">attributeCastCache</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">dates</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">dateFormat</span>: <span class=sf-dump-const>null</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">appends</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">dispatchesEvents</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">observables</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">relations</span>: <span class=sf-dump-note>array:3</span> [ &#8230;3]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">touches</span>: []\\n +<span class=sf-dump-public title=\\\"Public property\\\">timestamps</span>: <span class=sf-dump-const>true</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">hidden</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">visible</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">fillable</span>: <span class=sf-dump-note>array:13</span> [ &#8230;13]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">guarded</span>: <span class=sf-dump-note>array:1</span> [ &#8230;1]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">forceDeleting</span>: <span class=sf-dump-const>false</span>\\n </samp>}\\n \\\"<span class=sf-dump-key>annee</span>\\\" => <span class=\\\"sf-dump-note sf-dump-ellipsization\\\" title=\\\"App\\\\Models\\\\ESBTPAnneeUniversitaire\\n\\\"><span class=\\\"sf-dump-ellipsis sf-dump-ellipsis-note\\\">App\\\\Models</span><span class=\\\"sf-dump-ellipsis sf-dump-ellipsis-note\\\">\\\\</span><span class=\\\"sf-dump-ellipsis-tail\\\">ESBTPAnneeUniversitaire</span></span> {<a class=sf-dump-ref>#2019</a><samp data-depth=3 class=sf-dump-compact>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">connection</span>: \\\"<span class=sf-dump-str title=\\\"5 characters\\\">mysql</span>\\\"\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">table</span>: \\\"<span class=sf-dump-str title=\\\"26 characters\\\">esbtp_annee_universitaires</span>\\\"\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">primaryKey</span>: \\\"<span class=sf-dump-str title=\\\"2 characters\\\">id</span>\\\"\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">keyType</span>: \\\"<span class=sf-dump-str title=\\\"3 characters\\\">int</span>\\\"\\n +<span class=sf-dump-public title=\\\"Public property\\\">incrementing</span>: <span class=sf-dump-const>true</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">with</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">withCount</span>: []\\n +<span class=sf-dump-public title=\\\"Public property\\\">preventsLazyLoading</span>: <span class=sf-dump-const>false</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">perPage</span>: <span class=sf-dump-num>15</span>\\n +<span class=sf-dump-public title=\\\"Public property\\\">exists</span>: <span class=sf-dump-const>true</span>\\n +<span class=sf-dump-public title=\\\"Public property\\\">wasRecentlyCreated</span>: <span class=sf-dump-const>false</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">escapeWhenCastingToString</span>: <span class=sf-dump-const>false</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">attributes</span>: <span class=sf-dump-note>array:14</span> [ &#8230;14]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">original</span>: <span class=sf-dump-note>array:14</span> [ &#8230;14]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">changes</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">casts</span>: <span class=sf-dump-note>array:7</span> [ &#8230;7]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">classCastCache</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">attributeCastCache</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">dates</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">dateFormat</span>: <span class=sf-dump-const>null</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">appends</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">dispatchesEvents</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">observables</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">relations</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">touches</span>: []\\n +<span class=sf-dump-public title=\\\"Public property\\\">timestamps</span>: <span class=sf-dump-const>true</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">hidden</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">visible</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">fillable</span>: <span class=sf-dump-note>array:6</span> [ &#8230;6]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">guarded</span>: <span class=sf-dump-note>array:1</span> [ &#8230;1]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">forceDeleting</span>: <span class=sf-dump-const>false</span>\\n </samp>}\\n </samp>]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">touches</span>: []\\n +<span class=sf-dump-public title=\\\"Public property\\\">timestamps</span>: <span class=sf-dump-const>true</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">hidden</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">visible</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">fillable</span>: <span class=sf-dump-note>array:10</span> [<samp data-depth=2 class=sf-dump-compact>\\n <span class=sf-dump-index>0</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">titre</span>\\\"\\n <span class=sf-dump-index>1</span> => \\\"<span class=sf-dump-str title=\\\"9 characters\\\">classe_id</span>\\\"\\n <span class=sf-dump-index>2</span> => \\\"<span class=sf-dump-str title=\\\"22 characters\\\">annee_universitaire_id</span>\\\"\\n <span class=sf-dump-index>3</span> => \\\"<span class=sf-dump-str title=\\\"8 characters\\\">semestre</span>\\\"\\n <span class=sf-dump-index>4</span> => \\\"<span class=sf-dump-str title=\\\"10 characters\\\">date_debut</span>\\\"\\n <span class=sf-dump-index>5</span> => \\\"<span class=sf-dump-str title=\\\"8 characters\\\">date_fin</span>\\\"\\n <span class=sf-dump-index>6</span> => \\\"<span class=sf-dump-str title=\\\"9 characters\\\">is_active</span>\\\"\\n <span class=sf-dump-index>7</span> => \\\"<span class=sf-dump-str title=\\\"10 characters\\\">is_current</span>\\\"\\n <span class=sf-dump-index>8</span> => \\\"<span class=sf-dump-str title=\\\"10 characters\\\">created_by</span>\\\"\\n <span class=sf-dump-index>9</span> => \\\"<span class=sf-dump-str title=\\\"10 characters\\\">updated_by</span>\\\"\\n </samp>]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">guarded</span>: <span class=sf-dump-note>array:1</span> [<samp data-depth=2 class=sf-dump-compact>\\n <span class=sf-dump-index>0</span> => \\\"<span class=sf-dump-str>*</span>\\\"\\n </samp>]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">forceDeleting</span>: <span class=sf-dump-const>false</span>\\n</samp>}\\n</pre><script>Sfdump(\\\"sf-dump-629870326\\\", {\\\"maxDepth\\\":3,\\\"maxStringLength\\\":160})</script>\\n\", \"timeSlots\": \"<pre class=sf-dump id=sf-dump-1709288930 data-indent-pad=\\\" \\\"><span class=sf-dump-note>array:11</span> [<samp data-depth=1 class=sf-dump-expanded>\\n <span class=sf-dump-index>0</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">07:00</span>\\\"\\n <span class=sf-dump-index>1</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">08:00</span>\\\"\\n <span class=sf-dump-index>2</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">09:00</span>\\\"\\n <span class=sf-dump-index>3</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">10:00</span>\\\"\\n <span class=sf-dump-index>4</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">11:00</span>\\\"\\n <span class=sf-dump-index>5</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">12:00</span>\\\"\\n <span class=sf-dump-index>6</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">13:00</span>\\\"\\n <span class=sf-dump-index>7</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">14:00</span>\\\"\\n <span class=sf-dump-index>8</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">15:00</span>\\\"\\n <span class=sf-dump-index>9</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">16:00</span>\\\"\\n <span class=sf-dump-index>10</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">17:00</span>\\\"\\n</samp>]\\n</pre><script>Sfdump(\\\"sf-dump-1709288930\\\", {\\\"maxDepth\\\":3,\\\"maxStringLength\\\":160})</script>\\n\", \"days\": \"<pre class=sf-dump id=sf-dump-520463616 data-indent-pad=\\\" \\\"><span class=sf-dump-note>array:6</span> [<samp data-depth=1 class=sf-dump-expanded>\\n <span class=sf-dump-index>0</span> => <span class=sf-dump-num>1</span>\\n <span class=sf-dump-index>1</span> => <span class=sf-dump-num>2</span>\\n <span class=sf-dump-index>2</span> => <span class=sf-dump-num>3</span>\\n <span class=sf-dump-index>3</span> => <span class=sf-dump-num>4</span>\\n <span class=sf-dump-index>4</span> => <span class=sf-dump-num>5</span>\\n <span class=sf-dump-index>5</span> => <span class=sf-dump-num>6</span>\\n</samp>]\\n</pre><script>Sfdump(\\\"sf-dump-520463616\\\", {\\\"maxDepth\\\":3,\\\"maxStringLength\\\":160})</script>\\n\", \"attributes\": \"<pre class=sf-dump id=sf-dump-2138452671 data-indent-pad=\\\" \\\"><span class=sf-dump-note>Illuminate\\\\View\\\\ComponentAttributeBag</span> {<a class=sf-dump-ref>#3560</a><samp data-depth=1 class=sf-dump-expanded>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">attributes</span>: <span class=sf-dump-note>array:4</span> [<samp data-depth=2 class=sf-dump-compact>\\n \\\"<span class=sf-dump-key>seances</span>\\\" => <span class=\\\"sf-dump-note sf-dump-ellipsization\\\" title=\\\"Illuminate\\\\Database\\\\Eloquent\\\\Collection\\n\\\"><span class=\\\"sf-dump-ellipsis sf-dump-ellipsis-note\\\">Illuminate\\\\Database\\\\Eloquent</span><span class=\\\"sf-dump-ellipsis sf-dump-ellipsis-note\\\">\\\\</span><span class=\\\"sf-dump-ellipsis-tail\\\">Collection</span></span> {<a class=sf-dump-ref href=#sf-dump-2138452671-ref22974 title=\\\"2 occurrences\\\">#2974</a><samp data-depth=3 id=sf-dump-2138452671-ref22974 class=sf-dump-compact>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">items</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">escapeWhenCastingToString</span>: <span class=sf-dump-const>true</span>\\n </samp>}\\n \\\"<span class=sf-dump-key>emploiTemps</span>\\\" => <span class=\\\"sf-dump-note sf-dump-ellipsization\\\" title=\\\"App\\\\Models\\\\ESBTPEmploiTemps\\n\\\"><span class=\\\"sf-dump-ellipsis sf-dump-ellipsis-note\\\">App\\\\Models</span><span class=\\\"sf-dump-ellipsis sf-dump-ellipsis-note\\\">\\\\</span><span class=\\\"sf-dump-ellipsis-tail\\\">ESBTPEmploiTemps</span></span> {<a class=sf-dump-ref>#2535</a><samp data-depth=3 class=sf-dump-compact>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">connection</span>: \\\"<span class=sf-dump-str title=\\\"5 characters\\\">mysql</span>\\\"\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">table</span>: \\\"<span class=sf-dump-str title=\\\"18 characters\\\">esbtp_emploi_temps</span>\\\"\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">primaryKey</span>: \\\"<span class=sf-dump-str title=\\\"2 characters\\\">id</span>\\\"\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">keyType</span>: \\\"<span class=sf-dump-str title=\\\"3 characters\\\">int</span>\\\"\\n +<span class=sf-dump-public title=\\\"Public property\\\">incrementing</span>: <span class=sf-dump-const>true</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">with</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">withCount</span>: []\\n +<span class=sf-dump-public title=\\\"Public property\\\">preventsLazyLoading</span>: <span class=sf-dump-const>false</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">perPage</span>: <span class=sf-dump-num>15</span>\\n +<span class=sf-dump-public title=\\\"Public property\\\">exists</span>: <span class=sf-dump-const>true</span>\\n +<span class=sf-dump-public title=\\\"Public property\\\">wasRecentlyCreated</span>: <span class=sf-dump-const>false</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">escapeWhenCastingToString</span>: <span class=sf-dump-const>true</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">attributes</span>: <span class=sf-dump-note>array:14</span> [ &#8230;14]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">original</span>: <span class=sf-dump-note>array:14</span> [ &#8230;14]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">changes</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">casts</span>: <span class=sf-dump-note>array:7</span> [ &#8230;7]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">classCastCache</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">attributeCastCache</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">dates</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">dateFormat</span>: <span class=sf-dump-const>null</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">appends</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">dispatchesEvents</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">observables</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">relations</span>: <span class=sf-dump-note>array:3</span> [ &#8230;3]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">touches</span>: []\\n +<span class=sf-dump-public title=\\\"Public property\\\">timestamps</span>: <span class=sf-dump-const>true</span>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">hidden</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">visible</span>: []\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">fillable</span>: <span class=sf-dump-note>array:10</span> [ &#8230;10]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">guarded</span>: <span class=sf-dump-note>array:1</span> [ &#8230;1]\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">forceDeleting</span>: <span class=sf-dump-const>false</span>\\n </samp>}\\n \\\"<span class=sf-dump-key>timeSlots</span>\\\" => <span class=sf-dump-note>array:11</span> [<samp data-depth=3 class=sf-dump-compact>\\n <span class=sf-dump-index>0</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">07:00</span>\\\"\\n <span class=sf-dump-index>1</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">08:00</span>\\\"\\n <span class=sf-dump-index>2</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">09:00</span>\\\"\\n <span class=sf-dump-index>3</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">10:00</span>\\\"\\n <span class=sf-dump-index>4</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">11:00</span>\\\"\\n <span class=sf-dump-index>5</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">12:00</span>\\\"\\n <span class=sf-dump-index>6</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">13:00</span>\\\"\\n <span class=sf-dump-index>7</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">14:00</span>\\\"\\n <span class=sf-dump-index>8</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">15:00</span>\\\"\\n <span class=sf-dump-index>9</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">16:00</span>\\\"\\n <span class=sf-dump-index>10</span> => \\\"<span class=sf-dump-str title=\\\"5 characters\\\">17:00</span>\\\"\\n </samp>]\\n \\\"<span class=sf-dump-key>days</span>\\\" => <span class=sf-dump-note>array:6</span> [<samp data-depth=3 class=sf-dump-compact>\\n <span class=sf-dump-index>0</span> => <span class=sf-dump-num>1</span>\\n <span class=sf-dump-index>1</span> => <span class=sf-dump-num>2</span>\\n <span class=sf-dump-index>2</span> => <span class=sf-dump-num>3</span>\\n <span class=sf-dump-index>3</span> => <span class=sf-dump-num>4</span>\\n <span class=sf-dump-index>4</span> => <span class=sf-dump-num>5</span>\\n <span class=sf-dump-index>5</span> => <span class=sf-dump-num>6</span>\\n </samp>]\\n </samp>]\\n</samp>}\\n</pre><script>Sfdump(\\\"sf-dump-2138452671\\\", {\\\"maxDepth\\\":3,\\\"maxStringLength\\\":160})</script>\\n\", \"slot\": \"<pre class=sf-dump id=sf-dump-1957972373 data-indent-pad=\\\" \\\"><span class=sf-dump-note>Illuminate\\\\Support\\\\HtmlString</span> {<a class=sf-dump-ref>#3551</a><samp data-depth=1 class=sf-dump-expanded>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">html</span>: \\\"\\\"\\n</samp>}\\n</pre><script>Sfdump(\\\"sf-dump-1957972373\\\", {\\\"maxDepth\\\":3,\\\"maxStringLength\\\":160})</script>\\n\", \"__laravel_slots\": \"<pre class=sf-dump id=sf-dump-1055550674 data-indent-pad=\\\" \\\"><span class=sf-dump-note>array:1</span> [<samp data-depth=1 class=sf-dump-expanded>\\n \\\"<span class=sf-dump-key>__default</span>\\\" => <span class=\\\"sf-dump-note sf-dump-ellipsization\\\" title=\\\"Illuminate\\\\Support\\\\HtmlString\\n\\\"><span class=\\\"sf-dump-ellipsis sf-dump-ellipsis-note\\\">Illuminate\\\\Support</span><span class=\\\"sf-dump-ellipsis sf-dump-ellipsis-note\\\">\\\\</span><span class=\\\"sf-dump-ellipsis-tail\\\">HtmlString</span></span> {<a class=sf-dump-ref>#3551</a><samp data-depth=2 class=sf-dump-compact>\\n #<span class=sf-dump-protected title=\\\"Protected property\\\">html</span>: \\\"\\\"\\n </samp>}\\n</samp>]\\n</pre><script>Sfdump(\\\"sf-dump-1055550674\\\", {\\\"maxDepth\\\":3,\\\"maxStringLength\\\":160})</script>\\n\" } }"
+                  - button "Copy to clipboard" [ref=e1039]:
+                    - img [ref=e1040]
+                  - button [ref=e1042]:
+                    - img [ref=e1043]
+    - generic [ref=e1046]:
+      - navigation:
+        - list [ref=e1047]:
+          - listitem [ref=e1048]:
+            - button "63 Queries" [ref=e1049] [cursor=pointer]:
+              - generic [ref=e1050]: "63"
+              - generic [ref=e1051]: Queries
+          - listitem [ref=e1052]:
+            - button "200 Logs" [ref=e1053] [cursor=pointer]:
+              - generic [ref=e1054]: "200"
+              - generic [ref=e1055]: Logs
+      - generic [ref=e1056]:
+        - generic [ref=e1057]:
+          - generic [ref=e1058]:
+            - generic [ref=e1059]: 20:49:41
+            - generic [ref=e1060]:
+              - img "Runtime" [ref=e1061]
+              - text: 3.61ms
+            - generic [ref=e1063]:
+              - img "Connection" [ref=e1064]
+              - text: mysql
+          - generic [ref=e1067]:
+            - generic [ref=e1068] [cursor=pointer]:
+              - code [ref=e1071]:
+                - code [ref=e1073]: select * from information_schema.tables where table_schema = klassci_local and table_name = users and table_type = 'BASE TABLE'
+              - button "Copy to clipboard" [ref=e1075]:
+                - img [ref=e1076]
+              - button [ref=e1078]:
+                - img [ref=e1079]
+            - button "2 query parameters" [ref=e1082] [cursor=pointer]:
+              - img [ref=e1083]
+              - text: 2 query parameters
+        - generic [ref=e1085]:
+          - generic [ref=e1086]:
+            - generic [ref=e1087]: 20:49:41
+            - generic [ref=e1088]:
+              - img "Runtime" [ref=e1089]
+              - text: 1.37ms
+            - generic [ref=e1091]:
+              - img "Connection" [ref=e1092]
+              - text: mysql
+          - generic [ref=e1095]:
+            - generic [ref=e1096] [cursor=pointer]:
+              - code [ref=e1099]:
+                - code [ref=e1101]: select * from information_schema.tables where table_schema = klassci_local and table_name = users and table_type = 'BASE TABLE'
+              - button "Copy to clipboard" [ref=e1103]:
+                - img [ref=e1104]
+              - button [ref=e1106]:
+                - img [ref=e1107]
+            - button "2 query parameters" [ref=e1110] [cursor=pointer]:
+              - img [ref=e1111]
+              - text: 2 query parameters
+        - generic [ref=e1113]:
+          - generic [ref=e1114]:
+            - generic [ref=e1115]: 20:49:41
+            - generic [ref=e1116]:
+              - img "Runtime" [ref=e1117]
+              - text: 3.03ms
+            - generic [ref=e1119]:
+              - img "Connection" [ref=e1120]
+              - text: mysql
+          - generic [ref=e1123]:
+            - generic [ref=e1124] [cursor=pointer]:
+              - code [ref=e1127]:
+                - code [ref=e1129]: select * from information_schema.tables where table_schema = klassci_local and table_name = roles and table_type = 'BASE TABLE'
+              - button "Copy to clipboard" [ref=e1131]:
+                - img [ref=e1132]
+              - button [ref=e1134]:
+                - img [ref=e1135]
+            - button "2 query parameters" [ref=e1138] [cursor=pointer]:
+              - img [ref=e1139]
+              - text: 2 query parameters
+        - generic [ref=e1141]:
+          - generic [ref=e1142]:
+            - generic [ref=e1143]: 20:49:41
+            - generic [ref=e1144]:
+              - img "Runtime" [ref=e1145]
+              - text: 1.75ms
+            - generic [ref=e1147]:
+              - img "Connection" [ref=e1148]
+              - text: mysql
+          - generic [ref=e1151]:
+            - generic [ref=e1152] [cursor=pointer]:
+              - code [ref=e1155]:
+                - code [ref=e1157]: select * from information_schema.tables where table_schema = klassci_local and table_name = model_has_roles and table_type = 'BASE TABLE'
+              - button "Copy to clipboard" [ref=e1159]:
+                - img [ref=e1160]
+              - button [ref=e1162]:
+                - img [ref=e1163]
+            - button "2 query parameters" [ref=e1166] [cursor=pointer]:
+              - img [ref=e1167]
+              - text: 2 query parameters
+        - generic [ref=e1169]:
+          - generic [ref=e1170]:
+            - generic [ref=e1171]: 20:49:41
+            - generic [ref=e1172]:
+              - img "Runtime" [ref=e1173]
+              - text: 0.81ms
+            - generic [ref=e1175]:
+              - img "Connection" [ref=e1176]
+              - text: mysql
+          - generic [ref=e1179]:
+            - generic [ref=e1180] [cursor=pointer]:
+              - code [ref=e1183]:
+                - code [ref=e1185]: "select exists(select * from `users` inner join `model_has_roles` on `users`.`id` = `model_has_roles`.`model_id` inner join `roles` on `model_has_roles`.`role_id` = `roles`.`id` where `roles`.`name` = superAdmin and `model_has_roles`.`model_type` = App\\Models\\User) as `exists`"
+              - button "Copy to clipboard" [ref=e1187]:
+                - img [ref=e1188]
+              - button [ref=e1190]:
+                - img [ref=e1191]
+            - button "2 query parameters" [ref=e1194] [cursor=pointer]:
+              - img [ref=e1195]
+              - text: 2 query parameters
+        - generic [ref=e1197]:
+          - generic [ref=e1198]:
+            - generic [ref=e1199]: 20:49:41
+            - generic [ref=e1200]:
+              - img "Runtime" [ref=e1201]
+              - text: 0.99ms
+            - generic [ref=e1203]:
+              - img "Connection" [ref=e1204]
+              - text: mysql
+          - generic [ref=e1207]:
+            - generic [ref=e1208] [cursor=pointer]:
+              - code [ref=e1211]:
+                - code [ref=e1213]: select * from information_schema.tables where table_schema = klassci_local and table_name = users and table_type = 'BASE TABLE'
+              - button "Copy to clipboard" [ref=e1215]:
+                - img [ref=e1216]
+              - button [ref=e1218]:
+                - img [ref=e1219]
+            - button "2 query parameters" [ref=e1222] [cursor=pointer]:
+              - img [ref=e1223]
+              - text: 2 query parameters
+        - generic [ref=e1225]:
+          - generic [ref=e1226]:
+            - generic [ref=e1227]: 20:49:41
+            - generic [ref=e1228]:
+              - img "Runtime" [ref=e1229]
+              - text: 1.01ms
+            - generic [ref=e1231]:
+              - img "Connection" [ref=e1232]
+              - text: mysql
+          - generic [ref=e1235]:
+            - generic [ref=e1236] [cursor=pointer]:
+              - code [ref=e1239]:
+                - code [ref=e1241]: select * from information_schema.tables where table_schema = klassci_local and table_name = roles and table_type = 'BASE TABLE'
+              - button "Copy to clipboard" [ref=e1243]:
+                - img [ref=e1244]
+              - button [ref=e1246]:
+                - img [ref=e1247]
+            - button "2 query parameters" [ref=e1250] [cursor=pointer]:
+              - img [ref=e1251]
+              - text: 2 query parameters
+        - generic [ref=e1253]:
+          - generic [ref=e1254]:
+            - generic [ref=e1255]: 20:49:41
+            - generic [ref=e1256]:
+              - img "Runtime" [ref=e1257]
+              - text: 0.72ms
+            - generic [ref=e1259]:
+              - img "Connection" [ref=e1260]
+              - text: mysql
+          - generic [ref=e1263]:
+            - generic [ref=e1264] [cursor=pointer]:
+              - code [ref=e1267]:
+                - code [ref=e1269]: select * from information_schema.tables where table_schema = klassci_local and table_name = model_has_roles and table_type = 'BASE TABLE'
+              - button "Copy to clipboard" [ref=e1271]:
+                - img [ref=e1272]
+              - button [ref=e1274]:
+                - img [ref=e1275]
+            - button "2 query parameters" [ref=e1278] [cursor=pointer]:
+              - img [ref=e1279]
+              - text: 2 query parameters
+        - generic [ref=e1281]:
+          - generic [ref=e1282]:
+            - generic [ref=e1283]: 20:49:41
+            - generic [ref=e1284]:
+              - img "Runtime" [ref=e1285]
+              - text: 2.51ms
+            - generic [ref=e1287]:
+              - img "Connection" [ref=e1288]
+              - text: mysql
+          - generic [ref=e1291]:
+            - generic [ref=e1292] [cursor=pointer]:
+              - code [ref=e1295]:
+                - code [ref=e1297]: "select exists(select * from `users` inner join `model_has_roles` on `users`.`id` = `model_has_roles`.`model_id` inner join `roles` on `model_has_roles`.`role_id` = `roles`.`id` where `roles`.`name` = superAdmin and `model_has_roles`.`model_type` = App\\Models\\User) as `exists`"
+              - button "Copy to clipboard" [ref=e1299]:
+                - img [ref=e1300]
+              - button [ref=e1302]:
+                - img [ref=e1303]
+            - button "2 query parameters" [ref=e1306] [cursor=pointer]:
+              - img [ref=e1307]
+              - text: 2 query parameters
+        - generic [ref=e1309]:
+          - generic [ref=e1310]:
+            - generic [ref=e1311]: 20:49:41
+            - generic [ref=e1312]:
+              - img "Runtime" [ref=e1313]
+              - text: 2.37ms
+            - generic [ref=e1315]:
+              - img "Connection" [ref=e1316]
+              - text: mysql
+          - generic [ref=e1319]:
+            - generic [ref=e1320] [cursor=pointer]:
+              - code [ref=e1323]:
+                - code [ref=e1325]: select * from information_schema.tables where table_schema = klassci_local and table_name = users and table_type = 'BASE TABLE'
+              - button "Copy to clipboard" [ref=e1327]:
+                - img [ref=e1328]
+              - button [ref=e1330]:
+                - img [ref=e1331]
+            - button "2 query parameters" [ref=e1334] [cursor=pointer]:
+              - img [ref=e1335]
+              - text: 2 query parameters
+        - generic [ref=e1337]:
+          - generic [ref=e1338]:
+            - generic [ref=e1339]: 20:49:41
+            - generic [ref=e1340]:
+              - img "Runtime" [ref=e1341]
+              - text: 1.08ms
+            - generic [ref=e1343]:
+              - img "Connection" [ref=e1344]
+              - text: mysql
+          - generic [ref=e1347]:
+            - generic [ref=e1348] [cursor=pointer]:
+              - code [ref=e1351]:
+                - code [ref=e1353]: select * from information_schema.tables where table_schema = klassci_local and table_name = roles and table_type = 'BASE TABLE'
+              - button "Copy to clipboard" [ref=e1355]:
+                - img [ref=e1356]
+              - button [ref=e1358]:
+                - img [ref=e1359]
+            - button "2 query parameters" [ref=e1362] [cursor=pointer]:
+              - img [ref=e1363]
+              - text: 2 query parameters
+        - generic [ref=e1365]:
+          - generic [ref=e1366]:
+            - generic [ref=e1367]: 20:49:41
+            - generic [ref=e1368]:
+              - img "Runtime" [ref=e1369]
+              - text: 1.68ms
+            - generic [ref=e1371]:
+              - img "Connection" [ref=e1372]
+              - text: mysql
+          - generic [ref=e1375]:
+            - generic [ref=e1376] [cursor=pointer]:
+              - code [ref=e1379]:
+                - code [ref=e1381]: select * from information_schema.tables where table_schema = klassci_local and table_name = permissions and table_type = 'BASE TABLE'
+              - button "Copy to clipboard" [ref=e1383]:
+                - img [ref=e1384]
+              - button [ref=e1386]:
+                - img [ref=e1387]
+            - button "2 query parameters" [ref=e1390] [cursor=pointer]:
+              - img [ref=e1391]
+              - text: 2 query parameters
+        - generic [ref=e1393]:
+          - generic [ref=e1394]:
+            - generic [ref=e1395]: 20:49:41
+            - generic [ref=e1396]:
+              - img "Runtime" [ref=e1397]
+              - text: 1.34ms
+            - generic [ref=e1399]:
+              - img "Connection" [ref=e1400]
+              - text: mysql
+          - generic [ref=e1403]:
+            - generic [ref=e1404] [cursor=pointer]:
+              - code [ref=e1407]:
+                - code [ref=e1409]: select * from information_schema.tables where table_schema = klassci_local and table_name = model_has_roles and table_type = 'BASE TABLE'
+              - button "Copy to clipboard" [ref=e1411]:
+                - img [ref=e1412]
+              - button [ref=e1414]:
+                - img [ref=e1415]
+            - button "2 query parameters" [ref=e1418] [cursor=pointer]:
+              - img [ref=e1419]
+              - text: 2 query parameters
+        - generic [ref=e1421]:
+          - generic [ref=e1422]:
+            - generic [ref=e1423]: 20:49:41
+            - generic [ref=e1424]:
+              - img "Runtime" [ref=e1425]
+              - text: 12.41ms
+            - generic [ref=e1427]:
+              - img "Connection" [ref=e1428]
+              - text: mysql
+          - generic [ref=e1431] [cursor=pointer]:
+            - code [ref=e1434]:
+              - code [ref=e1436]: SHOW TABLES
+            - button "Copy to clipboard" [ref=e1438]:
+              - img [ref=e1439]
+            - button [ref=e1441]:
+              - img [ref=e1442]
+        - generic [ref=e1444]:
+          - generic [ref=e1445]:
+            - generic [ref=e1446]: 20:49:41
+            - generic [ref=e1447]:
+              - img "Runtime" [ref=e1448]
+              - text: 13.2ms
+            - generic [ref=e1450]:
+              - img "Connection" [ref=e1451]
+              - text: mysql
+          - generic [ref=e1454] [cursor=pointer]:
+            - code [ref=e1457]:
+              - code [ref=e1459]: SHOW TABLES
+            - button "Copy to clipboard" [ref=e1461]:
+              - img [ref=e1462]
+            - button [ref=e1464]:
+              - img [ref=e1465]
+        - generic [ref=e1467]:
+          - generic [ref=e1468]:
+            - generic [ref=e1469]: 20:49:41
+            - generic [ref=e1470]:
+              - img "Runtime" [ref=e1471]
+              - text: 2.61ms
+            - generic [ref=e1473]:
+              - img "Connection" [ref=e1474]
+              - text: mysql
+          - generic [ref=e1477]:
+            - generic [ref=e1478] [cursor=pointer]:
+              - code [ref=e1481]:
+                - code [ref=e1483]: select * from information_schema.tables where table_schema = klassci_local and table_name = users and table_type = 'BASE TABLE'
+              - button "Copy to clipboard" [ref=e1485]:
+                - img [ref=e1486]
+              - button [ref=e1488]:
+                - img [ref=e1489]
+            - button "2 query parameters" [ref=e1492] [cursor=pointer]:
+              - img [ref=e1493]
+              - text: 2 query parameters
+        - generic [ref=e1495]:
+          - generic [ref=e1496]:
+            - generic [ref=e1497]: 20:49:41
+            - generic [ref=e1498]:
+              - img "Runtime" [ref=e1499]
+              - text: 1.46ms
+            - generic [ref=e1501]:
+              - img "Connection" [ref=e1502]
+              - text: mysql
+          - generic [ref=e1505]:
+            - generic [ref=e1506] [cursor=pointer]:
+              - code [ref=e1509]:
+                - code [ref=e1511]: select * from information_schema.tables where table_schema = klassci_local and table_name = roles and table_type = 'BASE TABLE'
+              - button "Copy to clipboard" [ref=e1513]:
+                - img [ref=e1514]
+              - button [ref=e1516]:
+                - img [ref=e1517]
+            - button "2 query parameters" [ref=e1520] [cursor=pointer]:
+              - img [ref=e1521]
+              - text: 2 query parameters
+        - generic [ref=e1523]:
+          - generic [ref=e1524]:
+            - generic [ref=e1525]: 20:49:41
+            - generic [ref=e1526]:
+              - img "Runtime" [ref=e1527]
+              - text: 0.9ms
+            - generic [ref=e1529]:
+              - img "Connection" [ref=e1530]
+              - text: mysql
+          - generic [ref=e1533]:
+            - generic [ref=e1534] [cursor=pointer]:
+              - code [ref=e1537]:
+                - code [ref=e1539]: select * from information_schema.tables where table_schema = klassci_local and table_name = model_has_roles and table_type = 'BASE TABLE'
+              - button "Copy to clipboard" [ref=e1541]:
+                - img [ref=e1542]
+              - button [ref=e1544]:
+                - img [ref=e1545]
+            - button "2 query parameters" [ref=e1548] [cursor=pointer]:
+              - img [ref=e1549]
+              - text: 2 query parameters
+        - generic [ref=e1551]:
+          - generic [ref=e1552]:
+            - generic [ref=e1553]: 20:49:41
+            - generic [ref=e1554]:
+              - img "Runtime" [ref=e1555]
+              - text: 1.11ms
+            - generic [ref=e1557]:
+              - img "Connection" [ref=e1558]
+              - text: mysql
+          - generic [ref=e1561]:
+            - generic [ref=e1562] [cursor=pointer]:
+              - code [ref=e1565]:
+                - code [ref=e1567]: "select exists(select * from `users` inner join `model_has_roles` on `users`.`id` = `model_has_roles`.`model_id` inner join `roles` on `model_has_roles`.`role_id` = `roles`.`id` where `roles`.`name` = superAdmin and `model_has_roles`.`model_type` = App\\Models\\User) as `exists`"
+              - button "Copy to clipboard" [ref=e1569]:
+                - img [ref=e1570]
+              - button [ref=e1572]:
+                - img [ref=e1573]
+            - button "2 query parameters" [ref=e1576] [cursor=pointer]:
+              - img [ref=e1577]
+              - text: 2 query parameters
+        - generic [ref=e1579]:
+          - generic [ref=e1580]:
+            - generic [ref=e1581]: 20:49:41
+            - generic [ref=e1582]:
+              - img "Runtime" [ref=e1583]
+              - text: 1.74ms
+            - generic [ref=e1585]:
+              - img "Connection" [ref=e1586]
+              - text: mysql
+          - generic [ref=e1589]:
+            - generic [ref=e1590] [cursor=pointer]:
+              - code [ref=e1593]:
+                - code [ref=e1595]: "select * from `users` where `id` = 1 and `users`.`deleted_at` is null limit 1"
+              - button "Copy to clipboard" [ref=e1597]:
+                - img [ref=e1598]
+              - button [ref=e1600]:
+                - img [ref=e1601]
+            - button "1 query parameter" [ref=e1604] [cursor=pointer]:
+              - img [ref=e1605]
+              - text: 1 query parameter
+        - generic [ref=e1607]:
+          - generic [ref=e1608]:
+            - generic [ref=e1609]: 20:49:41
+            - generic [ref=e1610]:
+              - img "Runtime" [ref=e1611]
+              - text: 1.62ms
+            - generic [ref=e1613]:
+              - img "Connection" [ref=e1614]
+              - text: mysql
+          - generic [ref=e1617]:
+            - generic [ref=e1618] [cursor=pointer]:
+              - code [ref=e1621]:
+                - code [ref=e1623]: "select * from `esbtp_emploi_temps` where `id` = 1 and `esbtp_emploi_temps`.`deleted_at` is null limit 1"
+              - button "Copy to clipboard" [ref=e1625]:
+                - img [ref=e1626]
+              - button [ref=e1628]:
+                - img [ref=e1629]
+            - button "1 query parameter" [ref=e1632] [cursor=pointer]:
+              - img [ref=e1633]
+              - text: 1 query parameter
+        - generic [ref=e1635]:
+          - generic [ref=e1636]:
+            - generic [ref=e1637]: 20:49:44
+            - generic [ref=e1638]:
+              - img "Runtime" [ref=e1639]
+              - text: 2.57ms
+            - generic [ref=e1641]:
+              - img "Connection" [ref=e1642]
+              - text: mysql
+          - generic [ref=e1645]:
+            - generic [ref=e1646] [cursor=pointer]:
+              - code [ref=e1649]:
+                - code [ref=e1651]: "select `permissions`.*, `model_has_permissions`.`model_id` as `pivot_model_id`, `model_has_permissions`.`permission_id` as `pivot_permission_id`, `model_has_permissions`.`model_type` as `pivot_model_type` from `permissions` inner join `model_has_permissions` on `permissions`.`id` = `model_has_permissions`.`permission_id` where `model_has_permissions`.`model_id` = 1 and `model_has_permissions`.`model_type` = App\\Models\\User"
+              - button "Copy to clipboard" [ref=e1653]:
+                - img [ref=e1654]
+              - button [ref=e1656]:
+                - img [ref=e1657]
+            - button "2 query parameters" [ref=e1660] [cursor=pointer]:
+              - img [ref=e1661]
+              - text: 2 query parameters
+        - generic [ref=e1663]:
+          - generic [ref=e1664]:
+            - generic [ref=e1665]: 20:49:44
+            - generic [ref=e1666]:
+              - img "Runtime" [ref=e1667]
+              - text: 1.78ms
+            - generic [ref=e1669]:
+              - img "Connection" [ref=e1670]
+              - text: mysql
+          - generic [ref=e1673]:
+            - generic [ref=e1674] [cursor=pointer]:
+              - code [ref=e1677]:
+                - code [ref=e1679]: "select `roles`.*, `model_has_roles`.`model_id` as `pivot_model_id`, `model_has_roles`.`role_id` as `pivot_role_id`, `model_has_roles`.`model_type` as `pivot_model_type` from `roles` inner join `model_has_roles` on `roles`.`id` = `model_has_roles`.`role_id` where `model_has_roles`.`model_id` in (1) and `model_has_roles`.`model_type` = App\\Models\\User"
+              - button "Copy to clipboard" [ref=e1681]:
+                - img [ref=e1682]
+              - button [ref=e1684]:
+                - img [ref=e1685]
+            - button "1 query parameter" [ref=e1688] [cursor=pointer]:
+              - img [ref=e1689]
+              - text: 1 query parameter
+        - generic [ref=e1691]:
+          - generic [ref=e1692]:
+            - generic [ref=e1693]: 20:49:44
+            - generic [ref=e1694]:
+              - img "Runtime" [ref=e1695]
+              - text: 1.53ms
+            - generic [ref=e1697]:
+              - img "Connection" [ref=e1698]
+              - text: mysql
+          - generic [ref=e1701] [cursor=pointer]:
+            - code [ref=e1704]:
+              - code [ref=e1706]: "select * from `esbtp_seance_cours` where `esbtp_seance_cours`.`emploi_temps_id` in (1) and `esbtp_seance_cours`.`deleted_at` is null"
+            - button "Copy to clipboard" [ref=e1708]:
+              - img [ref=e1709]
+            - button [ref=e1711]:
+              - img [ref=e1712]
+        - generic [ref=e1714]:
+          - generic [ref=e1715]:
+            - generic [ref=e1716]: 20:49:44
+            - generic [ref=e1717]:
+              - img "Runtime" [ref=e1718]
+              - text: 4.29ms
+            - generic [ref=e1720]:
+              - img "Connection" [ref=e1721]
+              - text: mysql
+          - generic [ref=e1724] [cursor=pointer]:
+            - code [ref=e1727]:
+              - code [ref=e1729]: "select * from `esbtp_classes` where `esbtp_classes`.`id` in (2) and `esbtp_classes`.`deleted_at` is null"
+            - button "Copy to clipboard" [ref=e1731]:
+              - img [ref=e1732]
+            - button [ref=e1734]:
+              - img [ref=e1735]
+        - generic [ref=e1737]:
+          - generic [ref=e1738]:
+            - generic [ref=e1739]: 20:49:44
+            - generic [ref=e1740]:
+              - img "Runtime" [ref=e1741]
+              - text: 0.8ms
+            - generic [ref=e1743]:
+              - img "Connection" [ref=e1744]
+              - text: mysql
+          - generic [ref=e1747] [cursor=pointer]:
+            - code [ref=e1750]:
+              - code [ref=e1752]: "select * from `esbtp_filieres` where `esbtp_filieres`.`id` in (2) and `esbtp_filieres`.`deleted_at` is null"
+            - button "Copy to clipboard" [ref=e1754]:
+              - img [ref=e1755]
+            - button [ref=e1757]:
+              - img [ref=e1758]
+        - generic [ref=e1760]:
+          - generic [ref=e1761]:
+            - generic [ref=e1762]: 20:49:44
+            - generic [ref=e1763]:
+              - img "Runtime" [ref=e1764]
+              - text: 1.42ms
+            - generic [ref=e1766]:
+              - img "Connection" [ref=e1767]
+              - text: mysql
+          - generic [ref=e1770] [cursor=pointer]:
+            - code [ref=e1773]:
+              - code [ref=e1775]: "select * from `esbtp_niveau_etudes` where `esbtp_niveau_etudes`.`id` in (3) and `esbtp_niveau_etudes`.`deleted_at` is null"
+            - button "Copy to clipboard" [ref=e1777]:
+              - img [ref=e1778]
+            - button [ref=e1780]:
+              - img [ref=e1781]
+        - generic [ref=e1783]:
+          - generic [ref=e1784]:
+            - generic [ref=e1785]: 20:49:44
+            - generic [ref=e1786]:
+              - img "Runtime" [ref=e1787]
+              - text: 2.91ms
+            - generic [ref=e1789]:
+              - img "Connection" [ref=e1790]
+              - text: mysql
+          - generic [ref=e1793] [cursor=pointer]:
+            - code [ref=e1796]:
+              - code [ref=e1798]: "select * from `esbtp_annee_universitaires` where `esbtp_annee_universitaires`.`id` in (1) and `esbtp_annee_universitaires`.`deleted_at` is null"
+            - button "Copy to clipboard" [ref=e1800]:
+              - img [ref=e1801]
+            - button [ref=e1803]:
+              - img [ref=e1804]
+        - generic [ref=e1806]:
+          - generic [ref=e1807]:
+            - generic [ref=e1808]: 20:49:44
+            - generic [ref=e1809]:
+              - img "Runtime" [ref=e1810]
+              - text: 1.15ms
+            - generic [ref=e1812]:
+              - img "Connection" [ref=e1813]
+              - text: mysql
+          - generic [ref=e1816] [cursor=pointer]:
+            - code [ref=e1819]:
+              - code [ref=e1821]: "select * from `esbtp_annee_universitaires` where `esbtp_annee_universitaires`.`id` in (1) and `esbtp_annee_universitaires`.`deleted_at` is null"
+            - button "Copy to clipboard" [ref=e1823]:
+              - img [ref=e1824]
+            - button [ref=e1826]:
+              - img [ref=e1827]
+        - generic [ref=e1829]:
+          - generic [ref=e1830]:
+            - generic [ref=e1831]: 20:49:44
+            - generic [ref=e1832]:
+              - img "Runtime" [ref=e1833]
+              - text: 6.11ms
+            - generic [ref=e1835]:
+              - img "Connection" [ref=e1836]
+              - text: mysql
+          - generic [ref=e1839]:
+            - generic [ref=e1840] [cursor=pointer]:
+              - code [ref=e1843]:
+                - code [ref=e1845]: "select * from `esbtp_seance_cours` where `esbtp_seance_cours`.`emploi_temps_id` = 1 and `esbtp_seance_cours`.`emploi_temps_id` is not null and `jour` = 0 and `esbtp_seance_cours`.`deleted_at` is null order by `heure_debut` asc"
+              - button "Copy to clipboard" [ref=e1847]:
+                - img [ref=e1848]
+              - button [ref=e1850]:
+                - img [ref=e1851]
+            - button "2 query parameters" [ref=e1854] [cursor=pointer]:
+              - img [ref=e1855]
+              - text: 2 query parameters
+        - generic [ref=e1857]:
+          - generic [ref=e1858]:
+            - generic [ref=e1859]: 20:49:44
+            - generic [ref=e1860]:
+              - img "Runtime" [ref=e1861]
+              - text: 1.52ms
+            - generic [ref=e1863]:
+              - img "Connection" [ref=e1864]
+              - text: mysql
+          - generic [ref=e1867]:
+            - generic [ref=e1868] [cursor=pointer]:
+              - code [ref=e1871]:
+                - code [ref=e1873]: "select * from `esbtp_seance_cours` where `esbtp_seance_cours`.`emploi_temps_id` = 1 and `esbtp_seance_cours`.`emploi_temps_id` is not null and `jour` = 1 and `esbtp_seance_cours`.`deleted_at` is null order by `heure_debut` asc"
+              - button "Copy to clipboard" [ref=e1875]:
+                - img [ref=e1876]
+              - button [ref=e1878]:
+                - img [ref=e1879]
+            - button "2 query parameters" [ref=e1882] [cursor=pointer]:
+              - img [ref=e1883]
+              - text: 2 query parameters
+        - generic [ref=e1885]:
+          - generic [ref=e1886]:
+            - generic [ref=e1887]: 20:49:44
+            - generic [ref=e1888]:
+              - img "Runtime" [ref=e1889]
+              - text: 4.25ms
+            - generic [ref=e1891]:
+              - img "Connection" [ref=e1892]
+              - text: mysql
+          - generic [ref=e1895]:
+            - generic [ref=e1896] [cursor=pointer]:
+              - code [ref=e1899]:
+                - code [ref=e1901]: "select * from `esbtp_seance_cours` where `esbtp_seance_cours`.`emploi_temps_id` = 1 and `esbtp_seance_cours`.`emploi_temps_id` is not null and `jour` = 2 and `esbtp_seance_cours`.`deleted_at` is null order by `heure_debut` asc"
+              - button "Copy to clipboard" [ref=e1903]:
+                - img [ref=e1904]
+              - button [ref=e1906]:
+                - img [ref=e1907]
+            - button "2 query parameters" [ref=e1910] [cursor=pointer]:
+              - img [ref=e1911]
+              - text: 2 query parameters
+        - generic [ref=e1913]:
+          - generic [ref=e1914]:
+            - generic [ref=e1915]: 20:49:44
+            - generic [ref=e1916]:
+              - img "Runtime" [ref=e1917]
+              - text: 1.63ms
+            - generic [ref=e1919]:
+              - img "Connection" [ref=e1920]
+              - text: mysql
+          - generic [ref=e1923]:
+            - generic [ref=e1924] [cursor=pointer]:
+              - code [ref=e1927]:
+                - code [ref=e1929]: "select * from `esbtp_seance_cours` where `esbtp_seance_cours`.`emploi_temps_id` = 1 and `esbtp_seance_cours`.`emploi_temps_id` is not null and `jour` = 3 and `esbtp_seance_cours`.`deleted_at` is null order by `heure_debut` asc"
+              - button "Copy to clipboard" [ref=e1931]:
+                - img [ref=e1932]
+              - button [ref=e1934]:
+                - img [ref=e1935]
+            - button "2 query parameters" [ref=e1938] [cursor=pointer]:
+              - img [ref=e1939]
+              - text: 2 query parameters
+        - generic [ref=e1941]:
+          - generic [ref=e1942]:
+            - generic [ref=e1943]: 20:49:44
+            - generic [ref=e1944]:
+              - img "Runtime" [ref=e1945]
+              - text: 6.44ms
+            - generic [ref=e1947]:
+              - img "Connection" [ref=e1948]
+              - text: mysql
+          - generic [ref=e1951]:
+            - generic [ref=e1952] [cursor=pointer]:
+              - code [ref=e1955]:
+                - code [ref=e1957]: "select * from `esbtp_seance_cours` where `esbtp_seance_cours`.`emploi_temps_id` = 1 and `esbtp_seance_cours`.`emploi_temps_id` is not null and `jour` = 4 and `esbtp_seance_cours`.`deleted_at` is null order by `heure_debut` asc"
+              - button "Copy to clipboard" [ref=e1959]:
+                - img [ref=e1960]
+              - button [ref=e1962]:
+                - img [ref=e1963]
+            - button "2 query parameters" [ref=e1966] [cursor=pointer]:
+              - img [ref=e1967]
+              - text: 2 query parameters
+        - generic [ref=e1969]:
+          - generic [ref=e1970]:
+            - generic [ref=e1971]: 20:49:44
+            - generic [ref=e1972]:
+              - img "Runtime" [ref=e1973]
+              - text: 1.83ms
+            - generic [ref=e1975]:
+              - img "Connection" [ref=e1976]
+              - text: mysql
+          - generic [ref=e1979]:
+            - generic [ref=e1980] [cursor=pointer]:
+              - code [ref=e1983]:
+                - code [ref=e1985]: "select * from `esbtp_seance_cours` where `esbtp_seance_cours`.`emploi_temps_id` = 1 and `esbtp_seance_cours`.`emploi_temps_id` is not null and `jour` = 5 and `esbtp_seance_cours`.`deleted_at` is null order by `heure_debut` asc"
+              - button "Copy to clipboard" [ref=e1987]:
+                - img [ref=e1988]
+              - button [ref=e1990]:
+                - img [ref=e1991]
+            - button "2 query parameters" [ref=e1994] [cursor=pointer]:
+              - img [ref=e1995]
+              - text: 2 query parameters
+        - generic [ref=e1997]:
+          - generic [ref=e1998]:
+            - generic [ref=e1999]: 20:49:44
+            - generic [ref=e2000]:
+              - img "Runtime" [ref=e2001]
+              - text: 6.82ms
+            - generic [ref=e2003]:
+              - img "Connection" [ref=e2004]
+              - text: mysql
+          - generic [ref=e2007]:
+            - generic [ref=e2008] [cursor=pointer]:
+              - code [ref=e2011]:
+                - code [ref=e2013]: "select * from `esbtp_system_settings` where `key` = emploi_temps.show_sunday limit 1"
+              - button "Copy to clipboard" [ref=e2015]:
+                - img [ref=e2016]
+              - button [ref=e2018]:
+                - img [ref=e2019]
+            - button "1 query parameter" [ref=e2022] [cursor=pointer]:
+              - img [ref=e2023]
+              - text: 1 query parameter
+        - generic [ref=e2025]:
+          - generic [ref=e2026]:
+            - generic [ref=e2027]: 20:49:44
+            - generic [ref=e2028]:
+              - img "Runtime" [ref=e2029]
+              - text: 12.89ms
+            - generic [ref=e2031]:
+              - img "Connection" [ref=e2032]
+              - text: mysql
+          - generic [ref=e2035]:
+            - generic [ref=e2036] [cursor=pointer]:
+              - code [ref=e2039]:
+                - code [ref=e2041]: "select * from `esbtp_matieres` where `is_active` = true and exists (select * from `esbtp_filieres` inner join `esbtp_matiere_filiere` on `esbtp_filieres`.`id` = `esbtp_matiere_filiere`.`filiere_id` where `esbtp_matieres`.`id` = `esbtp_matiere_filiere`.`matiere_id` and `esbtp_filieres`.`id` = 2 and `esbtp_filieres`.`deleted_at` is null) and exists (select * from `esbtp_niveau_etudes` inner join `esbtp_matiere_niveau` on `esbtp_niveau_etudes`.`id` = `esbtp_matiere_niveau`.`niveau_etude_id` where `esbtp_matieres`.`id` = `esbtp_matiere_niveau`.`matiere_id` and `esbtp_niveau_etudes`.`id` = 3 and `esbtp_niveau_etudes`.`deleted_at` is null) and `esbtp_matieres`.`deleted_at` is null"
+              - button "Copy to clipboard" [ref=e2043]:
+                - img [ref=e2044]
+              - button [ref=e2046]:
+                - img [ref=e2047]
+            - button "3 query parameters" [ref=e2050] [cursor=pointer]:
+              - img [ref=e2051]
+              - text: 3 query parameters
+        - generic [ref=e2053]:
+          - generic [ref=e2054]:
+            - generic [ref=e2055]: 20:49:44
+            - generic [ref=e2056]:
+              - img "Runtime" [ref=e2057]
+              - text: 50.18ms
+            - generic [ref=e2059]:
+              - img "Connection" [ref=e2060]
+              - text: mysql
+          - generic [ref=e2063]:
+            - generic [ref=e2064] [cursor=pointer]:
+              - code [ref=e2067]:
+                - code [ref=e2069]: "select * from `esbtp_planifications_academiques` where `annee_universitaire_id` = 1 and `filiere_id` = 2 and `niveau_etude_id` = 3 and `matiere_id` = 2 and `is_active` = true and `esbtp_planifications_academiques`.`deleted_at` is null limit 1"
+              - button "Copy to clipboard" [ref=e2071]:
+                - img [ref=e2072]
+              - button [ref=e2074]:
+                - img [ref=e2075]
+            - button "5 query parameters" [ref=e2078] [cursor=pointer]:
+              - img [ref=e2079]
+              - text: 5 query parameters
+        - generic [ref=e2081]:
+          - generic [ref=e2082]:
+            - generic [ref=e2083]: 20:49:44
+            - generic [ref=e2084]:
+              - img "Runtime" [ref=e2085]
+              - text: 6.01ms
+            - generic [ref=e2087]:
+              - img "Connection" [ref=e2088]
+              - text: mysql
+          - generic [ref=e2091] [cursor=pointer]:
+            - code [ref=e2094]:
+              - code [ref=e2096]: "select * from `esbtp_matieres` where `esbtp_matieres`.`id` in (2) and `esbtp_matieres`.`deleted_at` is null"
+            - button "Copy to clipboard" [ref=e2098]:
+              - img [ref=e2099]
+            - button [ref=e2101]:
+              - img [ref=e2102]
+        - generic [ref=e2104]:
+          - generic [ref=e2105]:
+            - generic [ref=e2106]: 20:49:44
+            - generic [ref=e2107]:
+              - img "Runtime" [ref=e2108]
+              - text: 2.75ms
+            - generic [ref=e2110]:
+              - img "Connection" [ref=e2111]
+              - text: mysql
+          - generic [ref=e2114] [cursor=pointer]:
+            - code [ref=e2117]:
+              - code [ref=e2119]: "select * from `users` where `users`.`id` in (9) and `users`.`deleted_at` is null"
+            - button "Copy to clipboard" [ref=e2121]:
+              - img [ref=e2122]
+            - button [ref=e2124]:
+              - img [ref=e2125]
+        - generic [ref=e2127]:
+          - generic [ref=e2128]:
+            - generic [ref=e2129]: 20:49:44
+            - generic [ref=e2130]:
+              - img "Runtime" [ref=e2131]
+              - text: 2.6ms
+            - generic [ref=e2133]:
+              - img "Connection" [ref=e2134]
+              - text: mysql
+          - generic [ref=e2137] [cursor=pointer]:
+            - code [ref=e2140]:
+              - code [ref=e2142]: "select `esbtp_teachers`.*, `esbtp_planification_teachers`.`planification_id` as `pivot_planification_id`, `esbtp_planification_teachers`.`teacher_id` as `pivot_teacher_id`, `esbtp_planification_teachers`.`created_at` as `pivot_created_at`, `esbtp_planification_teachers`.`updated_at` as `pivot_updated_at` from `esbtp_teachers` inner join `esbtp_planification_teachers` on `esbtp_teachers`.`id` = `esbtp_planification_teachers`.`teacher_id` where `esbtp_planification_teachers`.`planification_id` in (4)"
+            - button "Copy to clipboard" [ref=e2144]:
+              - img [ref=e2145]
+            - button [ref=e2147]:
+              - img [ref=e2148]
+        - generic [ref=e2150]:
+          - generic [ref=e2151]:
+            - generic [ref=e2152]: 20:49:44
+            - generic [ref=e2153]:
+              - img "Runtime" [ref=e2154]
+              - text: 2.63ms
+            - generic [ref=e2156]:
+              - img "Connection" [ref=e2157]
+              - text: mysql
+          - generic [ref=e2160] [cursor=pointer]:
+            - code [ref=e2163]:
+              - code [ref=e2165]: "select * from `users` where `users`.`id` in (9, 10) and `users`.`deleted_at` is null"
+            - button "Copy to clipboard" [ref=e2167]:
+              - img [ref=e2168]
+            - button [ref=e2170]:
+              - img [ref=e2171]
+        - generic [ref=e2173]:
+          - generic [ref=e2174]:
+            - generic [ref=e2175]: 20:49:44
+            - generic [ref=e2176]:
+              - img "Runtime" [ref=e2177]
+              - text: 9.88ms
+            - generic [ref=e2179]:
+              - img "Connection" [ref=e2180]
+              - text: mysql
+          - generic [ref=e2183] [cursor=pointer]:
+            - code [ref=e2186]:
+              - code [ref=e2188]: "select * from `esbtp_teacher_availabilities` where `esbtp_teacher_availabilities`.`teacher_id` in (2, 3)"
+            - button "Copy to clipboard" [ref=e2190]:
+              - img [ref=e2191]
+            - button [ref=e2193]:
+              - img [ref=e2194]
+        - generic [ref=e2196]:
+          - generic [ref=e2197]:
+            - generic [ref=e2198]: 20:49:44
+            - generic [ref=e2199]:
+              - img "Runtime" [ref=e2200]
+              - text: 4.28ms
+            - generic [ref=e2202]:
+              - img "Connection" [ref=e2203]
+              - text: mysql
+          - generic [ref=e2206]:
+            - generic [ref=e2207] [cursor=pointer]:
+              - code [ref=e2210]:
+                - code [ref=e2212]: "select * from `esbtp_planifications_academiques` where `annee_universitaire_id` = 1 and `filiere_id` = 2 and `niveau_etude_id` = 3 and `matiere_id` = 3 and `is_active` = true and `esbtp_planifications_academiques`.`deleted_at` is null limit 1"
+              - button "Copy to clipboard" [ref=e2214]:
+                - img [ref=e2215]
+              - button [ref=e2217]:
+                - img [ref=e2218]
+            - button "5 query parameters" [ref=e2221] [cursor=pointer]:
+              - img [ref=e2222]
+              - text: 5 query parameters
+        - generic [ref=e2224]:
+          - generic [ref=e2225]:
+            - generic [ref=e2226]: 20:49:44
+            - generic [ref=e2227]:
+              - img "Runtime" [ref=e2228]
+              - text: 2.22ms
+            - generic [ref=e2230]:
+              - img "Connection" [ref=e2231]
+              - text: mysql
+          - generic [ref=e2234] [cursor=pointer]:
+            - code [ref=e2237]:
+              - code [ref=e2239]: "select * from `esbtp_matieres` where `esbtp_matieres`.`id` in (3) and `esbtp_matieres`.`deleted_at` is null"
+            - button "Copy to clipboard" [ref=e2241]:
+              - img [ref=e2242]
+            - button [ref=e2244]:
+              - img [ref=e2245]
+        - generic [ref=e2247]:
+          - generic [ref=e2248]:
+            - generic [ref=e2249]: 20:49:44
+            - generic [ref=e2250]:
+              - img "Runtime" [ref=e2251]
+              - text: 3.49ms
+            - generic [ref=e2253]:
+              - img "Connection" [ref=e2254]
+              - text: mysql
+          - generic [ref=e2257] [cursor=pointer]:
+            - code [ref=e2260]:
+              - code [ref=e2262]: "select * from `users` where `users`.`id` in (9) and `users`.`deleted_at` is null"
+            - button "Copy to clipboard" [ref=e2264]:
+              - img [ref=e2265]
+            - button [ref=e2267]:
+              - img [ref=e2268]
+        - generic [ref=e2270]:
+          - generic [ref=e2271]:
+            - generic [ref=e2272]: 20:49:44
+            - generic [ref=e2273]:
+              - img "Runtime" [ref=e2274]
+              - text: 2.46ms
+            - generic [ref=e2276]:
+              - img "Connection" [ref=e2277]
+              - text: mysql
+          - generic [ref=e2280] [cursor=pointer]:
+            - code [ref=e2283]:
+              - code [ref=e2285]: "select `esbtp_teachers`.*, `esbtp_planification_teachers`.`planification_id` as `pivot_planification_id`, `esbtp_planification_teachers`.`teacher_id` as `pivot_teacher_id`, `esbtp_planification_teachers`.`created_at` as `pivot_created_at`, `esbtp_planification_teachers`.`updated_at` as `pivot_updated_at` from `esbtp_teachers` inner join `esbtp_planification_teachers` on `esbtp_teachers`.`id` = `esbtp_planification_teachers`.`teacher_id` where `esbtp_planification_teachers`.`planification_id` in (5)"
+            - button "Copy to clipboard" [ref=e2287]:
+              - img [ref=e2288]
+            - button [ref=e2290]:
+              - img [ref=e2291]
+        - generic [ref=e2293]:
+          - generic [ref=e2294]:
+            - generic [ref=e2295]: 20:49:44
+            - generic [ref=e2296]:
+              - img "Runtime" [ref=e2297]
+              - text: 1.98ms
+            - generic [ref=e2299]:
+              - img "Connection" [ref=e2300]
+              - text: mysql
+          - generic [ref=e2303] [cursor=pointer]:
+            - code [ref=e2306]:
+              - code [ref=e2308]: "select * from `users` where `users`.`id` in (9, 10) and `users`.`deleted_at` is null"
+            - button "Copy to clipboard" [ref=e2310]:
+              - img [ref=e2311]
+            - button [ref=e2313]:
+              - img [ref=e2314]
+        - generic [ref=e2316]:
+          - generic [ref=e2317]:
+            - generic [ref=e2318]: 20:49:44
+            - generic [ref=e2319]:
+              - img "Runtime" [ref=e2320]
+              - text: 7.39ms
+            - generic [ref=e2322]:
+              - img "Connection" [ref=e2323]
+              - text: mysql
+          - generic [ref=e2326] [cursor=pointer]:
+            - code [ref=e2329]:
+              - code [ref=e2331]: "select * from `esbtp_teacher_availabilities` where `esbtp_teacher_availabilities`.`teacher_id` in (2, 3)"
+            - button "Copy to clipboard" [ref=e2333]:
+              - img [ref=e2334]
+            - button [ref=e2336]:
+              - img [ref=e2337]
+        - generic [ref=e2339]:
+          - generic [ref=e2340]:
+            - generic [ref=e2341]: 20:49:44
+            - generic [ref=e2342]:
+              - img "Runtime" [ref=e2343]
+              - text: 6.71ms
+            - generic [ref=e2345]:
+              - img "Connection" [ref=e2346]
+              - text: mysql
+          - generic [ref=e2349]:
+            - generic [ref=e2350] [cursor=pointer]:
+              - code [ref=e2353]:
+                - code [ref=e2355]: "select `esbtp_seance_cours`.`heure_debut`, `esbtp_seance_cours`.`heure_fin` from `esbtp_seance_cours` left join `esbtp_teacher_attendances` on `esbtp_teacher_attendances`.`course_id` = `esbtp_seance_cours`.`id` and `esbtp_teacher_attendances`.`type` = start and esbtp_teacher_attendances.id = ( SELECT ta.id FROM esbtp_teacher_attendances ta WHERE ta.course_id = esbtp_seance_cours.id AND ta.type = \"start\" ORDER BY CASE WHEN DATE(ta.date) = CURDATE() THEN 1 WHEN DATE(ta.date) = DATE(esbtp_seance_cours.date_seance) THEN 2 ELSE 3 END, ta.created_at DESC LIMIT 1 ) where `esbtp_seance_cours`.`matiere_id` = 2 and `esbtp_seance_cours`.`type` = course and `classe_id` = 2 and `annee_universitaire_id` = 1 and (`esbtp_teacher_attendances`.`status` is null or `esbtp_teacher_attendances`.`status` != absent) and `esbtp_seance_cours`.`deleted_at` is null"
+              - button "Copy to clipboard" [ref=e2357]:
+                - img [ref=e2358]
+              - button [ref=e2360]:
+                - img [ref=e2361]
+            - button "6 query parameters" [ref=e2364] [cursor=pointer]:
+              - img [ref=e2365]
+              - text: 6 query parameters
+        - generic [ref=e2367]:
+          - generic [ref=e2368]:
+            - generic [ref=e2369]: 20:49:44
+            - generic [ref=e2370]:
+              - img "Runtime" [ref=e2371]
+              - text: 2.32ms
+            - generic [ref=e2373]:
+              - img "Connection" [ref=e2374]
+              - text: mysql
+          - generic [ref=e2377]:
+            - generic [ref=e2378] [cursor=pointer]:
+              - code [ref=e2381]:
+                - code [ref=e2383]: "select * from `esbtp_teachers` where `user_id` = 9 limit 1"
+              - button "Copy to clipboard" [ref=e2385]:
+                - img [ref=e2386]
+              - button [ref=e2388]:
+                - img [ref=e2389]
+            - button "1 query parameter" [ref=e2392] [cursor=pointer]:
+              - img [ref=e2393]
+              - text: 1 query parameter
+        - generic [ref=e2395]:
+          - generic [ref=e2396]:
+            - generic [ref=e2397]: 20:49:44
+            - generic [ref=e2398]:
+              - img "Runtime" [ref=e2399]
+              - text: 1.41ms
+            - generic [ref=e2401]:
+              - img "Connection" [ref=e2402]
+              - text: mysql
+          - generic [ref=e2405] [cursor=pointer]:
+            - code [ref=e2408]:
+              - code [ref=e2410]: "select * from `users` where `users`.`id` in (9) and `users`.`deleted_at` is null"
+            - button "Copy to clipboard" [ref=e2412]:
+              - img [ref=e2413]
+            - button [ref=e2415]:
+              - img [ref=e2416]
+        - generic [ref=e2418]:
+          - generic [ref=e2419]:
+            - generic [ref=e2420]: 20:49:44
+            - generic [ref=e2421]:
+              - img "Runtime" [ref=e2422]
+              - text: 2.15ms
+            - generic [ref=e2424]:
+              - img "Connection" [ref=e2425]
+              - text: mysql
+          - generic [ref=e2428] [cursor=pointer]:
+            - code [ref=e2431]:
+              - code [ref=e2433]: "select * from `esbtp_teacher_availabilities` where `esbtp_teacher_availabilities`.`teacher_id` in (2)"
+            - button "Copy to clipboard" [ref=e2435]:
+              - img [ref=e2436]
+            - button [ref=e2438]:
+              - img [ref=e2439]
+        - generic [ref=e2441]:
+          - generic [ref=e2442]:
+            - generic [ref=e2443]: 20:49:44
+            - generic [ref=e2444]:
+              - img "Runtime" [ref=e2445]
+              - text: 2.85ms
+            - generic [ref=e2447]:
+              - img "Connection" [ref=e2448]
+              - text: mysql
+          - generic [ref=e2451]:
+            - generic [ref=e2452] [cursor=pointer]:
+              - code [ref=e2455]:
+                - code [ref=e2457]: "select `esbtp_seance_cours`.`heure_debut`, `esbtp_seance_cours`.`heure_fin` from `esbtp_seance_cours` left join `esbtp_teacher_attendances` on `esbtp_teacher_attendances`.`course_id` = `esbtp_seance_cours`.`id` and `esbtp_teacher_attendances`.`type` = start and esbtp_teacher_attendances.id = ( SELECT ta.id FROM esbtp_teacher_attendances ta WHERE ta.course_id = esbtp_seance_cours.id AND ta.type = \"start\" ORDER BY CASE WHEN DATE(ta.date) = CURDATE() THEN 1 WHEN DATE(ta.date) = DATE(esbtp_seance_cours.date_seance) THEN 2 ELSE 3 END, ta.created_at DESC LIMIT 1 ) where `esbtp_seance_cours`.`matiere_id` = 3 and `esbtp_seance_cours`.`type` = course and `classe_id` = 2 and `annee_universitaire_id` = 1 and (`esbtp_teacher_attendances`.`status` is null or `esbtp_teacher_attendances`.`status` != absent) and `esbtp_seance_cours`.`deleted_at` is null"
+              - button "Copy to clipboard" [ref=e2459]:
+                - img [ref=e2460]
+              - button [ref=e2462]:
+                - img [ref=e2463]
+            - button "6 query parameters" [ref=e2466] [cursor=pointer]:
+              - img [ref=e2467]
+              - text: 6 query parameters
+        - generic [ref=e2469]:
+          - generic [ref=e2470]:
+            - generic [ref=e2471]: 20:49:44
+            - generic [ref=e2472]:
+              - img "Runtime" [ref=e2473]
+              - text: 4.68ms
+            - generic [ref=e2475]:
+              - img "Connection" [ref=e2476]
+              - text: mysql
+          - generic [ref=e2479]:
+            - generic [ref=e2480] [cursor=pointer]:
+              - code [ref=e2483]:
+                - code [ref=e2485]: "select * from `roles` where `name` = enseignant and `guard_name` = web limit 1"
+              - button "Copy to clipboard" [ref=e2487]:
+                - img [ref=e2488]
+              - button [ref=e2490]:
+                - img [ref=e2491]
+            - button "2 query parameters" [ref=e2494] [cursor=pointer]:
+              - img [ref=e2495]
+              - text: 2 query parameters
+        - generic [ref=e2497]:
+          - generic [ref=e2498]:
+            - generic [ref=e2499]: 20:49:44
+            - generic [ref=e2500]:
+              - img "Runtime" [ref=e2501]
+              - text: 2.71ms
+            - generic [ref=e2503]:
+              - img "Connection" [ref=e2504]
+              - text: mysql
+          - generic [ref=e2507]:
+            - generic [ref=e2508] [cursor=pointer]:
+              - code [ref=e2511]:
+                - code [ref=e2513]: "select * from `users` where exists (select * from `roles` inner join `model_has_roles` on `roles`.`id` = `model_has_roles`.`role_id` where `users`.`id` = `model_has_roles`.`model_id` and `model_has_roles`.`model_type` = App\\Models\\User and `roles`.`id` in (5)) and `is_active` = true and `users`.`deleted_at` is null"
+              - button "Copy to clipboard" [ref=e2515]:
+                - img [ref=e2516]
+              - button [ref=e2518]:
+                - img [ref=e2519]
+            - button "3 query parameters" [ref=e2522] [cursor=pointer]:
+              - img [ref=e2523]
+              - text: 3 query parameters
+        - generic [ref=e2525]:
+          - generic [ref=e2526]:
+            - generic [ref=e2527]: 20:49:44
+            - generic [ref=e2528]:
+              - img "Runtime" [ref=e2529]
+              - text: 2.12ms
+            - generic [ref=e2531]:
+              - img "Connection" [ref=e2532]
+              - text: mysql
+          - generic [ref=e2535] [cursor=pointer]:
+            - code [ref=e2538]:
+              - code [ref=e2540]: "select * from `esbtp_enseignant_profiles` where `esbtp_enseignant_profiles`.`user_id` in (6, 9, 10, 11, 15, 26) and `esbtp_enseignant_profiles`.`deleted_at` is null"
+            - button "Copy to clipboard" [ref=e2542]:
+              - img [ref=e2543]
+            - button [ref=e2545]:
+              - img [ref=e2546]
+        - generic [ref=e2548]:
+          - generic [ref=e2549]:
+            - generic [ref=e2550]: 20:49:44
+            - generic [ref=e2551]:
+              - img "Runtime" [ref=e2552]
+              - text: 3.23ms
+            - generic [ref=e2554]:
+              - img "Connection" [ref=e2555]
+              - text: mysql
+          - generic [ref=e2558]:
+            - generic [ref=e2559] [cursor=pointer]:
+              - code [ref=e2562]:
+                - code [ref=e2564]: "select sum(`volume_horaire_total`) as aggregate from `esbtp_planifications_academiques` where `enseignant_principal_id` = 6 and `annee_universitaire_id` = 1 and `esbtp_planifications_academiques`.`deleted_at` is null"
+              - button "Copy to clipboard" [ref=e2566]:
+                - img [ref=e2567]
+              - button [ref=e2569]:
+                - img [ref=e2570]
+            - button "2 query parameters" [ref=e2573] [cursor=pointer]:
+              - img [ref=e2574]
+              - text: 2 query parameters
+        - generic [ref=e2576]:
+          - generic [ref=e2577]:
+            - generic [ref=e2578]: 20:49:44
+            - generic [ref=e2579]:
+              - img "Runtime" [ref=e2580]
+              - text: 3.07ms
+            - generic [ref=e2582]:
+              - img "Connection" [ref=e2583]
+              - text: mysql
+          - generic [ref=e2586]:
+            - generic [ref=e2587] [cursor=pointer]:
+              - code [ref=e2590]:
+                - code [ref=e2592]: "select sum(`volume_horaire_total`) as aggregate from `esbtp_planifications_academiques` where `enseignant_principal_id` = 9 and `annee_universitaire_id` = 1 and `esbtp_planifications_academiques`.`deleted_at` is null"
+              - button "Copy to clipboard" [ref=e2594]:
+                - img [ref=e2595]
+              - button [ref=e2597]:
+                - img [ref=e2598]
+            - button "2 query parameters" [ref=e2601] [cursor=pointer]:
+              - img [ref=e2602]
+              - text: 2 query parameters
+        - generic [ref=e2604]:
+          - generic [ref=e2605]:
+            - generic [ref=e2606]: 20:49:44
+            - generic [ref=e2607]:
+              - img "Runtime" [ref=e2608]
+              - text: 7.74ms
+            - generic [ref=e2610]:
+              - img "Connection" [ref=e2611]
+              - text: mysql
+          - generic [ref=e2614]:
+            - generic [ref=e2615] [cursor=pointer]:
+              - code [ref=e2618]:
+                - code [ref=e2620]: "select sum(`volume_horaire_total`) as aggregate from `esbtp_planifications_academiques` where `enseignant_principal_id` = 10 and `annee_universitaire_id` = 1 and `esbtp_planifications_academiques`.`deleted_at` is null"
+              - button "Copy to clipboard" [ref=e2622]:
+                - img [ref=e2623]
+              - button [ref=e2625]:
+                - img [ref=e2626]
+            - button "2 query parameters" [ref=e2629] [cursor=pointer]:
+              - img [ref=e2630]
+              - text: 2 query parameters
+        - generic [ref=e2632]:
+          - generic [ref=e2633]:
+            - generic [ref=e2634]: 20:49:44
+            - generic [ref=e2635]:
+              - img "Runtime" [ref=e2636]
+              - text: 2.38ms
+            - generic [ref=e2638]:
+              - img "Connection" [ref=e2639]
+              - text: mysql
+          - generic [ref=e2642]:
+            - generic [ref=e2643] [cursor=pointer]:
+              - code [ref=e2646]:
+                - code [ref=e2648]: "select sum(`volume_horaire_total`) as aggregate from `esbtp_planifications_academiques` where `enseignant_principal_id` = 11 and `annee_universitaire_id` = 1 and `esbtp_planifications_academiques`.`deleted_at` is null"
+              - button "Copy to clipboard" [ref=e2650]:
+                - img [ref=e2651]
+              - button [ref=e2653]:
+                - img [ref=e2654]
+            - button "2 query parameters" [ref=e2657] [cursor=pointer]:
+              - img [ref=e2658]
+              - text: 2 query parameters
+        - generic [ref=e2660]:
+          - generic [ref=e2661]:
+            - generic [ref=e2662]: 20:49:44
+            - generic [ref=e2663]:
+              - img "Runtime" [ref=e2664]
+              - text: 1.39ms
+            - generic [ref=e2666]:
+              - img "Connection" [ref=e2667]
+              - text: mysql
+          - generic [ref=e2670]:
+            - generic [ref=e2671] [cursor=pointer]:
+              - code [ref=e2674]:
+                - code [ref=e2676]: "select sum(`volume_horaire_total`) as aggregate from `esbtp_planifications_academiques` where `enseignant_principal_id` = 15 and `annee_universitaire_id` = 1 and `esbtp_planifications_academiques`.`deleted_at` is null"
+              - button "Copy to clipboard" [ref=e2678]:
+                - img [ref=e2679]
+              - button [ref=e2681]:
+                - img [ref=e2682]
+            - button "2 query parameters" [ref=e2685] [cursor=pointer]:
+              - img [ref=e2686]
+              - text: 2 query parameters
+        - generic [ref=e2688]:
+          - generic [ref=e2689]:
+            - generic [ref=e2690]: 20:49:44
+            - generic [ref=e2691]:
+              - img "Runtime" [ref=e2692]
+              - text: 1.49ms
+            - generic [ref=e2694]:
+              - img "Connection" [ref=e2695]
+              - text: mysql
+          - generic [ref=e2698]:
+            - generic [ref=e2699] [cursor=pointer]:
+              - code [ref=e2702]:
+                - code [ref=e2704]: "select sum(`volume_horaire_total`) as aggregate from `esbtp_planifications_academiques` where `enseignant_principal_id` = 26 and `annee_universitaire_id` = 1 and `esbtp_planifications_academiques`.`deleted_at` is null"
+              - button "Copy to clipboard" [ref=e2706]:
+                - img [ref=e2707]
+              - button [ref=e2709]:
+                - img [ref=e2710]
+            - button "2 query parameters" [ref=e2713] [cursor=pointer]:
+              - img [ref=e2714]
+              - text: 2 query parameters
+    - generic [ref=e2717]:
+      - list [ref=e2718]:
+        - listitem [ref=e2719]:
+          - img [ref=e2720]
+        - listitem [ref=e2728]: ·
+        - listitem [ref=e2729]:
+          - link "Source" [ref=e2730] [cursor=pointer]:
+            - /url: https://github.com/spatie/laravel-ignition
+        - listitem [ref=e2731]: ·
+        - listitem [ref=e2732]:
+          - link "Docs" [ref=e2733] [cursor=pointer]:
+            - /url: https://flareapp.io/docs/ignition/introducing-ignition/overview
+        - listitem [ref=e2734]: ·
+        - listitem [ref=e2735]:
+          - link "Laravel" [ref=e2736] [cursor=pointer]:
+            - /url: https://laravel.com
+      - paragraph [ref=e2738]:
+        - text: Ignition is built by
+        - link "Flare" [ref=e2739] [cursor=pointer]:
+          - /url: https://flareapp.io/?utm_campaign=ignition&utm_source=ignition
+          - img [ref=e2740]
+          - text: Flare
+        - text: ", the Laravel error reporting service."

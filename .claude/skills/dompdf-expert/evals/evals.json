@@ -1,0 +1,128 @@
+{
+  "skill_name": "dompdf-expert",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Je veux créer un export PDF pour la page /esbtp/paiements (liste des paiements). Le PDF doit ressembler au tableau qu'on voit dans l'interface web : colonnes Étudiant, Montant, Mode, Date, Statut, Catégorie. Avec un header qui affiche le logo de l'école et le titre 'Liste des Paiements'. Les lignes alternent gris clair / blanc. Les badges de statut doivent être colorés (vert=validé, orange=en_attente, rouge=rejeté). Crée le fichier Blade complet.",
+      "expected_output": "Un fichier Blade PDF complet pour resources/views/esbtp/paiements/export-pdf.blade.php. Doit utiliser: DejaVu Sans, table layout (pas flexbox), background-color sur td (pas tr), public_path() ou base64 pour le logo, les couleurs KLASSCI (#0453cb, #f59e0b, etc.), les settings KLASSCI, badges colorés avec background inline sur td, header avec logo + titre, footer avec date de génération. Le code doit être fonctionnel et prêt à utiliser.",
+      "assertions": [
+        {
+          "id": "uses-dejavu-font",
+          "text": "Le template utilise DejaVu Sans comme font principale",
+          "type": "contains",
+          "value": "DejaVu Sans"
+        },
+        {
+          "id": "no-flexbox",
+          "text": "Aucun display:flex ou display:grid dans le template",
+          "type": "not_contains",
+          "value": "display: flex"
+        },
+        {
+          "id": "table-layout",
+          "text": "Utilise des <table> pour le layout (pas de div-based layout)",
+          "type": "contains",
+          "value": "<table"
+        },
+        {
+          "id": "no-asset-helper",
+          "text": "N'utilise pas asset() pour les images (utilise public_path ou base64)",
+          "type": "not_contains",
+          "value": "asset("
+        },
+        {
+          "id": "klassci-primary-color",
+          "text": "Utilise la couleur primaire KLASSCI (#0453cb) ou la variable settings",
+          "type": "contains_one_of",
+          "values": ["0453cb", "primary_color"]
+        },
+        {
+          "id": "td-background-not-tr",
+          "text": "Les backgrounds des headers de tableau sont appliqués sur td ou via classe td, pas directement sur tr",
+          "type": "manual",
+          "description": "Vérifier que background-color est ciblé sur td et non sur tr seul"
+        },
+        {
+          "id": "status-badges",
+          "text": "Les badges de statut sont colorés (validé=vert, en_attente=orange/jaune, rejeté=rouge)",
+          "type": "manual",
+          "description": "Vérifier presence de couleurs distinctes pour les 3 statuts"
+        },
+        {
+          "id": "has-header-block",
+          "text": "Le template a un bloc header avec logo et titre du document",
+          "type": "manual",
+          "description": "Vérifier présence d'un header structuré avec logo + titre 'Liste des Paiements'"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Dans resources/views/esbtp/bulletins/pdf-configurable.blade.php, les background-color sur les lignes <tr> du tableau de notes ne s'affichent pas dans le PDF généré. Comment corriger ça ? Montre-moi le bon pattern et corrige les lignes concernées.",
+      "expected_output": "Explication claire du bug (CSS sur tr ne fonctionne pas dans DomPDF), puis correction concrète: cibler .classe td au lieu de .classe seul, ou utiliser des styles inline sur td. Le code corrigé doit appliquer background-color sur les éléments td et non tr. L'explication doit mentionner que c'est une limitation connue de DomPDF.",
+      "assertions": [
+        {
+          "id": "identifies-tr-bug",
+          "text": "Identifie correctement que le problème est background-color sur <tr> dans DomPDF",
+          "type": "manual",
+          "description": "La réponse doit expliquer que DomPDF ne supporte pas background-color sur tr"
+        },
+        {
+          "id": "provides-td-fix",
+          "text": "La correction cible les éléments <td> (pas <tr>) pour le background",
+          "type": "contains",
+          "value": "td"
+        },
+        {
+          "id": "no-flexbox-suggestion",
+          "text": "Ne suggère pas flexbox comme solution alternative",
+          "type": "not_contains",
+          "value": "flex"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Crée une méthode exportToPDF() dans ESBTPAttendanceController pour exporter un rapport d'absences étudiant en PDF. Le PDF doit inclure: header avec logo base64, tableau des absences (date, matière, type, justifiée/non), stats en haut (total absences, justifiées, non justifiées), couleurs KLASSCI. Utilise les patterns standards du projet KLASSCI.",
+      "expected_output": "Méthode PHP complète dans un contrôleur Laravel. Doit inclure: utilisation de Pdf::loadView(), chargement des settings via SettingsHelper::getPdfSettings(), conversion du logo en base64 (prepareLogoBase64 ou équivalent), setOptions avec isRemoteEnabled=false, isPhpEnabled=false, isFontSubsettingEnabled=true, DPI approprié, return $pdf->download(). La vue référencée doit aussi être esquissée ou décrite.",
+      "assertions": [
+        {
+          "id": "uses-pdf-facade",
+          "text": "Utilise Barryvdh\\DomPDF\\Facade\\Pdf",
+          "type": "contains_one_of",
+          "values": ["Pdf::loadView", "PDF::loadView", "Facade\\Pdf"]
+        },
+        {
+          "id": "uses-settings-helper",
+          "text": "Charge les settings PDF via SettingsHelper",
+          "type": "contains",
+          "value": "SettingsHelper"
+        },
+        {
+          "id": "security-options",
+          "text": "Configure isRemoteEnabled=false pour la sécurité",
+          "type": "contains",
+          "value": "isRemoteEnabled"
+        },
+        {
+          "id": "font-subsetting",
+          "text": "Active isFontSubsettingEnabled pour optimiser la taille",
+          "type": "contains",
+          "value": "isFontSubsettingEnabled"
+        },
+        {
+          "id": "base64-logo",
+          "text": "Prépare le logo en base64 ou public_path (pas asset())",
+          "type": "manual",
+          "description": "Vérifier que l'image est chargée via base64 ou public_path(), pas asset()"
+        },
+        {
+          "id": "returns-download",
+          "text": "Retourne un téléchargement PDF avec un nom de fichier approprié",
+          "type": "contains",
+          "value": "->download("
+        }
+      ]
+    }
+  ]
+}

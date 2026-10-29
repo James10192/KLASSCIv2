@@ -1,0 +1,660 @@
+/* =============================================================================
+   inscriptions-common.css — Styles partages par les pages inscriptions
+   Charge sur : index / administration / sous-reserve
+   Namespace : ii-* (inscriptions-index), shared across all 3 pages
+   ============================================================================= */
+
+:root {
+    --ii-primary: #0453cb;
+    --ii-primary-d: #033a8e;
+    --ii-accent: #3b7ddb;
+    --ii-secondary: #5e91de;
+    --ii-dark: #0f172a;
+    --ii-text: #1e293b;
+    --ii-muted: #64748b;
+    --ii-success: #10b981;
+    --ii-surface: #f8fafc;
+    --ii-warning: #f59e0b;
+    --ii-danger: #dc2626;
+}
+
+/* ============================= HERO ============================= */
+.ii-hero {
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+    border-radius: 18px;
+    padding: 1.75rem 2rem 1.25rem;
+    color: #fff;
+    margin-bottom: 1.25rem;
+    position: relative;
+    overflow: hidden;
+}
+.ii-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 80% 30%, rgba(255, 255, 255, 0.12), transparent 60%);
+    pointer-events: none;
+}
+.ii-hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    position: relative;
+    z-index: 1;
+}
+.ii-hero-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.ii-hero-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    flex-shrink: 0;
+    color: #fff;
+}
+.ii-hero h1 {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+.ii-hero p {
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.88rem;
+    margin: 0.15rem 0 0;
+}
+.ii-hero-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 99px;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.92);
+    margin-top: 0.4rem;
+}
+.ii-hero-actions {
+    display: flex;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
+/* ============================= Buttons glass / white ============================= */
+.ii-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.ii-btn--glass {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.25);
+}
+.ii-btn--glass:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+}
+.ii-btn--white {
+    background: #fff;
+    color: var(--ii-primary);
+}
+.ii-btn--white:hover {
+    background: #f1f5f9;
+    color: var(--ii-primary-d);
+}
+.ii-btn--primary {
+    background: var(--ii-primary);
+    color: #fff;
+}
+.ii-btn--primary:hover {
+    background: var(--ii-primary-d);
+    color: #fff;
+}
+.ii-btn--outline {
+    background: transparent;
+    color: var(--ii-primary);
+    border-color: var(--ii-primary);
+}
+.ii-btn--outline:hover {
+    background: var(--ii-primary);
+    color: #fff;
+}
+.ii-btn--ghost {
+    background: transparent;
+    color: var(--ii-muted);
+    border: none;
+}
+.ii-btn--ghost:hover {
+    color: var(--ii-text);
+    background: var(--ii-surface);
+}
+
+/* ============================= KPIs cliquables ============================= */
+.ii-kpis {
+    display: flex;
+    gap: 0.65rem;
+    margin-top: 1.25rem;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 1;
+}
+.ii-kpi {
+    flex: 1;
+    min-width: 130px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 12px;
+    padding: 0.75rem 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    font-family: inherit;
+}
+.ii-kpi:hover {
+    background: rgba(255, 255, 255, 0.18);
+    transform: translateY(-1px);
+}
+.ii-kpi.is-active {
+    background: rgba(255, 255, 255, 0.95);
+    color: var(--ii-primary-d);
+}
+.ii-kpi.is-active .ii-kpi-value,
+.ii-kpi.is-active .ii-kpi-label,
+.ii-kpi.is-active .ii-kpi-icon {
+    color: var(--ii-primary-d);
+}
+.ii-kpi.is-active .ii-kpi-icon {
+    background: rgba(4, 83, 203, 0.1);
+}
+.ii-kpi-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.14);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 0.88rem;
+    flex-shrink: 0;
+}
+.ii-kpi-content {
+    flex: 1;
+    min-width: 0;
+}
+.ii-kpi-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+}
+.ii-kpi-label {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.72);
+    margin-top: 0.2rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+/* ============================= Toolbar ============================= */
+.ii-toolbar {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: center;
+}
+.ii-search {
+    flex: 2;
+    min-width: 220px;
+    position: relative;
+}
+.ii-search input {
+    width: 100%;
+    padding: 0.55rem 0.85rem 0.55rem 2.25rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 9px;
+    font-size: 0.85rem;
+    transition: all 0.15s ease;
+}
+.ii-search input:focus {
+    outline: none;
+    border-color: var(--ii-primary);
+    box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.1);
+}
+.ii-search i {
+    position: absolute;
+    left: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ii-muted);
+    font-size: 0.85rem;
+}
+.ii-select {
+    padding: 0.55rem 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 9px;
+    font-size: 0.85rem;
+    background: #fff;
+    color: var(--ii-text);
+    min-width: 120px;
+}
+.ii-select:focus {
+    outline: none;
+    border-color: var(--ii-primary);
+}
+
+/* ============================= Chips filtres actifs ============================= */
+.ii-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0 0 0.75rem;
+}
+.ii-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: rgba(4, 83, 203, 0.08);
+    color: var(--ii-primary-d);
+    border-radius: 99px;
+    padding: 0.25rem 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.ii-chip button {
+    background: none;
+    border: none;
+    color: inherit;
+    padding: 0;
+    font-size: 0.7rem;
+    cursor: pointer;
+    opacity: 0.7;
+}
+.ii-chip button:hover {
+    opacity: 1;
+}
+
+/* ============================= Results card ============================= */
+.ii-results-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+.ii-results-card.ii-has-open-dropdown {
+    overflow: visible;
+}
+.ii-results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.85rem 1.1rem;
+    border-bottom: 1px solid #e2e8f0;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.ii-results-count {
+    font-size: 0.82rem;
+    color: var(--ii-muted);
+    font-weight: 500;
+}
+.ii-results-count strong {
+    color: var(--ii-text);
+    font-weight: 700;
+}
+.ii-per-page {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.78rem;
+    color: var(--ii-muted);
+}
+.ii-per-page select {
+    padding: 0.3rem 0.5rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    font-size: 0.78rem;
+    background: #fff;
+}
+
+/* ============================= Table ============================= */
+.ii-table-wrap {
+    overflow-x: auto;
+}
+.ii-table-wrap.ii-has-open-dropdown {
+    overflow: visible;
+}
+.ii-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.ii-table thead th {
+    background: var(--ii-surface);
+    color: var(--ii-muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 0.7rem 0.9rem;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+    text-align: left;
+    user-select: none;
+}
+.ii-table thead th.is-sortable {
+    cursor: pointer;
+}
+.ii-table thead th.is-sortable:hover {
+    color: var(--ii-primary);
+}
+.ii-table thead th .ii-sort-icon {
+    font-size: 0.68rem;
+    margin-left: 0.3rem;
+    opacity: 0.45;
+}
+.ii-table thead th[aria-sort="ascending"] .ii-sort-icon,
+.ii-table thead th[aria-sort="descending"] .ii-sort-icon {
+    opacity: 1;
+    color: var(--ii-primary);
+}
+.ii-table tbody tr {
+    transition: background 0.15s ease;
+    cursor: pointer;
+}
+.ii-table tbody tr:hover {
+    background: rgba(4, 83, 203, 0.025);
+}
+.ii-table tbody td {
+    padding: 0.85rem 0.9rem;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.85rem;
+    color: var(--ii-text);
+    vertical-align: middle;
+}
+.ii-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ============================= Student cell (photo + name) ============================= */
+.ii-student {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+.ii-student-photo {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--ii-surface);
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-transform: uppercase;
+}
+.ii-student-name {
+    font-weight: 600;
+    color: var(--ii-text);
+    line-height: 1.3;
+}
+.ii-student-meta {
+    font-size: 0.72rem;
+    color: var(--ii-muted);
+    font-weight: 400;
+    margin-top: 0.1rem;
+    letter-spacing: 0.2px;
+}
+
+/* ============================= Status / workflow badges ============================= */
+.ii-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 99px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}
+.ii-badge--validee {
+    background: rgba(4, 83, 203, 0.1);
+    color: var(--ii-primary-d);
+}
+.ii-badge--non_validee {
+    background: rgba(245, 158, 11, 0.1);
+    color: #92400e;
+}
+.ii-badge--en_attente {
+    background: rgba(100, 116, 139, 0.1);
+    color: #475569;
+}
+.ii-badge--annulee {
+    background: rgba(220, 38, 38, 0.08);
+    color: var(--ii-danger);
+}
+.ii-badge--terminee {
+    background: rgba(59, 125, 219, 0.12);
+    color: var(--ii-primary-d);
+}
+.ii-badge--inconnu {
+    background: rgba(100, 116, 139, 0.08);
+    color: var(--ii-muted);
+}
+
+.ii-wfbadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+.ii-wfbadge--prospect {
+    background: rgba(100, 116, 139, 0.1);
+    color: #475569;
+}
+.ii-wfbadge--documents {
+    background: rgba(59, 125, 219, 0.1);
+    color: var(--ii-primary-d);
+}
+.ii-wfbadge--validation {
+    background: rgba(245, 158, 11, 0.1);
+    color: #92400e;
+}
+.ii-wfbadge--validee {
+    background: rgba(16, 185, 129, 0.1);
+    color: #065f46;
+}
+.ii-wfbadge--inconnu {
+    background: rgba(100, 116, 139, 0.08);
+    color: var(--ii-muted);
+}
+
+.ii-paiement-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.28rem 0.65rem;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+.ii-paiement-chip--paye {
+    background: rgba(16, 185, 129, 0.1);
+    color: #065f46;
+}
+.ii-paiement-chip--attente {
+    background: rgba(245, 158, 11, 0.1);
+    color: #92400e;
+}
+.ii-paiement-chip--aucun {
+    background: rgba(220, 38, 38, 0.08);
+    color: var(--ii-danger);
+}
+
+/* ============================= Action buttons ============================= */
+.ii-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+.ii-action-btn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--ii-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.ii-action-btn:hover {
+    border-color: var(--ii-primary);
+    color: var(--ii-primary);
+}
+.ii-action-btn--primary:hover {
+    background: rgba(4, 83, 203, 0.05);
+}
+.ii-action-btn--danger:hover {
+    border-color: var(--ii-danger);
+    color: var(--ii-danger);
+    background: rgba(220, 38, 38, 0.04);
+}
+
+/* ============================= Pagination ============================= */
+.ii-pagination {
+    display: flex;
+    justify-content: center;
+    padding: 1rem;
+    border-top: 1px solid #f1f5f9;
+}
+.ii-pagination .pagination {
+    margin: 0;
+    gap: 0.25rem;
+}
+.ii-pagination .pagination .page-link {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    color: var(--ii-muted);
+    font-weight: 500;
+    font-size: 0.82rem;
+}
+.ii-pagination .pagination .page-item.active .page-link {
+    background: var(--ii-primary);
+    border-color: var(--ii-primary);
+    color: #fff;
+}
+
+/* ============================= Empty state ============================= */
+.ii-empty {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+.ii-empty-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(4, 83, 203, 0.08), rgba(59, 125, 219, 0.12));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ii-primary);
+    font-size: 1.8rem;
+}
+.ii-empty h4 {
+    font-size: 1rem;
+    color: var(--ii-text);
+    margin: 0 0 0.35rem;
+    font-weight: 600;
+}
+.ii-empty p {
+    font-size: 0.85rem;
+    color: var(--ii-muted);
+    margin: 0;
+}
+
+/* ============================= Bulk bar ============================= */
+.ii-bulk-bar {
+    position: fixed;
+    bottom: 1.2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, var(--ii-primary) 0%, var(--ii-accent) 100%);
+    color: #fff;
+    padding: 0.85rem 1.3rem;
+    border-radius: 99px;
+    box-shadow: 0 10px 40px rgba(4, 83, 203, 0.35);
+    z-index: 1040;
+    display: none;
+    align-items: center;
+    gap: 1rem;
+    animation: iiSlideUp 0.25s ease-out;
+}
+.ii-bulk-bar.is-visible {
+    display: inline-flex;
+}
+.ii-bulk-count {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+@keyframes iiSlideUp {
+    from { opacity: 0; transform: translate(-50%, 20px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ============================= Responsive ============================= */
+@media (max-width: 768px) {
+    .ii-hero { padding: 1.25rem 1.25rem 1rem; }
+    .ii-hero h1 { font-size: 1.2rem; }
+    .ii-hero-top { flex-direction: column; }
+    .ii-kpi { min-width: calc(50% - 0.35rem); }
+    .ii-toolbar { flex-direction: column; align-items: stretch; }
+    .ii-select { min-width: 100%; }
+    .ii-bulk-bar { left: 0.75rem; right: 0.75rem; transform: none; border-radius: 14px; flex-wrap: wrap; }
+}
+@media (max-width: 480px) {
+    .ii-kpi { min-width: 100%; }
+}

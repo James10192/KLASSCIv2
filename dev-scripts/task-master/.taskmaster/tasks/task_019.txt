@@ -1,0 +1,83 @@
+# Task ID: 19
+# Title: Liaison Obligatoire Bon de Sortie - Dépense
+# Status: done
+# Dependencies: 18
+# Priority: high
+# Description: Implémentation liaison obligatoire bon de sortie approuvé pour création dépenses avec traçabilité complète
+# Details:
+1. Migration contrainte obligatoire:
+   - `esbtp_depenses`: bon_sortie_id NOT NULL
+   - Contrainte FK vers esbtp_bons_sortie avec statut 'approuve'
+   - Index composite (bon_sortie_id, statut) pour performance
+
+2. BonDepenseService nouveau:
+   ```php
+   public function getBonsApprouves() {
+       return BonSortie::where('statut', 'approuve')
+           ->whereDoesntHave('depenses')
+           ->with('approbateur')
+           ->get();
+   }
+   
+   public function linkBonToDepense($bonId, $depenseData) {
+       // Validation bon approuvé
+       // Vérification montant cohérent
+       // Création dépense avec traçabilité
+   }
+   ```
+
+3. Interface dépenses rénovée:
+   - Sélecteur bons approuvés avec montants disponibles
+   - Modal création bon rapide si aucun disponible
+   - Workflow: sélection approbateur → notification → attente → création dépense
+   - Alertes visuelles si aucun bon disponible
+
+4. ESBTPDepenseController étendu:
+   - Validation prérequis bon avant création
+   - createBonRapide() pour workflow express
+   - Interface traçabilité bon → dépense
+
+5. Tests intégration end-to-end:
+   - Workflow complet: inscription → étudiant → bon → dépense
+   - Performance avec volumes importants
+   - Cohérence données après toutes opérations
+
+# Test Strategy:
+1. Tests contraintes base données
+2. Tests BonDepenseService avec mocks
+3. Tests interface dépenses rénovée
+4. Tests workflow création bon rapide
+5. Tests end-to-end inscription→dépense
+6. Tests performance et cohérence données
+
+# Subtasks:
+## 19.1. Migration bon_sortie_id obligatoire [done]
+### Dependencies: None
+### Description: Extension esbtp_depenses avec bon_sortie_id NOT NULL et contraintes
+### Details:
+
+
+## 19.2. BonDepenseService création [done]
+### Dependencies: None
+### Description: Service liaison bons-dépenses avec validation statut approuvé
+### Details:
+
+
+## 19.3. ESBTPDepenseController extension [done]
+### Dependencies: None
+### Description: Méthodes getBonsApprouves(), createBonRapide(), validation workflow
+### Details:
+
+
+## 19.4. Interface dépenses rénovée [done]
+### Dependencies: None
+### Description: Sélecteur bons approuvés, modal bon express, validation temps réel
+### Details:
+
+
+## 19.5. Tests workflow complet [done]
+### Dependencies: None
+### Description: Tests intégration inscription→étudiant→bon→dépense end-to-end
+### Details:
+
+

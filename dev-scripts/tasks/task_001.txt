@@ -1,0 +1,31 @@
+# Task ID: 1
+# Title: Setup Database Schema
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Create database migrations and models for the attendance system
+# Details:
+Create migrations for esbtp_attendance_codes and esbtp_enseignant_presence tables according to the schema in section 6.1. Implement models with proper relationships. Ensure the code field is unique and 6 characters long. Set up proper timestamps and foreign key constraints. Use Laravel's migration system and Eloquent ORM.
+
+# Test Strategy:
+Run migrations on test database and verify schema structure. Test model relationships and constraints with unit tests.
+
+# Subtasks:
+## 1. Create migration for esbtp_attendance_codes table [done]
+### Dependencies: None
+### Description: Create a database migration for the attendance codes table that will store all possible attendance status codes
+### Details:
+Use Laravel's migration system to create a new migration file for the esbtp_attendance_codes table. The table should include: id (primary key), code (string, unique, 6 chars), description (string), created_at and updated_at timestamps. Ensure the code field has a unique constraint. Run the migration to create the table in the database. Example command: php artisan make:migration create_esbtp_attendance_codes_table
+
+## 2. Create migration for esbtp_enseignant_presence table [done]
+### Dependencies: 1.1
+### Description: Create a database migration for the teacher presence table that will track attendance records
+### Details:
+Use Laravel's migration system to create a new migration file for the esbtp_enseignant_presence table. The table should include: id (primary key), enseignant_id (foreign key), date (date), attendance_code_id (foreign key referencing esbtp_attendance_codes.id), comments (text, nullable), created_at and updated_at timestamps. Set up proper foreign key constraints with appropriate cascade actions. Run the migration after the attendance_codes table is created. Example command: php artisan make:migration create_esbtp_enseignant_presence_table
+
+## 3. Implement Eloquent models with relationships [done]
+### Dependencies: 1.1, 1.2
+### Description: Create Eloquent model classes for both tables with properly defined relationships
+### Details:
+Create two Eloquent model classes: AttendanceCode and EnseignantPresence. In the AttendanceCode model, define the table name, fillable properties, and a hasMany relationship to EnseignantPresence. In the EnseignantPresence model, define the table name, fillable properties, and belongsTo relationships to both AttendanceCode and the existing Enseignant model. Implement any necessary accessors, mutators, or scopes for convenient data access. Ensure proper namespace and directory structure following Laravel conventions.
+

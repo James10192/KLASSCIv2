@@ -1,0 +1,204 @@
+╭───────────────────────────────────────────────────╮
+│ ✻ Welcome to Claude Code!                         │
+│                                                   │
+│   /help for help, /status for your current setup  │
+│                                                   │
+│   cwd: /mnt/c/xampp/htdocs/ESBTP-yAKROv2Pascal    │
+╰───────────────────────────────────────────────────╯
+● Compact summary (ctrl+r to expand)
+  ⎿  Read app/Http/Controllers/ESBTPEmploiTempsController.php (784 lines)
+  ⎿  Read resources/views/esbtp/emploi-temps/create.blade.php (184 lines)
+  ⎿  Read resources/views/esbtp/emploi-temps/index.blade.php (645 lines)
+  ⎿  Read resources/views/esbtp/planning-general/coordinateur.blade.php (631 lines)
+  ⎿  Todo list read (10 items)
+
+● I'll continue working on the current task - modifying the create() controller method to retrieve planning data.
+  Let me examine the current controller method and then integrate it with the planning system.
+
+● Read(app/Models/ESBTPPlanificationAcademique.php)
+  ⎿  Read 299 lines (ctrl+r to expand)
+
+● Now let me modify the create() method in the controller to retrieve planification data:
+
+● Update(app/Http/Controllers/ESBTPEmploiTempsController.php)
+  ⎿  Updated app/Http/Controllers/ESBTPEmploiTempsController.php with 145 additions and 3 removals                 
+       73         */
+       74        public function create()
+       75        {
+       76 -          // Récupérer les classes
+       77 -          $classes = ESBTPClasse::orderBy('name')->get();
+       76 +          // Récupérer les classes avec relations pour optimiser
+       77 +          $classes = ESBTPClasse::with(['filiere', 'niveau', 'anneeUniversitaire'])
+       78 +              ->orderBy('name')
+       79 +              ->get();
+       80    
+       81            // Récupérer les années universitaires
+       82            $annees = ESBTPAnneeUniversitaire::orderBy('name', 'desc')->get();
+     ...
+        82            // Générer les dates de la semaine courante
+        83            $semaineCourante = ESBTPEmploiTemps::genererSemaineCourante();
+        84    
+        85 -          return view('esbtp.emploi-temps.create', compact('classes', 'annees', 'semaineCourante'));
+        85 +          // Récupérer l'année universitaire active
+        86 +          $anneeActive = ESBTPAnneeUniversitaire::where('is_active', true)->first();
+        87 +  
+        88 +          // Initialiser les données de planification
+        89 +          $planificationData = [];
+        90 +          
+        91 +          // Si on a une classe sélectionnée (via paramètres GET ou session)
+        92 +          $classeSelectionnee = request('classe_id') ? ESBTPClasse::find(request('classe_id')) : null;
+        93 +          
+        94 +          if ($classeSelectionnee && $anneeActive) {
+        95 +              $planificationData = $this->getPlanificationDataForClasse($classeSelectionnee, 
+           + $anneeActive);
+        96 +          }
+        97 +  
+        98 +          return view('esbtp.emploi-temps.create', compact(
+        99 +              'classes', 'annees', 'semaineCourante', 'planificationData', 'classeSelectionnee', 
+           + 'anneeActive'
+       100 +          ));
+       101        }
+       102    
+       103        /**
+       104 +       * Récupérer les données de planification pour une classe donnée
+       105 +       */
+       106 +      private function getPlanificationDataForClasse($classe, $annee, $semestre = null)
+       107 +      {
+       108 +          $data = [
+       109 +              'classe' => $classe,
+       110 +              'annee' => $annee,
+       111 +              'planifications_configurees' => false,
+       112 +              'matieres_planifiees' => collect(),
+       113 +              'enseignants_disponibles' => collect(),
+       114 +              'heures_totales' => 0,
+       115 +              'heures_restantes' => 0,
+       116 +              'message_configuration' => null,
+       117 +              'lien_configuration' => null
+       118 +          ];
+       119 +  
+       120 +          // Récupérer les planifications académiques pour cette classe
+       121 +          $planifications = \App\Models\ESBTPPlanificationAcademique::where('annee_universitaire_id', 
+           + $annee->id)
+       122 +              ->where('filiere_id', $classe->filiere_id)
+       123 +              ->where('niveau_etude_id', $classe->niveau_id)
+       124 +              ->when($semestre, function($query) use ($semestre) {
+       125 +                  $query->where('semestre', $semestre);
+       126 +              })
+       127 +              ->active()
+       128 +              ->with(['matiere', 'enseignantPrincipal'])
+       129 +              ->get();
+       130 +  
+       131 +          if ($planifications->isEmpty()) {
+       132 +              // Aucune planification configurée
+       133 +              $data['message_configuration'] = "Aucune planification académique n'a été configurée pour 
+           + cette classe. Veuillez d'abord configurer la planification.";
+       134 +              $data['lien_configuration'] = route('esbtp.planning-general.annuel', [
+       135 +                  'annee_id' => $annee->id,
+       136 +                  'filiere_id' => $classe->filiere_id,
+       137 +                  'niveau_id' => $classe->niveau_id,
+       138 +                  'semestre' => $semestre ?: 1
+       139 +              ]);
+       140 +              return $data;
+       141 +          }
+       142 +  
+       143 +          $data['planifications_configurees'] = true;
+       144 +          
+       145 +          // Traiter chaque planification pour calculer les heures restantes
+       146 +          $matieresPlanifiees = collect();
+       147 +          $enseignantsIds = collect();
+       148 +          
+       149 +          foreach ($planifications as $planification) {
+       150 +              // Calculer les heures déjà programmées pour cette matière
+       151 +              $heuresUtilisees = \App\Models\ESBTPSeanceCours::where('matiere_id', 
+           + $planification->matiere_id)
+       152 +                  ->where('classe_id', $classe->id)
+       153 +                  ->where('annee_universitaire_id', $annee->id)
+       154 +                  ->when($semestre, function($query) use ($semestre) {
+       155 +                      // Si on a un semestre spécifique, filtrer les séances par période
+       156 +                      // Cette logique peut être adaptée selon votre implémentation des semestres
+       157 +                  })
+       158 +                  ->sum('duree_minutes') / 60; // Convertir en heures
+       159 +  
+       160 +              $heuresRestantes = $planification->volume_horaire_total - $heuresUtilisees;
+       161 +              
+       162 +              $matieresPlanifiees->push([
+       163 +                  'planification_id' => $planification->id,
+       164 +                  'matiere' => $planification->matiere,
+       165 +                  'enseignant_principal' => $planification->enseignantPrincipal,
+       166 +                  'volume_horaire_total' => $planification->volume_horaire_total,
+       167 +                  'heures_utilisees' => $heuresUtilisees,
+       168 +                  'heures_restantes' => max(0, $heuresRestantes),
+       169 +                  'pourcentage_utilise' => $planification->volume_horaire_total > 0 
+       170 +                      ? round(($heuresUtilisees / $planification->volume_horaire_total) * 100, 1) 
+       171 +                      : 0,
+       172 +                  'volume_horaire_cm' => $planification->volume_horaire_cm,
+       173 +                  'volume_horaire_td' => $planification->volume_horaire_td,
+       174 +                  'volume_horaire_tp' => $planification->volume_horaire_tp,
+       175 +                  'statut' => $planification->statut,
+       176 +                  'periode_debut' => $planification->periode_debut,
+       177 +                  'periode_fin' => $planification->periode_fin
+       178 +              ]);
+       179 +  
+       180 +              // Collecter les enseignants
+       181 +              if ($planification->enseignant_principal_id) {
+       182 +                  $enseignantsIds->push($planification->enseignant_principal_id);
+       183 +              }
+       184 +              
+       185 +              // Ajouter les enseignants secondaires s'ils existent
+       186 +              if ($planification->enseignants_secondaires) {
+       187 +                  foreach ($planification->enseignants_secondaires as $enseignantId) {
+       188 +                      $enseignantsIds->push($enseignantId);
+       189 +                  }
+       190 +              }
+       191 +          }
+       192 +  
+       193 +          $data['matieres_planifiees'] = $matieresPlanifiees;
+       194 +          $data['heures_totales'] = $matieresPlanifiees->sum('volume_horaire_total');
+       195 +          $data['heures_restantes'] = $matieresPlanifiees->sum('heures_restantes');
+       196 +  
+       197 +          // Récupérer les enseignants disponibles (tous les enseignants, mais marquer ceux qui sont 
+           + assignés)
+       198 +          $tousLesEnseignants = \App\Models\User::role('enseignant')
+       199 +              ->where('is_active', true)
+       200 +              ->with('profile')
+       201 +              ->get();
+       202 +  
+       203 +          $enseignantsDisponibles = collect();
+       204 +          foreach ($tousLesEnseignants as $enseignant) {
+       205 +              $estAssigne = $enseignantsIds->contains($enseignant->id);
+       206 +              
+       207 +              // Calculer la charge de travail actuelle de l'enseignant
+       208 +              $chargeActuelle = 
+           + \App\Models\ESBTPPlanificationAcademique::where('enseignant_principal_id', $enseignant->id)
+       209 +                  ->where('annee_universitaire_id', $annee->id)
+       210 +                  ->sum('volume_horaire_total');
+       211 +  
+       212 +              $enseignantsDisponibles->push([
+       213 +                  'enseignant' => $enseignant,
+       214 +                  'est_assigne_classe' => $estAssigne,
+       215 +                  'charge_horaire_annuelle' => $chargeActuelle,
+       216 +                  'disponibilite' => $chargeActuelle < 500 ? 'Disponible' : ($chargeActuelle < 800 ? 
+           + 'Chargé' : 'Surchargé')
+       217 +              ]);
+       218 +          }
+       219 +  
+       220 +          $data['enseignants_disponibles'] = $enseignantsDisponibles->sortBy([
+       221 +              ['est_assigne_classe', 'desc'],
+       222 +              ['charge_horaire_annuelle', 'asc']
+       223 +          ]);
+       224 +  
+       225 +          return $data;
+       226 +      }
+       227 +  
+       228 +      /**
+       229         * Enregistre un nouvel emploi du temps.
+       230         *
+       231         * @param  \Illuminate\Http\Request  $request
+
+> Et aussi ahjourjte à la todo list que j'ai une erreur 403 en tant que superadmin sur cette page, l'erreureur a du
+   venir quand on reglaiyt l'erreur 403 sur la même page pour le rol coordinateur 
+  http://localhost:8000/esbtp/planning-general
+  ⎿  Claude usage limit reached. Your limit will reset at 1pm (Africa/Abidjan).
+
+      • /upgrade to increase your usage limit.
+

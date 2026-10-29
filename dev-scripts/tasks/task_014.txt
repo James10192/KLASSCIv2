@@ -1,0 +1,72 @@
+# Task ID: 14
+# Title: Verify Database Migrations for All Existing Models
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Ensure that every existing model in the application has corresponding database migrations and verify that all migrations are functioning correctly in the application.
+# Details:
+This task involves a comprehensive audit of all models and their database migrations to ensure data integrity and proper application functionality. The developer should:
+
+1. Create an inventory of all existing models in the application
+2. For each model, verify that there are appropriate migrations that create and modify the corresponding database tables
+3. Check that all table columns defined in the models have corresponding fields in the migrations
+4. Ensure that relationships between models (belongsTo, hasMany, etc.) are properly supported by foreign key constraints in the migrations
+5. Verify that any model attributes, such as casts, fillable fields, and hidden attributes, align with the database schema
+6. Run migrations in a test environment to confirm they execute without errors
+7. Check for any models that might be using tables without proper migrations
+8. Document any inconsistencies found and create the missing migrations as needed
+9. Ensure that the migration naming follows the project's conventions and includes timestamps for proper sequencing
+10. Verify that any seeder data is compatible with the current schema
+
+# Test Strategy:
+Testing should be thorough to ensure database integrity:
+
+1. Create a fresh test database environment
+2. Run 'php artisan migrate:fresh' to verify all migrations run successfully from scratch
+3. Run 'php artisan migrate:status' to confirm all migrations are applied
+4. For each model, write and execute a simple CRUD test to verify database operations work correctly
+5. Test model relationships by creating related records and verifying they can be accessed through the relationship methods
+6. Use database schema inspection tools (like 'php artisan db:show' or a database client) to compare the actual database schema with what's defined in migrations
+7. Test rollbacks using 'php artisan migrate:rollback' to ensure they work properly
+8. Verify that any unique constraints, indexes, and foreign keys are properly created
+9. Run the application's existing test suite to ensure all database-dependent functionality works correctly
+10. Document any issues found and the fixes applied for future reference
+
+# Subtasks:
+## 1. Create Model Inventory and Audit Migration Files [pending]
+### Dependencies: None
+### Description: Create a comprehensive inventory of all models in the application and audit their corresponding migration files for completeness.
+### Details:
+1. Scan all directories where models are stored (typically app/Models or similar)
+2. Create a spreadsheet or document listing each model with columns for: model name, table name, key attributes, relationships
+3. For each model, locate all related migration files in the database/migrations directory
+4. Document which models have migrations and which are missing them
+5. For models with migrations, verify that the migration file names follow project conventions and include proper timestamps
+6. Create a report of any models lacking migration files or having improperly named migrations
+
+## 2. Verify Schema Consistency Between Models and Migrations [pending]
+### Dependencies: 14.1
+### Description: Analyze each model and its corresponding migrations to ensure schema consistency, including columns, relationships, and constraints.
+### Details:
+1. For each model identified in subtask 1, examine its properties (fillable fields, casts, hidden attributes, etc.)
+2. Compare each model's attributes with its migration files to ensure all columns are properly defined
+3. Verify that relationships (belongsTo, hasMany, etc.) have corresponding foreign key constraints in migrations
+4. Check that column types in migrations match the expected types based on model casts
+5. Ensure that any model validation rules are consistent with database constraints
+6. Document all inconsistencies found between models and their migrations
+7. Create a detailed report highlighting schema mismatches that need to be addressed
+
+## 3. Test Migrations and Create Missing/Corrected Migrations [pending]
+### Dependencies: 14.1, 14.2
+### Description: Run migrations in a test environment to verify functionality and create any missing or corrected migrations based on the audit findings.
+### Details:
+1. Set up a clean test database environment for migration testing
+2. Run all migrations in sequence to verify they execute without errors
+3. Compare the resulting database schema with the expected schema based on models
+4. Create new migration files for any models missing migrations (identified in subtask 1)
+5. Create corrective migrations for any inconsistencies found (identified in subtask 2)
+6. Ensure all new migrations follow naming conventions and include proper timestamps
+7. Test the new and corrected migrations to verify they resolve the identified issues
+8. Update any seeders that might be affected by schema changes
+9. Document all changes made and prepare a final report on the migration verification process
+

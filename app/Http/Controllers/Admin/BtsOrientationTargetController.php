@@ -1,0 +1,246 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\ESBTPClasse;
+use App\Models\ESBTPClasseOrientationTarget;
+use App\Models\ESBTPFiliere;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
+
+/**
+ * UI admin pour configurer les sorties Tronc Commun → Spécialités.
+ *
+ * Permission requise : `bts_tronc_commun.manage_targets`.
+ *
+ * Workflow :
+ *  1. Lister les classes TC actives (filiere->is_tronc_commun = true)
+ *  2. Pour chaque classe TC, afficher ses targets configurés
+ *  3. CRUD : ajout (POST), update (PATCH sort_order/semestre/is_active), suppression (DELETE)
+ *  4. Suggérer les classes de spécialité candidates (filieres enfants du même niveau)
+ *
+ * Sans config, le bouton "Orienter" sur fiche inscription affiche empty state.
+ */
+class BtsOrientationTargetController extends Controller
+{
+    public function __construct()
+    {
+        $this->middleware('auth');
+        $this->middleware('permission:bts_tronc_commun.manage_targets');
+    }
+
+    public function index(Request $request): View
+    {
+        // Bug 8b (juin 2026) : ne lister que les classes dont la filière est
+        // un VRAI tronc commun (is_tronc_commun=true ET parent_id IS NULL).
+        // Cohérent avec ESBTPFiliere::isTroncCommun() qui exige parent_id NULL
+        // pour se protéger contre les données corrompues où une filière OPTION
+        // serait marquée is_tronc_commun=true (ex: yakro filière id=8 GBAT).
+        $sourceClasses = ESBTPClasse::query()
+            ->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', true)->whereNull('parent_id'))
+            ->with([
+                'filiere',
+                'niveauEtude',
+                'anneeUniversitaire',
+                'orientationTargets.targetClasse.filiere',
+                'orientationTargets.targetClasse.niveauEtude',
+            ])
+            ->where('is_active', true)
+            ->orderBy('annee_universitaire_id', 'desc')
+            ->orderBy('name')
+            ->get();
+
+        // Classes candidates pour ajout. Convention métier (Marcel, juin 2026) :
+        //   Quand une filière TC a des filles déclarées (parent_id = TC.id), restreindre
+        //   les candidates aux classes de ces filles. Sinon, fallback non-TC même niveau.
+        // Les classes KLASSCI sont universelles (cf rule classes-universelles-pas-annee.md) :
+        // ne JAMAIS filtrer par annee_universitaire_id sur esbtp_classes.
+        //
+        // On précompute par TC source filiere_id la liste des filles pour éviter N queries.
+        $tcFiliereIds = $sourceClasses->pluck('filiere_id')->unique()->filter()->values();
+        $fillesByTcFiliere = ESBTPFiliere::query()
+            ->where('is_active', true)
+            ->whereIn('parent_id', $tcFiliereIds)
+            ->get(['id', 'parent_id'])
+            ->groupBy('parent_id')
+            ->map(fn ($group) => $group->pluck('id'));
+
+        $candidatesByClasse = [];
+        $hasFillesByClasse = [];
+        foreach ($sourceClasses as $source) {
+            $existingTargetIds = $source->orientationTargets->pluck('target_classe_id')->all();
+            $fillesIds = $fillesByTcFiliere->get($source->filiere_id) ?? collect();
+            $hasFillesByClasse[$source->id] = $fillesIds->isNotEmpty();
+
+            $query = ESBTPClasse::query()
+                ->where('niveau_etude_id', $source->niveau_etude_id)
+                ->whereNotIn('id', $existingTargetIds)
+                ->where('is_active', true)
+                ->with('filiere:id,name,code,parent_id');
+
+            if ($fillesIds->isNotEmpty()) {
+                $query->whereIn('filiere_id', $fillesIds);
+            } else {
+                $query->whereHas('filiere', fn ($q) => $q
+                    ->where('is_tronc_commun', false)
+                    ->orWhereNotNull('parent_id'));
+            }
+
+            $candidatesByClasse[$source->id] = $query
+                ->orderBy('name')
+                ->get(['id', 'name', 'filiere_id']);
+        }
+
+        return view('esbtp.admin.orientation-targets.index', compact(
+            'sourceClasses', 'candidatesByClasse', 'hasFillesByClasse'
+        ));
+    }
+
+    public function store(Request $request): JsonResponse|RedirectResponse
+    {
+        $data = $request->validate([
+            'source_classe_id' => ['required', 'exists:esbtp_classes,id'],
+            'target_classe_id' => ['required', 'exists:esbtp_classes,id', 'different:source_classe_id'],
+            'semestre_activation' => ['nullable', 'integer', 'between:1,8'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        // Mêmes règles que les autres écrans, la CLI et Nanan (source tronc
+        // commun, même niveau, pas elle-même) : ConfigurationTroncCommun.
+        try {
+            $target = app(\App\Domain\BtsTroncCommun\ConfigurationTroncCommun::class)->ajouterSortie(
+                ESBTPClasse::findOrFail($data['source_classe_id']),
+                ESBTPClasse::findOrFail($data['target_classe_id']),
+                isset($data['semestre_activation']) ? (int) $data['semestre_activation'] : null,
+                $data['notes'] ?? null,
+            );
+        } catch (\InvalidArgumentException $e) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            }
+
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'target' => $target->load('targetClasse.filiere'),
+            ]);
+        }
+
+        return redirect()->route('esbtp.admin.orientation-targets.index')
+            ->with('success', 'Cible d\'orientation ajoutée.');
+    }
+
+    public function bulkCopy(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'source_classe_id' => ['required', 'exists:esbtp_classes,id'],
+            'destination_classe_ids' => ['required', 'array', 'min:1'],
+            'destination_classe_ids.*' => ['integer', 'exists:esbtp_classes,id'],
+            'mode' => ['nullable', 'in:merge,replace'],
+        ]);
+
+        $source = ESBTPClasse::with('orientationTargets')->findOrFail((int) $data['source_classe_id']);
+        $sourceTargets = $source->orientationTargets->where('is_active', true)->values();
+
+        if ($sourceTargets->isEmpty()) {
+            return response()->json([
+                'message' => 'La classe source ne contient aucune sortie active à copier.',
+            ], 422);
+        }
+
+        $destinationIds = collect($data['destination_classe_ids'])
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->reject(fn ($id) => $id === (int) $source->id)
+            ->values();
+
+        if ($destinationIds->isEmpty()) {
+            return response()->json([
+                'message' => 'Sélectionnez au moins une classe de destination différente de la source.',
+            ], 422);
+        }
+
+        $mode = $data['mode'] ?? 'merge';
+        $created = 0;
+        $updated = 0;
+        $deleted = 0;
+
+        $targetsByClass = DB::transaction(function () use ($destinationIds, $sourceTargets, $mode, &$created, &$updated, &$deleted) {
+            if ($mode === 'replace') {
+                $deleted = ESBTPClasseOrientationTarget::whereIn('source_classe_id', $destinationIds)->delete();
+            }
+
+            foreach ($destinationIds as $destinationId) {
+                foreach ($sourceTargets as $sourceTarget) {
+                    $row = ESBTPClasseOrientationTarget::updateOrCreate(
+                        [
+                            'source_classe_id' => $destinationId,
+                            'target_classe_id' => $sourceTarget->target_classe_id,
+                        ],
+                        [
+                            'semestre_activation' => $sourceTarget->semestre_activation,
+                            'is_active' => true,
+                            'sort_order' => $sourceTarget->sort_order,
+                            'notes' => $sourceTarget->notes,
+                        ]
+                    );
+
+                    $row->wasRecentlyCreated ? $created++ : $updated++;
+                }
+            }
+
+            return ESBTPClasse::query()
+                ->whereIn('id', $destinationIds)
+                ->with('orientationTargets.targetClasse.filiere')
+                ->get()
+                ->mapWithKeys(fn (ESBTPClasse $classe) => [
+                    $classe->id => $classe->orientationTargets->values(),
+                ]);
+        });
+
+        return response()->json([
+            'success' => true,
+            'mode' => $mode,
+            'created' => $created,
+            'updated' => $updated,
+            'deleted' => $deleted,
+            'classes' => $targetsByClass,
+        ]);
+    }
+
+    public function update(Request $request, ESBTPClasseOrientationTarget $target): JsonResponse|RedirectResponse
+    {
+        $data = $request->validate([
+            'semestre_activation' => ['nullable', 'integer', 'between:1,8'],
+            'is_active' => ['nullable', 'boolean'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $target->update($data);
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'target' => $target->fresh()]);
+        }
+
+        return redirect()->back()->with('success', 'Cible mise à jour.');
+    }
+
+    public function destroy(Request $request, ESBTPClasseOrientationTarget $target): JsonResponse|RedirectResponse
+    {
+        $target->delete();
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true]);
+        }
+
+        return redirect()->back()->with('success', 'Cible supprimée.');
+    }
+}

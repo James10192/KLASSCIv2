@@ -1,0 +1,141 @@
+# API CLI — Rendez-vous d'inscription
+
+Préfixe `/api/cli`, authentification Sanctum (`Authorization: Bearer <jeton>`).
+
+| Méthode | Chemin | Capacité | Rôle |
+|---|---|---|---|
+| POST | `/rendez-vous/generer` | `cli:admin` | Génère les créneaux depuis les réglages |
+| POST | `/rendez-vous/placer` | `cli:admin` | Place les dossiers en attente, pose leur convocation en attente |
+| GET | `/rendez-vous/diagnostic` | `cli:read` | État de chaque maillon, comptes de convocations |
+| POST | `/rendez-vous/convocations/envoyer` | `cli:admin` | Envoie un paquet de convocations en attente (50 au plus, 25 s) |
+| POST | `/rendez-vous/convocations/remettre` | `cli:admin` | Remet en attente `quoi: inconnues` (réservations d'avant le suivi) ou `quoi: echecs`, `limite` facultative, sans rien envoyer |
+
+## `GET /rendez-vous/diagnostic`
+
+```json
+{
+  "success": true,
+  "data": {
+    "tout_en_ordre": false,
+    "maillons": [
+      { "cle": "canal", "ok": false, "titre": "Prise de rendez-vous fermée", "detail": "…" },
+      { "cle": "reglages", "ok": true, "titre": "Réglages complets", "detail": "…" },
+      { "cle": "places", "ok": true, "titre": "257 places libres à venir", "detail": "…" },
+      { "cle": "portail", "ok": true, "titre": "…", "detail": "…" },
+      { "cle": "messagerie", "ok": true, "titre": "…", "detail": "…" }
+    ],
+    "convocations": { "en_attente": 0, "envoyee": 12, "echec": 0, "sans_email": 3, "inconnu": 420 }
+  }
+}
+```
+
+`inconnu` : réservations actives créées avant le suivi des convocations (22/09/2026),
+dont on ne sait pas si le courriel est parti. Elles ne sont **jamais** envoyées
+automatiquement : l'écran propose de le faire.
+
+Même mesure en local sur le serveur : `php artisan inscriptions:diagnostiquer-rdv [--json]`.
+
+## `GET /rendez-vous/recherche`
+
+Retrouver le rendez-vous d'une famille sans connaître le jour. Ability `cli:read`.
+Mêmes règles que l'écran « Retrouver un rendez-vous » (`App\Services\RendezVous\RechercheRdv`).
+
+| Paramètre | Valeurs | Défaut |
+|---|---|---|
+| `q` | nom, prénoms (de la réservation et, pour une réinscription, de l'élève), courriel, référence du dossier, matricule ; une saisie faite de chiffres cherche le téléphone (de la réservation ou de l'élève, avec ou sans l'indicatif réglé pour l'instance, `telephone_indicatif_pays`), le matricule et la référence | — |
+| `quand` | `a_venir`, `passes`, `tous` | `a_venir` sans `q`, `tous` avec |
+| `statut` | une valeur de `App\Enums\StatutReservationRdv` | tous |
+| `type` | `candidature`, `reinscription` | tous |
+| `per_page` / `page` | 1 à 100 | 25 / 1 |
+
+```json
+{ "success": true,
+  "data": {
+    "filtres": { "q": "kouassi", "quand": "tous", "statut": "", "type": "" },
+    "approchant": false,
+    "total": 1, "page": 1, "derniere_page": 1,
+    "rendez_vous": [{ "id": 12, "nom": "KOUASSI Ama", "dossier": "candidature",
+      "reference": "AB12-CD34", "matricule": null, "telephone_masque": "+225 07 ** ** ** 56",
+      "date": "2026-10-05", "heure": "10:00-10:30", "statut": "confirmee",
+      "etat_accueil": "attendu", "absences": 0, "recue_le": null }],
+    "eleves_sans_rendez_vous": [],
+    "autres_eleves_sans_rendez_vous": false } }
+```
+
+Le texte se compare avec le même calcul de score que la liste des étudiants (`FuzzyNameMatcher`, mais un seuil propre) : accents,
+apostrophes, tirets et ordre des noms n'y font rien. Si aucun rendez-vous ne répond
+exactement, la liste propose les orthographes voisines (score ≥ 70 : une lettre de
+distance sur un nom tapé seul passe, deux non) et `approchant`
+vaut `true`.
+
+`eleves_sans_rendez_vous` (5 au plus) nomme les élèves que `q` désigne et qui n'ont
+aucune réservation : `id`, `matricule`, `nom`, `demande_reinscription` (statut de
+leur dernière demande, `null` s'ils n'en ont déposé aucune). Vide pour `type=candidature`.
+`autres_eleves_sans_rendez_vous` vaut `true` quand d'autres élèves répondent au-delà
+des cinq : préciser la saisie.
+
+`filtres` rend les filtres **réellement appliqués**. Une valeur inconnue de `quand`,
+`statut` ou `type` y revient remplacée par sa valeur par défaut, sans erreur : un
+client qui filtre doit comparer ce qu'il a envoyé à ce qu'il reçoit ici (c'est ce
+que fait `klassci rendez-vous:recherche --statut`).
+
+`etat_accueil` (`attendu`, `recu`, `non_venue`, `traite`) n'est renseigné que pour une
+réservation qui tient son créneau ; `null` pour une réservation libérée ou annulée.
+
+## `POST /rendez-vous/placer`
+
+- 422 avec `message` si rien n'a été tenté : canal fermé, ou aucune place libre.
+- 200 sinon : `{ places, a_prevenir, sans_creneau, deja, refus: null }`. `a_prevenir`
+  compte les dossiers placés **sans e-mail** (inclus dans `places`) : leur
+  convocation est posée « sans e-mail » et ils apparaissent dans la liste d'appel
+  « Familles à prévenir ».
+
+Les convocations sont **posées en attente**, pas envoyées. L'envoi passe par
+`/rendez-vous/convocations/envoyer` ou par la tâche planifiée (toutes les 5 min).
+
+## `POST /rendez-vous/convocations/envoyer`
+
+- 200 : `{ envoyees, echecs, restantes, bloque: null, en_cours: false }`. Rappeler tant que `restantes > 0`.
+- 409 : un autre envoi (tâche planifiée, écran) tient le verrou ; rien n'a été tenté. Rappeler dans une minute.
+- 503 : `bloque` porte la raison qui arrêterait aussi les suivantes (MailPulse
+  désactivé, clé absente, service injoignable). Rappeler ne sert à rien tant
+  qu'elle tient.
+
+## `POST /rendez-vous/convocations/remettre`
+
+Corps : `{ "quoi": "inconnues" }` ou `{ "quoi": "echecs" }`, et `"limite": N`
+facultative (entier ≥ 1, les plus anciennes d'abord). Même geste que les boutons
+de l'écran. Rend `{ remises, a_envoyer }` ; 422 si `quoi` ou `limite` est invalide.
+
+**N'envoie rien, mais met dans la file** : une convocation en attente part au
+prochain passage de la tâche planifiée (5 min), vérifiée ou non. Pour contrôler
+un premier courriel, c'est donc **ici** qu'on borne :
+
+1. `remettre { "quoi": "inconnues", "limite": 1 }`
+2. `envoyer` (ou attendre la tâche planifiée) ; vérifier la réception
+3. `remettre { "quoi": "inconnues" }` pour le reste, puis `envoyer` jusqu'à `restantes: 0`
+
+## Historique
+
+- 2026-09-25 — `recherche` : champs `approchant`, `eleves_sans_rendez_vous` et
+  `autres_eleves_sans_rendez_vous` ajoutés ;
+  le texte cherche aussi le nom et le téléphone de l'élève, tolère apostrophes,
+  tirets, ordre des noms et fautes de frappe. Non cassant.
+
+- 2026-09-25 — **Breaking** : `recherche` rend `telephone_masque` et plus `telephone`,
+  comme `familles`. Le numéro complet reste un critère de recherche (`q`).
+
+- 2026-09-25 — `recherche` : une saisie de chiffres cherche aussi le matricule et la
+  référence, plus seulement le téléphone. Non cassant (plus de résultats, jamais moins).
+
+- 2026-09-25 — ajout de `recherche`. Non cassant.
+
+- 2026-09-23 — **Breaking** : `placer` place aussi les dossiers sans e-mail. La clé
+  `sans_email` (dossiers NON placés) disparaît, remplacée par `a_prevenir`
+  (dossiers placés sans e-mail, inclus dans `places`).
+
+- 2026-09-23 — ajout de `convocations/remettre` (avec `limite`). Non cassant.
+
+- 2026-09-22 — création de `diagnostic` et `convocations/envoyer`. **Breaking** :
+  `placer` ne déclenche plus l'envoi des courriels, et répond 422 quand le canal est
+  fermé (il comptait auparavant chaque dossier « sans créneau »).

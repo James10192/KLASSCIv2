@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Pricing WhatsApp KLASSCI — Document CEO</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', 'Helvetica Neue', sans-serif;
+            color: #1e293b;
+            line-height: 1.55;
+            font-size: 12.5px;
+            background: #ffffff;
+        }
+
+        @page { size: A4; margin: 1.5cm 2cm; }
+        .page {
+            page-break-after: always;
+            padding: 0 0 24px 0;
+        }
+        .page:last-child { page-break-after: auto; }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 3px solid #0453cb;
+            padding-bottom: 14px;
+            margin-bottom: 22px;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #033a8e 0%, #0453cb 50%, #3b7ddb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: #0453cb;
+        }
+        .logo-sub {
+            font-size: 10px;
+            color: #64748b;
+            font-weight: 500;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+        .meta-doc {
+            text-align: right;
+            font-size: 10.5px;
+            color: #64748b;
+            line-height: 1.5;
+        }
+        .meta-doc strong { color: #1e293b; }
+
+        h1 {
+            font-size: 24px;
+            color: #0a3d8f;
+            margin-bottom: 6px;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+        }
+        h1 + .subtitle {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        h2 {
+            font-size: 16px;
+            color: #0453cb;
+            margin: 28px 0 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #e2e8f0;
+            font-weight: 700;
+        }
+        h3 {
+            font-size: 13px;
+            color: #1e293b;
+            margin: 18px 0 8px;
+            font-weight: 700;
+        }
+
+        p { margin: 8px 0; }
+        p + p { margin-top: 6px; }
+        .small { font-size: 10.5px; color: #64748b; }
+        ul { margin: 8px 0 8px 18px; }
+        li { margin: 4px 0; font-size: 12.5px; }
+
+        .kpis {
+            display: flex;
+            gap: 12px;
+            margin: 22px 0 8px;
+        }
+        .kpi {
+            flex: 1;
+            padding: 16px 14px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 60%, #3b7ddb 100%);
+            color: #ffffff;
+            box-shadow: 0 4px 16px rgba(4, 83, 203, 0.18);
+        }
+        .kpi-value {
+            font-size: 22px;
+            font-weight: 800;
+            line-height: 1.05;
+            letter-spacing: -0.5px;
+        }
+        .kpi-label {
+            font-size: 9.5px;
+            opacity: 0.88;
+            margin-top: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            font-weight: 600;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0 14px;
+            font-size: 11.5px;
+        }
+        th {
+            background: #f1f5f9;
+            color: #0453cb;
+            text-align: left;
+            padding: 9px 10px;
+            font-weight: 700;
+            border-bottom: 2px solid #0453cb;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: top;
+        }
+        .num {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+        .total-row td {
+            font-weight: 700;
+            background: #f8fafc;
+            border-top: 2px solid #0453cb;
+            border-bottom: none;
+            color: #0a3d8f;
+        }
+        .pos { color: #047857; font-weight: 700; }
+        .neutral { color: #64748b; }
+
+        .callout {
+            background: #f8fafc;
+            border-left: 4px solid #0453cb;
+            padding: 12px 16px;
+            margin: 14px 0;
+            font-size: 12px;
+            border-radius: 0 8px 8px 0;
+        }
+        .callout strong { color: #0453cb; }
+        .callout-warn {
+            border-left-color: #f59e0b;
+            background: #fffbeb;
+        }
+        .callout-warn strong { color: #b45309; }
+        .callout-success {
+            border-left-color: #10b981;
+            background: #f0fdf4;
+        }
+        .callout-success strong { color: #047857; }
+
+        .two-col {
+            display: flex;
+            gap: 16px;
+            margin: 14px 0;
+        }
+        .two-col > div { flex: 1; }
+
+        .tenant-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 14px 16px;
+            background: #ffffff;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+        }
+        .tenant-card h3 {
+            margin-top: 0;
+            color: #0453cb;
+            font-size: 14px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .tenant-card .line {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            font-size: 11.5px;
+            border-bottom: 1px dashed #f1f5f9;
+        }
+        .tenant-card .line:last-child { border-bottom: none; }
+        .tenant-card .line .label { color: #64748b; }
+        .tenant-card .line .value { font-weight: 600; color: #1e293b; }
+        .tenant-card .line.highlight .value {
+            color: #047857;
+            font-weight: 800;
+            font-size: 13px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .badge-elite {
+            background: rgba(4, 83, 203, 0.1);
+            color: #0453cb;
+            border: 1px solid rgba(4, 83, 203, 0.25);
+        }
+
+        .footer {
+            margin-top: 32px;
+            padding-top: 12px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 9.5px;
+            color: #94a3b8;
+            text-align: center;
+            letter-spacing: 0.3px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- =============================================== -->
+<!-- PAGE 1 — SYNTHÈSE EXÉCUTIVE                      -->
+<!-- =============================================== -->
+<div class="page">
+    <div class="header">
+        <div>
+            <div class="logo">KLASSCI</div>
+            <div class="logo-sub">SaaS Éducatif Multi-Instance</div>
+        </div>
+        <div class="meta-doc">
+            <strong>Document interne</strong><br>
+            Référence : KLASSCI-WA-2026-05<br>
+            Date : 23 mai 2026<br>
+            Auteur : Marcel Djedjé-li Patrick, fondateur<br>
+            Destinataire : CEO KLASSCI
+        </div>
+    </div>
+
+    <h1>Pricing WhatsApp Business</h1>
+    <div class="subtitle">Tarification pilote pour le déploiement sur les tenants ESBTP-Abidjan et ESBTP-Yakro</div>
+
+    <h2>Synthèse exécutive</h2>
+
+    <p>
+        Ce document présente le modèle de tarification proposé pour le déploiement
+        de WhatsApp Business sur les deux tenants pilotes ESBTP, en vue de notifier
+        les parents d'élèves (inscriptions, paiements, absences, bulletins).
+    </p>
+
+    <p>
+        L'approche retenue consiste à appliquer une majoration de sécurité sur le
+        coût réel facturé par Meta afin d'absorber les imprévus (variation des
+        tarifs Meta, fluctuations USD/XOF, taxes, supports parents). Cette marge
+        permet de valider le modèle économique sans risque opérationnel avant
+        d'étendre le service aux quatre autres tenants.
+    </p>
+
+    <div class="kpis">
+        <div class="kpi">
+            <div class="kpi-value">2 pilotes</div>
+            <div class="kpi-label">Tenants ciblés</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-value">~45 000</div>
+            <div class="kpi-label">Messages par mois</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-value">168 768</div>
+            <div class="kpi-label">Marge brute / an (XOF)</div>
+        </div>
+    </div>
+
+    <h2>Points clés à valider</h2>
+
+    <ul>
+        <li><strong>Majoration outbound : +50 %</strong> (facturé 0,006 USD/message contre 0,004 USD coût Meta).</li>
+        <li><strong>Facturation inbound symbolique : 0,001 USD/message</strong>, alors que Meta facture zéro, pour couvrir les traitements applicatifs côté KLASSCI (lookup base, routage, journalisation).</li>
+        <li><strong>Quotas inclus par plan</strong> (Essentiel, Pro, Élite) qui couvrent largement le volume estimé des deux tenants pilotes (tous deux en plan Élite).</li>
+        <li><strong>Marges modestes en valeur absolue</strong> sur la phase pilote (~169 000 XOF par an), mais le modèle est conçu pour scaler : la projection à 6 tenants atteint environ 510 000 XOF par an de marge brute sur le trafic WhatsApp uniquement.</li>
+    </ul>
+
+    <h2>Hypothèses retenues</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 55%;">Paramètre</th>
+                <th>Valeur retenue</th>
+                <th>Source</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Taux de change USD vers XOF</td>
+                <td class="num">600 XOF / USD</td>
+                <td class="small">Estimation conservatrice, mai 2026</td>
+            </tr>
+            <tr>
+                <td>Coût Meta UTILITY outbound (Rest of Africa)</td>
+                <td class="num">0,0040 USD / message</td>
+                <td class="small">Grille Meta 2026</td>
+            </tr>
+            <tr>
+                <td>Coût Meta inbound</td>
+                <td class="num">Gratuit</td>
+                <td class="small">Grille Meta 2026</td>
+            </tr>
+            <tr>
+                <td>Part des messages hors fenêtre de service 24 h</td>
+                <td class="num">20 %</td>
+                <td class="small">Hypothèse usage scolaire, à valider après pilote</td>
+            </tr>
+            <tr>
+                <td>Volume mensuel par étudiant (outbound)</td>
+                <td class="num">8 messages</td>
+                <td class="small">Construction sur événements standard (cf. page 2)</td>
+            </tr>
+            <tr>
+                <td>Volume mensuel par étudiant (inbound)</td>
+                <td class="num">2 messages</td>
+                <td class="small">Estimation conservatrice</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="callout callout-warn">
+        <strong>Note importante.</strong> Le chiffre de 2 000 étudiants pour ESBTP-Yakro est
+        une estimation conservatrice issue de la documentation interne (tenant en plan Élite,
+        plus de 2 000 inscriptions). Le tenant n'étant pas encore configuré dans le CLI de
+        gestion, ce nombre doit être confirmé avant envoi définitif au CEO. ESBTP-Abidjan
+        affiche en revanche un chiffre exact de 2 507 étudiants actifs (vérifié via klassci-cli
+        le 23 mai 2026).
+    </div>
+
+    <div class="footer">Document interne KLASSCI, ne pas diffuser à l'extérieur de l'équipe dirigeante.</div>
+</div>
+
+<!-- =============================================== -->
+<!-- PAGE 2 — MODÈLE DE TARIFICATION                  -->
+<!-- =============================================== -->
+<div class="page">
+    <div class="header">
+        <div>
+            <div class="logo">KLASSCI</div>
+            <div class="logo-sub">Pricing WhatsApp, page 2 sur 3</div>
+        </div>
+        <div class="meta-doc">
+            <strong>Modèle de tarification</strong><br>
+            23 mai 2026
+        </div>
+    </div>
+
+    <h2>Coûts Meta réels et tarif facturé KLASSCI</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Type de message</th>
+                <th class="num">Coût Meta réel</th>
+                <th class="num">Tarif facturé KLASSCI</th>
+                <th class="num">Marge</th>
+                <th>Justification de la marge</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Outbound UTILITY hors fenêtre 24 h</td>
+                <td class="num">0,0040 USD</td>
+                <td class="num">0,0060 USD</td>
+                <td class="num pos">+50 %</td>
+                <td class="small">Absorbe variations tarifs Meta, taxes locales, fluctuations USD vers XOF</td>
+            </tr>
+            <tr>
+                <td>Outbound UTILITY in-window (sous 24 h)</td>
+                <td class="num">Gratuit</td>
+                <td class="num">Gratuit</td>
+                <td class="num neutral">n.a.</td>
+                <td class="small">Aligné sur Meta, pas de double facturation</td>
+            </tr>
+            <tr>
+                <td>Inbound (parent vers école)</td>
+                <td class="num">Gratuit</td>
+                <td class="num">0,0010 USD</td>
+                <td class="num pos">+0,001 USD</td>
+                <td class="small">Couvre traitement applicatif : lookup DB, routage, audit, support</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="callout">
+        <strong>Pourquoi facturer l'inbound malgré la gratuité Meta ?</strong>
+        Chaque message entrant déclenche côté KLASSCI un traitement non négligeable :
+        identification du parent, rattachement à l'étudiant, vérification des permissions,
+        journalisation pour conformité, parfois escalade au secrétariat. La micro-facturation
+        à 0,001 USD reste indolore pour l'école (moins de 4 000 XOF par mois pour 2 500 élèves)
+        tout en couvrant le coût opérationnel réel.
+    </div>
+
+    <h2>Volume estimé par étudiant et par mois</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Événement</th>
+                <th class="num">Fréquence par mois</th>
+                <th>Direction</th>
+                <th class="small">Hypothèse</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Confirmation d'inscription</td>
+                <td class="num">0,11</td>
+                <td>Outbound</td>
+                <td class="small">1 fois à la rentrée, amorti sur 9 mois</td>
+            </tr>
+            <tr>
+                <td>Notification paiement validé</td>
+                <td class="num">1,50</td>
+                <td>Outbound</td>
+                <td class="small">Paiements souvent partiels, 1 à 2 par mois</td>
+            </tr>
+            <tr>
+                <td>Notification absence</td>
+                <td class="num">2,50</td>
+                <td>Outbound</td>
+                <td class="small">Taux d'absentéisme moyen 15 %</td>
+            </tr>
+            <tr>
+                <td>Publication de bulletin</td>
+                <td class="num">0,66</td>
+                <td>Outbound</td>
+                <td class="small">S1 et S2 amortis sur 9 mois</td>
+            </tr>
+            <tr>
+                <td>Alerte notes faibles (conditionnelle)</td>
+                <td class="num">0,30</td>
+                <td>Outbound</td>
+                <td class="small">Environ 30 % des élèves concernés par mois</td>
+            </tr>
+            <tr>
+                <td>Annonces école (rentrée, vacances, événements)</td>
+                <td class="num">1,50</td>
+                <td>Outbound</td>
+                <td class="small">1 à 2 annonces par mois</td>
+            </tr>
+            <tr>
+                <td>Rappels paiement en retard</td>
+                <td class="num">0,50</td>
+                <td>Outbound</td>
+                <td class="small">~20 % des élèves, 2 à 3 rappels en série</td>
+            </tr>
+            <tr class="total-row">
+                <td>Total outbound par élève</td>
+                <td class="num">~7 à 8</td>
+                <td colspan="2">Hypothèse retenue : 8 messages par mois</td>
+            </tr>
+            <tr>
+                <td>Réponses parents (questions)</td>
+                <td class="num">~2</td>
+                <td>Inbound</td>
+                <td class="small">Estimation conservatrice</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Grille de quotas par plan d'abonnement</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Plan</th>
+                <th class="num">Quota outbound inclus par élève / mois</th>
+                <th class="num">Quota inbound inclus par élève / mois</th>
+                <th>Extra usage</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Essentiel</strong></td>
+                <td class="num">5</td>
+                <td class="num">1</td>
+                <td class="small">0,006 USD outbound, 0,001 USD inbound</td>
+            </tr>
+            <tr>
+                <td><strong>Pro</strong></td>
+                <td class="num">8</td>
+                <td class="num">2</td>
+                <td class="small">0,006 USD outbound, 0,001 USD inbound</td>
+            </tr>
+            <tr>
+                <td><strong>Élite</strong></td>
+                <td class="num">12</td>
+                <td class="num">3</td>
+                <td class="small">0,006 USD outbound, 0,001 USD inbound</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="callout callout-success">
+        <strong>Couverture des deux tenants pilotes.</strong> ESBTP-Abidjan et ESBTP-Yakro
+        sont tous deux en plan Élite (quota 12 outbound + 3 inbound par élève). Avec un
+        volume estimé à 8 outbound et 2 inbound par élève, les deux écoles sont
+        largement dans leur enveloppe. Aucun dépassement n'est anticipé sur la phase
+        pilote, ce qui permet de valider l'expérience utilisateur sans friction
+        commerciale.
+    </div>
+
+    <div class="footer">Document interne KLASSCI, ne pas diffuser à l'extérieur de l'équipe dirigeante.</div>
+</div>
+
+<!-- =============================================== -->
+<!-- PAGE 3 — DÉTAIL PAR TENANT ET PROJECTION         -->
+<!-- =============================================== -->
+<div class="page">
+    <div class="header">
+        <div>
+            <div class="logo">KLASSCI</div>
+            <div class="logo-sub">Pricing WhatsApp, page 3 sur 3</div>
+        </div>
+        <div class="meta-doc">
+            <strong>Détail par tenant</strong><br>
+            23 mai 2026
+        </div>
+    </div>
+
+    <h2>Estimation détaillée par tenant pilote</h2>
+
+    <div class="two-col">
+        <div class="tenant-card">
+            <h3>ESBTP-Abidjan <span class="badge badge-elite">Élite</span></h3>
+            <div class="line"><span class="label">Étudiants actifs</span><span class="value">2 507</span></div>
+            <div class="line"><span class="label">Volume mensuel total</span><span class="value">25 070 messages</span></div>
+            <div class="line"><span class="label">dont outbound</span><span class="value">20 056</span></div>
+            <div class="line"><span class="label">dont inbound</span><span class="value">5 014</span></div>
+            <div class="line"><span class="label">Outbound facturable (20 % hors fenêtre)</span><span class="value">4 011</span></div>
+            <div class="line"><span class="label">Coût Meta réel</span><span class="value">16,04 USD / mois</span></div>
+            <div class="line"><span class="label">Coût Meta en XOF</span><span class="value">9 627 XOF / mois</span></div>
+            <div class="line"><span class="label">Tarif facturé interne</span><span class="value">29,08 USD / mois</span></div>
+            <div class="line"><span class="label">Tarif facturé en XOF</span><span class="value">17 451 XOF / mois</span></div>
+            <div class="line highlight"><span class="label">Marge brute mensuelle</span><span class="value">+7 824 XOF</span></div>
+            <div class="line highlight"><span class="label">Marge brute annuelle</span><span class="value">+93 888 XOF</span></div>
+        </div>
+        <div class="tenant-card">
+            <h3>ESBTP-Yakro <span class="badge badge-elite">Élite</span></h3>
+            <div class="line"><span class="label">Étudiants actifs (estimation)</span><span class="value">2 000</span></div>
+            <div class="line"><span class="label">Volume mensuel total</span><span class="value">20 000 messages</span></div>
+            <div class="line"><span class="label">dont outbound</span><span class="value">16 000</span></div>
+            <div class="line"><span class="label">dont inbound</span><span class="value">4 000</span></div>
+            <div class="line"><span class="label">Outbound facturable (20 % hors fenêtre)</span><span class="value">3 200</span></div>
+            <div class="line"><span class="label">Coût Meta réel</span><span class="value">12,80 USD / mois</span></div>
+            <div class="line"><span class="label">Coût Meta en XOF</span><span class="value">7 680 XOF / mois</span></div>
+            <div class="line"><span class="label">Tarif facturé interne</span><span class="value">23,20 USD / mois</span></div>
+            <div class="line"><span class="label">Tarif facturé en XOF</span><span class="value">13 920 XOF / mois</span></div>
+            <div class="line highlight"><span class="label">Marge brute mensuelle</span><span class="value">+6 240 XOF</span></div>
+            <div class="line highlight"><span class="label">Marge brute annuelle</span><span class="value">+74 880 XOF</span></div>
+        </div>
+    </div>
+
+    <h2>Total pilotes et projection à 6 tenants</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Indicateur</th>
+                <th class="num">Pilotes (2 tenants)</th>
+                <th class="num">Projection 6 tenants</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Étudiants couverts</td>
+                <td class="num">4 507</td>
+                <td class="num">~13 500</td>
+            </tr>
+            <tr>
+                <td>Messages mensuels total</td>
+                <td class="num">45 070</td>
+                <td class="num">~135 000</td>
+            </tr>
+            <tr>
+                <td>Coût Meta total mensuel</td>
+                <td class="num">28,84 USD (17 307 XOF)</td>
+                <td class="num">~86,50 USD (~51 900 XOF)</td>
+            </tr>
+            <tr>
+                <td>Facturé KLASSCI mensuel</td>
+                <td class="num">52,28 USD (31 371 XOF)</td>
+                <td class="num">~157 USD (~94 200 XOF)</td>
+            </tr>
+            <tr class="total-row">
+                <td>Marge brute annuelle estimée</td>
+                <td class="num">168 768 XOF</td>
+                <td class="num">~510 000 XOF</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Conclusion et recommandation</h2>
+
+    <p>
+        Les marges en valeur absolue sur la phase pilote restent modestes
+        (environ 169 000 XOF par an pour deux tenants Élite). Cela est attendu
+        et acceptable : l'objectif n'est pas de générer un revenu significatif
+        sur le pilote, mais de <strong>valider en conditions réelles</strong>
+        trois éléments précis :
+    </p>
+
+    <ul>
+        <li>
+            <strong>La précision de l'estimation de volume.</strong> Si le ratio
+            réel observé sur ESBTP-Abidjan dépasse 12 messages outbound par élève,
+            il faudra ajuster les quotas Élite à la hausse ou revoir le pricing.
+        </li>
+        <li>
+            <strong>Le taux réel de messages hors fenêtre 24 h.</strong> L'hypothèse
+            de 20 % est conservatrice. Un taux inférieur réduirait le coût Meta et
+            améliorerait mécaniquement la marge.
+        </li>
+        <li>
+            <strong>L'acceptation par les écoles du modèle de quotas inclus.</strong>
+            Si les écoles perçoivent les quotas comme une contrainte ou un
+            argument anti-commercial, il faudra revoir le packaging.
+        </li>
+    </ul>
+
+    <p>
+        À l'issue du pilote (trois à six mois), un ajustement de la grille pourra
+        être proposé sur la base des chiffres réels observés. La projection à six
+        tenants ouvre une marge annuelle proche de 510 000 XOF sur le trafic
+        WhatsApp seul, ce qui devient significatif lorsqu'il est combiné aux
+        revenus d'abonnement.
+    </p>
+
+    <div class="callout callout-success">
+        <strong>Recommandation.</strong> Lancer le déploiement WhatsApp Business
+        sur ESBTP-Abidjan et ESBTP-Yakro avec la grille proposée ci-dessus, et
+        ouvrir un point de revue mensuel sur les indicateurs de volume et de marge
+        durant les trois premiers mois. Aucun engagement irréversible n'est requis :
+        la grille peut être ajustée à la marge ou en profondeur dès que les
+        données réelles sont disponibles.
+    </div>
+
+    <div class="footer">Document interne KLASSCI, ne pas diffuser à l'extérieur de l'équipe dirigeante. Version 1.0, 23 mai 2026.</div>
+</div>
+
+</body>
+</html>

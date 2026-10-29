@@ -1,0 +1,172 @@
+{
+  "domaine": {"name": "Sciences et Technologies", "code": "ST"},
+  "mention": {"name": "Sciences de la Terre", "code": "STE"},
+  "parcours": {"name": "Mines, Géologie, Pétrole", "code": "MGP", "credits_licence": 180, "credits_master": 120},
+  "filiere": {"name": "Mines, Géologie, Pétrole", "code": "MGP"},
+  "niveaux": [
+    {"name": "Licence 1", "year": 1, "type": "Licence"},
+    {"name": "Licence 2", "year": 2, "type": "Licence"},
+    {"name": "Licence 3", "year": 3, "type": "Licence"}
+  ],
+  "ues": [
+    {"code":"LAG2401","name":"Langue","type_ue":"transversale","credit":5,"niveau_year":1,"semestre":1,"ordre":1,"ecues":[
+      {"code":"LAG24011","name":"Français","credit_ecue":2,"cm":20,"td":5,"tp":0,"projet":0,"tpe":25},
+      {"code":"LAG24012","name":"Anglais","credit_ecue":3,"cm":20,"td":5,"tp":0,"projet":0,"tpe":50}
+    ]},
+    {"code":"DRT2401","name":"Droit","type_ue":"transversale","credit":4,"niveau_year":1,"semestre":1,"ordre":2,"ecues":[
+      {"code":"DRT24011","name":"Droit civil","credit_ecue":2,"cm":15,"td":0,"tp":0,"projet":0,"tpe":35},
+      {"code":"DRT24012","name":"Droit minier et pétrolier","credit_ecue":2,"cm":15,"td":0,"tp":0,"projet":0,"tpe":35}
+    ]},
+    {"code":"EGI2401","name":"Economie","type_ue":"transversale","credit":4,"niveau_year":1,"semestre":1,"ordre":3,"ecues":[
+      {"code":"EGI24011","name":"Economie générale","credit_ecue":2,"cm":10,"td":5,"tp":0,"projet":0,"tpe":35},
+      {"code":"EGI24012","name":"Economie industrielle","credit_ecue":2,"cm":10,"td":5,"tp":0,"projet":0,"tpe":35}
+    ]},
+    {"code":"INF2401","name":"Informatique","type_ue":"methodologique","credit":5,"niveau_year":1,"semestre":1,"ordre":4,"ecues":[
+      {"code":"INF24011","name":"Connaissance de l'ordinateur","credit_ecue":2,"cm":10,"td":5,"tp":5,"projet":0,"tpe":30},
+      {"code":"INF24012","name":"Notion de traitement de texte","credit_ecue":3,"cm":10,"td":5,"tp":10,"projet":0,"tpe":50}
+    ]},
+    {"code":"GGG2401","name":"Géo générale et Géodynamique","type_ue":"fondamentale","credit":6,"niveau_year":1,"semestre":1,"ordre":5,"ecues":[
+      {"code":"GGG24011","name":"Géologie générale","credit_ecue":2,"cm":20,"td":5,"tp":0,"projet":0,"tpe":25},
+      {"code":"GGG24012","name":"Géodynamique interne","credit_ecue":2,"cm":20,"td":5,"tp":0,"projet":0,"tpe":25},
+      {"code":"GGG24013","name":"Géodynamique externe","credit_ecue":2,"cm":20,"td":5,"tp":0,"projet":0,"tpe":25}
+    ]},
+    {"code":"TPC2401","name":"Topo-Carto","type_ue":"fondamentale","credit":6,"niveau_year":1,"semestre":1,"ordre":6,"ecues":[
+      {"code":"TPC24011","name":"Topographie","credit_ecue":3,"cm":20,"td":5,"tp":0,"projet":0,"tpe":50},
+      {"code":"TPC24012","name":"Cartographie","credit_ecue":3,"cm":20,"td":5,"tp":0,"projet":0,"tpe":50}
+    ]},
+    {"code":"MAC2402","name":"Maths-Chimie","type_ue":"fondamentale","credit":5,"niveau_year":1,"semestre":2,"ordre":1,"ecues":[
+      {"code":"MAC24021","name":"Mathématique","credit_ecue":3,"cm":15,"td":10,"tp":0,"projet":0,"tpe":50},
+      {"code":"MAC24022","name":"Chimie","credit_ecue":2,"cm":15,"td":10,"tp":0,"projet":0,"tpe":25}
+    ]},
+    {"code":"CRM2402","name":"Cristallographie-Minéralogie","type_ue":"fondamentale","credit":5,"niveau_year":1,"semestre":2,"ordre":2,"ecues":[
+      {"code":"CRM24021","name":"Cristallographie","credit_ecue":2,"cm":15,"td":5,"tp":5,"projet":0,"tpe":25},
+      {"code":"CRM24022","name":"Minéralogie","credit_ecue":3,"cm":15,"td":5,"tp":10,"projet":0,"tpe":45}
+    ]},
+    {"code":"PET2402","name":"Pétrographie","type_ue":"fondamentale","credit":6,"niveau_year":1,"semestre":2,"ordre":3,"ecues":[
+      {"code":"PET24021","name":"Roches Magmatiques","credit_ecue":2,"cm":10,"td":5,"tp":5,"projet":0,"tpe":30},
+      {"code":"PET24022","name":"Roches métamorphiques","credit_ecue":2,"cm":10,"td":5,"tp":5,"projet":0,"tpe":30},
+      {"code":"PET24023","name":"Roches Exogènes","credit_ecue":2,"cm":10,"td":5,"tp":5,"projet":0,"tpe":10}
+    ]},
+    {"code":"PSS2402","name":"Pétrogenèse et Stratigraphie","type_ue":"fondamentale","credit":5,"niveau_year":1,"semestre":2,"ordre":4,"ecues":[
+      {"code":"PES24021","name":"Pétrologie-Sédimentologie","credit_ecue":3,"cm":20,"td":10,"tp":0,"projet":0,"tpe":45},
+      {"code":"PES24022","name":"Stratigraphie","credit_ecue":2,"cm":15,"td":10,"tp":0,"projet":0,"tpe":25}
+    ]},
+    {"code":"GSM2402","name":"Géologie structurale et Mécanique des roches","type_ue":"fondamentale","credit":5,"niveau_year":1,"semestre":2,"ordre":5,"ecues":[
+      {"code":"GSM24021","name":"Géologie structurale","credit_ecue":3,"cm":20,"td":10,"tp":0,"projet":0,"tpe":45},
+      {"code":"GSM24022","name":"Mécanique des roches","credit_ecue":2,"cm":12,"td":8,"tp":0,"projet":0,"tpe":30}
+    ]},
+    {"code":"MSF2402","name":"Mécanique des Sols et Fluides","type_ue":"fondamentale","credit":4,"niveau_year":1,"semestre":2,"ordre":6,"ecues":[
+      {"code":"MSF24021","name":"Mécanique des sols","credit_ecue":2,"cm":12,"td":8,"tp":0,"projet":0,"tpe":30},
+      {"code":"MSF24022","name":"Mécanique des fluides","credit_ecue":2,"cm":12,"td":8,"tp":0,"projet":0,"tpe":50}
+    ]},
+    {"code":"EPM2503","name":"Exploration et prospection minière","type_ue":"specialite","credit":6,"niveau_year":2,"semestre":3,"ordre":1,"ecues":[
+      {"code":"EPM25031","name":"Méthodes d'exploration minière","credit_ecue":2,"cm":20,"td":10,"tp":0,"projet":0,"tpe":20},
+      {"code":"EPM25032","name":"Exploitation minière","credit_ecue":2,"cm":20,"td":5,"tp":0,"projet":0,"tpe":25},
+      {"code":"EPM25033","name":"Technique et valorisation des minerais","credit_ecue":2,"cm":15,"td":5,"tp":0,"projet":0,"tpe":30}
+    ]},
+    {"code":"REM2503","name":"Ressources minérales","type_ue":"specialite","credit":6,"niveau_year":2,"semestre":3,"ordre":2,"ecues":[
+      {"code":"REM25031","name":"Hydrogéologie","credit_ecue":3,"cm":20,"td":10,"tp":0,"projet":0,"tpe":45},
+      {"code":"REM25032","name":"Métallogénie","credit_ecue":3,"cm":15,"td":10,"tp":0,"projet":0,"tpe":50}
+    ]},
+    {"code":"GEE2503","name":"Géo-environnement","type_ue":"specialite","credit":4,"niveau_year":2,"semestre":3,"ordre":3,"ecues":[
+      {"code":"GEE25031","name":"Droit de l'Environnement","credit_ecue":2,"cm":20,"td":0,"tp":0,"projet":0,"tpe":30},
+      {"code":"GEE25032","name":"Etude d'impact environnemental et social","credit_ecue":2,"cm":20,"td":0,"tp":0,"projet":0,"tpe":30}
+    ]},
+    {"code":"GEG2503","name":"Géophysique et géochimie","type_ue":"fondamentale","credit":5,"niveau_year":2,"semestre":3,"ordre":4,"ecues":[
+      {"code":"GEG25031","name":"Géophysique","credit_ecue":3,"cm":20,"td":10,"tp":0,"projet":0,"tpe":45},
+      {"code":"GEG25032","name":"Géochimie","credit_ecue":2,"cm":15,"td":5,"tp":0,"projet":0,"tpe":30}
+    ]},
+    {"code":"PEG2503","name":"Pétrologie et Géochronologie","type_ue":"fondamentale","credit":5,"niveau_year":2,"semestre":3,"ordre":5,"ecues":[
+      {"code":"PEG25031","name":"Optique cristalline","credit_ecue":3,"cm":0,"td":10,"tp":15,"projet":0,"tpe":50},
+      {"code":"PEG25032","name":"Géochronologie","credit_ecue":2,"cm":15,"td":5,"tp":0,"projet":0,"tpe":30}
+    ]},
+    {"code":"MAT2503","name":"Mathématiques et Thermodynamique","type_ue":"fondamentale","credit":4,"niveau_year":2,"semestre":3,"ordre":6,"ecues":[
+      {"code":"MAT25031","name":"Mathématiques","credit_ecue":2,"cm":15,"td":5,"tp":0,"projet":0,"tpe":30},
+      {"code":"MAT25032","name":"Thermodynamique","credit_ecue":2,"cm":15,"td":5,"tp":0,"projet":0,"tpe":30}
+    ]},
+    {"code":"EEP2504","name":"Exploration et exploitation pétrolière","type_ue":"specialite","credit":6,"niveau_year":2,"semestre":4,"ordre":1,"ecues":[
+      {"code":"EEP25041","name":"Géologie du pétrole","credit_ecue":3,"cm":20,"td":5,"tp":0,"projet":0,"tpe":50},
+      {"code":"EEP25042","name":"Recherche et exploitation pétrolière","credit_ecue":3,"cm":20,"td":10,"tp":0,"projet":0,"tpe":45}
+    ]},
+    {"code":"STR2504","name":"Stockage et Raffinage","type_ue":"specialite","credit":6,"niveau_year":2,"semestre":4,"ordre":2,"ecues":[
+      {"code":"STR25041","name":"Stockage, Transport et Distribution des Hydrocarbures","credit_ecue":3,"cm":15,"td":10,"tp":0,"projet":0,"tpe":50},
+      {"code":"STR25042","name":"Technique de Raffinage","credit_ecue":3,"cm":15,"td":10,"tp":0,"projet":0,"tpe":50}
+    ]},
+    {"code":"GER2504","name":"Gestion et Réglementation","type_ue":"transversale","credit":5,"niveau_year":2,"semestre":4,"ordre":3,"ecues":[
+      {"code":"GER25041","name":"Comptabilité et économie minière et pétrolière","credit_ecue":3,"cm":20,"td":10,"tp":0,"projet":0,"tpe":45},
+      {"code":"GER25042","name":"Droit commercial","credit_ecue":2,"cm":15,"td":5,"tp":0,"projet":0,"tpe":30}
+    ]},
+    {"code":"IFC2504","name":"Informatique et communication","type_ue":"methodologique","credit":5,"niveau_year":2,"semestre":4,"ordre":4,"ecues":[
+      {"code":"IFC25041","name":"Informatique Appliquée","credit_ecue":2,"cm":10,"td":0,"tp":15,"projet":0,"tpe":25},
+      {"code":"IFC25042","name":"Anglais technique","credit_ecue":3,"cm":20,"td":5,"tp":0,"projet":0,"tpe":50}
+    ]},
+    {"code":"LMP2504","name":"Législation minière et Pétrolière","type_ue":"specialite","credit":4,"niveau_year":2,"semestre":4,"ordre":5,"ecues":[
+      {"code":"LMP25041","name":"Législation pétrolière","credit_ecue":2,"cm":20,"td":0,"tp":0,"projet":0,"tpe":30},
+      {"code":"LMP25042","name":"Législation minière","credit_ecue":2,"cm":20,"td":0,"tp":0,"projet":0,"tpe":30}
+    ]},
+    {"code":"ENG2504","name":"Entrepreneuriat et gestion","type_ue":"transversale","credit":4,"niveau_year":2,"semestre":4,"ordre":6,"ecues":[
+      {"code":"ENG25041","name":"Entrepreneuriat","credit_ecue":2,"cm":15,"td":0,"tp":0,"projet":0,"tpe":35},
+      {"code":"ENG25042","name":"Comptabilité et gestion financière","credit_ecue":2,"cm":15,"td":10,"tp":0,"projet":0,"tpe":25}
+    ]},
+    {"code":"MPC2605","name":"Math et Physique-Chimie","type_ue":"fondamentale","credit":4,"niveau_year":3,"semestre":5,"ordre":1,"ecues":[
+      {"code":"MPC26051","name":"Probabilité-statistique","credit_ecue":2,"cm":12,"td":8,"tp":0,"projet":0,"tpe":30},
+      {"code":"MPC26052","name":"Diagramme de phase et calcul pétrographique","credit_ecue":2,"cm":0,"td":20,"tp":0,"projet":0,"tpe":30}
+    ]},
+    {"code":"GSA2605","name":"Géo-statistique et Anglais","type_ue":"methodologique","credit":4,"niveau_year":3,"semestre":5,"ordre":2,"ecues":[
+      {"code":"GSA26051","name":"Géo-statistique","credit_ecue":2,"cm":10,"td":10,"tp":0,"projet":0,"tpe":30},
+      {"code":"GSA26052","name":"Anglais","credit_ecue":2,"cm":10,"td":10,"tp":0,"projet":0,"tpe":30}
+    ]},
+    {"code":"SGL2605","name":"SIG et Géo-logiciels","type_ue":"methodologique","credit":3,"niveau_year":3,"semestre":5,"ordre":3,"ecues":[
+      {"code":"SGL26051","name":"SIG","credit_ecue":1,"cm":10,"td":0,"tp":5,"projet":0,"tpe":15},
+      {"code":"SGL26052","name":"Géo-logiciel","credit_ecue":2,"cm":10,"td":0,"tp":10,"projet":0,"tpe":30}
+    ]},
+    {"code":"GMG2605","name":"Géologie et Gîtes minéraux","type_ue":"specialite","credit":6,"niveau_year":3,"semestre":5,"ordre":4,"ecues":[
+      {"code":"GMG26051","name":"Géologie régionale","credit_ecue":1,"cm":8,"td":4,"tp":0,"projet":0,"tpe":13},
+      {"code":"GMG26052","name":"Gitologie","credit_ecue":3,"cm":20,"td":5,"tp":5,"projet":0,"tpe":45},
+      {"code":"GMG26053","name":"Détermination microscopique des roches","credit_ecue":2,"cm":0,"td":5,"tp":15,"projet":0,"tpe":30}
+    ]},
+    {"code":"PTG2605","name":"Pétrogenèse-Tectonique et Géotechnique","type_ue":"specialite","credit":4,"niveau_year":3,"semestre":5,"ordre":5,"ecues":[
+      {"code":"PTG26051","name":"Pétrologie","credit_ecue":2,"cm":13,"td":5,"tp":5,"projet":0,"tpe":27},
+      {"code":"PTG26052","name":"Tectonique","credit_ecue":1,"cm":8,"td":4,"tp":0,"projet":0,"tpe":13},
+      {"code":"PTG26053","name":"Géotechnique","credit_ecue":1,"cm":8,"td":4,"tp":0,"projet":0,"tpe":13}
+    ]},
+    {"code":"HIT2605","name":"Histoire de la Terre","type_ue":"fondamentale","credit":5,"niveau_year":3,"semestre":5,"ordre":6,"ecues":[
+      {"code":"HIT26051","name":"Précambrien","credit_ecue":2,"cm":10,"td":5,"tp":0,"projet":0,"tpe":35},
+      {"code":"HIT26052","name":"Phanérozoïque et Bassins africains","credit_ecue":2,"cm":13,"td":8,"tp":0,"projet":0,"tpe":29},
+      {"code":"HIT26053","name":"Cartographie approfondie","credit_ecue":1,"cm":8,"td":4,"tp":0,"projet":0,"tpe":13}
+    ]},
+    {"code":"TDR2605","name":"Temps et Datation Relative","type_ue":"fondamentale","credit":4,"niveau_year":3,"semestre":5,"ordre":7,"ecues":[
+      {"code":"TED26051","name":"Paléontologie","credit_ecue":2,"cm":15,"td":0,"tp":10,"projet":0,"tpe":25},
+      {"code":"TED26052","name":"Paléoenvironnement","credit_ecue":2,"cm":12,"td":8,"tp":0,"projet":0,"tpe":30}
+    ]},
+    {"code":"HGC2606","name":"Hydro et Géochimie","type_ue":"specialite","credit":5,"niveau_year":3,"semestre":6,"ordre":1,"ecues":[
+      {"code":"HGC26061","name":"Hydrologie","credit_ecue":2,"cm":15,"td":10,"tp":0,"projet":0,"tpe":25},
+      {"code":"HGC26062","name":"Prospection hydrogéologique","credit_ecue":2,"cm":12,"td":8,"tp":0,"projet":0,"tpe":30},
+      {"code":"HGC26063","name":"Géochimie appliquée","credit_ecue":1,"cm":10,"td":0,"tp":0,"projet":0,"tpe":15}
+    ]},
+    {"code":"HSE2606","name":"Hygiène-Sécurité et Environnement","type_ue":"specialite","credit":4,"niveau_year":3,"semestre":6,"ordre":2,"ecues":[
+      {"code":"HSE26061","name":"Environnement minier","credit_ecue":2,"cm":20,"td":0,"tp":0,"projet":0,"tpe":30},
+      {"code":"HSE26062","name":"Organisation et gestion des chantiers miniers et pétroliers","credit_ecue":2,"cm":20,"td":0,"tp":0,"projet":0,"tpe":30}
+    ]},
+    {"code":"TMP2606","name":"Techniques Minières et Pétrolières","type_ue":"specialite","credit":4,"niveau_year":3,"semestre":6,"ordre":3,"ecues":[
+      {"code":"TMP26061","name":"Prospection et exploitation minière","credit_ecue":2,"cm":20,"td":0,"tp":0,"projet":0,"tpe":30},
+      {"code":"TMP26062","name":"Prospection et exploitation pétrolières","credit_ecue":2,"cm":20,"td":0,"tp":0,"projet":0,"tpe":30}
+    ]},
+    {"code":"GPA2606","name":"Géophysique Appliquée","type_ue":"specialite","credit":6,"niveau_year":3,"semestre":6,"ordre":4,"ecues":[
+      {"code":"GPA26061","name":"Trainé électrique","credit_ecue":2,"cm":12,"td":8,"tp":0,"projet":0,"tpe":30},
+      {"code":"GPA26062","name":"Sondage électrique","credit_ecue":2,"cm":12,"td":8,"tp":0,"projet":0,"tpe":30},
+      {"code":"GPA26063","name":"Diagraphie","credit_ecue":2,"cm":12,"td":8,"tp":0,"projet":0,"tpe":30}
+    ]},
+    {"code":"SCS2606","name":"Sciences Sociales","type_ue":"culture_generale","credit":4,"niveau_year":3,"semestre":6,"ordre":5,"ecues":[
+      {"code":"SCS26061","name":"Entrepreneuriat / Management","credit_ecue":1,"cm":10,"td":0,"tp":0,"projet":0,"tpe":15},
+      {"code":"SCS26062","name":"Leadership","credit_ecue":1,"cm":10,"td":0,"tp":0,"projet":0,"tpe":15},
+      {"code":"SCS26063","name":"Initiation à la rédaction de rapport scientifique","credit_ecue":2,"cm":15,"td":0,"tp":0,"projet":0,"tpe":35}
+    ]},
+    {"code":"ETR2606","name":"Etude de terrain","type_ue":"specialite","credit":4,"niveau_year":3,"semestre":6,"ordre":6,"ecues":[
+      {"code":"EPR26061","name":"Cartographie en terrain","credit_ecue":4,"cm":0,"td":0,"tp":0,"projet":72,"tpe":28}
+    ]},
+    {"code":"PRJ2606","name":"Projet","type_ue":"specialite","credit":3,"niveau_year":3,"semestre":6,"ordre":7,"ecues":[
+      {"code":"EPR26062","name":"Stage, rédaction et soutenance","credit_ecue":3,"cm":0,"td":0,"tp":0,"projet":38,"tpe":37}
+    ]}
+  ]
+}

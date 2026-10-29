@@ -1,0 +1,204 @@
+name: Security & Quality Scan
+
+on:
+  # Les branches tenant sont celles que les six etablissements deploient : une
+  # dependance vulnerable poussee sur l'une d'elles n'etait auditee par rien.
+  # (`main` n'existe pas dans ce depot ; laisse en place sans effet.)
+  push:
+    branches:
+      - presentation
+      - main
+      - esbtp-abidjan
+      - esbtp-yakro
+      - ephrata
+      - hetec
+      - rostan
+      - usat
+  pull_request:
+    branches: [presentation, main]
+  schedule:
+    # Scan hebdomadaire le dimanche à 6h GMT
+    - cron: '0 6 * * 0'
+
+permissions:
+  contents: read
+  security-events: write
+
+
+# Une execution annulee est une execution payee pour rien : quand une nouvelle
+# poussee arrive sur la meme reference, la precedente n'apprend plus rien.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Meme raison que dans hygiene-commits : une branche d'etablissement recoit une
+  # avance rapide d'un commit deja audite. Auditer six fois les memes dependances
+  # n'apprend rien. Une poussee divergente, elle, reste auditee.
+  garde:
+    name: Ce commit a-t-il deja ete audite ?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      rejouer: ${{ steps.decide.outputs.rejouer }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: decide
+        run: |
+          # L'audit planifie doit TOUJOURS tourner : c'est lui qui attrape une
+          # faille publiee apres coup, sur du code qui n'a pas bouge.
+          if [ "${{ github.event_name }}" != 'push' ] || [ "${{ github.ref_name }}" = 'presentation' ]; then
+            echo 'rejouer=oui' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git fetch --quiet origin presentation
+          if git merge-base --is-ancestor "${{ github.sha }}" origin/presentation; then
+            echo 'rejouer=non' >> "$GITHUB_OUTPUT"
+          else
+            echo 'rejouer=oui' >> "$GITHUB_OUTPUT"
+          fi
+
+  # Audit des dépendances PHP
+  composer-audit:
+    name: "Composer Security Audit"
+    runs-on: ubuntu-latest
+    needs: garde
+    if: needs.garde.outputs.rejouer == 'oui'
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer
+
+      # Pas de `composer install` ici : l'audit lit `composer.lock`, pas
+      # `vendor/`. Installer deux cents paquets pour relire un fichier
+      # verrouille coutait deux minutes et ajoutait un mode de panne — un
+      # paquet momentanement indisponible faisait echouer l'etape avant
+      # qu'elle ait audite quoi que ce soit.
+      - name: Audit des dépendances
+        run: |
+          set -uo pipefail
+
+          # Bloque sur haute, critique — ET sur les avis SANS gravite renseignee.
+          # Un avis non evalue n'est pas un avis benin : c'est un avis qu'on n'a
+          # pas encore lu. Traiter l'absence de gravite comme une gravite faible,
+          # c'est exactement ce qui a laisse passer l'avis Ed25519 de
+          # paragonie/sodium_compat — corrigeable, sur une dependance deployee,
+          # et invisible parce que la base d'avis ne lui donnait pas de note.
+          # L'echappatoire reste `config.audit.ignore`, qui est visible et motivee.
+          gravite='((.severity // "") | ascii_downcase) as $s | $s == "high" or $s == "critical" or $s == ""'
+          ignores_jq='(.["ignored-advisories"] // {})'
+
+          # Deux passes, deux roles. Le rapport informe, dependances de
+          # developpement incluses. La decision ne porte que sur ce qui est
+          # DEPLOYE : un avis sur un outil de test ne doit pas empecher un
+          # correctif urgent de partir en production.
+          composer audit --locked --abandoned=report --format=json > tout.json 2> err_tout.txt || true
+          composer audit --locked --no-dev --abandoned=ignore --format=json > prod.json 2> err_prod.txt || true
+
+          # Un audit qui n'a pas pu joindre l'API ne doit JAMAIS s'annoncer
+          # vert : un controle non concluant presente comme reussi vaut moins
+          # que pas de controle du tout. Il sort en avertissement, et le
+          # proprietaire du depot voit passer l'execution planifiee.
+          for f in tout.json prod.json; do
+            if ! jq -e . "$f" > /dev/null 2>&1; then
+              echo "::warning::Audit non concluant : l'API des avis de sécurité n'a pas répondu en JSON exploitable."
+              sed -n '1,20p' err_tout.txt err_prod.txt || true
+              exit 0
+            fi
+          done
+
+          bloquants=$(jq "[.advisories[][]? | select($gravite)] | length" prod.json)
+          total=$(jq '[.advisories[][]?] | length' tout.json)
+          acceptes=$(jq "[${ignores_jq}[][]?] | length" tout.json)
+
+          # `tee` et pas seulement le resume : le resume se lit dans un
+          # navigateur, le journal se lit par l'API. Sans les deux, on sait
+          # qu'il y a des avis sans savoir lesquels.
+          {
+            echo "### Avis de sécurité des dépendances"
+            echo
+            echo "- **$bloquants** de gravité haute ou critique — ou sans gravité renseignée — sur des dépendances **déployées** (critère de blocage)"
+            echo "- $total au total, dépendances de développement incluses"
+            echo "- $acceptes déclaré(s) en risque accepté dans \`composer.json\` (\`config.audit.ignore\`)"
+            echo
+            if [ "$acceptes" -gt 0 ]; then
+              echo "#### Risques acceptés, motivés dans composer.json"
+              jq -r "${ignores_jq} | to_entries[] | .value[] | \"- \\(.packageName) — \\(.advisoryId) — \\(.title)\"" tout.json
+              echo
+            fi
+            if [ "$bloquants" -gt 0 ]; then
+              echo "#### Bloquants"
+              jq -r "[.advisories[][]? | select($gravite)][] | \"- \\(.packageName) \\(.affectedVersions) — [\\(.severity // \"gravité non renseignée\")] \\(.title) — \\(.link)\"" prod.json
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+          if [ "$bloquants" -gt 0 ]; then
+            echo "::error::$bloquants avis bloquant(s) sur des dépendances déployées (gravité haute, critique, ou non renseignée)."
+            exit 1
+          fi
+          echo "Aucun avis bloquant sur les dépendances déployées."
+
+  # Audit des dépendances npm
+  npm-audit:
+    name: "npm Security Audit"
+    runs-on: ubuntu-latest
+    needs: garde
+    if: needs.garde.outputs.rejouer == 'oui'
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: npm audit
+        run: npm audit --audit-level=moderate || true
+
+  # Laravel security checks
+  laravel-security:
+    name: "Laravel Security Checks"
+    runs-on: ubuntu-latest
+    needs: garde
+    if: needs.garde.outputs.rejouer == 'oui'
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Check for .env in repo
+        run: |
+          if [ -f ".env" ]; then
+            echo "::error::.env file found in repository! This is a security risk."
+            exit 1
+          fi
+
+      - name: Check debug mode not in production configs
+        run: |
+          if grep -r "APP_DEBUG=true" .env.example 2>/dev/null; then
+            echo "::warning::APP_DEBUG=true found in .env.example"
+          fi
+
+      - name: Check for hardcoded secrets
+        run: |
+          # Search for potential hardcoded secrets (excluding .env.example patterns)
+          if grep -rn --include="*.php" -E "(password|secret|key)\s*=\s*['\"][^'\"]{8,}" app/ --exclude-dir=vendor 2>/dev/null | grep -v "password.*=" | head -5; then
+            echo "::warning::Potential hardcoded secrets found. Please review."
+          fi

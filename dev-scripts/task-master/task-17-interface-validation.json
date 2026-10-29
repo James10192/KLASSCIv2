@@ -1,0 +1,53 @@
+{
+  "title": "Interface Validation Inscription avec Modal Paiement",
+  "description": "Interface validation inscription avec modal paiement rapide intégrée et vérification places classes temps réel",
+  "type": "Frontend Development",
+  "priority": "medium",
+  "status": "pending", 
+  "version": "v2.0",
+  "dependencies": ["task-16-workflow-service"],
+  "technical_details": {
+    "interface_components": [
+      "Modal Bootstrap 5 saisie paiement frais inscription",
+      "Sélecteur types paiements : scolarité, cantine, autres",
+      "Vérification temps réel places classes avec suggestions alternatives", 
+      "AJAX validation inscription avec feedback visuel",
+      "Indicateurs états workflow avec progression"
+    ],
+    "deliverables": [
+      "Vue Blade inscription/validate.blade.php",
+      "Modal paiement responsive Bootstrap 5",
+      "JavaScript validation temps réel",
+      "Routes AJAX validation et places",
+      "CSS états workflow avec animations"
+    ],
+    "estimation": "2-3 jours"
+  },
+  "subtasks": [
+    {
+      "title": "Modal paiement Bootstrap 5",
+      "description": "Modal responsive saisie rapide paiement avec types et montants",
+      "status": "pending"
+    },
+    {
+      "title": "Vérification places temps réel",
+      "description": "AJAX check places disponibles avec suggestions classes alternatives",
+      "status": "pending"
+    },
+    {
+      "title": "Interface états workflow",
+      "description": "Indicateurs visuels progression workflow avec couleurs et icônes",
+      "status": "pending"
+    },
+    {
+      "title": "Validation AJAX inscription",
+      "description": "Submit validation inscription avec feedback et gestion erreurs",
+      "status": "pending"
+    },
+    {
+      "title": "Tests interface utilisateur",
+      "description": "Tests navigation modal, validation, workflow complet",
+      "status": "pending"
+    }
+  ]
+}

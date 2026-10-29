@@ -1,0 +1,40 @@
+{
+  "eval_id": 3,
+  "run": "without_skill",
+  "assertions": [
+    {
+      "text": "Utilise Barryvdh\\DomPDF\\Facade\\Pdf",
+      "passed": true,
+      "evidence": "Line 61: '$pdf = Pdf::loadView(...)' — uses Pdf facade correctly."
+    },
+    {
+      "text": "Charge les settings PDF via SettingsHelper",
+      "passed": true,
+      "evidence": "Line 47: '$pdfSettings = \\App\\Helpers\\SettingsHelper::getPdfSettings();' — correct. Also uses getSchoolInfo()."
+    },
+    {
+      "text": "Configure isRemoteEnabled=false pour la sécurité",
+      "passed": true,
+      "evidence": "Line 65: \"'isRemoteEnabled' => false,\" — present."
+    },
+    {
+      "text": "Active isFontSubsettingEnabled pour optimiser la taille",
+      "passed": true,
+      "evidence": "Line 68: \"'isFontSubsettingEnabled' => true,\" — present."
+    },
+    {
+      "text": "Prépare le logo en base64 ou public_path (pas asset())",
+      "passed": true,
+      "evidence": "Lines 76-93: prepareLogoForPdf() method using storage_path() and public_path() with base64_encode. No asset() calls."
+    },
+    {
+      "text": "Retourne un téléchargement PDF avec un nom de fichier approprié",
+      "passed": true,
+      "evidence": "Line 71: filename includes matricule and date. Line 73: 'return $pdf->download($filename);'"
+    }
+  ],
+  "pass_count": 6,
+  "total_count": 6,
+  "pass_rate": 1.0,
+  "notes": "Without skill also achieves 100% on this eval. Minor differences: uses method chaining differently (sets options separately vs inline), passes variable as $pdfSettings instead of $settings. Missing isPhpEnabled=false (security gap). The with_skill version is slightly more complete with isPhpEnabled=false and better logo fallback chain."
+}

@@ -1,0 +1,619 @@
+<?php
+
+namespace App\Services\ESBTP;
+
+use App\Domain\Academique\CoherenceSystemeAcademique;
+use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
+use App\Models\ESBTPNote;
+use App\Models\ESBTPResultat;
+use App\Models\ESBTPClasse;
+use App\Services\BulletinService;
+use App\Services\NoteCalculationService;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+
+class BtsCurrentResultSnapshotService
+{
+    public function __construct(
+        private BulletinService $bulletinService,
+        private BtsAnnualClassMapResolver $classMapResolver
+    )
+    {
+    }
+
+    public function getPeriodeSnapshot(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        $normalizedPeriode = $this->bulletinService->normalizePeriode($periode);
+
+        if ($normalizedPeriode === 'annuel') {
+            return $this->buildAnnualSnapshot($etudiantId, $classeId, $anneeUniversitaireId);
+        }
+
+        return $this->buildSemesterSnapshot($etudiantId, $classeId, $anneeUniversitaireId, $normalizedPeriode);
+    }
+
+    public function getSemesterSnapshot(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        return $this->buildSemesterSnapshot(
+            $etudiantId,
+            $classeId,
+            $anneeUniversitaireId,
+            $this->bulletinService->normalizePeriode($periode)
+        );
+    }
+
+    public function getAnnualSnapshot(int $etudiantId, int $classeId, int $anneeUniversitaireId): array
+    {
+        return $this->buildAnnualSnapshot($etudiantId, $classeId, $anneeUniversitaireId);
+    }
+
+    /**
+     * Notes et moyennes enregistrees deja lues pour toute une cohorte, par
+     * « etudiant:classe:annee:periode ». Vides hors de
+     * `getPeriodeSnapshotsPourCohorte()`.
+     *
+     * @var array<string, Collection>
+     */
+    private array $notesPrechargees = [];
+
+    /** @var array<string, Collection> */
+    private array $moyennesPrechargees = [];
+
+    /**
+     * Memoire pour la vie de l'instance, comme `classesChargees` : une
+     * ESBTPConfigMatiere modifiee puis relue par la meme instance rendrait l'ancien type.
+     *
+     * @var array<string, string>
+     */
+    private array $typesFormation = [];
+
+    /**
+     * Memoire pour la vie de l'instance, meme limite que `typesFormation` :
+     * une classe modifiee puis relue par la meme instance rendrait l'ancienne.
+     *
+     * @var array<int, ESBTPClasse|null>
+     */
+    private array $classesAvecCycle = [];
+
+    /**
+     * Classes deja chargees, par identifiant.
+     *
+     * @var array<int, \App\Models\ESBTPClasse|null>
+     */
+    private array $classesChargees = [];
+
+    /**
+     * La classe du snapshot, chargee UNE fois par instance de service.
+     *
+     * `RankingService::classement()` et le tableau des resultats d'une classe
+     * appellent ce service DANS une boucle sur les eleves — un `find()` nu y
+     * ferait une requete par eleve, et deux par eleve sur un snapshot annuel
+     * (un par semestre). Sur une classe de 200, cela ajoutait 400 requetes a
+     * un ecran qui en fait deja beaucoup.
+     */
+    private function classe(int $classeId): ?ESBTPClasse
+    {
+        if (! array_key_exists($classeId, $this->classesChargees)) {
+            // `withTrashed()` : `ESBTPClasse` est en `SoftDeletes`. Un `find()` nu
+            // rend `null` sur une classe effacee en douceur, donc AUCUN filtrage
+            // de coherence — l'ecart « Officiel / Courant » redeviendrait aveugle
+            // exactement dans le cas que ce filtre protege.
+            $this->classesChargees[$classeId] = ESBTPClasse::withTrashed()->find($classeId);
+        }
+
+        return $this->classesChargees[$classeId];
+    }
+
+    /**
+     * Le snapshot de chaque eleve d'une cohorte, notes et moyennes enregistrees
+     * lues en une requete par semestre pour toute la cohorte.
+     *
+     * Le classement d'une classe (`RankingService`) appelait `getPeriodeSnapshot()`
+     * eleve par eleve : deux lectures de notes, deux de moyennes et leurs
+     * relations, par eleve et par semestre. Sur la fiche d'un etudiant, ce
+     * classement seul coutait une quarantaine de requetes par camarade de
+     * classe. Le resultat est le meme : memes lignes, memes filtres, meme calcul
+     * — seul le moment ou elles sont lues change.
+     *
+     * @param  list<int>  $etudiantIds
+     * @return array<int, array> snapshot par identifiant d'etudiant
+     */
+    public function getPeriodeSnapshotsPourCohorte(array $etudiantIds, int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        $etudiantIds = array_map('intval', $etudiantIds);
+        $normalizedPeriode = $this->bulletinService->normalizePeriode($periode);
+        $annuel = $normalizedPeriode === 'annuel';
+
+        // La carte des classes de chaque eleve (tronc commun, specialite) se
+        // lit dans le perimetre des evaluations : une requete pour la cohorte
+        // plutot que quatre par eleve.
+        $this->classMapResolver->prechargerPourCohorte($etudiantIds, $classeId, $anneeUniversitaireId);
+
+        foreach ($annuel ? ['semestre1', 'semestre2'] : [$normalizedPeriode] as $semestre) {
+            $this->prechargerSemestre($etudiantIds, $classeId, $anneeUniversitaireId, $semestre, $annuel);
+        }
+
+        try {
+            $snapshots = [];
+            foreach ($etudiantIds as $etudiantId) {
+                $snapshots[$etudiantId] = $this->getPeriodeSnapshot($etudiantId, $classeId, $anneeUniversitaireId, $periode);
+            }
+
+            return $snapshots;
+        } finally {
+            // Hors d'un calcul de cohorte, chaque snapshot relit la base : une
+            // note saisie entre deux appels doit compter.
+            $this->notesPrechargees = [];
+            $this->moyennesPrechargees = [];
+        }
+    }
+
+    /**
+     * Lit en deux requetes ce que `buildSemesterSnapshot()` lirait en deux
+     * requetes PAR ELEVE, et le range sous la cle que ce dernier interrogera.
+     *
+     * La classe du semestre et le perimetre des evaluations restent resolus
+     * eleve par eleve, par les memes appels que le chemin unitaire : un eleve
+     * oriente du tronc commun ne lit pas les memes classes que ses camarades.
+     *
+     * @param  list<int>  $etudiantIds
+     */
+    private function prechargerSemestre(array $etudiantIds, int $classeId, int $anneeUniversitaireId, string $semestre, bool $annuel): void
+    {
+        $perimetres = [];
+        foreach ($etudiantIds as $etudiantId) {
+            // Meme classe du semestre que `buildAnnualSnapshot()`, meme perimetre
+            // d'evaluations que `notesDuSemestre()`.
+            $classeDuSemestre = $annuel
+                ? (int) ($this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId)[$semestre.'_classe_id'] ?? $classeId)
+                : $classeId;
+            $perimetres[$etudiantId] = [
+                $classeDuSemestre,
+                array_map('intval', $this->bulletinService->evaluationClassIdsForSnapshot($etudiantId, $classeDuSemestre, $anneeUniversitaireId, $semestre)),
+            ];
+        }
+
+        if ($perimetres === []) {
+            return;
+        }
+
+        $ids = array_keys($perimetres);
+        $classesEvaluees = array_values(array_unique(array_merge(...array_column($perimetres, 1))));
+        $classesDesSemestres = array_values(array_unique(array_column($perimetres, 0)));
+        $notes = $this->requeteNotes($ids, $anneeUniversitaireId, $semestre, $classesEvaluees)
+            ->orderBy('id')->get()->groupBy('etudiant_id');
+        $moyennes = $this->requeteMoyennes($ids, $classesDesSemestres, $anneeUniversitaireId, $semestre)
+            ->orderBy('id')->get()->groupBy('etudiant_id');
+
+        foreach ($perimetres as $etudiantId => [$classeDuSemestre, $classesDeLEleve]) {
+            $cle = $this->clePrechargement($etudiantId, $classeDuSemestre, $anneeUniversitaireId, $semestre);
+            $this->notesPrechargees[$cle] = ($notes->get($etudiantId) ?? collect())
+                ->filter(fn (ESBTPNote $note) => in_array((int) $note->evaluation?->classe_id, $classesDeLEleve, true))
+                ->values();
+            $this->moyennesPrechargees[$cle] = ($moyennes->get($etudiantId) ?? collect())
+                ->filter(fn (ESBTPResultat $resultat) => (int) $resultat->classe_id === $classeDuSemestre)
+                ->values();
+        }
+    }
+
+    private function notesDuSemestre(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): Collection
+    {
+        $cle = $this->clePrechargement($etudiantId, $classeId, $anneeUniversitaireId, $periode);
+        if (array_key_exists($cle, $this->notesPrechargees)) {
+            return $this->notesPrechargees[$cle];
+        }
+
+        // Le controle "Courant" doit lire exactement les memes classes que la
+        // generation officielle. C'est particulierement important en BTS 1 :
+        // TC au S1 puis specialite au S2.
+        $evaluationClassIds = $this->bulletinService->evaluationClassIdsForSnapshot(
+            $etudiantId,
+            $classeId,
+            $anneeUniversitaireId,
+            $periode
+        );
+
+        return $this->requeteNotes([$etudiantId], $anneeUniversitaireId, $periode, $evaluationClassIds)->get();
+    }
+
+    private function moyennesManuelles(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): Collection
+    {
+        $cle = $this->clePrechargement($etudiantId, $classeId, $anneeUniversitaireId, $periode);
+        if (array_key_exists($cle, $this->moyennesPrechargees)) {
+            return $this->moyennesPrechargees[$cle];
+        }
+
+        return $this->requeteMoyennes([$etudiantId], [$classeId], $anneeUniversitaireId, $periode)->get();
+    }
+
+    /**
+     * @param  list<int>  $etudiantIds
+     * @param  array<int|string>  $evaluationClassIds
+     */
+    private function requeteNotes(array $etudiantIds, int $anneeUniversitaireId, string $periode, array $evaluationClassIds): Builder
+    {
+        return ESBTPNote::query()
+            ->whereIn('etudiant_id', $etudiantIds)
+            // `withTrashed()` sur la matiere, pour la meme raison qu'au chemin
+            // des moyennes enregistrees : effacee en douceur, elle rendait le
+            // filtre aveugle au lieu de le rendre prudent.
+            ->with(['evaluation.matiere' => fn ($q) => $q->withTrashed()])
+            ->whereHas('evaluation', function ($query) use ($anneeUniversitaireId, $evaluationClassIds, $periode) {
+                // Aligné sur la génération réelle (buildDonneesBulletin) : mêmes
+                // aliases de période, mêmes classes TC/spécialité, et exclusion
+                // des évaluations annulées.
+                $query->where('annee_universitaire_id', $anneeUniversitaireId)
+                    ->whereIn('classe_id', $evaluationClassIds)
+                    ->where('status', '!=', 'cancelled')
+                    ->whereIn('periode', $this->bulletinService->periodeAliases($periode));
+            });
+    }
+
+    /**
+     * @param  list<int>  $etudiantIds
+     * @param  list<int>  $classeIds
+     */
+    private function requeteMoyennes(array $etudiantIds, array $classeIds, int $anneeUniversitaireId, string $periode): Builder
+    {
+        return ESBTPResultat::query()
+            ->whereIn('etudiant_id', $etudiantIds)
+            ->whereIn('classe_id', $classeIds)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->where('periode', $periode)
+            // `withTrashed()` : `ESBTPMatiere` est en `SoftDeletes`. Sans lui, une
+            // matiere effacee en douceur rendait `$resultat->matiere` nul, le
+            // `&&` du filtre court-circuitait, et la ligne incoherente rentrait
+            // dans le « Courant » — exactement ce que ce filtre protege.
+            ->with(['matiere' => fn ($q) => $q->withTrashed()]);
+    }
+
+    private function clePrechargement(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): string
+    {
+        return $etudiantId.':'.$classeId.':'.$anneeUniversitaireId.':'.$periode;
+    }
+
+    /**
+     * Le type de formation ne depend que de la matiere, de la classe, de la
+     * periode et de l'annee — pas de l'eleve. Le relire pour chaque eleve d'une
+     * classe coutait deux requetes par matiere et par eleve.
+     */
+    private function typeFormation(int $matiereId, int $classeId, string $periode, int $anneeUniversitaireId): string
+    {
+        return $this->typesFormation[$matiereId.':'.$classeId.':'.$periode.':'.$anneeUniversitaireId]
+            ??= $this->bulletinService->resolveMatiereTypeFormation($matiereId, $classeId, $periode, $anneeUniversitaireId);
+    }
+
+    /** La classe et son cycle, lus une fois par instance, comme `classe()`. */
+    private function classeAvecCycle(int $classeId): ?ESBTPClasse
+    {
+        if (! array_key_exists($classeId, $this->classesAvecCycle)) {
+            $this->classesAvecCycle[$classeId] = ESBTPClasse::withTrashed()
+                ->with(['filiere', 'niveau', 'niveauEtude'])
+                ->find($classeId);
+        }
+
+        return $this->classesAvecCycle[$classeId];
+    }
+
+    private function buildSemesterSnapshot(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        $notes = $this->notesDuSemestre($etudiantId, $classeId, $anneeUniversitaireId, $periode);
+        $manualResultats = $this->moyennesManuelles($etudiantId, $classeId, $anneeUniversitaireId, $periode);
+
+        $subjects = [];
+
+        // Le snapshot doit voir EXACTEMENT ce que la generation reelle retient.
+        // Sans ce filtre, une ECUE evaluee dans une classe BTS fausserait la
+        // moyenne des deux cotes a la fois — donc l'ecart « Officiel / Courant »
+        // resterait nul et n'alerterait personne. Voir
+        // `CoherenceSystemeAcademique::matiereRetenue()`.
+        $classeDuSnapshot = $this->classe($classeId);
+
+        foreach ($notes as $note) {
+            $matiere = $note->evaluation?->matiere;
+            $matiereId = $note->matiere_id ?: $matiere?->id;
+
+            if (! $matiere || ! $matiereId) {
+                continue;
+            }
+
+            if ($classeDuSnapshot
+                && ! CoherenceSystemeAcademique::matiereRetenue($matiere, $classeDuSnapshot, 'snapshot/evaluation')) {
+                continue;
+            }
+
+            if (! isset($subjects[$matiereId])) {
+                $subjects[$matiereId] = [
+                    'matiere_id' => $matiereId,
+                    'matiere' => $matiere->name,
+                    'source' => 'calculee',
+                    'coefficient' => null,
+                    'moyenne' => null,
+                    'notes_count' => 0,
+                    'evaluations' => [],
+                    'manual_resultat' => null,
+                ];
+            }
+
+            $value = is_numeric($note->note) ? (float) $note->note : (is_numeric($note->valeur) ? (float) $note->valeur : null);
+            $bareme = (float) ($note->evaluation?->bareme ?: 20);
+            $evaluationCoefficient = (float) ($note->evaluation?->coefficient ?: 1);
+
+            $subjects[$matiereId]['notes_count']++;
+            $subjects[$matiereId]['evaluations'][] = [
+                'evaluation_id' => $note->evaluation_id,
+                'note_id' => $note->id,
+                'note' => $value,
+                'bareme' => $bareme,
+                'coefficient' => $evaluationCoefficient,
+                'normalized_on_20' => $value !== null && $bareme > 0 ? round(($value / $bareme) * 20, 2) : null,
+                // Transmis au calcul : sans lui, une absence y comptait pour 0
+                // la ou la generation officielle l'ecarte.
+                'is_absent' => (bool) $note->is_absent,
+            ];
+        }
+
+        foreach ($subjects as $matiereId => $subject) {
+            // Rien de comptable (absences seulement) : la valeur du reglage,
+            // 0 par defaut, `null` si l'etablissement les ecarte.
+            $moyenne = $this->bulletinService->computeMoyenneFromNotesData(array_map(
+                fn (array $evaluation) => [
+                    'note' => $evaluation['note'],
+                    'coefficient' => $evaluation['coefficient'],
+                    'bareme' => $evaluation['bareme'],
+                    'is_absent' => $evaluation['is_absent'],
+                ],
+                $subject['evaluations']
+            )) ?? app(NoteCalculationService::class)->moyenneSansNoteComptable();
+            $subjects[$matiereId]['moyenne'] = $moyenne === null ? null : round($moyenne, 2);
+        }
+
+        foreach ($manualResultats as $resultat) {
+            $matiereId = $resultat->matiere_id;
+
+            if ($classeDuSnapshot && $resultat->matiere
+                && ! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classeDuSnapshot, 'snapshot/moyenne manuelle')) {
+                continue;
+            }
+
+            if (! isset($subjects[$matiereId])) {
+                $subjects[$matiereId] = [
+                    'matiere_id' => $matiereId,
+                    'matiere' => $resultat->matiere?->name ?? 'Matière inconnue',
+                    'source' => 'manuelle',
+                    'coefficient' => null,
+                    'moyenne' => null,
+                    'notes_count' => 0,
+                    'evaluations' => [],
+                    'manual_resultat' => null,
+                ];
+            }
+
+            $subjects[$matiereId]['source'] = 'manuelle';
+            $subjects[$matiereId]['moyenne'] = $resultat->moyenne !== null ? round((float) $resultat->moyenne, 2) : null;
+            $subjects[$matiereId]['manual_resultat'] = [
+                'resultat_id' => $resultat->id,
+                'moyenne' => $resultat->moyenne !== null ? round((float) $resultat->moyenne, 2) : null,
+                'coefficient' => $resultat->coefficient !== null ? round((float) $resultat->coefficient, 2) : null,
+                'appreciation' => $resultat->appreciation,
+            ];
+        }
+
+        $weightedPoints = 0.0;
+        $weightedCoefficients = 0.0;
+        $missingConfiguration = [];
+
+        foreach ($subjects as $matiereId => $subject) {
+            $coefficient = $subject['manual_resultat']['coefficient'] ?? null;
+
+            if ($coefficient === null) {
+                try {
+                    $coefficient = $this->bulletinService->getCoefficientForCombination(
+                        $matiereId,
+                        $classeId,
+                        $anneeUniversitaireId,
+                        $periode,
+                        $etudiantId
+                    );
+                } catch (\RuntimeException) {
+                    $missingConfiguration[] = "coefficient:matiere:{$matiereId}";
+                }
+            }
+
+            $subjects[$matiereId]['coefficient'] = $coefficient !== null ? round((float) $coefficient, 2) : null;
+            $subjects[$matiereId]['type_formation'] = $this->typeFormation(
+                (int) $matiereId,
+                $classeId,
+                $periode,
+                $anneeUniversitaireId
+            );
+
+            if ($subject['moyenne'] !== null && $coefficient !== null) {
+                $weightedPoints += (float) $subject['moyenne'] * (float) $coefficient;
+                $weightedCoefficients += (float) $coefficient;
+            }
+        }
+
+        $coefficientsMissing = false;
+        if ($weightedCoefficients > 0) {
+            // Ne pas recalculer une moyenne "parallele" ici. Le bulletin officiel
+            // peut etre configure en composition par blocs General / Technique.
+            // Une moyenne ponderee globale donne alors un autre chiffre et cree
+            // un faux ecart permanent apres regeneration.
+            $lignes = collect($subjects)
+                ->filter(fn (array $subject) => $subject['moyenne'] !== null && $subject['coefficient'] !== null)
+                ->map(fn (array $subject) => (object) [
+                    'moyenne' => (float) $subject['moyenne'],
+                    'coefficient' => (float) $subject['coefficient'],
+                    'type_formation' => $subject['type_formation'] ?? null,
+                    'statut' => 'note',
+                ]);
+            $generales = $lignes->filter(fn ($ligne) => $ligne->type_formation === 'generale');
+            $techniques = $lignes->filter(fn ($ligne) => $ligne->type_formation === 'technologique_professionnelle');
+            $moyenneGenerale = $this->bulletinService->calculerMoyennePonderee($generales);
+            $moyenneTechnique = $this->bulletinService->calculerMoyennePonderee($techniques);
+
+            $rawTotal = round($this->bulletinService->composerLaMoyenneDuSemestre(
+                $lignes,
+                $generales,
+                $techniques,
+                $moyenneGenerale,
+                $moyenneTechnique
+            ), 2);
+            $state = 'semester_complete';
+        } else {
+            // Lot 3 fix: fallback moyenne arithmétique simple quand AUCUN coefficient n'est
+            // configuré mais des notes existent. Permet à l'index resultats d'afficher quelque
+            // chose (moyenne brute) au lieu de "aucune note" + 0. Flag coefficients_missing
+            // permet à l'UI de signaler "Coefficients à configurer".
+            $matieresWithMoyenne = array_filter(
+                $subjects,
+                fn ($s) => $s['moyenne'] !== null
+            );
+            if (! empty($matieresWithMoyenne)) {
+                $sumMoyennes = array_sum(array_map(fn ($s) => (float) $s['moyenne'], $matieresWithMoyenne));
+                $rawTotal = round($sumMoyennes / count($matieresWithMoyenne), 2);
+                $state = 'semester_complete_no_coefficients';
+                $coefficientsMissing = true;
+            } else {
+                $rawTotal = null;
+                $state = 'no_data';
+            }
+        }
+
+        $attendanceNote = round(
+            $this->bulletinService->calculateEffectiveAttendanceNoteForStudent(
+                $etudiantId,
+                $classeId,
+                $anneeUniversitaireId,
+                $periode
+            ),
+            2
+        );
+
+        return [
+            'state' => $state,
+            'periode' => $periode,
+            'raw_total' => $rawTotal,
+            'attendance_note' => $rawTotal !== null ? $attendanceNote : null,
+            'effective_total' => $rawTotal !== null ? round($rawTotal + $attendanceNote, 2) : null,
+            'subjects' => array_values($subjects),
+            'notes_count' => $notes->count(),
+            'manual_resultats_count' => $manualResultats->count(),
+            'coefficients_missing' => $coefficientsMissing,
+            'configuration' => [
+                'ready' => empty($missingConfiguration),
+                'missing_items' => $missingConfiguration,
+            ],
+        ];
+    }
+
+    private function buildAnnualSnapshot(int $etudiantId, int $classeId, int $anneeUniversitaireId): array
+    {
+        $classMap = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
+        $semester1ClassId = (int) ($classMap['semestre1_classe_id'] ?? $classeId);
+        $semester2ClassId = (int) ($classMap['semestre2_classe_id'] ?? $classeId);
+
+        $semestre1 = $this->buildSemesterSnapshot(
+            $etudiantId,
+            $semester1ClassId,
+            $anneeUniversitaireId,
+            'semestre1'
+        );
+        $semestre2 = $this->buildSemesterSnapshot(
+            $etudiantId,
+            $semester2ClassId,
+            $anneeUniversitaireId,
+            'semestre2'
+        );
+        // La formule annuelle conserve les pondérations de la spécialité
+        // actuelle, même si l'établissement compare les rangs au groupe TC.
+        $classe = $this->classeAvecCycle($semester2ClassId);
+        $weights = $this->bulletinService->getSemesterWeights($classe);
+        $includeSemester1 = $this->bulletinService->annualIncludesSemester1(
+            $semester1ClassId,
+            $semester2ClassId
+        );
+
+        $annualEffective = $this->bulletinService->calculateConfiguredAnnualAverage(
+            $semestre1['effective_total'],
+            $semestre2['effective_total'],
+            $weights,
+            $semester1ClassId,
+            $semester2ClassId
+        );
+        $annualRaw = $this->bulletinService->calculateConfiguredAnnualAverage(
+            $semestre1['raw_total'],
+            $semestre2['raw_total'],
+            $weights,
+            $semester1ClassId,
+            $semester2ClassId
+        );
+
+        $hasSemestre1 = $semestre1['effective_total'] !== null;
+        $hasSemestre2 = $semestre2['effective_total'] !== null;
+        $requiredSemestersAvailable = $includeSemester1
+            ? ($hasSemestre1 && $hasSemestre2)
+            : $hasSemestre2;
+        $primarySemester = $hasSemestre1 ? 'semestre1' : ($hasSemestre2 ? 'semestre2' : null);
+        $primarySnapshot = $primarySemester === 'semestre2' ? $semestre2 : $semestre1;
+
+        $coefficientsMissing = $includeSemester1
+            ? (($semestre1['coefficients_missing'] ?? false) || ($semestre2['coefficients_missing'] ?? false))
+            : ($semestre2['coefficients_missing'] ?? false);
+
+        if ($requiredSemestersAvailable && $annualEffective !== null && $annualRaw !== null) {
+            $state = $coefficientsMissing ? 'annual_complete_no_coefficients' : 'annual_complete';
+            $rawTotal = round($annualRaw, 2);
+            $effectiveTotal = round($annualEffective, 2);
+            $attendanceNote = round($effectiveTotal - $rawTotal, 2);
+            $subjects = [];
+        } elseif ($primarySemester !== null) {
+            $state = 'annual_incomplete';
+            $rawTotal = $primarySnapshot['raw_total'];
+            $effectiveTotal = $primarySnapshot['effective_total'];
+            $attendanceNote = $primarySnapshot['attendance_note'];
+            $subjects = $primarySnapshot['subjects'];
+        } else {
+            $state = 'no_data';
+            $rawTotal = null;
+            $effectiveTotal = null;
+            $attendanceNote = null;
+            $subjects = [];
+        }
+
+        $configurationReady = $includeSemester1
+            ? (($semestre1['configuration']['ready'] ?? false) && ($semestre2['configuration']['ready'] ?? false))
+            : ($semestre2['configuration']['ready'] ?? false);
+        $missingItems = $includeSemester1
+            ? array_values(array_unique(array_merge(
+                $semestre1['configuration']['missing_items'] ?? [],
+                $semestre2['configuration']['missing_items'] ?? []
+            )))
+            : array_values(array_unique($semestre2['configuration']['missing_items'] ?? []));
+
+        return [
+            'state' => $state,
+            'periode' => 'annuel',
+            'raw_total' => $rawTotal,
+            'attendance_note' => $attendanceNote,
+            'effective_total' => $effectiveTotal,
+            'subjects' => $subjects,
+            'notes_count' => ($semestre1['notes_count'] ?? 0) + ($semestre2['notes_count'] ?? 0),
+            'manual_resultats_count' => ($semestre1['manual_resultats_count'] ?? 0) + ($semestre2['manual_resultats_count'] ?? 0),
+            'coefficients_missing' => $coefficientsMissing,
+            'configuration' => [
+                'ready' => $configurationReady,
+                'missing_items' => $missingItems,
+            ],
+            'primary_semester' => $primarySemester,
+            'annual_policy' => $includeSemester1 ? 's1_s2' : 'specialisation_s2',
+            'class_map' => $classMap,
+            'semester_snapshots' => [
+                'semestre1' => $semestre1,
+                'semestre2' => $semestre2,
+            ],
+        ];
+    }
+
+}

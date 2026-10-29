@@ -1,0 +1,176 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Actions\Comptabilite\BuildDashboardDataAction;
+use App\DTOs\Comptabilite\ComptabiliteFilters;
+use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPClasse;
+use App\Models\ESBTPFiliere;
+use App\Services\ComptabiliteService;
+use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+
+class ESBTPComptabiliteController extends Controller
+{
+    /** Écran mobile : courbe des encaissements récents, un point par jour. */
+    private const SERIE_RECENTE_JOURS = 30;
+
+    public function __construct(
+        private readonly ComptabiliteService $comptabiliteService,
+    ) {
+        $this->middleware('auth');
+        $this->middleware('comptabilite.access');
+    }
+
+    /**
+     * Endpoint AJAX léger pour les KPIs temps réel (utilisé par les widgets dashboard).
+     */
+    public function kpisTempsReel(Request $request): JsonResponse
+    {
+        try {
+            $kpis = $this->comptabiliteService->getKPIsDashboard($request->get('annee_id'));
+
+            return response()->json([
+                'success' => true,
+                'kpis' => $kpis,
+                'cache_info' => [
+                    'cached' => isset($kpis['cache_generated_at']),
+                    'last_updated' => $kpis['last_updated'] ?? now()->toISOString(),
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Erreur KPIs temps réel', [
+                'error' => $e->getMessage(),
+                'annee_id' => $request->get('annee_id'),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur lors de la récupération des KPIs',
+            ], 500);
+        }
+    }
+
+    /**
+     * Page dashboard comptabilité (rendu HTML).
+     */
+    public function dashboard(Request $request, BuildDashboardDataAction $build)
+    {
+        $filters = ComptabiliteFilters::fromRequest($request);
+        [$annee, $anneeActive, $referentiels] = $this->resolveReferentiels($filters);
+
+        // FIX audit 2026-06-04 §2.12 : sans filtre user explicite, on scope sur
+        // l'année résolue (couvre l'année courante par défaut). Garantit la cohérence
+        // entre Dashboard UI et CLI (`api/cli/stats` / `payments-summary`).
+        $effectiveFilters = $annee ? $filters->withAnneeDefault((int) $annee->id) : $filters;
+
+        $data = $build($effectiveFilters, $annee);
+
+        return view('esbtp.comptabilite.dashboard', array_merge($data, [
+            'annee' => $annee,
+            'anneeActive' => $anneeActive,
+            'annees' => $referentiels['annees'],
+            'filieres' => $referentiels['filieres'],
+            'classes' => $referentiels['classes'],
+            'serieRecente' => $this->serieEncaissementsRecents($data['serieJours']),
+        ]));
+    }
+
+    /**
+     * Endpoint AJAX retournant les mêmes données que dashboard() en JSON
+     * (utilisé par les filtres dynamiques sans reload).
+     */
+    public function dashboardData(Request $request, BuildDashboardDataAction $build): JsonResponse
+    {
+        $filters = ComptabiliteFilters::fromRequest($request);
+        [$annee] = $this->resolveReferentiels($filters);
+
+        // Idem dashboard() : filtre annee_courante par défaut pour cohérence CLI ↔ UI.
+        $effectiveFilters = $annee ? $filters->withAnneeDefault((int) $annee->id) : $filters;
+
+        $data = $build($effectiveFilters, $annee);
+
+        return response()->json([
+            'totalDue' => $data['totalDue'],
+            'totalPaid' => $data['totalPaid'],
+            'totalOverdue' => $data['totalOverdue'],
+            'countPaid' => $data['countPaid'],
+            'countPartiallyPaid' => $data['countPartiallyPaid'],
+            'countOverdue' => $data['countOverdue'],
+            'countDue' => $data['countDue'],
+            'countToValidate' => $data['countToValidate'],
+            'countOverdueTotal' => $data['countOverdueTotal'],
+            'countARelancer' => $data['countARelancer'],
+            'totalARelancer' => $data['totalARelancer'],
+            'countValidatedToday' => $data['countValidatedToday'],
+            'totalValidatedToday' => $data['totalValidatedToday'],
+            'labelsMois' => $data['labelsMois'],
+            'dataEncaissements' => $data['dataEncaissements'],
+            'agingBuckets' => $data['agingBuckets'],
+            'totalPending' => $data['totalPending'],
+            'totalPaidYesterday' => $data['totalPaidYesterday'],
+            'totalPaidMonth' => $data['totalPaidMonth'],
+            'totalPaidPrevMonthToDate' => $data['totalPaidPrevMonthToDate'],
+            'labelAnneePrecedente' => $data['labelAnneePrecedente'],
+            'dataEncaissementsPrecedente' => $data['dataEncaissementsPrecedente'],
+            'serieJours' => $data['serieJours'],
+            'modes' => $data['modes'],
+            'recouvrementParClasse' => $data['recouvrementParClasse'],
+            'paiementsEnAttente' => BuildDashboardDataAction::pendingPaymentsToArray($data['paiementsEnAttente']),
+            'anneeLabel' => $annee?->name ?? $annee?->libelle ?? '',
+            'serieRecente' => $this->serieEncaissementsRecents($data['serieJours']),
+        ]);
+    }
+
+    /**
+     * Encaissements validés des derniers jours, un point par jour (écran mobile :
+     * courbe SVG légère à la place de Chart.js). Mêmes filtres que le reste du
+     * tableau de bord ; cache court aligné sur BuildDashboardDataAction.
+     *
+     * Un jour sans encaissement vaut 0 : c'est une valeur, la courbe la trace.
+     *
+     * @return array{labels: array<int, string>, data: array<int, float>, total: float, jours: int}
+     */
+    private function serieEncaissementsRecents(array $serieJours): array
+    {
+        // Dérivée de la série de l'action (84 jours, mêmes filtres, même règle
+        // nette des remboursements) : une seule source, un seul cache.
+        $jours = array_slice($serieJours, -self::SERIE_RECENTE_JOURS);
+        $data = array_map(fn ($j) => (float) $j['total'], $jours);
+
+        return [
+            'labels' => array_map(fn ($j) => Carbon::parse($j['jour'])->translatedFormat('j M'), $jours),
+            'data' => $data,
+            'total' => (float) array_sum($data),
+            'jours' => self::SERIE_RECENTE_JOURS,
+        ];
+    }
+
+    /**
+     * Résout l'année visualisée + les référentiels pour les filtres.
+     *
+     * @return array{0: ?ESBTPAnneeUniversitaire, 1: ?ESBTPAnneeUniversitaire, 2: array{annees: \Illuminate\Support\Collection, filieres: \Illuminate\Support\Collection, classes: \Illuminate\Support\Collection}}
+     */
+    private function resolveReferentiels(ComptabiliteFilters $filters): array
+    {
+        $annees = ESBTPAnneeUniversitaire::orderBy('name', 'desc')->get();
+        $anneeActive = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        $annee = $filters->anneeId
+            ? $annees->firstWhere('id', $filters->anneeId)
+            : ($anneeActive ?? $annees->first());
+
+        return [
+            $annee,
+            $anneeActive,
+            [
+                'annees' => $annees,
+                'filieres' => ESBTPFiliere::orderBy('name')->get(),
+                'classes' => ESBTPClasse::orderBy('name')->get(),
+            ],
+        ];
+    }
+}

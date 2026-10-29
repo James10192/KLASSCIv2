@@ -1,0 +1,252 @@
+@if($parcours->isEmpty())
+    <div class="lp-empty">
+        <div class="lp-empty-icon"><i class="fas fa-route"></i></div>
+        <h3>Aucun parcours configuré</h3>
+        <p>Pour utiliser le planning LMD, commencez par configurer au moins un domaine, une mention et un parcours.</p>
+        <a href="{{ route('esbtp.lmd.parcours-domain.index') }}" class="lp-empty-cta"><i class="fas fa-plus"></i> Configurer un parcours</a>
+    </div>
+@elseif(!$parcoursSelected)
+    <div class="lp-empty">
+        <div class="lp-empty-icon"><i class="fas fa-hand-pointer"></i></div>
+        <h3>Sélectionnez un parcours</h3>
+        <p>Choisissez un parcours dans le filtre ci-dessus pour voir sa maquette pédagogique.</p>
+    </div>
+@elseif($rows->isEmpty())
+    <div class="lp-empty">
+        <div class="lp-empty-icon"><i class="fas fa-cubes"></i></div>
+        <h3>Aucune UE liée à ce parcours</h3>
+        <p>Le parcours <strong>{{ $parcoursSelected->name }}</strong> n'a pas encore d'unités d'enseignement associées.</p>
+        <button type="button"
+            class="lp-empty-cta"
+            data-parcours-id="{{ $parcoursSelected->id }}"
+            data-parcours-name="{{ $parcoursSelected->name }}"
+            onclick="window.dispatchEvent(new CustomEvent('lpm:open', { detail: { parcoursId: parseInt(this.dataset.parcoursId, 10), parcoursName: this.dataset.parcoursName } }))">
+            <i class="fas fa-link"></i> Lier des UE au parcours
+        </button>
+    </div>
+@else
+    @if(auth()->user()?->can('lmd.planning.edit') && (!$filters['niveau_id'] || !$filters['semestre']))
+        <div class="lp-edit-hint" role="status">
+            <i class="fas fa-info-circle"></i>
+            <div class="lp-edit-hint-text">
+                <strong>Édition désactivée.</strong>
+                Sélectionnez un <strong>niveau</strong> ET un <strong>sémestre</strong> dans les filtres pour modifier les volumes horaires (CM, TD, TP, Projet, TPE) et les crédits ECTS en cliquant sur les cellules.
+            </div>
+        </div>
+    @endif
+    <div class="lp-card">
+        <div class="lp-card-header">
+            <h2 class="lp-card-title"><span class="lp-card-title-icon"><i class="fas fa-book"></i></span>{{ $parcoursSelected->name }}</h2>
+            <div class="lp-card-actions">
+                <span class="lp-card-meta">{{ $rows->count() }} UE · {{ $kpis['ecue_count'] }} ECUE</span>
+                <button type="button"
+                    class="lp-empty-cta lp-empty-cta-sm"
+                    data-parcours-id="{{ $parcoursSelected->id }}"
+                    data-parcours-name="{{ $parcoursSelected->name }}"
+                    onclick="window.dispatchEvent(new CustomEvent('lpm:open', { detail: { parcoursId: parseInt(this.dataset.parcoursId, 10), parcoursName: this.dataset.parcoursName } }))">
+                    <i class="fas fa-edit"></i> Modifier les UE
+                </button>
+            </div>
+        </div>
+        @php $bulkEnabled = auth()->user()?->can('lmd.planning.edit') && $filters['niveau_id'] && $filters['semestre']; @endphp
+        <div style="overflow-x: auto;">
+            <table class="lp-table" id="lpListing">
+                <thead><tr>
+                    @if($bulkEnabled)
+                        <th class="lpb-check-cell">
+                            <input type="checkbox" class="lpb-check lpb-check-all" title="Tout selectionner / desselectionner" aria-label="Tout selectionner">
+                        </th>
+                    @endif
+                    <th style="width: 35%;">Intitulé</th><th>Type</th>
+                    <th class="lp-th-num lp-col-cm lp-th-tip" title="Cours Magistraux — Heures théoriques en grand groupe">CM</th>
+                    <th class="lp-th-num lp-col-td lp-th-tip" title="Travaux Dirigés — Heures pratiques en petit groupe">TD</th>
+                    <th class="lp-th-num lp-col-tp lp-th-tip" title="Travaux Pratiques — Heures en laboratoire / atelier">TP</th>
+                    <th class="lp-th-num lp-col-projet lp-th-tip" title="Heures dédiées au projet pédagogique">Projet</th>
+                    <th class="lp-th-num lp-col-tpe lp-th-tip" title="Travail Personnel Étudiant — Travail individuel hors cours">TPE</th>
+                    <th class="lp-th-num lp-col-total lp-th-tip" title="Volume horaire total = CM + TD + TP + Projet + TPE">Total</th>
+                    <th class="lp-th-num lp-col-cect lp-th-tip" title="Crédits ECTS UEMOA">CECT</th>
+                    <th>Enseignant</th>
+                </tr></thead>
+                <tbody>
+                    @foreach($rows as $idx => $row)
+                        @php
+                            $ue = $row['ue'];
+                            $hasCode = !empty($ue->code);
+                            $typeLabel = $ue->type_ue?->label() ?? '—';
+                            $respName = $ue->responsableUe?->name;
+                            $respId = $ue->responsable_ue_id;
+                            $ueLabel = trim(($hasCode ? $ue->code_affiche . ' · ' : '') . $ue->name);
+                            $canEditUe = auth()->user()?->can('lmd.planning.edit');
+                        @endphp
+                        <tr class="lp-ue-row js-ue-row" data-idx="{{ $idx }}">
+                            @if($bulkEnabled)<td class="lpb-check-cell"></td>@endif
+                            <td>
+                                <span class="lp-ue-caret js-ue-caret"><i class="fas fa-chevron-right"></i></span>
+                                @if($hasCode)<span class="lp-ue-code">{{ $ue->code_affiche }}</span>@else<span class="lp-ue-code lp-ue-code-virtual">virtuelle</span>@endif
+                                {{ $ue->name }}
+                            </td>
+                            <td><span class="lp-type-chip">{{ $typeLabel }}</span></td>
+                            <td colspan="5" class="lp-volume">{{ $row['ecues']->count() }} ECUE</td>
+                            <td class="lp-volume lp-volume-total lp-col-total">—</td>
+                            <td class="lp-volume lp-volume-total lp-col-cect">{{ $row['cect'] }}</td>
+                            <td>
+                                @if($canEditUe)
+                                    <button type="button"
+                                            class="lpe-resp-btn @if($respName) lpe-resp-btn--assigned @endif"
+                                            title="{{ $respName ? 'Responsable UE : ' . $respName : 'Assigner un responsable UE' }}"
+                                            aria-label="{{ $respName ? 'Responsable UE : ' . $respName . '. Modifier' : 'Assigner le responsable de l’UE ' . $ueLabel }}"
+                                            data-lpe-ue-id="{{ $ue->id }}"
+                                            data-lpe-teacher-id="{{ $respId ?? '' }}"
+                                            data-lpe-teacher-name="{{ $respName ?? '' }}"
+                                            data-lpe-ue-label="{{ $ueLabel }}"
+                                            x-data="lpeResponsableTrigger()"
+                                            @click="openPicker()">
+                                        <i class="fas {{ $respName ? 'fa-user-tie' : 'fa-user-plus' }}"></i>
+                                        <span class="lpe-resp-name">{{ $respName ?: '+ Assigner responsable UE' }}</span>
+                                    </button>
+                                @else
+                                    <span class="lpe-resp-readonly">
+                                        <i class="fas fa-user-tie"></i>
+                                        {{ $respName ?? '—' }}
+                                    </span>
+                                @endif
+                            </td>
+                        </tr>
+                        @foreach($row['ecues'] as $entry)
+                            @php
+                                $ecue = $entry['ecue'];
+                                $planif = $entry['planif'];
+                                $canEdit = auth()->user()?->can('lmd.planning.edit') && $filters['niveau_id'] && $filters['semestre'];
+                                $teacherNames = $planif?->teacher_pool_names ?? [];
+                                $teacherIds = $planif?->teacher_pool_ids ?? [];
+                                $teacherCount = count($teacherNames);
+                                $teacherFullNames = implode(' / ', $teacherNames);
+                                $teacherSummary = $teacherCount
+                                    ? $teacherNames[0] . ($teacherCount > 1 ? ' +' . ($teacherCount - 1) : '')
+                                    : null;
+                                $teacherId = $teacherIds[0] ?? null;
+                                $ecueLabel = trim((!empty($ecue->code) ? $ecue->code_affiche . ' · ' : '') . $ecue->name);
+                            @endphp
+                            <tr class="lp-ecue-row js-ecue-row" data-parent-idx="{{ $idx }}" style="display:none;">
+                                @if($bulkEnabled)
+                                    <td class="lpb-check-cell">
+                                        <input type="checkbox"
+                                               class="lpb-check"
+                                               data-lpb-ecue-id="{{ $ecue->id }}"
+                                               data-lpb-ecue-label="{{ $ecueLabel }}"
+                                               aria-label="Selectionner {{ $ecueLabel }}">
+                                    </td>
+                                @endif
+                                <td class="lp-ecue-indent">
+                                    @if(!empty($ecue->code))<span class="lp-ecue-code">{{ $ecue->code_affiche }}</span>@endif
+                                    {{ $ecue->name }}
+                                </td>
+                                <td>—</td>
+                                @foreach(['cm', 'td', 'tp', 'projet', 'tpe'] as $vol)
+                                    @php $val = $planif?->{'volume_horaire_'.$vol} ?? 0; @endphp
+                                    @if($canEdit)
+                                        <td class="lp-volume lp-col-{{ $vol }} lpe-cell @if(!$val) lp-volume-zero @endif"
+                                            data-lpe-ecue-id="{{ $ecue->id }}"
+                                            data-lpe-field="volume_horaire_{{ $vol }}"
+                                            data-lpe-value="{{ $val }}"
+                                            x-data="lpeCell()"
+                                            @click="startEdit()"
+                                            :class="{ 'lpe-cell--editing': editing, 'lpe-cell--saving': saving }">
+                                            <span x-show="!editing" x-text="displayValue"></span>
+                                            <input x-show="editing" x-cloak x-ref="input" type="number"
+                                                   min="0" max="500" class="lpe-input"
+                                                   x-model="value"
+                                                   @blur="commit()"
+                                                   @keydown.enter.prevent="commit()"
+                                                   @keydown.escape.prevent="cancel()"
+                                                   @click.stop>
+                                        </td>
+                                    @else
+                                        <td class="lp-volume lp-col-{{ $vol }} @if(!$val) lp-volume-zero @endif">{{ $val }}</td>
+                                    @endif
+                                @endforeach
+                                <td class="lp-volume lp-volume-total lp-col-total">{{ $planif?->volume_horaire_total ?? 0 }}</td>
+                                @php $credit = $planif?->credits_ects ?? $ecue->credit_ecue; @endphp
+                                @if($canEdit)
+                                    <td class="lp-volume lp-col-cect lpe-cell @if(!$credit) lp-volume-zero @endif"
+                                        data-lpe-ecue-id="{{ $ecue->id }}"
+                                        data-lpe-field="credits_ects"
+                                        data-lpe-value="{{ $credit ?? '' }}"
+                                        x-data="lpeCell()"
+                                        @click="startEdit()"
+                                        :class="{ 'lpe-cell--editing': editing, 'lpe-cell--saving': saving }">
+                                        <span x-show="!editing" x-text="displayValue || '—'"></span>
+                                        <input x-show="editing" x-cloak x-ref="input" type="number"
+                                               min="0" max="30" class="lpe-input"
+                                               x-model="value"
+                                               @blur="commit()"
+                                               @keydown.enter.prevent="commit()"
+                                               @keydown.escape.prevent="cancel()"
+                                               @click.stop>
+                                    </td>
+                                @else
+                                    <td class="lp-volume lp-col-cect">{{ $credit ?? '—' }}</td>
+                                @endif
+                                @if($canEdit)
+                                    <td>
+                                        <button type="button"
+                                                class="lpe-teacher-btn @if($teacherCount) lpe-teacher-btn--assigned @endif"
+                                                title="{{ $teacherFullNames ?: 'Assigner des enseignants' }}"
+                                                aria-label="{{ $teacherFullNames ? 'Enseignants affectés : ' . $teacherFullNames . '. Modifier' : 'Assigner des enseignants à ' . $ecueLabel }}"
+                                                data-lpe-ecue-id="{{ $ecue->id }}"
+                                                data-lpe-teacher-id="{{ $teacherId ?? '' }}"
+                                                data-lpe-teacher-ids='@json($teacherIds)'
+                                                data-lpe-teacher-name="{{ $teacherFullNames }}"
+                                                data-lpe-ecue-label="{{ $ecueLabel }}"
+                                                x-data="lpeTeacherTrigger()"
+                                                @click="openPicker()">
+                                            <i class="fas {{ $teacherCount ? 'fa-user-check' : 'fa-user-plus' }}"></i>
+                                            <span class="lpe-teacher-name">{{ $teacherSummary ?: '+ Assigner' }}</span>
+                                        </button>
+                                    </td>
+                                @else
+                                    <td><span class="lpe-teacher-readonly" title="{{ $teacherFullNames }}">{{ $teacherFullNames ?: '—' }}</span></td>
+                                @endif
+                            </tr>
+                            @if($bulkEnabled)
+                            {{-- lpv-* widget: volume budget row (CM/TD/TP réalisé vs planifié) --}}
+                            <tr class="lpv-row js-ecue-row" data-parent-idx="{{ $idx }}" style="display:none;">
+                                <td></td>{{-- bulk checkbox spacer --}}
+                                <td colspan="10" class="lpv-cell"
+                                    x-data="lpvRow()"
+                                    data-lpv-ecue-id="{{ $ecue->id }}">
+                                    <div class="lpv-bars" x-show="loaded" x-cloak>
+                                        <template x-for="bar in bars" :key="bar.type">
+                                            <div class="lpv-bar-group">
+                                                <div class="lpv-bar-label">
+                                                    <span x-text="bar.type"></span>
+                                                    <span class="lpv-bar-nums">
+                                                        <span x-text="bar.realise + 'h'"></span>
+                                                        <span class="lpv-bar-sep">/</span>
+                                                        <span x-text="bar.planifie + 'h'"></span>
+                                                    </span>
+                                                </div>
+                                                <div class="lpv-bar-track">
+                                                    <div class="lpv-bar-fill"
+                                                         :class="bar.pct >= 100 ? 'lpv-bar-fill--done' : (bar.pct >= 70 ? 'lpv-bar-fill--warn' : '')"
+                                                         :style="'width:' + Math.min(bar.pct, 100) + '%'"></div>
+                                                </div>
+                                                <span class="lpv-bar-pct" x-text="bar.pct + '%'"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <div class="lpv-loading" x-show="!loaded" x-cloak>
+                                        <i class="fas fa-circle-notch fa-spin"></i>
+                                        <span>Chargement des heures réalisées…</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            @endif
+                        @endforeach
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+@endif

@@ -1,0 +1,382 @@
+<?php
+
+namespace App\Services;
+
+use App\Domain\BtsTroncCommun\BtsMaquette;
+use App\Helpers\SettingsHelper;
+use App\Models\ESBTPBulletin;
+use App\Models\ESBTPClasse;
+use App\Models\ESBTPConfigMatiere;
+use App\Models\ESBTPMatiere;
+use App\Models\ESBTPMatiereCoefficient;
+use App\Models\ESBTPMatiereFilierNiveau;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+class BulletinInlineConfigurationService
+{
+    public function __construct(private BulletinService $bulletinService, private BtsMaquette $btsMaquette)
+    {
+    }
+
+    public function data(int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        $classe = ESBTPClasse::with(['filiere', 'niveau'])->findOrFail($classeId);
+        $this->assertClasseBts($classe);
+        $periode = $this->bulletinService->normalizePeriode($periode);
+        $matieres = $this->matieresPourConfiguration($classe, $anneeUniversitaireId, $periode);
+        $periods = $this->periodsFor($periode);
+
+        $configRows = ESBTPConfigMatiere::query()
+            ->where('classe_id', $classe->id)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->whereIn('periode', $periods)
+            ->get()
+            ->groupBy('matiere_id');
+
+        $coefficientRows = ESBTPMatiereCoefficient::query()
+            ->where('filiere_id', $classe->filiere_id)
+            ->where('niveau_etude_id', $classe->niveau_etude_id)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->whereIn('periode', $periods)
+            ->get()
+            ->groupBy('matiere_id');
+
+        $professeursTemplate = $this->loadProfesseursTemplate($classe->id, $anneeUniversitaireId, $periode);
+
+        $matieresPayload = $matieres
+            ->map(function ($matiere) use ($configRows, $coefficientRows, $professeursTemplate) {
+                $existing = $configRows->get($matiere->id)?->first();
+                $existingType = $existing ? $this->normalizeConfigMatiereType($existing->config) : null;
+                $config = $this->decodeConfig($existing?->config);
+                $localCoefficient = $config['coefficient'] ?? null;
+                $coefficient = $localCoefficient ?? $coefficientRows->get($matiere->id)?->first()?->coefficient;
+                $professeur = trim((string) ($professeursTemplate[$matiere->id] ?? ''));
+
+                return [
+                    'id' => (int) $matiere->id,
+                    'name' => $matiere->name ?? $matiere->nom ?? 'Matiere #'.$matiere->id,
+                    'code' => $matiere->code,
+                    'source' => $matiere->configuration_source ?? 'classe',
+                    'existing_type' => $existingType,
+                    'suggested_type' => $existingType ?: $this->guessMatiereType($matiere),
+                    'coefficient' => $coefficient !== null ? (float) $coefficient : null,
+                    'coefficient_source' => $localCoefficient !== null ? 'classe' : ($coefficient !== null ? 'filiere' : 'manquant'),
+                    'professeur' => $professeur,
+                ];
+            })
+            ->values();
+
+        $configuredCount = $matieresPayload->filter(fn ($matiere) => ! empty($matiere['existing_type']))->count();
+        $configuredCoefficients = $matieresPayload->filter(fn ($matiere) => $matiere['coefficient'] !== null)->count();
+        $configuredProfesseurs = $matieresPayload->filter(fn ($matiere) => trim((string) ($matiere['professeur'] ?? '')) !== '')->count();
+
+        return [
+            'success' => true,
+            'classe' => [
+                'id' => (int) $classe->id,
+                'name' => $classe->name,
+                'filiere' => $classe->filiere?->name,
+                'niveau' => $classe->niveau?->name,
+            ],
+            'annee_universitaire_id' => $anneeUniversitaireId,
+            'periode' => $periode,
+            'matieres' => $matieresPayload,
+            'configured_count' => $configuredCount,
+            'missing_count' => max(0, $matieresPayload->count() - $configuredCount),
+            'configured_coefficients_count' => $configuredCoefficients,
+            'missing_coefficients_count' => max(0, $matieresPayload->count() - $configuredCoefficients),
+            'configured_professeurs_count' => $configuredProfesseurs,
+            'missing_professeurs_count' => max(0, $matieresPayload->count() - $configuredProfesseurs),
+        ];
+    }
+
+    public function save(array $validated, int $userId): array
+    {
+        $classe = ESBTPClasse::findOrFail($validated['classe_id']);
+        $this->assertClasseBts($classe);
+        $periode = $this->bulletinService->normalizePeriode($validated['periode']);
+        $autorisees = collect($this->periodsFor($periode))
+            ->flatMap(fn ($p) => $this->matieresPourConfiguration($classe, (int) $validated['annee_universitaire_id'], $p)->pluck('id'))
+            ->map(fn ($id) => (int) $id)->unique()->all();
+        $soumises = array_unique(array_map('intval', array_merge(
+            array_keys($validated['matiere_type']),
+            array_keys($validated['coefficients'] ?? []),
+            array_keys($validated['professeurs'] ?? []),
+        )));
+        if (array_diff($soumises, $autorisees)) {
+            throw ValidationException::withMessages(['matiere_type' => 'Une matière ne relève pas de cette classe et de cette période.']);
+        }
+        if (array_diff(array_keys($validated['coefficients'] ?? []), array_keys($validated['matiere_type']))) {
+            throw ValidationException::withMessages(['coefficients' => 'Chaque coefficient doit correspondre à une matière du formulaire.']);
+        }
+        $created = 0;
+        $updated = 0;
+        $removed = 0;
+        $coefficientsSaved = 0;
+        $coefficientsRemoved = 0;
+        $professeursSaved = 0;
+
+        DB::transaction(function () use ($validated, $classe, $periode, $userId, &$created, &$updated, &$removed, &$coefficientsSaved, &$coefficientsRemoved, &$professeursSaved) {
+            $professeurs = $this->normalizeProfesseurs(
+                $validated['professeurs'] ?? [],
+                array_keys($validated['matiere_type'])
+            );
+
+            foreach ($this->periodsFor($periode) as $targetPeriode) {
+                foreach ($validated['matiere_type'] as $matiereId => $type) {
+                    $query = [
+                        'matiere_id' => (int) $matiereId,
+                        'classe_id' => (int) $validated['classe_id'],
+                        'periode' => $targetPeriode,
+                        'annee_universitaire_id' => (int) $validated['annee_universitaire_id'],
+                    ];
+
+                    $existing = ESBTPConfigMatiere::withTrashed()->where($query)->first();
+                    $config = $this->decodeConfig($existing?->config);
+                    if ($type === 'none') {
+                        // Retire uniquement le classement, sans effacer le
+                        // coefficient classe ni les autres clés historiques.
+                        unset($config['type'], $config['type_formation']);
+                        $removed++;
+                    } else {
+                        $config['type'] = $type;
+                    }
+                    // Surcharge strictement classe / année / période : jamais
+                    // la table globale partagée par les classes d'une filière.
+                    if (array_key_exists($matiereId, $validated['coefficients'] ?? [])) {
+                        $valeur = $validated['coefficients'][$matiereId];
+                        if ($valeur === null || $valeur === '') {
+                            unset($config['coefficient']);
+                            $coefficientsRemoved++;
+                        } else {
+                            $config['coefficient'] = (float) $valeur;
+                            $coefficientsSaved++;
+                        }
+                    }
+                    if ($config === []) {
+                        ESBTPConfigMatiere::withTrashed()->where($query)->forceDelete();
+                        continue;
+                    }
+                    $enregistrement = ESBTPConfigMatiere::withTrashed()->updateOrCreate($query, [
+                        'config' => $config,
+                        'created_by' => $userId,
+                        'updated_by' => $userId,
+                    ]);
+                    if ($enregistrement->trashed()) {
+                        $enregistrement->restore();
+                    }
+
+                    $existing ? $updated++ : $created++;
+                }
+
+                $this->saveProfesseursTemplate(
+                    (int) $validated['classe_id'],
+                    (int) $validated['annee_universitaire_id'],
+                    $targetPeriode,
+                    $professeurs
+                );
+                $professeursSaved = count($professeurs);
+            }
+        });
+
+        return [
+            'created' => $created,
+            'updated' => $updated,
+            'removed' => $removed,
+            'coefficients_saved' => $coefficientsSaved,
+            'coefficients_removed' => $coefficientsRemoved,
+            'professeurs_saved' => $professeursSaved,
+        ];
+    }
+
+    public function loadProfesseursTemplate(int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        $periode = $this->bulletinService->normalizePeriode($periode);
+
+        foreach ($this->periodsFor($periode) as $targetPeriode) {
+            $raw = SettingsHelper::get($this->professeursTemplateKey($classeId, $anneeUniversitaireId, $targetPeriode), null);
+            $template = is_string($raw) ? (json_decode($raw, true) ?: []) : (array) $raw;
+            $template = array_filter($template, fn ($value) => trim((string) $value) !== '');
+
+            if ($template !== []) {
+                return $template;
+            }
+        }
+
+        $template = ESBTPBulletin::where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->whereIn('periode', $this->periodsFor($periode))
+            ->whereNotNull('professeurs')
+            ->where('professeurs', '!=', '')
+            ->where('professeurs', '!=', '{}')
+            ->latest('updated_at')
+            ->value('professeurs');
+
+        return is_string($template) ? (json_decode($template, true) ?: []) : (array) $template;
+    }
+
+    public function normalizeProfesseurs(array $professeurs, array $matiereIds): array
+    {
+        $allowed = array_flip(array_map('intval', $matiereIds));
+        $normalized = [];
+
+        foreach ($professeurs as $matiereId => $professeur) {
+            $matiereId = (int) $matiereId;
+            $professeur = trim((string) $professeur);
+
+            if (! isset($allowed[$matiereId]) || $professeur === '') {
+                continue;
+            }
+
+            $normalized[$matiereId] = $professeur;
+        }
+
+        return $normalized;
+    }
+
+    public function saveProfesseursTemplate(int $classeId, int $anneeUniversitaireId, string $periode, array $professeurs): void
+    {
+        SettingsHelper::setOrCreate(
+            $this->professeursTemplateKey($classeId, $anneeUniversitaireId, $periode),
+            json_encode($professeurs),
+            'bulletin',
+            'json'
+        );
+    }
+
+    public function periodsFor(string $periode): array
+    {
+        return $periode === 'annuel' ? ['semestre1', 'semestre2'] : [$periode];
+    }
+
+    private function assertClasseBts(ESBTPClasse $classe): void
+    {
+        if ($classe->systeme_academique === 'LMD') {
+            throw ValidationException::withMessages(['classe_id' => 'Les UE/ECUE LMD se configurent dans leur maquette dédiée.']);
+        }
+    }
+
+    private function matieresPourConfiguration(ESBTPClasse $classe, int $anneeUniversitaireId, string $periode): Collection
+    {
+        // Configuration d'un bulletin BTS (le LMD a `ESBTPLMDBulletinController`).
+        // Les TROIS lectures de cette methode sont gardees, pas seulement
+        // celle-ci : le repli lit les deux pivots plats, que `LiaisonsDeMatiere`
+        // ecrit ensemble, et `$evaluated` remonte tout ce qui porte une
+        // evaluation — y compris ce qui a ete cree avant que les ecrans
+        // d'evaluation ne soient gardes.
+        // La maquette et la configuration obeissent a la meme regle
+        // (ESBTPMatiereFilierNiveau::auBulletinDe) : sur une classe de tronc
+        // commun, une matiere classee « specialite » est ecartee. La proposer ici
+        // faisait remplir coefficients et professeurs d'une matiere que le
+        // bulletin de tronc commun n'affichera pas, sauf si elle porte une note.
+        // Ce dernier cas reste couvert plus bas par `$evaluated`, qui n'est
+        // volontairement pas filtre.
+        $ecartees = ESBTPMatiereFilierNiveau::ecarteesDuBulletin($classe->filiere, $classe->niveau_etude_id);
+
+        $official = ESBTPMatiere::query()
+            ->where('is_active', true)
+            ->btsOnly()
+            ->whereHas('liaisonsFilieresNiveaux', function ($query) use ($classe) {
+                $query->where('filiere_id', $classe->filiere_id)
+                    ->where('niveau_etude_id', $classe->niveau_etude_id)
+                    ->auBulletinDe($classe->filiere);
+            })
+            ->orderBy('name')
+            ->get();
+
+        if ($official->isEmpty()) {
+            $official = ESBTPMatiere::with(['filieres:id', 'niveaux:id'])
+                ->where('is_active', true)
+                ->btsOnly()
+                ->orderBy('name')
+                ->get()
+                ->filter(function ($matiere) use ($classe, $ecartees) {
+                    return $matiere->filieres->pluck('id')->contains($classe->filiere_id)
+                        && $matiere->niveaux->pluck('id')->contains($classe->niveau_etude_id)
+                        && ! in_array((int) $matiere->id, $ecartees, true);
+                })
+                ->values();
+        }
+
+        // Une maquette BTS validée fait autorité sur le semestre. Si elle est
+        // absente/partielle, isPrevue() retourne null : repli historique.
+        // Les évaluations historiques hors maquette restent proposées plus bas.
+        if (in_array($periode, ['semestre1', 'semestre2'], true)) {
+            $semestre = $periode === 'semestre1' ? 1 : 2;
+            $official = $official->filter(fn ($matiere) =>
+                $this->btsMaquette->isPrevue($classe, (int) $matiere->id, $semestre) !== false
+            )->values();
+        }
+
+        $officialIds = $official->pluck('id')->all();
+        // Une evaluation a pu etre creee sur une ECUE avant que les ecrans
+        // d'evaluation ne soient gardes : l'historique la ramenerait ici.
+        $evaluated = ESBTPMatiere::query()
+            ->where('is_active', true)
+            ->btsOnly()
+            ->whereNotIn('id', $officialIds)
+            ->whereHas('evaluations', function ($query) use ($classe, $anneeUniversitaireId, $periode) {
+                $query->where('classe_id', $classe->id)
+                    ->where('annee_universitaire_id', $anneeUniversitaireId)
+                    ->where('status', '!=', 'cancelled');
+
+                if ($periode === 'annuel') {
+                    $query->whereIn('periode', ['semestre1', 'semestre2']);
+                } else {
+                    $query->where('periode', $periode);
+                }
+            })
+            ->orderBy('name')
+            ->get();
+
+        $official->each(fn ($matiere) => $matiere->configuration_source = 'classe');
+        $evaluated->each(fn ($matiere) => $matiere->configuration_source = 'evaluations');
+
+        return $official
+            ->merge($evaluated)
+            ->unique('id')
+            ->values();
+    }
+
+    private function normalizeConfigMatiereType(mixed $config): ?string
+    {
+        $configData = $this->decodeConfig($config);
+        $type = $configData['type'] ?? $configData['type_formation'] ?? null;
+
+        return match ($type) {
+            'general', 'generale' => 'general',
+            'technique', 'technologique_professionnelle' => 'technique',
+            default => null,
+        };
+    }
+
+    /** Compatibilité avec les anciennes lignes JSON double-encodées. */
+    private function decodeConfig(mixed $config): array
+    {
+        for ($attempt = 0; $attempt < 3 && is_string($config); $attempt++) {
+            $config = json_decode($config, true);
+        }
+
+        return is_array($config) ? $config : [];
+    }
+
+    private function guessMatiereType(ESBTPMatiere $matiere): string
+    {
+        $name = strtolower($matiere->nom ?? $matiere->name ?? '');
+
+        return (str_contains($name, 'math')
+            || str_contains($name, 'anglais')
+            || str_contains($name, 'francais')
+            || str_contains($name, 'fran')
+            || str_contains($name, 'communication'))
+                ? 'general'
+                : 'technique';
+    }
+
+    private function professeursTemplateKey(int $classeId, int $anneeUniversitaireId, string $periode): string
+    {
+        return "bulletin_professeurs_template.{$classeId}.{$anneeUniversitaireId}.{$periode}";
+    }
+}

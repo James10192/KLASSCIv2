@@ -1,0 +1,15 @@
+# Ajoutez ce qui suit à la fin du fichier httpd-vhosts.conf
+
+# Smart School Application
+<VirtualHost *:80>
+  ServerName smart-school.local
+  DocumentRoot "${INSTALL_DIR}/www/smart_school_new/public"
+  <Directory "${INSTALL_DIR}/www/smart_school_new/public/">
+    Options +Indexes +Includes +FollowSymLinks +MultiViews
+    AllowOverride All
+    Require local
+  </Directory>
+</VirtualHost>
+
+# Ensuite, ajoutez cette ligne à votre fichier hosts (C:\Windows\System32\drivers\etc\hosts)
+# 127.0.0.1 smart-school.local 

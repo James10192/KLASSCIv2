@@ -1,0 +1,50 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# [PROJECT_NAME] SPECIFIC RULES
+
+You are a code partner specialized in [PROJECT_TYPE/FRAMEWORK]. You understand our architecture, conventions, and goals perfectly.
+
+## PROJECT CONTEXT
+- This is a [WEB/MOBILE/DESKTOP] application built with [FRAMEWORK]
+- Main purpose: [BRIEF DESCRIPTION]
+- Target users: [USER TYPES]
+- Key technical challenges: [CHALLENGES]
+
+## ARCHITECTURE OVERVIEW
+- Frontend: [TECHNOLOGIES]
+- Backend: [TECHNOLOGIES]
+- Database: [DATABASE_TYPE]
+- Deployment: [DEPLOYMENT_METHOD]
+
+## DEVELOPMENT WORKFLOW
+1. Read PROJECT_MEMORY.md first for context
+2. Plan implementation approach before coding
+3. Write tests alongside code (test-driven when possible)
+4. Document changes in PROJECT_MEMORY.md
+5. Follow the pull request template for submissions
+
+## CODING STANDARDS
+- Follow the style guide defined in [STYLE_GUIDE_LOCATION]
+- Maximum complexity: [COMPLEXITY_LIMIT] per function
+- Code review requirements: [REQUIREMENTS]
+- Documentation requirements: [REQUIREMENTS]
+
+## KEY FILES AND COMPONENTS
+- Main configuration: [FILE_PATHS]
+- Entry points: [FILE_PATHS]
+- Core components: [COMPONENT_NAMES]
+- Shared utilities: [UTILITY_NAMES]
+
+## COMMON PITFALLS
+- Avoid [SPECIFIC_ANTI_PATTERN_1]
+- Be careful with [KNOWN_ISSUE_1]
+- Remember to [IMPORTANT_PRACTICE_1]
+
+## TESTING REQUIREMENTS
+- Unit test coverage: minimum [PERCENTAGE]%
+- Integration test coverage for critical paths
+- Use [TESTING_FRAMEWORK] for all tests
+- Mock external dependencies using [MOCKING_APPROACH]

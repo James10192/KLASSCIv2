@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+---
+description: Recommandations pour la suite Nomenclature cohérente : Comme indiqué dans les règles de migration, il est important de maintenir une cohérence dans la nomenclature. Dans ce cas, vous avez deux structures de contrôleurs parallèles, ce qui peut être source de confusion : Contrôleurs dans app/Http/Controllers/ avec préfixe "ESBTP" (ex: ESBTPFiliereController) Contrôleurs dans app/Http/Controllers/ESBTP/ sans préfixe (ex: EtudiantController) Pour l'avenir, essayez d'adopter une convention unique pour tous les contrôleurs. Organisation des routes : Pour une meilleure organisation, vous pourriez envisager de regrouper les routes par fonctionnalité ou par rôle d'utilisateur, comme vous l'avez déjà commencé avec les routes pour les étudiants et les parents.  Documentation : Documentez la structure de vos contrôleurs et routes pour faciliter la maintenance et l'évolution de l'application.
+globs: 
+---

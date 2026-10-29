@@ -1,0 +1,19 @@
+# KLASSCI v2 — Code Owners
+# Chaque PR nécessite l'approbation du code owner concerné
+
+# Default: Marcel review tout
+* @James10192
+
+# Backend PHP/Laravel
+/app/ @James10192
+/config/ @James10192
+/database/ @James10192
+/routes/ @James10192
+
+# Frontend Blade/JS/CSS
+/resources/ @James10192
+/public/ @James10192
+
+# CI/CD & Config
+/.github/ @James10192
+/docker* @James10192

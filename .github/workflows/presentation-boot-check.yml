@@ -1,0 +1,43 @@
+name: Presentation boot check
+
+on:
+  push:
+    branches: [presentation]
+    paths:
+      - '.github/workflows/presentation-boot-check.yml'
+      - 'app/**'
+      - 'bootstrap/**'
+      - 'config/**'
+      - 'routes/**'
+      - 'composer.json'
+      - 'composer.lock'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  boot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      APP_DEBUG: true
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, dom, filter, gd, json, tokenizer
+          tools: composer
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Laravel boot
+        run: php artisan about
+      - name: Compile route table
+        run: php artisan route:list --except-vendor

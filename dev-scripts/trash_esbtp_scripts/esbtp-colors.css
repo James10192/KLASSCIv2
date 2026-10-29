@@ -1,0 +1,227 @@
+/**
+ * ESBTP Color Scheme
+ * 
+ * Ce fichier contient les variables CSS et les classes utilitaires
+ * pour appliquer facilement la charte graphique ESBTP à n'importe quelle page.
+ * 
+ * Comment utiliser:
+ * 1. Inclure ce fichier CSS dans votre page
+ * 2. Utiliser les classes utilitaires ou les variables CSS
+ */
+
+:root {
+    /* Couleurs principales */
+    --esbtp-green: #01632f;
+    --esbtp-orange: #f29400;
+    --esbtp-white: #ffffff;
+    
+    /* Variantes de couleurs */
+    --esbtp-green-light: rgba(1, 99, 47, 0.1);
+    --esbtp-green-dark: #014a23;
+    --esbtp-orange-light: rgba(242, 148, 0, 0.1);
+    --esbtp-orange-dark: #d98600;
+    
+    /* Couleurs de texte */
+    --esbtp-text-dark: #333333;
+    --esbtp-text-muted: #6c757d;
+    
+    /* Couleurs de fond */
+    --esbtp-bg-light: #f8f9fa;
+    --esbtp-bg-gray: #e9ecef;
+}
+
+/* Classes de couleur de texte */
+.text-esbtp-green { color: var(--esbtp-green) !important; }
+.text-esbtp-orange { color: var(--esbtp-orange) !important; }
+.text-esbtp-white { color: var(--esbtp-white) !important; }
+
+/* Classes de couleur de fond */
+.bg-esbtp-green { background-color: var(--esbtp-green) !important; color: var(--esbtp-white) !important; }
+.bg-esbtp-orange { background-color: var(--esbtp-orange) !important; color: var(--esbtp-white) !important; }
+.bg-esbtp-green-light { background-color: var(--esbtp-green-light) !important; }
+.bg-esbtp-orange-light { background-color: var(--esbtp-orange-light) !important; }
+
+/* Classes de bordure */
+.border-esbtp-green { border-color: var(--esbtp-green) !important; }
+.border-esbtp-orange { border-color: var(--esbtp-orange) !important; }
+
+/* Boutons */
+.btn-esbtp-green {
+    background-color: var(--esbtp-green);
+    border-color: var(--esbtp-green);
+    color: var(--esbtp-white);
+}
+
+.btn-esbtp-green:hover,
+.btn-esbtp-green:focus {
+    background-color: var(--esbtp-green-dark);
+    border-color: var(--esbtp-green-dark);
+    color: var(--esbtp-white);
+}
+
+.btn-esbtp-orange {
+    background-color: var(--esbtp-orange);
+    border-color: var(--esbtp-orange);
+    color: var(--esbtp-white);
+}
+
+.btn-esbtp-orange:hover,
+.btn-esbtp-orange:focus {
+    background-color: var(--esbtp-orange-dark);
+    border-color: var(--esbtp-orange-dark);
+    color: var(--esbtp-white);
+}
+
+.btn-outline-esbtp-green {
+    background-color: transparent;
+    border-color: var(--esbtp-green);
+    color: var(--esbtp-green);
+}
+
+.btn-outline-esbtp-green:hover,
+.btn-outline-esbtp-green:focus {
+    background-color: var(--esbtp-green);
+    color: var(--esbtp-white);
+}
+
+.btn-outline-esbtp-orange {
+    background-color: transparent;
+    border-color: var(--esbtp-orange);
+    color: var(--esbtp-orange);
+}
+
+.btn-outline-esbtp-orange:hover,
+.btn-outline-esbtp-orange:focus {
+    background-color: var(--esbtp-orange);
+    color: var(--esbtp-white);
+}
+
+/* Badges */
+.badge-esbtp-green {
+    background-color: var(--esbtp-green);
+    color: var(--esbtp-white);
+}
+
+.badge-esbtp-orange {
+    background-color: var(--esbtp-orange);
+    color: var(--esbtp-white);
+}
+
+/* Liens */
+.link-esbtp-green {
+    color: var(--esbtp-green);
+    text-decoration: none;
+}
+
+.link-esbtp-green:hover {
+    color: var(--esbtp-green-dark);
+    text-decoration: underline;
+}
+
+.link-esbtp-orange {
+    color: var(--esbtp-orange);
+    text-decoration: none;
+}
+
+.link-esbtp-orange:hover {
+    color: var(--esbtp-orange-dark);
+    text-decoration: underline;
+}
+
+/* Dégradés */
+.gradient-esbtp {
+    background: linear-gradient(135deg, var(--esbtp-green), var(--esbtp-orange));
+    color: var(--esbtp-white);
+}
+
+.gradient-esbtp-vertical {
+    background: linear-gradient(to bottom, var(--esbtp-green), var(--esbtp-orange));
+    color: var(--esbtp-white);
+}
+
+/* Cartes */
+.card-esbtp {
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-esbtp:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.card-header-esbtp-green {
+    background-color: var(--esbtp-green);
+    color: var(--esbtp-white);
+    border-bottom: none;
+}
+
+.card-header-esbtp-orange {
+    background-color: var(--esbtp-orange);
+    color: var(--esbtp-white);
+    border-bottom: none;
+}
+
+/* Utilitaires */
+.shadow-esbtp {
+    box-shadow: 0 5px 15px rgba(1, 99, 47, 0.1);
+}
+
+.transition-esbtp {
+    transition: all 0.3s ease;
+}
+
+/* Animations */
+@keyframes pulse-esbtp-green {
+    0% { box-shadow: 0 0 0 0 rgba(1, 99, 47, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(1, 99, 47, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(1, 99, 47, 0); }
+}
+
+@keyframes pulse-esbtp-orange {
+    0% { box-shadow: 0 0 0 0 rgba(242, 148, 0, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(242, 148, 0, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(242, 148, 0, 0); }
+}
+
+.pulse-esbtp-green {
+    animation: pulse-esbtp-green 2s infinite;
+}
+
+.pulse-esbtp-orange {
+    animation: pulse-esbtp-orange 2s infinite;
+}
+
+/* Formulaires */
+.form-control:focus {
+    border-color: var(--esbtp-orange);
+    box-shadow: 0 0 0 0.25rem rgba(242, 148, 0, 0.25);
+}
+
+/* Tableaux */
+.table-esbtp thead {
+    background-color: var(--esbtp-green);
+    color: var(--esbtp-white);
+}
+
+.table-esbtp-striped tbody tr:nth-of-type(odd) {
+    background-color: var(--esbtp-green-light);
+}
+
+.table-esbtp-hover tbody tr:hover {
+    background-color: var(--esbtp-orange-light);
+}
+
+/* Alertes */
+.alert-esbtp-green {
+    background-color: var(--esbtp-green-light);
+    border-color: var(--esbtp-green);
+    color: var(--esbtp-green);
+}
+
+.alert-esbtp-orange {
+    background-color: var(--esbtp-orange-light);
+    border-color: var(--esbtp-orange);
+    color: var(--esbtp-orange-dark);
+} 

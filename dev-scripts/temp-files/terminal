@@ -1,0 +1,11 @@
+# Se placer dans le répertoire du projet
+cd C:\xampp\htdocs\ESBTP-yAKROv2
+
+# Installer les dépendances avec Composer
+composer install
+
+# Copier le fichier .env.example en .env si ce n'est pas déjà fait
+copy .env.example .env
+
+# Générer une clé d'application
+php artisan key:generate 

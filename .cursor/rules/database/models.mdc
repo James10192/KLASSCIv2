@@ -1,0 +1,31 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# DATABASE MODEL STANDARDS
+[base.mdc](mdc:.cursor/rules/base.mdc)
+
+Description: Standards for database models and schemas
+Globs: src/models/**/*.{js,ts} | app/models/**/*.{rb,py} | db/migrations/**/*.{js,ts,rb,py}
+
+## MODEL DESIGN
+- Use meaningful and consistent naming for models and fields
+- Implement proper relationships (one-to-many, many-to-many, etc.)
+- Define appropriate indexes for frequently queried fields
+- Include constraints to ensure data integrity
+- Use appropriate data types for each field
+
+## MIGRATIONS
+- Make migrations reversible whenever possible
+- Include both up and down methods
+- Break complex schema changes into multiple migrations
+- Add descriptive comments for non-obvious changes
+- Test migrations on a copy of production data before deploying
+
+## QUERY OPTIMIZATION
+- Avoid N+1 query problems by eager loading related data
+- Use database-specific features appropriately (e.g., JSON fields, full-text search)
+- Implement query-specific indexes for complex queries
+- Consider denormalization for read-heavy operations
+- Use query builders or ORM features for complex queries

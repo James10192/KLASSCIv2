@@ -1,0 +1,208 @@
+---
+description: Processus d'Installation ESBTP
+globs: **/*
+alwaysApply: true
+---
+Ce document détaille le processus d'installation de l'application ESBTP, depuis le déploiement initial jusqu'à la création du compte administrateur et la configuration du système.
+
+## Aperçu du Processus d'Installation
+
+L'installation de l'application ESBTP suit une séquence d'étapes guidées:
+
+1. **Vérification des prérequis**
+2. **Configuration de la base de données**
+3. **Exécution des migrations**
+4. **Création du compte administrateur**(superadmin)
+5. **Finalisation de l'installation**
+
+## Structure des Fichiers d'Installation
+
+```
+ESBTP/
+├── resources/
+│   └── views/
+│       └── install/
+│           ├── layout.blade.php      # Layout principal pour toutes les vues d'installation
+│           ├── welcome.blade.php     # Page d'accueil et vérification des prérequis
+│           ├── database.blade.php    # Configuration de la base de données
+│           ├── migration.blade.php   # Exécution des migrations
+│           ├── admin.blade.php       # Création du compte administrateur
+│           └── complete.blade.php    # Page de finalisation
+├── app/
+│   └── Http/
+│       └── Controllers/
+│           └── InstallController.php # Contrôleur pour gérer le processus d'installation
+└── routes/
+    └── web.php                     # Routes d'installation
+```
+
+## Routes d'Installation
+
+Les routes suivantes sont définies pour le processus d'installation:
+
+```php
+// Routes d'installation - Accessibles uniquement si l'application n'est pas installée
+Route::group(['prefix' => 'install', 'as' => 'install.', 'middleware' => 'installation'], function () {
+    Route::get('/', 'InstallController@index')->name('index');
+    Route::get('/database', 'InstallController@showDatabaseForm')->name('database');
+    Route::post('/setup-database', 'InstallController@setupDatabase')->name('setup-database');
+    Route::get('/migration', 'InstallController@showMigrationForm')->name('migration');
+    Route::post('/run-migration', 'InstallController@runMigration')->name('run-migration');
+    Route::get('/admin', 'InstallController@showAdminForm')->name('admin');
+    Route::post('/setup-admin', 'InstallController@setupAdmin')->name('setup-admin');
+    Route::get('/complete', 'InstallController@complete')->name('complete');
+});
+```
+
+## Étapes Détaillées
+
+### 1. Vérification des Prérequis
+
+**Vue**: `welcome.blade.php`
+
+Vérifications effectuées:
+- Version PHP (7.4 ou supérieur)
+- Extensions PHP requises:
+  - BCMath
+  - Ctype
+  - Fileinfo
+  - JSON
+  - Mbstring
+  - OpenSSL
+  - PDO
+  - Tokenizer
+  - XML
+- Permissions d'écriture sur les répertoires:
+  - storage/
+  - bootstrap/cache/
+  - .env
+
+### 2. Configuration de la Base de Données
+
+**Vue**: `database.blade.php`
+
+Fonctionnalités:
+- Formulaire pour saisir les informations de connexion à la base de données
+- Test de connexion asynchrone
+- Création automatique de la base de données si elle n'existe pas
+- Génération ou mise à jour du fichier `.env`
+
+**Règles spécifiques**:
+
+```
+Si .env n'existe pas:
+    Créer un nouveau fichier .env à partir de .env.example
+    
+Si la base de données renseignée n'existe pas:
+    Créer une nouvelle base de données avec le nom renseigné
+    
+Si le fichier .env existe et contient déjà une connexion de base de données:
+    Afficher le nom de la base de données dans le champ avec une indication visuelle
+    Permettre la modification pour utiliser une autre base de données
+    
+Après la validation de la connexion:
+    Rediriger vers l'étape de migration
+```
+
+### 3. Exécution des Migrations
+
+**Vue**: `migration.blade.php`
+
+Fonctionnalités:
+- Affichage de l'état actuel de la base de données
+- Liste des tables existantes
+- Exécution des migrations
+- Visualisation du progrès de l'installation
+- Affichage des modules et leur état d'installation
+
+**Comportement**:
+
+```
+Afficher l'état actuel de la base de données:
+    Nombre de tables existantes
+    Nombre de tables de migration
+    Nombre de fichiers de migration
+    
+Exécuter les migrations par lots:
+    Migrations de base Laravel
+    Migrations des modules ESBTP
+    
+Afficher visuellement l'état des différents modules:
+    Tables académiques
+    Tables utilisateurs
+    Tables pédagogiques
+    
+Permettre de réparer/relancer les migrations en cas d'erreur
+```
+
+### 4. Création du Compte Administrateur
+
+**Vue**: `admin.blade.php`
+
+Fonctionnalités:
+- Formulaire pour créer le compte super-administrateur
+- Validation des informations
+- Création automatique du rôle super-administrateur avec toutes les permissions
+
+**Règles spécifiques**:
+
+```
+Champs requis:
+    Nom complet
+    Nom d'utilisateur (unique)
+    Adresse email (unique)
+    Mot de passe (8 caractères minimum)
+    Confirmation du mot de passe
+    
+Validation:
+    Email valide
+    Mots de passe correspondants
+    Nom d'utilisateur sans caractères spéciaux
+    
+Création du compte:
+    Affecter automatiquement le rôle super-administrateur
+    Activer toutes les permissions disponibles
+    
+Important:
+    Ne pas utiliser de seeder pour le super-admin
+    Le super-admin est créé uniquement via ce processus d'installation
+```
+
+### 5. Finalisation de l'Installation
+
+**Vue**: `complete.blade.php`
+
+Fonctionnalités:
+- Résumé de l'installation
+- Création du fichier `.env` avec `APP_INSTALLED=true`
+- Liens vers le tableau de bord et la documentation
+
+## Middleware d'Installation
+
+Un middleware `InstallationMiddleware` est utilisé pour:
+
+1. Rediriger vers l'installation si l'application n'est pas installée et l'utilisateur accède à une autre page
+2. Bloquer l'accès aux pages d'installation si l'application est déjà installée
+
+## Procédure de Réinstallation
+
+Pour réinstaller l'application:
+
+1. Modifier `.env` et définir `APP_INSTALLED=false`
+2. Optionnellement, vider la base de données ou utiliser une nouvelle
+3. Accéder à `/install` pour recommencer le processus
+
+## États et Débogage
+
+En cas de problème durant l'installation:
+
+1. Vérifier les logs dans `storage/logs/laravel.log`
+2. S'assurer que les permissions sont correctes sur les répertoires clés
+3. Vérifier la configuration de la base de données
+
+## Conventions Importantes
+
+1. **Ne pas utiliser de seeders pour le super-admin** - Le compte administrateur doit être créé uniquement lors de l'installation
+2. **Conserver l'état d'installation dans `.env`** - Utiliser `APP_INSTALLED=true/false`
+3. **Validation des étapes** - Chaque étape doit valider que les précédentes sont complétées
+4. **Conservation des chemins d'installation** - Maintenir la structure des vues et du contrôleur pour les futures mises à jour

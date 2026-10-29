@@ -1,0 +1,2678 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Domain\Comptabilite\Paiements\Actions\SupprimerPaiement;
+use App\Models\ESBTPPaiement;
+use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPInscription;
+use App\Models\ESBTPAnneeUniversitaire;
+use App\Exceptions\RepartitionRefuseeException;
+use App\Exceptions\ExportPdfTropVolumineuxException;
+use App\Services\Exports\PdfParLots;
+use App\Support\ListeInfinie;
+use App\Http\Requests\Paiement\StorePaiementRequest;
+use App\Http\Requests\Paiement\UpdatePaiementRequest;
+use App\Services\Frais\RepartitionDuVersement;
+use App\Services\Paiements\EtatRecuPaiement;
+use App\Services\PaymentFilterService;
+use App\Services\MobileMoneyPaymentGuard;
+use App\Services\PaymentStatsService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use App\Services\FuzzyNameMatcher;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Database\QueryException;
+
+class ESBTPPaiementController extends Controller
+{
+    use \App\Http\Controllers\Concerns\RespondsWithInlinePdf;
+    // Les verrous de periode et de reconciliation vivaient ici en methodes
+    // privees. Un second ecran ecrit desormais sur de l'argent encaisse (la
+    // correction d'imputation) : ils sont partages plutot que recopies.
+    use \App\Http\Controllers\Concerns\VerrouilleLesPeriodesComptables;
+
+    /**
+     * Plafond du PDF de la liste des paiements.
+     *
+     * Ce n'est plus une limite de memoire — le rendu par lots l'a levee — mais
+     * de temps : au-dela, l'attente devient plus penible que le filtre qu'on
+     * demande a l'utilisateur de poser.
+     */
+    private const PDF_PAIEMENTS_MAX_LIGNES = 10000;
+
+    protected PaymentFilterService $filterService;
+    protected PaymentStatsService $statsService;
+
+    /**
+     * Constructeur du contrôleur.
+     */
+    public function __construct(PaymentFilterService $filterService, PaymentStatsService $statsService)
+    {
+        $this->filterService = $filterService;
+        $this->statsService = $statsService;
+
+        $this->middleware('auth');
+        // Accepter soit `paiements.view` (voit tous), soit `paiements.view_own` (voit ses encaissements)
+        $this->middleware('permission:paiements.view|paiements.view_own', ['only' => ['index', 'show', 'paiementsEtudiant', 'genererRecu', 'previewRecu']]);
+        $this->middleware('permission:paiements.create|paiements.create.non_cash|paiements.create.mobile_money', ['only' => ['create', 'store', 'apercuRepartition']]);
+        $this->middleware('permission:paiements.edit', ['only' => ['edit', 'update']]);
+        $this->middleware('permission:paiements.delete', ['only' => ['destroy']]);
+        $this->middleware('permission:paiements.validate', ['only' => ['valider', 'rejeter']]);
+    }
+
+    /**
+     * Affiche la liste des paiements.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function index(Request $request, FuzzyNameMatcher $matcher)
+    {
+        $startMicrotime = microtime(true);
+        $startTimestamp = now()->toIso8601String();
+        $baseLogContext = [
+            'timestamp' => $startTimestamp,
+            'url' => $request->fullUrl(),
+            'query' => $request->query(),
+            'user_id' => optional($request->user())->id,
+        ];
+        Log::info('ESBTPPaiementController@index start', $baseLogContext);
+
+        $data = $this->filterService->preparePaiementListing(
+            $request, $matcher, $baseLogContext, $startMicrotime, 'ESBTPPaiementController@index',
+            // La suite d'une liste au defilement n'a pas besoin des compteurs.
+            ! ($request->ajax() && $request->input('mode') === 'rows'),
+        );
+
+        $completionContext = array_merge($baseLogContext, [
+            'timestamp' => now()->toIso8601String(),
+            'total' => $data['summary']['total'],
+            'page' => $data['summary']['page'],
+            'per_page' => $data['summary']['per_page'],
+            'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
+        ]);
+
+        // Liste mobile (shell m-*) : des donnees, pas du HTML. La vue mobile
+        // rend elle-meme ses cartes-lignes et charge la suite par pages.
+        if ($request->input('mode') === 'mobile') {
+            Log::info('ESBTPPaiementController@index returning mobile JSON', $completionContext);
+
+            return response()->json($this->listeMobile($data, $request));
+        }
+
+        if ($request->ajax()) {
+            Log::info('ESBTPPaiementController@index returning AJAX response', $completionContext);
+
+            // Construire l'URL pour la navigation
+            $navUrl = route('esbtp.paiements.index');
+            if ($request->getQueryString()) {
+                $navUrl .= '?' . $request->getQueryString();
+            }
+
+            // Suite de la liste au defilement : le contrat partage ListeInfinie.
+            if (ListeInfinie::demandee($request)) {
+                return ListeInfinie::reponse($data['paiements'], fn (ESBTPPaiement $p) => $this->ligneDePaiement($p));
+            }
+
+            return response()->json([
+                'table' => view('esbtp.paiements.partials.table', [
+                    'paiements' => $data['paiements'],
+                ])->render(),
+                'metrics_kpis' => view('esbtp.paiements.partials.metrics-kpis', [
+                    'stats' => $data['stats'],
+                ])->render(),
+                'metrics_details' => view('esbtp.paiements.partials.metrics-details', [
+                    'stats' => $data['stats'],
+                ])->render(),
+                'url' => $navUrl,  // URL navigable
+                'summary' => $data['summary'],
+                'last_updated_at' => optional($data['last_updated_at'])->toIso8601String(),
+                'checkpoint' => $this->filterService->pointDeControle($request),
+            ]);
+        }
+
+        Log::info('ESBTPPaiementController@index returning view', $completionContext);
+
+        return view('esbtp.paiements.index', [
+            'paiements' => $data['paiements'],
+            'stats' => $data['stats'],
+            'lastUpdatedAt' => $data['last_updated_at'],
+            // Le filtre par frais. Seule la vue complete en a besoin : les
+            // reponses AJAX ne re-rendent que le tableau et les indicateurs.
+            'modesReglement' => $this->modesDeReglement(),
+            // Etat de depart du polling : sans lui, le premier poll le prend pour
+            // la reference et un versement enregistre juste apres le rendu est perdu.
+            'checkpoint' => $this->filterService->pointDeControle($request),
+            'fraisCategories' => \App\Models\ESBTPFraisCategory::active()
+                ->ordered()
+                ->pluck('name', 'id'),
+            // Premiere page de la liste mobile, deja en donnees : l'ecran
+            // s'affiche sans second aller-retour.
+            'listeMobile' => $this->listeMobile($data, $request),
+        ]);
+    }
+
+    /**
+     * La liste des paiements telle que la consomme le shell mobile.
+     *
+     * Le perimetre (tout / ses propres encaissements) et les filtres sont ceux
+     * de PaymentFilterService, exactement comme pour le tableau de bureau et
+     * les exports : cette methode ne fait que mettre en forme la page courante.
+     */
+    private function listeMobile(array $data, Request $request): array
+    {
+        /** @var \Illuminate\Pagination\LengthAwarePaginator $paiements */
+        $paiements = $data['paiements'];
+        // LMD : la classe s'ancre sur un parcours, affiche sous la classe.
+        $paiements->loadMissing('inscription.classe.parcours:id,name');
+
+        // Filtre par frais actif : la ligne dit ce que CE frais a recu, pas le
+        // versement entier (meme regle que la ligne du tableau).
+        $fraisFiltre = (int) $request->input('frais_category_id');
+
+        $initiales = static fn (string $nom): string => collect(preg_split('/\s+/u', trim($nom)) ?: [])
+            ->filter()
+            ->take(2)
+            ->map(fn ($mot) => mb_strtoupper(mb_substr($mot, 0, 1, 'UTF-8'), 'UTF-8'))
+            ->implode('');
+
+        $items = collect($paiements->items())->map(function (ESBTPPaiement $p) use ($fraisFiltre, $initiales) {
+            $etudiant = $p->etudiant;
+            $inscription = $p->inscription;
+            $classe = $inscription?->classe;
+            $estLmd = ($classe?->systeme_academique ?? null) === \App\Services\FraisScopeResolver::SYSTEME_LMD;
+            $classeLabel = $classe?->name
+                ?: trim(($inscription?->niveauEtude?->name ?? '') . ' ' . ($inscription?->filiere?->name ?? ''));
+            $nom = $etudiant?->user?->name ?? ($etudiant?->nom_complet ?? '—');
+            $date = $p->date_paiement;
+            $quand = match (true) {
+                $date === null => '—',
+                $date->isToday() => $p->created_at?->isToday() ? $p->created_at->format('H:i') : "aujourd'hui",
+                $date->isYesterday() => 'hier',
+                default => $date->format('d/m'),
+            };
+
+            return [
+                'id' => $p->id,
+                'url' => route('esbtp.paiements.show', $p->id),
+                'numero_recu' => (string) $p->numero_recu,
+                'nom' => $nom,
+                'initiales' => $initiales($nom),
+                'matricule' => $etudiant?->matricule,
+                'classe' => $classeLabel !== '' ? $classeLabel : null,
+                'parcours' => $estLmd ? ($classe?->parcours?->name ?? $inscription?->filiere?->name) : null,
+                'frais' => $p->ventilation()->pluck('nom')->filter()->implode(', '),
+                'type_dette' => $p->type_paiement === 'reliquat'
+                    ? 'Ancienne dette reportée'
+                    : (($inscription?->anneeUniversitaire && ! $inscription->anneeUniversitaire->is_current)
+                        ? 'Ancienne dette · '.$inscription->anneeUniversitaire->name
+                        : null),
+                'mode' => (string) $p->mode_paiement,
+                'quand' => $quand,
+                'montant' => (float) ($fraisFiltre ? $p->partPourCategorie($fraisFiltre) : $p->montant),
+                'montant_total' => (float) $p->montant,
+                'avoir' => $p->isAvoir(),
+                'statut' => (string) $p->status,
+                'caissier' => $p->creator?->name,
+            ];
+        })->values();
+
+        $navUrl = route('esbtp.paiements.index');
+        $query = \Illuminate\Support\Arr::except($request->query(), ['mode', 'page']);
+        if ($query !== []) {
+            $navUrl .= '?' . http_build_query($query);
+        }
+
+        $stats = $data['stats'];
+
+        return [
+            'items' => $items,
+            'has_more' => $paiements->hasMorePages(),
+            'next_page' => $paiements->currentPage() + 1,
+            'summary' => $data['summary'],
+            'stats' => [
+                'total' => (int) ($stats['total'] ?? 0),
+                'valides' => (int) ($stats['valides'] ?? 0),
+                'en_attente' => (int) ($stats['en_attente'] ?? 0),
+                'rejetes' => (int) ($stats['rejetes'] ?? 0),
+                'montant_total' => (float) ($stats['montant_total'] ?? 0),
+                'montant_valide' => (float) ($stats['montant_valide'] ?? 0),
+            ],
+            'url' => $navUrl,
+            'last_updated_at' => optional($data['last_updated_at'])->toIso8601String(),
+        ];
+    }
+
+    public function refresh(Request $request, FuzzyNameMatcher $matcher)
+    {
+        $startMicrotime = microtime(true);
+        $startTimestamp = now()->toIso8601String();
+        $baseLogContext = [
+            'timestamp' => $startTimestamp,
+            'url' => $request->fullUrl(),
+            'query' => $request->query(),
+            'user_id' => optional($request->user())->id,
+        ];
+        Log::info('ESBTPPaiementController@refresh start', $baseLogContext);
+
+        $data = $this->filterService->preparePaiementListing(
+            $request, $matcher, $baseLogContext, $startMicrotime, 'ESBTPPaiementController@refresh',
+            // La suite d'une liste au defilement n'a pas besoin des compteurs.
+            ! ($request->ajax() && $request->input('mode') === 'rows'),
+        );
+
+        Log::info('ESBTPPaiementController@refresh returning AJAX response', array_merge($baseLogContext, [
+            'timestamp' => now()->toIso8601String(),
+            'total' => $data['summary']['total'],
+            'page' => $data['summary']['page'],
+            'per_page' => $data['summary']['per_page'],
+            'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
+        ]));
+
+        // Liste mobile (shell m-*) : memes donnees que sur la page, par pages.
+        if ($request->input('mode') === 'mobile') {
+            return response()->json($this->listeMobile($data, $request));
+        }
+
+        // Construire l'URL pour la navigation (remplacer /refresh par /paiements)
+        $navUrl = route('esbtp.paiements.index');
+        if ($request->getQueryString()) {
+            $navUrl .= '?' . $request->getQueryString();
+        }
+
+        // Suite de la liste au defilement : le contrat partage ListeInfinie.
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($data['paiements'], fn (ESBTPPaiement $p) => $this->ligneDePaiement($p));
+        }
+
+        return response()->json([
+            'table' => view('esbtp.paiements.partials.table', [
+                'paiements' => $data['paiements'],
+            ])->render(),
+            'metrics_kpis' => view('esbtp.paiements.partials.metrics-kpis', [
+                'stats' => $data['stats'],
+            ])->render(),
+            'metrics_details' => view('esbtp.paiements.partials.metrics-details', [
+                'stats' => $data['stats'],
+            ])->render(),
+            'url' => $navUrl,  // URL navigable (pas /refresh)
+            'summary' => $data['summary'],
+            'last_updated_at' => optional($data['last_updated_at'])->toIso8601String(),
+            'checkpoint' => $this->filterService->pointDeControle($request),
+        ]);
+    }
+
+    /**
+     * Une ligne du tableau, modales comprises (dans une cellule masquee) : une
+     * ligne ajoutee au defilement arrive seule, sans rien hors du <tr>.
+     */
+    private function ligneDePaiement(ESBTPPaiement $paiement): string
+    {
+        return view('esbtp.paiements.partials.ligne-paiement', [
+            'paiement' => $paiement,
+            'showCreatorColumn' => auth()->user()?->can('paiements.view') ?? false,
+            'renderPaiementModals' => false,
+            'modalesDansLigne' => true,
+        ])->render();
+    }
+
+    /**
+     * Options du filtre « Mode de règlement » : les valeurs réellement stockées,
+     * telles quelles. Une option qui ne correspond à aucune ligne afficherait un
+     * faux zéro ; la saisie enregistre des libellés, pas les codes de l'enum.
+     *
+     * @return array<string, string>
+     */
+    private function modesDeReglement(): array
+    {
+        return PaymentFilterService::optionsDesModes();
+    }
+
+    /**
+     * Vérifie s'il y a des changements dans les paiements (nouveau paiement, changement de statut)
+     * sans charger toutes les données (requête ultra-légère pour polling)
+     */
+    public function checkForUpdates(Request $request)
+    {
+        // Meme perimetre et memes filtres que la liste : sinon le polling
+        // comparerait deux ensembles differents et rechargerait sans raison.
+        return response()->json($this->filterService->pointDeControle($request));
+    }
+
+    /**
+     * Détermine le type de catégorie d'un paiement (nouveau système + fallback ancien).
+     */
+    private function determineCategoryType($paiement)
+    {
+        // D'abord essayer avec le nouveau système
+        if ($paiement->fraisCategory) {
+            return $paiement->fraisCategory->category_type ?? 'academic';
+        }
+
+        // Fallback sur l'ancien système
+        if ($paiement->categorie) {
+            return $this->mapOldCategoryToType($paiement->categorie->nom ?? '');
+        }
+
+        // Fallback basé sur le motif ou type_paiement
+        if ($paiement->motif || $paiement->type_paiement) {
+            return $this->inferCategoryFromMotif($paiement->motif ?? $paiement->type_paiement ?? '');
+        }
+
+        // Par défaut, considérer comme academic
+        return 'academic';
+    }
+
+    /**
+     * Mappe les anciennes catégories vers les nouveaux types.
+     */
+    private function mapOldCategoryToType($categoryName)
+    {
+        $name = strtolower($categoryName);
+
+        if (str_contains($name, 'cantine') || str_contains($name, 'transport')) {
+            return 'service';
+        }
+
+        if (str_contains($name, 'documentation') || str_contains($name, 'examen')) {
+            return 'administrative';
+        }
+
+        return 'academic'; // inscription, scolarité par défaut
+    }
+
+    /**
+     * Infère le type de catégorie à partir du motif.
+     */
+    private function inferCategoryFromMotif($motif)
+    {
+        $motif = strtolower($motif);
+
+        if (str_contains($motif, 'cantine') || str_contains($motif, 'transport')) {
+            return 'service';
+        }
+
+        if (str_contains($motif, 'documentation') || str_contains($motif, 'examen')) {
+            return 'administrative';
+        }
+
+        return 'academic';
+    }
+
+    /**
+     * Affiche le formulaire de création d'un paiement.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function create(Request $request)
+    {
+        $etudiantId = $request->input('etudiant_id');
+        $inscriptionId = $request->input('inscription_id');
+
+        $etudiant = null;
+        $inscription = null;
+
+        // Si un étudiant est spécifié, récupérer ses informations
+        if ($etudiantId) {
+            $etudiant = ESBTPEtudiant::with(['user', 'inscriptions.anneeUniversitaire', 'inscriptions.filiere', 'inscriptions.niveauEtude'])
+                ->findOrFail($etudiantId);
+
+            // Si aucune inscription n'est spécifiée, prendre la plus récente
+            if (!$inscriptionId && $etudiant->inscriptions->count() > 0) {
+                $inscription = $etudiant->inscriptions->sortByDesc('created_at')->first();
+            }
+        }
+
+        // Si une inscription est spécifiée, la récupérer
+        if ($inscriptionId) {
+            $inscription = ESBTPInscription::with(['etudiant.user', 'anneeUniversitaire', 'filiere', 'niveauEtude'])
+                ->findOrFail($inscriptionId);
+
+            // Si aucun étudiant n'est spécifié, prendre celui de l'inscription
+            if (!$etudiant) {
+                $etudiant = $inscription->etudiant;
+            }
+        }
+
+        // Récupérer l'année universitaire en cours
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        // Seuil "montant inhabituel" — au-delà, le caissier doit confirmer explicitement
+        // Configurable par l'école via /esbtp/settings (tenant-level), default 500 000 FCFA
+        $unusualAmountThreshold = (int) \App\Helpers\SettingsHelper::get('comptabilite.unusual_amount_threshold', 500000);
+        $allowedPaymentModes = app(MobileMoneyPaymentGuard::class)->allowedModes(auth()->user());
+
+        $filieres = \App\Models\ESBTPFiliere::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+        $niveaux = \App\Models\ESBTPNiveauEtude::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return view('esbtp.paiements.create', compact(
+            'etudiant',
+            'inscription',
+            'anneeEnCours',
+            'unusualAmountThreshold',
+            'allowedPaymentModes',
+            'filieres',
+            'niveaux'
+        ));
+    }
+
+    public function searchInscriptionsForCaisse(Request $request)
+    {
+        $q = trim((string) $request->get('q', ''));
+        $filiereId = $request->integer('filiere_id') ?: null;
+        $niveauId = $request->integer('niveau_id') ?: null;
+        $anciennes = $request->boolean('anciennes');
+
+        $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        $query = ESBTPInscription::query()
+            ->with(['etudiant.user', 'filiere:id,name', 'niveauEtude:id,name', 'classe:id,name', 'anneeUniversitaire:id,name'])
+            // Une année achevée peut porter des frais impayés : l'état
+            // « terminée » ne doit pas effacer sa dette de la recherche.
+            // En revanche, une inscription annulée ne doit pas être encaissée.
+            ->when($anciennes,
+                fn ($q) => $q->whereNotIn('status', ESBTPInscription::STATUTS_ANNULES),
+                fn ($q) => $q->whereIn('status', ['active', 'en_attente'])
+            )
+            ->when($annee && ! $anciennes, fn ($q) => $q->where('annee_universitaire_id', $annee->id))
+            ->when($annee && $anciennes, fn ($q) => $q->where('annee_universitaire_id', '!=', $annee->id))
+            ->when($filiereId, fn ($q) => $q->where('filiere_id', $filiereId))
+            ->when($niveauId, fn ($q) => $q->where('niveau_id', $niveauId));
+
+        if ($q !== '') {
+            $termes = preg_split('/\s+/', $q, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            $query->whereHas('etudiant', function ($etudiant) use ($termes) {
+                foreach ($termes as $terme) {
+                    $etudiant->where(function ($champ) use ($terme) {
+                        $champ->where('nom', 'like', "%{$terme}%")
+                            ->orWhere('prenoms', 'like', "%{$terme}%")
+                            ->orWhere('matricule', 'like', "%{$terme}%")
+                            ->orWhereHas('user', fn ($user) => $user->where('name', 'like', "%{$terme}%")
+                                ->orWhere('email', 'like', "%{$terme}%"));
+                    });
+                }
+            });
+        }
+
+        $results = $query->orderByDesc('id')
+            ->limit(40)
+            ->get()
+            ->map(function (ESBTPInscription $inscription) {
+                $etudiant = $inscription->etudiant;
+
+                return [
+                    'id' => $inscription->id,
+                    'etudiant_id' => $inscription->etudiant_id,
+                    'matricule' => $etudiant->matricule ?? '',
+                    'nom' => $etudiant->user->name
+                        ?? trim(($etudiant->prenoms ?? '').' '.($etudiant->nom ?? '')),
+                    'filiere' => $inscription->filiere->name ?? '—',
+                    'niveau' => $inscription->niveauEtude->name ?? '—',
+                    'classe' => $inscription->classe->name ?? '—',
+                    'annee' => $inscription->anneeUniversitaire?->name ?? '—',
+                ];
+            })
+            ->values();
+
+        return response()->json(['results' => $results]);
+    }
+
+    /**
+     * Enregistre un nouveau paiement.
+     *
+     * @param  \App\Http\Requests\Paiement\StorePaiementRequest  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(StorePaiementRequest $request, RepartitionDuVersement $repartition)
+    {
+        abort_unless(
+            app(MobileMoneyPaymentGuard::class)->allowsMode($request->user(), $request->input('mode_paiement')),
+            403,
+            'Ce mode de paiement n est pas autorise pour votre role.'
+        );
+
+        app(\App\Services\Caisse\CashSessionService::class)
+            ->assertEspecesAutorisees($request->user(), $request->input('mode_paiement'), $request->input('date_paiement'));
+
+        $validated = $request->validated();
+
+        // LOG DÉTAILLÉ: Début de la requête de création de paiement
+        $requestFingerprint = md5(json_encode([
+            'user_id' => Auth::id(),
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]));
+
+        \Log::info('🔵 PAIEMENT STORE - Début de requête', [
+            'timestamp' => now()->toIso8601String(),
+            'user_id' => Auth::id(),
+            'ip' => $request->ip(),
+            'fingerprint' => $requestFingerprint,
+            'request_data' => $request->except(['_token']),
+        ]);
+
+        // Vérifier que l'étudiant correspond à l'inscription
+        $inscription = ESBTPInscription::findOrFail($validated['inscription_id']);
+        if ($inscription->etudiant_id != $validated['etudiant_id']) {
+            \Log::warning('❌ PAIEMENT STORE - Étudiant ne correspond pas à l\'inscription', [
+                'inscription_id' => $validated['inscription_id'],
+                'etudiant_id_inscription' => $inscription->etudiant_id,
+                'etudiant_id_fourni' => $validated['etudiant_id'],
+            ]);
+            $motif = 'L\'étudiant ne correspond pas à l\'inscription sélectionnée.';
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $motif, 'errors' => ['etudiant_id' => [$motif]]], 422);
+            }
+
+            return redirect()->back()->withErrors(['etudiant_id' => $motif])->withInput();
+        }
+
+        // Un règlement d'ancienne année reste possible après clôture de
+        // l'inscription. Pas après ANNULATION : le serveur doit faire appliquer
+        // la même frontière que la recherche, même sur une URL directe.
+        if (in_array($inscription->status, ESBTPInscription::STATUTS_ANNULES, true)) {
+            $motif = "Cette inscription a été annulée : aucun paiement ne peut y être enregistré.";
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $motif,
+                    'errors' => ['inscription_id' => [$motif]],
+                ], 422);
+            }
+
+            return redirect()->back()->withErrors(['inscription_id' => $motif])->withInput();
+        }
+
+        // Un frais deja depose en nature est SOLDE : on ne l'encaisse pas.
+        //
+        // L'etudiant a apporte sa ramette, sa chemise cartonnee. Le lui faire
+        // payer en especes, c'est le faire payer deux fois.
+        //
+        // Jusqu'ici la garde n'existait QUE dans le gabarit d'affichage : le
+        // tableau de la fiche d'inscription masquait le bouton « Payer ». La vue
+        // en cartes, servie sur les ecrans plus etroits, ne le faisait pas — et
+        // le serveur ne verifiait rien. Une garde qui ne vit que dans une vue
+        // n'est pas une garde : la vue suivante la contourne.
+        $categorieVisee = $validated['frais_category_id'] ?? null;
+
+        if ($categorieVisee) {
+            $souscriptionVisee = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+                ->where('frais_category_id', $categorieVisee)
+                ->where('is_active', true)
+                ->first();
+
+            if ($souscriptionVisee && $souscriptionVisee->satisfied_in_kind) {
+                \Log::warning('[caisse] encaissement refuse : frais deja depose en nature', [
+                    'inscription_id' => $inscription->id,
+                    'frais_category_id' => $categorieVisee,
+                ]);
+
+                $motif = "Ce frais a deja ete depose en nature par l'etudiant : il est solde, il n'y a rien a encaisser.";
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => $motif, 'errors' => ['frais_category_id' => [$motif]]], 422);
+                }
+
+                return redirect()->back()->withErrors(['frais_category_id' => $motif])->withInput();
+            }
+        }
+
+
+        // Une partie des frais de l'inscription source peut déjà avoir été
+        // transférée sur une inscription ultérieure. Le paiement ordinaire
+        // ne peut solder que la partie NON reportée, jamais le reliquat.
+        $sourceAvecReport = \App\Models\ESBTPReliquatDetail::query()
+            ->where('inscription_source_id', $inscription->id)->exists();
+        if ($sourceAvecReport) {
+            $situation = app(\App\Services\Finances\SituationFinanciereEtudiant::class)
+                ->pour((int) $inscription->etudiant_id, (int) $inscription->id);
+            $ligneOrigine = $situation['annees']->firstWhere('inscription_id', $inscription->id);
+            $resteDirect = (float) ($ligneOrigine['non_reporte'] ?? 0);
+
+            if ((float) $validated['montant'] > $resteDirect + 0.005) {
+                $motif = $resteDirect < 1
+                    ? "Dette déjà reportée : utilisez « Régler un arriéré » sur l'inscription de destination."
+                    : sprintf("Montant supérieur au solde non reporté de %s FCFA. Réglez le reliquat séparément.", number_format($resteDirect, 0, ',', ' '));
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => $motif, 'errors' => ['montant' => [$motif]]], 422);
+                }
+                return redirect()->back()->withErrors(['montant' => $motif])->withInput();
+            }
+        }
+
+        // PROTECTION BACKEND: Détecter les doublons récents (dernières 10 secondes)
+        $timeWindow = now()->subSeconds(10);
+        $duplicateCheck = ESBTPPaiement::where('inscription_id', $validated['inscription_id'])
+            ->where('montant', $validated['montant'])
+            ->where('frais_category_id', $validated['frais_category_id'])
+            ->where('created_by', Auth::id())
+            ->where('created_at', '>=', $timeWindow)
+            ->orderByDesc('created_at')
+            ->first();
+
+        if ($duplicateCheck) {
+            $timeDiff = now()->diffInSeconds($duplicateCheck->created_at);
+
+            \Log::warning('⚠️ PAIEMENT STORE - DOUBLON DÉTECTÉ ET BLOQUÉ', [
+                'duplicate_paiement_id' => $duplicateCheck->id,
+                'duplicate_numero_recu' => $duplicateCheck->numero_recu,
+                'time_diff_seconds' => $timeDiff,
+                'inscription_id' => $validated['inscription_id'],
+                'montant' => $validated['montant'],
+                'frais_category_id' => $validated['frais_category_id'],
+                'user_id' => Auth::id(),
+                'fingerprint' => $requestFingerprint,
+            ]);
+
+            // Retourner un message de succès (ne pas alarmer l'utilisateur)
+            if ($request->ajax() || $request->wantsJson() || $request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Paiement enregistré avec succès. Numéro de reçu : ' . $duplicateCheck->numero_recu,
+                    'duplicate_id' => $duplicateCheck->id,
+                    'duplicate_numero_recu' => $duplicateCheck->numero_recu,
+                    'paiement' => $this->paiementPourJson($duplicateCheck),
+                ]);
+            }
+
+            return redirect()->route('esbtp.paiements.show', $duplicateCheck->id)
+                ->with('success', 'Paiement enregistré avec succès. Numéro de reçu : ' . $duplicateCheck->numero_recu)
+                ->with('duplicate_prevented', true);
+        }
+
+        \Log::info('✅ PAIEMENT STORE - Pas de doublon détecté, création du paiement', [
+            'inscription_id' => $validated['inscription_id'],
+            'montant' => $validated['montant'],
+            'frais_category_id' => $validated['frais_category_id'],
+        ]);
+
+        // Ou va cet argent, decide MAINTENANT — et AVANT que le versement existe.
+        //
+        // L'ordre compte : le garde-fou compte les versements EN ATTENTE dans le
+        // deja-paye, et celui-ci naitra en attente. Le calculer apres la creation
+        // reviendrait a lui opposer son propre montant, et tout encaissement
+        // couvrant exactement le reste du serait refuse.
+        try {
+            $allocations = $repartition->calculer(
+                (int) $validated['inscription_id'],
+                (float) $validated['montant'],
+                (int) $validated['frais_category_id'],
+                $validated['repartition'] ?? null
+            );
+        } catch (RepartitionRefuseeException $e) {
+            // Refus METIER : la caisse a une saisie a corriger, pas une panne a
+            // signaler. Rien n'a ete ecrit, il n'y a rien a annuler — et rien a
+            // journaliser non plus : le caissier lit le motif a l'ecran, et un
+            // `Log::info` est de toute facon filtre en production.
+            if ($request->ajax() || $request->wantsJson() || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                    'errors' => ['montant' => [$e->getMessage()]],
+                ], 422);
+            }
+
+            return redirect()->back()->withErrors(['montant' => $e->getMessage()])->withInput();
+        }
+
+        // Empêche aussi la répartition manuelle de placer une avance sur un
+        // frais déjà transféré. Le total seul ne suffirait pas à le détecter.
+        if ($sourceAvecReport) {
+            $plafondsDirects = $repartition->resteConnuParFrais($inscription->id);
+            foreach ($allocations as $categorieId => $montantAlloue) {
+                if (array_key_exists((int) $categorieId, $plafondsDirects)
+                    && $montantAlloue > $plafondsDirects[(int) $categorieId] + 0.005) {
+                    $motif = "Frais reporté ou soldé sur l'inscription d'origine : corrigez la répartition ou utilisez « Régler un arriéré ».";
+                    if ($request->expectsJson()) {
+                        return response()->json(['success' => false, 'message' => $motif, 'errors' => ['repartition' => [$motif]]], 422);
+                    }
+                    return redirect()->back()->withErrors(['repartition' => $motif])->withInput();
+                }
+            }
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Récupérer la catégorie de frais pour définir le motif
+            $fraisCategory = \App\Models\ESBTPFraisCategory::find($validated['frais_category_id']);
+
+            // Générer un numéro de reçu
+            $numeroRecu = ESBTPPaiement::genererNumeroRecu();
+
+            // Créer le paiement
+            $paiement = new ESBTPPaiement($validated);
+            $paiement->annee_universitaire_id = $inscription->annee_universitaire_id;
+            $categoryName = mb_strtolower($fraisCategory->name ?? '');
+            $paiement->type_paiement = str_contains($categoryName, 'inscription') ? 'inscription' : 'scolarite';
+            $paiement->numero_recu = $numeroRecu;
+            $paiement->status = 'en_attente';
+            $paiement->motif = $fraisCategory ? $fraisCategory->name : 'Paiement de frais';
+            $paiement->created_by = Auth::id();
+            $paiement->save();
+
+            // Le versement dit lui-meme ou il est alle. Sans cette ecriture, le
+            // calcul par frais l'impute EN ENTIER a la categorie designee, et un
+            // encaissement couvrant plusieurs frais laisse les autres intacts.
+            $repartition->ecrire($paiement, $allocations);
+
+            DB::commit();
+
+            \Log::info('✅ PAIEMENT STORE - Paiement créé avec succès', [
+                'paiement_id' => $paiement->id,
+                'numero_recu' => $numeroRecu,
+                'inscription_id' => $validated['inscription_id'],
+                'montant' => $validated['montant'],
+                'frais_category_id' => $validated['frais_category_id'],
+                'user_id' => Auth::id(),
+                'fingerprint' => $requestFingerprint,
+            ]);
+
+            // Envoyer notification aux super-admins si le paiement est en attente
+            if ($paiement->status === 'en_attente') {
+                try {
+                    $notificationService = app(\App\Services\NotificationService::class);
+                    $notificationService->notifyPaiementCreated($paiement, auth()->user());
+                } catch (\Exception $e) {
+                    Log::error('Erreur envoi notification paiement créé: ' . $e->getMessage());
+                }
+            }
+
+            // Workflow event : notifie holders de paiements.validate (issue #298)
+            \App\Support\WorkflowFlash::dispatch(
+                'paiement.created',
+                Auth::user(),
+                ['paiement' => $paiement->id, 'inscription_id' => $paiement->inscription_id],
+            );
+
+            $message = 'Paiement enregistré avec succès. Numéro de reçu : ' . $numeroRecu;
+
+            // Ecran mobile (pas-a-pas plein ecran) : il enregistre en fetch JSON
+            // et se redirige lui-meme vers le recu. Le formulaire de bureau, lui,
+            // garde sa redirection classique.
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'paiement' => $this->paiementPourJson($paiement),
+                ]);
+            }
+
+            return redirect()->route('esbtp.paiements.show', $paiement->id)
+                ->with('success', $message);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de l\'enregistrement du paiement : ' . $e->getMessage());
+
+            $motif = 'Une erreur est survenue lors de l\'enregistrement du paiement.';
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $motif], 500);
+            }
+
+            return redirect()->back()
+                ->withErrors(['error' => $motif])
+                ->withInput();
+        }
+    }
+
+    /**
+     * Le versement tel que l'ecran mobile en a besoin apres store() : de quoi
+     * afficher le recu et y aller, rien de plus.
+     *
+     * @return array{id:int, numero_recu:?string, montant:float, url_show:string, url_recu:string}
+     */
+    private function paiementPourJson(ESBTPPaiement $paiement): array
+    {
+        return [
+            'id' => (int) $paiement->id,
+            'numero_recu' => $paiement->numero_recu,
+            'montant' => (float) $paiement->montant,
+            'url_show' => route('esbtp.paiements.show', $paiement->id),
+            'url_recu' => route('esbtp.paiements.recu', $paiement->id),
+        ];
+    }
+
+    /**
+     * Ce que deviendrait ce versement, sans l'encaisser.
+     *
+     * L'ecran de caisse doit pouvoir montrer au caissier ou son argent va
+     * atterrir AVANT qu'il valide, et lui dire tout de suite quand il encaisse
+     * plus que l'etudiant ne doit.
+     *
+     * Il le demande au serveur plutot que de le calculer lui-meme. La regle de
+     * repartition n'existe qu'en un exemplaire (RepartitionDuVersement) : une
+     * seconde ecriture en JavaScript finirait par diverger — sur le frais servi
+     * en premier, ou sur le porteur de l'avance — et la meme saisie produirait
+     * deux ecritures comptables selon la porte d'entree. Le navigateur PROPOSE,
+     * le serveur DECIDE, et c'est la meme decision aux deux endroits.
+     */
+    public function apercuRepartition(Request $request, RepartitionDuVersement $repartition)
+    {
+        $donnees = $request->validate([
+            'inscription_id' => 'required|exists:esbtp_inscriptions,id',
+            'frais_category_id' => 'nullable|exists:esbtp_frais_categories,id',
+            'montant' => 'required|numeric|min:0',
+            'repartition' => 'nullable|array',
+            'repartition.*' => 'numeric|min:0',
+        ]);
+
+        $reste = $repartition->resteConnuParFrais((int) $donnees['inscription_id']);
+
+        try {
+            $allocations = $repartition->calculer(
+                (int) $donnees['inscription_id'],
+                (float) $donnees['montant'],
+                isset($donnees['frais_category_id']) ? (int) $donnees['frais_category_id'] : null,
+                $donnees['repartition'] ?? null
+            );
+        } catch (RepartitionRefuseeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'reste' => $reste,
+            ], 422);
+        }
+
+        $noms = \App\Models\ESBTPFraisCategory::query()
+            ->whereIn('id', array_keys($allocations))
+            ->pluck('name', 'id');
+
+        return response()->json([
+            'success' => true,
+            'reste' => $reste,
+            'allocations' => collect($allocations)
+                ->map(fn ($montant, $categoryId) => [
+                    'frais_category_id' => (int) $categoryId,
+                    'name' => (string) ($noms[$categoryId] ?? ('Frais #'.$categoryId)),
+                    'montant' => (float) $montant,
+                ])
+                ->values(),
+        ]);
+    }
+
+    /**
+     * Affiche les détails d'un paiement.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show($id)
+    {
+        // `creator:id,name` est l'alias canonique de `createdBy` (même FK created_by),
+        // sélectionné en colonnes minimales pour réduire le payload.
+        $paiement = ESBTPPaiement::with([
+            'etudiant.user',
+            'fraisCategory',
+            'inscription.anneeUniversitaire',
+            'inscription.filiere',
+            'inscription.niveauEtude',
+            'validatedBy',
+            'creator:id,name',
+            'updatedBy',
+            // Ou l'argent est reellement alle. Sans cette relation, la fiche
+            // n'affiche que la categorie designee au guichet et laisse croire
+            // qu'un versement couvrant trois frais n'en a paye qu'un.
+            'allocations.fraisCategory:id,name',
+        ])->findOrFail($id);
+
+        $this->authorize('view', $paiement);
+
+        return view('esbtp.paiements.show', compact('paiement'));
+    }
+
+    /**
+     * Affiche le formulaire de modification d'un paiement.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit($id)
+    {
+        $paiement = ESBTPPaiement::findOrFail($id);
+        $this->authorize('update', $paiement);
+
+        // Vérifier que l'utilisateur a la permission de gérer les paiements
+        if (!auth()->user()->can('paiements.manage')) {
+            return redirect()->route('esbtp.paiements.show', $id)
+                ->with('error', 'Seuls les super-administrateurs peuvent modifier les paiements.');
+        }
+
+        $paiement = ESBTPPaiement::with([
+            'etudiant.user',
+            'inscription.anneeUniversitaire',
+            'inscription.filiere',
+            'inscription.niveauEtude'
+        ])->findOrFail($id);
+
+        // Vérifier si le paiement peut être modifié
+        if ($paiement->status === 'validé') {
+            return redirect()->route('esbtp.paiements.show', $paiement->id)
+                ->with('error', 'Ce paiement a déjà été validé et ne peut plus être modifié.');
+        }
+
+        // Charger toutes les catégories de frais actives pour le select "Catégorie"
+        $feeCategories = \App\Models\ESBTPFraisCategory::active()->ordered()->get();
+
+        // Essayer de retrouver la catégorie correspondant au motif actuel
+        // (pour pré-sélectionner la bonne option même si frais_category_id est null/vide)
+        $selectedCategoryId = $paiement->frais_category_id;
+
+        if (!$selectedCategoryId && $paiement->motif) {
+            // Si pas de frais_category_id, chercher par nom de motif
+            $matchingCategory = $feeCategories->firstWhere('name', $paiement->motif);
+            if ($matchingCategory) {
+                $selectedCategoryId = $matchingCategory->id;
+            }
+        }
+
+        return view('esbtp.paiements.edit', compact('paiement', 'feeCategories', 'selectedCategoryId'));
+    }
+
+    /**
+     * Met à jour un paiement existant.
+     *
+     * @param  \App\Http\Requests\Paiement\UpdatePaiementRequest  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(UpdatePaiementRequest $request, $id)
+    {
+        // Vérifier que l'utilisateur a la permission de gérer les paiements
+        if (!auth()->user()->can('paiements.manage')) {
+            return redirect()->route('esbtp.paiements.show', $id)
+                ->with('error', 'Seuls les super-administrateurs peuvent modifier les paiements.');
+        }
+
+        $paiement = ESBTPPaiement::findOrFail($id);
+
+        // Vérifier si le paiement peut être modifié
+        if ($paiement->status === 'validé') {
+            return redirect()->route('esbtp.paiements.show', $paiement->id)
+                ->with('error', 'Ce paiement a déjà été validé et ne peut plus être modifié.');
+        }
+
+        // S1.4 — Garde verrouillage de période comptable
+        if ($block = $this->assertPeriodNotLocked($paiement)) {
+            return redirect()->route('esbtp.paiements.show', $paiement->id)
+                ->with('error', $block['message']);
+        }
+        // PR2 réconciliation — Garde verrouillage post-réconciliation
+        if ($block = $this->assertReconciliationNotLocked($paiement)) {
+            return redirect()->route('esbtp.paiements.show', $paiement->id)
+                ->with('error', $block['message']);
+        }
+
+        $validated = $request->validated();
+
+        try {
+            DB::beginTransaction();
+
+            // Récupérer la catégorie de frais pour mettre à jour le motif automatiquement
+            $fraisCategory = \App\Models\ESBTPFraisCategory::find($validated['frais_category_id']);
+
+            // Mettre à jour le paiement
+            $montantAvant = (float) $paiement->montant;
+            $categorieAvant = $paiement->frais_category_id;
+
+            $paiement->fill($validated);
+            $paiement->motif = $fraisCategory->name; // Synchroniser le motif avec la catégorie
+            $paiement->updated_by = Auth::id();
+            $paiement->save();
+
+            // L'imputation doit suivre le versement qu'elle decrit.
+            //
+            // Depuis que tout versement nait avec ses allocations, un versement
+            // alloue est lu EXCLUSIVEMENT par elles : sa propre categorie ne
+            // compte plus. Corriger un montant de 255 000 a 300 000 sans toucher
+            // aux allocations laissait donc les totaux par frais a 255 000 —
+            // 45 000 F encaisses qui ne comptaient nulle part. Et changer la
+            // categorie ne deplaçait rien du tout.
+            //
+            // On reventile a partir du versement corrige. remplacer() verifie
+            // que la somme vaut exactement le montant, et repercute sur les
+            // avoirs enfants.
+            $montantChange = abs((float) $paiement->montant - $montantAvant) > 0.009;
+            $categorieChangee = (int) $paiement->frais_category_id !== (int) $categorieAvant;
+
+            if (($montantChange || $categorieChangee) && $paiement->allocations()->exists()) {
+                $repartition = app(\App\Services\Frais\RepartitionDuVersement::class);
+                $repartition->remplacer($paiement, $repartition->reventiler($paiement));
+            }
+
+            DB::commit();
+
+            return redirect()->route('esbtp.paiements.show', $paiement->id)
+                ->with('success', 'Paiement mis à jour avec succès.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la mise à jour du paiement : ' . $e->getMessage());
+
+            return redirect()->back()
+                ->withErrors(['error' => 'Une erreur est survenue lors de la mise à jour du paiement.'])
+                ->withInput();
+        }
+    }
+
+
+    /**
+     * Prévisualise un reçu de paiement en PDF inline (même gabarit que le téléchargement).
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function previewRecu($id, Request $request)
+    {
+        $request->merge(['inline' => true]);
+
+        return $this->genererRecu($id, $request);
+    }
+
+    /**
+     * Génère un reçu de paiement au format PDF.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function genererRecu($id, ?Request $request = null)
+    {
+        $paiement = ESBTPPaiement::with([
+            'etudiant.user',
+            'inscription.anneeUniversitaire',
+            'inscription.filiere',
+            'inscription.niveauEtude',
+            'fraisCategory',
+            'validatedBy',
+            'creator:id,name',
+            // Le recu imprime la ventilation quand le versement couvre plusieurs
+            // frais. Le gabarit sait la charger seul, mais il est inclus une fois
+            // par exemplaire : sans cet eager-load, deux requetes par recu.
+            'allocations.fraisCategory:id,name',
+        ])->findOrFail($id);
+
+        $this->authorize('view', $paiement);
+
+        $settings = $this->getReceiptSettings();
+        $fraisEtat = app(EtatRecuPaiement::class)->construire($paiement);
+        $fraisLignes = $fraisEtat['lignes'];
+        $resteAPayer = $fraisEtat['reste'];
+        $totalVerse = $fraisEtat['totalVerse'];
+        $versementsAvant = $fraisEtat['versementsAvant'];
+        $versementsApres = $fraisEtat['versementsApres'];
+        $affectationLabel = $fraisEtat['affectationLabel'];
+
+        $pdf = PDF::loadView('esbtp.paiements.recu', compact(
+            'paiement',
+            'settings',
+            'fraisLignes',
+            'resteAPayer',
+            'totalVerse',
+            'versementsAvant',
+            'versementsApres',
+            'affectationLabel'
+        ))
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'dpi' => 150,
+                'defaultFont' => 'DejaVu Sans',
+                'isRemoteEnabled' => false,
+                'isHtml5ParserEnabled' => true,
+                'isPhpEnabled' => false,
+                'isFontSubsettingEnabled' => true,
+            ]);
+
+        // Définir le nom du fichier
+        $filename = 'Recu_' . $paiement->numero_recu . '.pdf';
+
+        return $this->respondWithPdf($pdf, $filename, $request);
+    }
+
+    /**
+     * Récupère les paramètres pour les reçus depuis les settings.
+     */
+    public function getReceiptSettings()
+    {
+        $settings = [
+            'school_name' => \App\Helpers\SettingsHelper::get('school_name', config('app.name', 'KLASSCI')),
+            'school_address' => \App\Helpers\SettingsHelper::get('school_address', ''),
+            'school_phone' => \App\Helpers\SettingsHelper::get('school_phone', ''),
+            'school_email' => \App\Helpers\SettingsHelper::get('school_email', ''),
+            'show_logo' => \App\Helpers\SettingsHelper::drapeau('receipt_show_logo', true),
+        ];
+
+        // Préparer le logo si nécessaire
+        if ($settings['show_logo']) {
+            $logoPath = \App\Helpers\SettingsHelper::get('school_logo');
+            $settings['logo_base64'] = $this->prepareLogoBase64($logoPath);
+        }
+
+        return $settings;
+    }
+
+    /**
+     * Prépare le logo en base64 pour les PDFs.
+     */
+    private function prepareLogoBase64($logoPath)
+    {
+        if (!$logoPath) {
+            return null;
+        }
+
+        // Essayer différents chemins possibles
+        $paths = [
+            storage_path('app/public/' . $logoPath),
+            public_path($logoPath),
+            public_path('images/LOGO-KLASSCI-PNG.png'), // Fallback par défaut
+        ];
+
+        foreach ($paths as $path) {
+            if (file_exists($path)) {
+                $imageData = file_get_contents($path);
+                $extension = pathinfo($path, PATHINFO_EXTENSION);
+                return 'data:image/' . $extension . ';base64,' . base64_encode($imageData);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Récupère les paiements d'un étudiant.
+     *
+     * @param  int  $etudiantId
+     * @return \Illuminate\Http\Response
+     */
+    public function paiementsEtudiant($etudiantId)
+    {
+        $etudiant = ESBTPEtudiant::with(['user', 'inscriptions.anneeUniversitaire'])->findOrFail($etudiantId);
+
+        $paiements = ESBTPPaiement::with(['inscription.anneeUniversitaire'])
+            ->where('etudiant_id', $etudiantId)
+            ->orderBy('date_paiement', 'desc')
+            ->get();
+
+        // Calculer le total des paiements validés
+        $totalValide = ESBTPPaiement::netStudentPaidFrom($paiements);
+
+        return view('esbtp.paiements.etudiant', compact('etudiant', 'paiements', 'totalValide'));
+    }
+
+    /**
+     * Charger les étudiants par statut avec pagination AJAX
+     */
+    public function loadStudentsByStatut(Request $request, $statut)
+    {
+        try {
+            $categoryId = $request->input('category_id');
+            $page = $request->get('page', 1);
+            $perPage = $request->get('per_page', 20);
+
+            if (!$categoryId) {
+                return response()->json(['error' => 'Category ID required'], 400);
+            }
+
+            $category = \App\Models\ESBTPFraisCategory::find($categoryId);
+            if (!$category) {
+                return response()->json(['error' => 'Category not found'], 404);
+            }
+
+            // Récupérer les paramètres de filtrage
+            $filiereId = $request->input('filiere_id');
+            $niveauId = $request->input('niveau_id');
+            $anneeId = $request->input('annee_id');
+
+            // Année par défaut
+            if (!$anneeId) {
+                $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+                $anneeId = $anneeEnCours ? $anneeEnCours->id : null;
+            }
+
+            // Requête pour les inscriptions actives
+        $inscriptionsQuery = \App\Models\ESBTPInscription::with([
+            'etudiant.user',
+            'filiere',
+            'niveauEtude',
+            'anneeUniversitaire'
+        ])->whereIn('status', ['active', 'en_attente', 'validée']);
+
+        // Appliquer les filtres
+        if ($anneeId) {
+            $inscriptionsQuery->where('annee_universitaire_id', $anneeId);
+        }
+        if ($filiereId) {
+            $inscriptionsQuery->where('filiere_id', $filiereId);
+        }
+        if ($niveauId) {
+            $inscriptionsQuery->where('niveau_id', $niveauId);
+        }
+
+        $inscriptions = $inscriptionsQuery->get();
+        $inscriptionIds = $inscriptions->pluck('id')->toArray();
+
+        // Pré-charger données pour performance
+        $configurations = collect();
+        if (!empty($inscriptions)) {
+            $configurations = \App\Models\ESBTPFraisConfiguration::where('is_active', true)
+                ->where('frais_category_id', $categoryId)
+                ->get()
+                ->groupBy(function($config) {
+                    return $config->frais_category_id . '_' . $config->filiere_id . '_' . $config->niveau_id;
+                });
+        }
+
+        $subscriptions = collect();
+        if (!empty($inscriptionIds)) {
+            $subscriptions = \App\Models\ESBTPFraisSubscription::where('is_active', true)
+                ->whereIn('inscription_id', $inscriptionIds)
+                ->where('frais_category_id', $categoryId)
+                ->get()
+                ->groupBy('inscription_id');
+        }
+
+        // Allocation-aware : un versement reparti compte pour chacun des frais
+        // qu'il a couverts, et seulement a hauteur de sa part.
+        ['paye' => $payeParFrais, 'versements' => $paiements] = $this->statsService->preparerPaiements($inscriptionIds);
+
+        // Analyser les détails avec données pré-chargées
+        $details = $this->statsService->analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements, $payeParFrais);
+
+        // Filtrer par statut demandé
+        $etudiants = collect();
+        switch ($statut) {
+            case 'non_payes':
+                $etudiants = $details['etudiants_non_payes'];
+                break;
+            case 'en_retard':
+                $etudiants = $details['etudiants_en_retard'];
+                break;
+            case 'a_jour':
+                $etudiants = $details['etudiants_a_jour'];
+                break;
+        }
+
+        // Filtre de recherche texte (nom, prénom, matricule)
+        $search = $request->input('search');
+        if ($search && trim($search) !== '') {
+            $searchLower = mb_strtolower(trim($search));
+            $etudiants = $etudiants->filter(function ($item) use ($searchLower) {
+                $etudiant = $item['inscription']->etudiant ?? null;
+                if (!$etudiant) return false;
+
+                $nom = mb_strtolower($etudiant->nom ?? '');
+                $prenoms = mb_strtolower($etudiant->prenoms ?? '');
+                $matricule = mb_strtolower($etudiant->matricule ?? '');
+
+                return str_contains($nom, $searchLower)
+                    || str_contains($prenoms, $searchLower)
+                    || str_contains($matricule, $searchLower)
+                    || str_contains($nom . ' ' . $prenoms, $searchLower)
+                    || str_contains($prenoms . ' ' . $nom, $searchLower);
+            })->values();
+        }
+
+        // Paginer les résultats
+        $total = $etudiants->count();
+        $offset = ($page - 1) * $perPage;
+        $etudiantsPagines = $etudiants->slice($offset, $perPage);
+        $hasMore = $total > ($offset + $perPage);
+
+        // Render template approprié
+        if ((int)$page === 1) {
+            $html = view('esbtp.paiements.partials.liste-etudiants', [
+                'etudiants' => $etudiantsPagines,
+                'statut' => $statut,
+                'category' => $category
+            ])->render();
+        } else {
+            $html = view('esbtp.paiements.partials.lignes-etudiants', [
+                'etudiants' => $etudiantsPagines,
+                'statut' => $statut,
+                'category' => $category
+            ])->render();
+            }
+
+            return response()->json([
+                'html' => $html,
+                'total' => $total,
+                'current_page' => (int)$page,
+                'has_more' => $hasMore
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur dans loadStudentsByStatut: ' . $e->getMessage(), [
+                'statut' => $statut,
+                'category_id' => $request->input('category_id'),
+                'page' => $request->get('page', 1),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+            ]);
+
+            return response()->json([
+                'error' => 'Erreur serveur: ' . $e->getMessage(),
+                'debug' => config('app.debug') ? $e->getTraceAsString() : null
+            ], 500);
+        }
+    }
+
+    /**
+     * Export Excel — liste étudiants par statut de paiement (suivi-categories)
+     */
+    public function exportStudentsExcel(Request $request, string $statut)
+    {
+        $categoryId = $request->input('category_id');
+        if (!$categoryId) {
+            abort(400, 'category_id requis');
+        }
+
+        $category = \App\Models\ESBTPFraisCategory::find($categoryId);
+        if (!$category) {
+            abort(404, 'Catégorie introuvable');
+        }
+
+        $filiereId = $request->input('filiere_id');
+        $niveauId  = $request->input('niveau_id');
+        $anneeId   = $request->input('annee_id');
+
+        if (!$anneeId) {
+            $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            $anneeId = $anneeEnCours ? $anneeEnCours->id : null;
+        }
+
+        $inscriptionsQuery = \App\Models\ESBTPInscription::with([
+            'etudiant', 'filiere', 'niveauEtude', 'anneeUniversitaire', 'classe'
+        ])->whereIn('status', ['active', 'en_attente', 'validée']);
+
+        if ($anneeId)   $inscriptionsQuery->where('annee_universitaire_id', $anneeId);
+        if ($filiereId) $inscriptionsQuery->where('filiere_id', $filiereId);
+        if ($niveauId)  $inscriptionsQuery->where('niveau_id', $niveauId);
+
+        $inscriptions   = $inscriptionsQuery->get();
+        $inscriptionIds = $inscriptions->pluck('id')->toArray();
+
+        $configurations = \App\Models\ESBTPFraisConfiguration::where('is_active', true)
+            ->where('frais_category_id', $categoryId)->get()
+            ->groupBy(fn($c) => $c->frais_category_id . '_' . $c->filiere_id . '_' . $c->niveau_id);
+
+        $subscriptions = \App\Models\ESBTPFraisSubscription::where('is_active', true)
+            ->whereIn('inscription_id', $inscriptionIds)
+            ->where('frais_category_id', $categoryId)->get()
+            ->groupBy('inscription_id');
+
+        ['paye' => $payeParFrais, 'versements' => $paiements] = $this->statsService->preparerPaiements($inscriptionIds);
+
+        $details = $this->statsService->analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements, $payeParFrais);
+
+        $etudiants = match($statut) {
+            'non_payes' => $details['etudiants_non_payes'],
+            'en_retard' => $details['etudiants_en_retard'],
+            'a_jour'    => $details['etudiants_a_jour'],
+            default     => collect(),
+        };
+
+        $statutLabel = match($statut) {
+            'non_payes' => 'Aucun paiement',
+            'en_retard' => 'Paiements partiels',
+            'a_jour'    => 'À jour',
+            default     => ucfirst($statut),
+        };
+
+        $montantDu   = $etudiants->sum(fn($e) => $e['montant_attendu'] ?? 0);
+        $montantPaye = $etudiants->sum(fn($e) => $e['montant_paye'] ?? 0);
+
+        $stats = [
+            'total'             => $etudiants->count(),
+            'montant_total_du'  => $montantDu,
+            'montant_total_paye'=> $montantPaye,
+        ];
+
+        $filiere = $filiereId ? \App\Models\ESBTPFiliere::find($filiereId) : null;
+        $niveau  = $niveauId  ? \App\Models\ESBTPNiveauEtude::find($niveauId) : null;
+
+        $filters  = [
+            'filiere' => $filiere?->name,
+            'niveau'  => $niveau?->name,
+        ];
+
+        $schoolInfo = \App\Helpers\SettingsHelper::getSchoolInfo();
+        $settings = [
+            'school_name'    => $schoolInfo['name'],
+            'school_address' => $schoolInfo['address'],
+            'school_phone'   => $schoolInfo['phone'] ?: $schoolInfo['mobile'],
+            'school_email'   => $schoolInfo['email'],
+            'school_city'    => $schoolInfo['city'],
+            'primary_color'  => \App\Helpers\SettingsHelper::getPdfSettings()['primary_color'] ?? '#0453cb',
+        ];
+
+        $filename = 'suivi-' . $statut . '-' . ($category->name ? \Illuminate\Support\Str::slug($category->name) . '-' : '') . now()->format('Ymd') . '.xlsx';
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\SuiviPaiementsExport($etudiants, $category, $statutLabel, $stats, $filters, $settings),
+            $filename
+        );
+    }
+
+    /**
+     * Export PDF — liste étudiants par statut de paiement (suivi-categories)
+     *
+     * Pour 1000+ étudiants, utilise une stratégie de chunk+merge avec FPDI :
+     * chaque chunk de 200 lignes est rendu comme un PDF séparé puis fusionné.
+     * Cela évite le crash mémoire de DomPDF qui charge tout le HTML d'un coup.
+     */
+    public function exportStudentsPdf(Request $request, string $statut)
+    {
+        ini_set('memory_limit', '512M');
+        set_time_limit(300);
+
+        $categoryId = $request->input('category_id');
+        if (!$categoryId) {
+            abort(400, 'category_id requis');
+        }
+
+        $category = \App\Models\ESBTPFraisCategory::find($categoryId);
+        if (!$category) {
+            abort(404, 'Catégorie introuvable');
+        }
+
+        $filiereId = $request->input('filiere_id');
+        $niveauId  = $request->input('niveau_id');
+        $anneeId   = $request->input('annee_id');
+
+        if (!$anneeId) {
+            $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            $anneeId = $anneeEnCours ? $anneeEnCours->id : null;
+        }
+
+        $inscriptionsQuery = \App\Models\ESBTPInscription::with([
+            'etudiant', 'filiere', 'niveauEtude', 'anneeUniversitaire', 'classe'
+        ])->whereIn('status', ['active', 'en_attente', 'validée']);
+
+        if ($anneeId)   $inscriptionsQuery->where('annee_universitaire_id', $anneeId);
+        if ($filiereId) $inscriptionsQuery->where('filiere_id', $filiereId);
+        if ($niveauId)  $inscriptionsQuery->where('niveau_id', $niveauId);
+
+        $inscriptions   = $inscriptionsQuery->get();
+        $inscriptionIds = $inscriptions->pluck('id')->toArray();
+
+        $configurations = \App\Models\ESBTPFraisConfiguration::where('is_active', true)
+            ->where('frais_category_id', $categoryId)->get()
+            ->groupBy(fn($c) => $c->frais_category_id . '_' . $c->filiere_id . '_' . $c->niveau_id);
+
+        $subscriptions = \App\Models\ESBTPFraisSubscription::where('is_active', true)
+            ->whereIn('inscription_id', $inscriptionIds)
+            ->where('frais_category_id', $categoryId)->get()
+            ->groupBy('inscription_id');
+
+        ['paye' => $payeParFrais, 'versements' => $paiements] = $this->statsService->preparerPaiements($inscriptionIds);
+
+        $details = $this->statsService->analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements, $payeParFrais);
+
+        $etudiants = match($statut) {
+            'non_payes' => $details['etudiants_non_payes'],
+            'en_retard' => $details['etudiants_en_retard'],
+            'a_jour'    => $details['etudiants_a_jour'],
+            default     => collect(),
+        };
+
+        $statutLabel = match($statut) {
+            'non_payes' => 'Aucun paiement',
+            'en_retard' => 'Paiements partiels',
+            'a_jour'    => 'À jour',
+            default     => ucfirst($statut),
+        };
+
+        $montantDu   = $etudiants->sum(fn($e) => $e['montant_attendu'] ?? 0);
+        $montantPaye = $etudiants->sum(fn($e) => $e['montant_paye'] ?? 0);
+
+        $filiere = $filiereId ? \App\Models\ESBTPFiliere::find($filiereId) : null;
+        $niveau  = $niveauId  ? \App\Models\ESBTPNiveauEtude::find($niveauId) : null;
+
+        $stats = [
+            'total'              => $etudiants->count(),
+            'montant_total_du'   => $montantDu,
+            'montant_total_paye' => $montantPaye,
+            'taux_recouvrement'  => $montantDu > 0 ? round(($montantPaye / $montantDu) * 100, 1) : 0,
+            'statut'             => $statut,
+            'filiere_name'       => $filiere?->name,
+            'niveau_name'        => $niveau?->name,
+        ];
+
+        $schoolInfo  = \App\Helpers\SettingsHelper::getSchoolInfo();
+        $pdfSettings = \App\Helpers\SettingsHelper::getPdfSettings();
+
+        $filename = 'suivi-' . $statut . '-' . (\Illuminate\Support\Str::slug($category->name ?? $statut)) . '-' . now()->format('Ymd') . '.pdf';
+
+        $pdfOptions = [
+            'dpi'                     => 72,
+            'defaultFont'             => 'DejaVu Sans',
+            'isRemoteEnabled'         => false,
+            'isHtml5ParserEnabled'    => true,
+            'isPhpEnabled'            => false,
+            'isFontSubsettingEnabled' => true,
+        ];
+
+        $chunkSize = 200;
+
+        // Pour les petits exports (< 500), rendu direct sans FPDI
+        if ($etudiants->count() <= 500) {
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+                'esbtp.paiements.pdf.suivi-liste-etudiants',
+                compact('etudiants', 'category', 'statutLabel', 'schoolInfo', 'pdfSettings', 'stats')
+            )->setPaper('a4', 'portrait')->setOptions($pdfOptions);
+
+            return $pdf->download($filename);
+        }
+
+        // Pour les gros exports (500+), chunk + merge avec FPDI
+        $tempDir = storage_path('app/temp');
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+
+        $chunks = $etudiants->chunk($chunkSize);
+        $tempFiles = [];
+        $totalChunks = $chunks->count();
+
+        foreach ($chunks as $chunkIndex => $chunk) {
+            $isFirstChunk = ($chunkIndex === 0);
+            $isLastChunk  = ($chunkIndex === $totalChunks - 1);
+            $rowOffset    = $chunkIndex * $chunkSize;
+
+            $chunkPdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+                'esbtp.paiements.pdf.suivi-liste-etudiants',
+                [
+                    'etudiants'    => $chunk,
+                    'category'     => $category,
+                    'statutLabel'  => $statutLabel,
+                    'schoolInfo'   => $schoolInfo,
+                    'pdfSettings'  => $pdfSettings,
+                    'stats'        => $stats,
+                    'isFirstChunk' => $isFirstChunk,
+                    'isLastChunk'  => $isLastChunk,
+                    'rowOffset'    => $rowOffset,
+                    'chunkIndex'   => $chunkIndex,
+                ]
+            )->setPaper('a4', 'portrait')->setOptions($pdfOptions);
+
+            $tempPath = $tempDir . '/suivi_chunk_' . uniqid() . '_' . $chunkIndex . '.pdf';
+            file_put_contents($tempPath, $chunkPdf->output());
+            $tempFiles[] = $tempPath;
+
+            // Libérer la mémoire entre chaque chunk
+            unset($chunkPdf);
+        }
+
+        // Fusionner tous les chunks avec FPDI
+        $merger = new \setasign\Fpdi\Fpdi();
+        foreach ($tempFiles as $file) {
+            $pageCount = $merger->setSourceFile($file);
+            for ($p = 1; $p <= $pageCount; $p++) {
+                $tpl = $merger->importPage($p);
+                $size = $merger->getTemplateSize($tpl);
+                $merger->AddPage($size['orientation'], [$size['width'], $size['height']]);
+                $merger->useTemplate($tpl);
+            }
+        }
+
+        $finalPath = $tempDir . '/suivi_final_' . uniqid() . '.pdf';
+        $merger->Output('F', $finalPath);
+        unset($merger);
+
+        // Nettoyer les fichiers temporaires de chunks
+        foreach ($tempFiles as $file) {
+            @unlink($file);
+        }
+
+        // Retourner le PDF fusionné et nettoyer après envoi
+        return response()->download($finalPath, $filename)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Valider un paiement
+     */
+    public function valider(Request $request, $id)
+    {
+        try {
+            $paiement = ESBTPPaiement::findOrFail($id);
+
+            if ($paiement->status === 'validé') {
+                $message = 'Ce paiement est déjà validé.';
+                return ($request->ajax() || $request->wantsJson())
+                    ? response()->json(['success' => false, 'message' => $message], 400)
+                    : redirect()->back()->with('error', $message);
+            }
+
+            if ($paiement->status === 'rejeté') {
+                $message = 'Ce paiement a été rejeté et ne peut pas être validé.';
+                return ($request->ajax() || $request->wantsJson())
+                    ? response()->json(['success' => false, 'message' => $message], 400)
+                    : redirect()->back()->with('error', $message);
+            }
+
+            if ($block = $this->assertNotSelfValidation($paiement)) {
+                return ($request->ajax() || $request->wantsJson())
+                    ? response()->json(['success' => false, 'message' => $block['message']], 403)
+                    : redirect()->back()->with('error', $block['message']);
+            }
+
+            app(\App\Domain\Comptabilite\Paiements\Actions\ValiderPaiement::class)
+                ->execute($paiement, $request->user());
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Paiement validé avec succès.',
+                    'paiement_id' => $paiement->id,
+                    'status' => 'validé',
+                ]);
+            }
+
+            return redirect()->back()->with('success', 'Paiement validé avec succès.');
+        } catch (\Throwable $e) {
+            Log::error('Erreur lors de la validation du paiement', [
+                'paiement_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
+            ]);
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la validation: '.$e->getMessage(),
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', 'Erreur lors de la validation: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Valider rapidement un paiement depuis modal (inscriptions.index)
+     * Version simplifiée de valider() pour usage AJAX
+     */
+    public function validerRapide(ESBTPPaiement $paiement)
+    {
+        try {
+            if ($paiement->status === 'validé') {
+                return response()->json(['success' => false, 'message' => 'Ce paiement est déjà validé.'], 400);
+            }
+
+            if ($paiement->status === 'rejeté') {
+                return response()->json(['success' => false, 'message' => 'Ce paiement a été rejeté et ne peut pas être validé.'], 400);
+            }
+
+            if ($block = $this->assertNotSelfValidation($paiement)) {
+                return response()->json(['success' => false, 'message' => $block['message']], 403);
+            }
+
+            app(\App\Domain\Comptabilite\Paiements\Actions\ValiderPaiement::class)
+                ->execute($paiement, request()->user());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Paiement validé avec succès.',
+                'paiement' => [
+                    'id' => $paiement->id,
+                    'status' => 'validé',
+                    'date_validation' => $paiement->fresh()->dateValidationLisible('d/m/Y H:i'),
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Erreur lors de la validation rapide du paiement', [
+                'paiement_id' => $paiement->id,
+                'error' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la validation: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Rejeter un paiement
+     */
+    public function rejeter(\App\Http\Requests\Paiement\RejeterPaiementRequest $request, $id)
+    {
+        try {
+            $paiement = ESBTPPaiement::findOrFail($id);
+
+            // Vérifier si le paiement peut être rejeté
+            if ($paiement->status === 'validé') {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Ce paiement est déjà validé et ne peut pas être rejeté.'
+                    ], 400);
+                }
+                return redirect()->back()->with('error', 'Ce paiement est déjà validé et ne peut pas être rejeté.');
+            }
+
+            if ($paiement->status === 'rejeté') {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Ce paiement est déjà rejeté.'
+                    ], 400);
+                }
+                return redirect()->back()->with('error', 'Ce paiement est déjà rejeté.');
+            }
+
+            // S1.4 — Garde verrouillage de période comptable
+            if ($block = $this->assertPeriodNotLocked($paiement)) {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $block['message']], 403);
+                }
+                return redirect()->back()->with('error', $block['message']);
+            }
+            // PR2 réconciliation — Garde verrouillage post-réconciliation
+            if ($block = $this->assertReconciliationNotLocked($paiement)) {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $block['message']], 403);
+                }
+                return redirect()->back()->with('error', $block['message']);
+            }
+
+            $paiement->update([
+                'status' => 'rejeté',
+                'date_validation' => now(),
+                'validateur_id' => auth()->id(),
+                'commentaire' => $request->input('motif_rejet')
+            ]);
+
+            // Envoyer notification à l'étudiant
+            try {
+                $notificationService = app(\App\Services\NotificationService::class);
+                $notificationService->notifyPaiementRejete($paiement, auth()->user(), $request->input('motif_rejet'));
+
+                // Envoyer notification aux parents
+                $notificationService->notifyParentsPaiementRejete($paiement);
+            } catch (\Exception $e) {
+                Log::error('Erreur envoi notification paiement rejeté: ' . $e->getMessage());
+            }
+
+            // Désactiver les rappels pour ce paiement
+            try {
+                $reminder = \App\Models\NotificationReminder::where('remindable_type', 'App\Models\ESBTPPaiement')
+                    ->where('remindable_id', $paiement->id)
+                    ->first();
+                if ($reminder) {
+                    $reminder->deactivate();
+                }
+            } catch (\Exception $e) {
+                Log::error('Erreur désactivation reminder paiement: ' . $e->getMessage());
+            }
+
+            // Si c'est une requête AJAX, retourner JSON
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Paiement rejeté avec succès.',
+                    'paiement_id' => $paiement->id,
+                    'numero_recu' => $paiement->numero_recu
+                ]);
+            }
+
+            return redirect()->back()->with('success', 'Paiement rejeté avec succès.');
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors du rejet du paiement', [
+                'paiement_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+            ]);
+
+            // Si c'est une requête AJAX, retourner JSON
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors du rejet: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', 'Erreur lors du rejet: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Supprimer un versement — droit `paiements.delete`, motif obligatoire.
+     *
+     * Le geste n'est plus réservé au super administrateur : l'établissement
+     * l'accorde au rôle qu'il veut. Les verrous restent : période comptable
+     * clôturée et versement réconcilié refusent, quel que soit le rôle.
+     */
+    public function destroy(Request $request, ESBTPPaiement $paiement)
+    {
+        $user = $request->user();
+        if (!$user || !$user->can('paiements.delete')) {
+            abort(403, 'Vous n\'avez pas le droit de supprimer un versement.');
+        }
+
+        $veutJson = $request->ajax() || $request->wantsJson();
+
+        // S1.4 — Garde verrouillage de période comptable (même superAdmin doit utiliser bypass_lock)
+        if ($block = $this->assertPeriodNotLocked($paiement)) {
+            return $veutJson
+                ? response()->json(['success' => false, 'message' => $block['message']], 403)
+                : redirect()->back()->with('error', $block['message']);
+        }
+        // PR2 réconciliation — Garde verrouillage post-réconciliation
+        if ($block = $this->assertReconciliationNotLocked($paiement)) {
+            return $veutJson
+                ? response()->json(['success' => false, 'message' => $block['message']], 403)
+                : redirect()->back()->with('error', $block['message']);
+        }
+
+        $donnees = $request->validate([
+            'motif' => ['required', 'string', 'min:'.SupprimerPaiement::MOTIF_MIN, 'max:500'],
+            'retour' => ['nullable', 'string', 'max:2000'],
+        ], [
+            'motif.required' => 'Indiquez pourquoi ce versement est supprimé.',
+            'motif.min' => 'Le motif doit compter au moins '.SupprimerPaiement::MOTIF_MIN.' caractères.',
+        ]);
+
+        try {
+            app(SupprimerPaiement::class)->execute($paiement, $user, $donnees['motif']);
+        } catch (\DomainException $e) {
+            return $veutJson
+                ? response()->json(['success' => false, 'message' => $e->getMessage()], 422)
+                : redirect()->back()->withInput()->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('Erreur lors de la suppression du paiement', [
+                'paiement_id' => $paiement->id,
+                'error' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
+            ]);
+
+            return $veutJson
+                ? response()->json(['success' => false, 'message' => 'Erreur lors de la suppression: '.$e->getMessage()], 500)
+                : redirect()->back()->with('error', 'Erreur lors de la suppression: '.$e->getMessage());
+        }
+
+        $message = "Le versement {$paiement->numero_recu} a été supprimé.";
+
+        if ($veutJson) {
+            return response()->json(['success' => true, 'message' => $message]);
+        }
+
+        return redirect()->to($this->cibleDeRetour($donnees['retour'] ?? null))->with('success', $message);
+    }
+
+    /**
+     * Où revenir après la suppression : le chemin local demandé (la fiche
+     * d'inscription d'où l'on vient), jamais une adresse extérieure.
+     */
+    private function cibleDeRetour(?string $retour): string
+    {
+        if ($retour !== null && str_starts_with($retour, '/') && !str_starts_with($retour, '//')) {
+            return url($retour);
+        }
+
+        return route('esbtp.paiements.index');
+    }
+
+    /**
+     * Valider plusieurs paiements en une fois
+     */
+    public function bulkValider(Request $request)
+    {
+        $request->validate([
+            'paiements' => 'required|array|min:1',
+            'paiements.*' => 'exists:esbtp_paiements,id'
+        ]);
+
+        $successCount = 0;
+        $errorCount = 0;
+        $alreadyProcessed = 0;
+
+        try {
+            DB::beginTransaction();
+
+            $selfBlocked = 0;
+            foreach ($request->paiements as $id) {
+                $paiement = ESBTPPaiement::find($id);
+
+                if (!$paiement) {
+                    $errorCount++;
+                    continue;
+                }
+
+                // Vérifier si le paiement peut être validé
+                if ($paiement->status === 'validé') {
+                    $alreadyProcessed++;
+                    continue;
+                }
+
+                if ($paiement->status === 'rejeté') {
+                    $errorCount++;
+                    continue;
+                }
+
+                // S1.1 — Garde anti-auto-validation (séparation des tâches anti-fraude)
+                if ($this->assertNotSelfValidation($paiement) !== null) {
+                    $selfBlocked++;
+                    continue;
+                }
+
+                // Même transaction et mêmes verrous que la validation unitaire.
+                // Un seul chemin pour modifier le solde d'un reliquat.
+                try {
+                    app(\App\Domain\Comptabilite\Paiements\Actions\ValiderPaiement::class)
+                        ->execute($paiement, $request->user(), false);
+                } catch (\DomainException $e) {
+                    $errorCount++;
+                    \Log::warning('Validation groupée refusée', ['paiement_id' => $id, 'message' => $e->getMessage()]);
+                    continue;
+                }
+
+                $successCount++;
+            }
+
+            DB::commit();
+
+            if ($successCount > 0) {
+                app(\App\Services\GroupCacheInvalidator::class)->invalidate('paiement_bulk_validated');
+            }
+
+            // Construire le message de retour
+            $message = '';
+            if ($successCount > 0) {
+                $message = "$successCount paiement(s) validé(s) avec succès.";
+            }
+            if ($alreadyProcessed > 0) {
+                $message .= " $alreadyProcessed paiement(s) déjà validé(s).";
+            }
+            if ($selfBlocked > 0) {
+                $message .= " $selfBlocked paiement(s) bloqué(s) — vous ne pouvez pas auto-valider vos propres saisies (séparation des tâches).";
+            }
+            if ($errorCount > 0) {
+                $message .= " $errorCount paiement(s) n'ont pas pu être validés.";
+            }
+
+            // Si c'est une requête AJAX, retourner JSON
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'successCount' => $successCount,
+                    'alreadyProcessed' => $alreadyProcessed,
+                    'selfBlocked' => $selfBlocked,
+                    'errorCount' => $errorCount
+                ]);
+            }
+
+            return redirect()->back()->with('success', $message);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            \Log::error('Erreur lors de la validation groupée des paiements', [
+                'paiements' => $request->paiements,
+                'error' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+            ]);
+
+            // Si c'est une requête AJAX, retourner JSON
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la validation groupée: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', 'Erreur lors de la validation groupée: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * S1.5 — Annuler son propre paiement créé il y a < N minutes (anti-erreur caissier).
+     *
+     * Évite que le caissier qui s'est trompé (typo cash, mauvais étudiant) doive
+     * appeler un comptable pour annuler. La policy dit QUI et QUAND ; la
+     * suppression elle-même est celle de destroy() — même action, mêmes verrous
+     * de période et de réconciliation, même refus quand un avoir ou un reliquat
+     * repose sur le versement. Seul le motif est posé d'office.
+     */
+    public function cancelOwn(Request $request, ESBTPPaiement $paiement)
+    {
+        $this->authorize('cancelOwnRecent', $paiement);
+
+        $veutJson = $request->ajax() || $request->wantsJson();
+        $refuser = fn (string $message, int $code) => $veutJson
+            ? response()->json(['success' => false, 'message' => $message], $code)
+            : redirect()->back()->with('error', $message);
+
+        if ($block = $this->assertPeriodNotLocked($paiement)) {
+            return $refuser($block['message'], 403);
+        }
+        if ($block = $this->assertReconciliationNotLocked($paiement)) {
+            return $refuser($block['message'], 403);
+        }
+
+        $fenetre = (int) \App\Helpers\SettingsHelper::get('comptabilite.cancel_own_window_minutes', 5);
+
+        try {
+            app(SupprimerPaiement::class)->execute(
+                $paiement,
+                $request->user(),
+                "Saisie annulée par son auteur dans les {$fenetre} minutes suivant l'encaissement."
+            );
+        } catch (\DomainException $e) {
+            return $refuser($e->getMessage(), 422);
+        } catch (\Throwable $e) {
+            Log::error('Erreur cancelOwn paiement', [
+                'paiement_id' => $paiement->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $refuser('Impossible d\'annuler ce paiement : '.$e->getMessage(), 500);
+        }
+
+        try {
+            app(\App\Services\GroupCacheInvalidator::class)->invalidate('paiement_cancelled');
+        } catch (\Throwable $e) {
+            // pas bloquant
+        }
+
+        $message = 'Paiement annulé. Vous pouvez en créer un nouveau si nécessaire.';
+
+        if ($veutJson) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'paiement_id' => $paiement->id,
+            ]);
+        }
+
+        $retour = $request->input('retour');
+
+        return redirect()->to($this->cibleDeRetour(is_string($retour) ? $retour : null))->with('success', $message);
+    }
+
+    /**
+     * S1.1 — Garde anti-auto-validation (séparation des tâches anti-fraude).
+     *
+     * Refuse qu'un user valide un paiement qu'il a lui-même créé (créator == auth).
+     * Bypass possible via permission `paiements.validate.self_override` (réservée
+     * aux toutes petites écoles avec un seul user comptable, fortement déconseillé).
+     *
+     * superAdmin/serviceTechnique passent automatiquement (Gate::before * couverture).
+     *
+     * @return array{message: string}|null Null si OK, ou ['message' => '...'] si bloqué.
+     */
+    private function assertNotSelfValidation(\App\Models\ESBTPPaiement $paiement): ?array
+    {
+        $userId = auth()->id();
+        $createdBy = $paiement->created_by ?? null;
+
+        // Pas de created_by (legacy data pré-audit log) → pas de garde
+        if (!$createdBy) {
+            return null;
+        }
+
+        // Permission self_override (Gate::before couvre superAdmin/serviceTechnique)
+        if (auth()->user()?->can('paiements.validate.self_override')) {
+            return null;
+        }
+
+        // Auteur != validateur → OK (séparation respectée)
+        if ((int) $createdBy !== (int) $userId) {
+            return null;
+        }
+
+        // Bloqué : self-validation tentée sans override permission
+        Log::warning('[S1.1] Tentative auto-validation paiement bloquée', [
+            'paiement_id' => $paiement->id,
+            'user_id' => $userId,
+            'created_by' => $createdBy,
+            'montant' => $paiement->montant,
+        ]);
+
+        return [
+            'message' => 'Vous ne pouvez pas valider votre propre paiement (séparation des tâches anti-fraude). Demandez à un autre comptable.',
+        ];
+    }
+
+    /**
+     * Rejeter plusieurs paiements en une fois
+     */
+    public function bulkRejeter(Request $request)
+    {
+        $request->validate([
+            'paiements' => 'required|array|min:1',
+            'paiements.*' => 'exists:esbtp_paiements,id',
+            'motif_rejet' => 'required|string|min:10|max:500',
+        ], [
+            'motif_rejet.required' => 'Le motif de rejet est obligatoire.',
+            'motif_rejet.min' => 'Le motif de rejet doit faire au moins 10 caractères.',
+            'motif_rejet.max' => 'Le motif de rejet ne peut pas dépasser 500 caractères.',
+        ]);
+
+        $successCount = 0;
+        $errorCount = 0;
+        $alreadyProcessed = 0;
+
+        try {
+            DB::beginTransaction();
+
+            foreach ($request->paiements as $id) {
+                $paiement = ESBTPPaiement::find($id);
+
+                if (!$paiement) {
+                    $errorCount++;
+                    continue;
+                }
+
+                // Vérifier si le paiement peut être rejeté
+                if ($paiement->status === 'validé') {
+                    $errorCount++;
+                    continue;
+                }
+
+                if ($paiement->status === 'rejeté') {
+                    $alreadyProcessed++;
+                    continue;
+                }
+
+                // Rejeter le paiement
+                $paiement->update([
+                    'status' => 'rejeté',
+                    'date_validation' => now(),
+                    'validateur_id' => auth()->id(),
+                    'commentaire' => $request->input('motif_rejet')
+                ]);
+
+                $successCount++;
+            }
+
+            DB::commit();
+
+            // Construire le message de retour
+            $message = '';
+            if ($successCount > 0) {
+                $message = "$successCount paiement(s) rejeté(s) avec succès.";
+            }
+            if ($alreadyProcessed > 0) {
+                $message .= " $alreadyProcessed paiement(s) déjà rejeté(s).";
+            }
+            if ($errorCount > 0) {
+                $message .= " $errorCount paiement(s) n'ont pas pu être rejetés (déjà validés ou introuvables).";
+            }
+
+            // Si c'est une requête AJAX, retourner JSON
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'successCount' => $successCount,
+                    'alreadyProcessed' => $alreadyProcessed,
+                    'errorCount' => $errorCount
+                ]);
+            }
+
+            return redirect()->back()->with('success', $message);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            \Log::error('Erreur lors du rejet groupé des paiements', [
+                'paiements' => $request->paiements,
+                'error' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+            ]);
+
+            // Si c'est une requête AJAX, retourner JSON
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors du rejet groupé: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', 'Erreur lors du rejet groupé: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Rafraîchir une ligne de paiement spécifique (AJAX pour mise à jour partielle)
+     */
+    public function refreshLigne(ESBTPPaiement $paiement)
+    {
+        try {
+            // Charger toutes les relations nécessaires
+            $paiement->load([
+                'etudiant.user',
+                'fraisCategory',
+                'categorie',
+                'inscription',
+                'creator',
+            ]);
+
+            // Rendu de la partial ligne-paiement
+            $html = view('esbtp.paiements.partials.ligne-paiement', [
+                'paiement' => $paiement
+            ])->render();
+
+            \Log::info('Ligne paiement rafraîchie avec succès', [
+                'paiement_id' => $paiement->id,
+                'user_id' => auth()->id(),
+                'status' => $paiement->status
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'paiement_id' => $paiement->id,
+                'status' => $paiement->status
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur refreshLigne paiement: ' . $e->getMessage(), [
+                'paiement_id' => $paiement->id,
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du rafraîchissement de la ligne: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Endpoint de test pour déboguer les filtres et l'export
+     */
+    public function testFilters(Request $request)
+    {
+        $categorieFiltree = $request->input('frais_category_id');
+
+        $filters = [
+            'search' => $request->input('search'),
+            'status' => $request->input('status'),
+            // L'identifiant sert au calcul de la part imputee, le nom au
+            // bandeau de rappel : un document doit dire sur quoi il a ete
+            // filtre, sinon deux exports differents se ressemblent.
+            'frais_category_id' => $categorieFiltree,
+            'frais_category' => $categorieFiltree
+                ? \App\Models\ESBTPFraisCategory::whereKey($categorieFiltree)->value('name')
+                : null,
+            'date_debut' => $request->input('date_debut'),
+            'date_fin' => $request->input('date_fin'),
+        ];
+
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        $query = ESBTPPaiement::query();
+
+        // Appliquer les filtres
+        if ($filters['status']) {
+            $query->where('status', $filters['status']);
+        }
+
+        if ($filters['date_debut']) {
+            $query->whereDate('date_paiement', '>=', $filters['date_debut']);
+        }
+
+        if ($filters['date_fin']) {
+            $query->whereDate('date_paiement', '<=', $filters['date_fin']);
+        }
+
+        if ($anneeEnCours) {
+            $query->whereHas('inscription', function ($q) use ($anneeEnCours) {
+                $q->where('annee_universitaire_id', $anneeEnCours->id);
+            });
+        }
+
+        // Calculer les statistiques sur les paiements filtrés
+        $stats = [
+            'total' => (clone $query)->count(),
+            'valides' => (clone $query)->where('status', 'validé')->count(),
+            'en_attente' => (clone $query)->where('status', 'en_attente')->count(),
+            'rejetes' => (clone $query)->where('status', 'rejeté')->count(),
+            'montant_valide' => ESBTPPaiement::netCashSum((clone $query)->where('status', 'validé')),
+            'montant_en_attente' => (clone $query)->where('status', 'en_attente')->encaissements()->sum('montant') ?? 0,
+        ];
+        $stats['montant_total'] = $stats['montant_valide'] + $stats['montant_en_attente'];
+
+        // Récupérer un échantillon
+        $paiements = $query->with(['etudiant', 'inscription'])->limit(5)->get();
+
+        return response()->json([
+            'success' => true,
+            'filters_received' => $filters,
+            'annee_en_cours' => $anneeEnCours ? $anneeEnCours->name : 'Aucune',
+            'statistics' => [
+                'total_count' => $stats['total'],
+                'valides' => $stats['valides'],
+                'en_attente' => $stats['en_attente'],
+                'rejetes' => $stats['rejetes'],
+                'montant_total' => number_format($stats['montant_total'], 0, ',', ' ') . ' FCFA',
+                'montant_valide' => number_format($stats['montant_valide'], 0, ',', ' ') . ' FCFA',
+                'montant_en_attente' => number_format($stats['montant_en_attente'], 0, ',', ' ') . ' FCFA',
+                'recovery_rate' => $stats['montant_total'] > 0
+                    ? round(($stats['montant_valide'] / $stats['montant_total']) * 100, 1) . '%'
+                    : '0%',
+            ],
+            'sample_data' => $paiements->map(function($p) {
+                return [
+                    'id' => $p->id,
+                    'date_paiement' => $p->date_paiement ? $p->date_paiement->format('Y-m-d') : null,
+                    'montant' => number_format($p->montant, 0, ',', ' ') . ' FCFA',
+                    'status' => $p->status,
+                    'etudiant' => $p->etudiant ? $p->etudiant->nom : 'N/A',
+                    'matricule' => $p->etudiant ? $p->etudiant->matricule : 'N/A',
+                ];
+            }),
+        ]);
+    }
+
+    /**
+     * Exporter les paiements au format Excel (XLSX)
+     */
+    public function exportExcel(Request $request, FuzzyNameMatcher $matcher)
+    {
+        try {
+            // Récupérer les données filtrées pour les stats
+            $data = $this->filterService->preparePaiementListing($request, $matcher, [], microtime(true), 'ESBTPPaiementController@exportExcel');
+
+            // Récupérer TOUS les paiements filtrés (sans pagination)
+            $paiements = $this->filterService->getAllFilteredPaiements($request, $matcher);
+
+            // Préparer les filtres pour l'export
+            $filters = [
+                'search' => $request->input('search'),
+                'status' => $request->input('status'),
+                'frais_category_id' => $request->input('frais_category_id'),
+                'date_debut' => $request->input('date_debut'),
+                'date_fin' => $request->input('date_fin'),
+                'portee' => $request->input('portee', 'tous'),
+            ];
+
+            // Créer l'export
+            $export = new \App\Exports\PaiementsExport($paiements, $data['stats'], $filters);
+
+            // Générer le nom du fichier
+            $filename = 'paiements_' . now()->format('Y-m-d_His') . '.xlsx';
+
+            Log::info('Export Excel paiements généré', [
+                'user_id' => auth()->id(),
+                'total_paiements' => $paiements->count(),
+                'filename' => $filename
+            ]);
+
+            return \Maatwebsite\Excel\Facades\Excel::download($export, $filename);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur export Excel paiements: ' . $e->getMessage(), [
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+            ]);
+
+            return redirect()->back()->with('error', 'Erreur lors de l\'export Excel: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Exporter les paiements au format SAARI (Sage Saari Ligne 100).
+     * Format compatible import direct dans SAARI :
+     * colonnes (vide) | cj | date | libelle | debit | credit | n°cmpte | t | Colonne1
+     *
+     * Onglet généré "BNI BKE" (peut être renommé pour BNI BABI ou autre via setting).
+     *
+     * @see app/Exports/PaiementsSaariExport.php
+     */
+    public function exportSaari(Request $request, FuzzyNameMatcher $matcher)
+    {
+        try {
+            $paiements = $this->filterService->getAllFilteredPaiements($request, $matcher);
+
+            $filters = [
+                'search' => $request->input('search'),
+                'status' => $request->input('status'),
+                'date_debut' => $request->input('date_debut'),
+                'date_fin' => $request->input('date_fin'),
+                'periode_label' => $this->buildPeriodeLabel($request),
+                'portee' => $request->input('portee', 'tous'),
+            ];
+
+            $export = new \App\Exports\PaiementsSaariExport($paiements, $filters);
+            $filename = 'export_saari_' . now()->format('Y-m-d_His') . '.xlsx';
+
+            Log::info('Export SAARI paiements généré', [
+                'user_id' => auth()->id(),
+                'total_paiements' => $paiements->count(),
+                'filename' => $filename,
+            ]);
+
+            return \Maatwebsite\Excel\Facades\Excel::download($export, $filename);
+        } catch (\Exception $e) {
+            Log::error('Erreur export SAARI paiements: ' . $e->getMessage(), [
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
+            ]);
+
+            return redirect()->back()->with('error', 'Erreur lors de l\'export SAARI: ' . $e->getMessage());
+        }
+    }
+
+    private function buildPeriodeLabel(Request $request): string
+    {
+        $d = $request->input('date_debut');
+        $f = $request->input('date_fin');
+        if ($d && $f) {
+            return 'du ' . $d . ' au ' . $f;
+        }
+        if ($d) {
+            return 'depuis le ' . $d;
+        }
+        if ($f) {
+            return 'jusqu\'au ' . $f;
+        }
+        return '';
+    }
+
+    /**
+     * Exporter les paiements au format CSV
+     */
+    public function exportCsv(Request $request, FuzzyNameMatcher $matcher)
+    {
+        try {
+            // Récupérer les données filtrées pour les stats
+            $data = $this->filterService->preparePaiementListing($request, $matcher, [], microtime(true), 'ESBTPPaiementController@exportCsv');
+
+            // Récupérer TOUS les paiements filtrés (sans pagination)
+            $paiements = $this->filterService->getAllFilteredPaiements($request, $matcher);
+
+            // Préparer les filtres
+            $filters = [
+                'search' => $request->input('search'),
+                'status' => $request->input('status'),
+                'frais_category_id' => $request->input('frais_category_id'),
+                'date_debut' => $request->input('date_debut'),
+                'date_fin' => $request->input('date_fin'),
+                'portee' => $request->input('portee', 'tous'),
+            ];
+
+            // Créer l'export
+            $export = new \App\Exports\PaiementsExport($paiements, $data['stats'], $filters);
+
+            // Générer le nom du fichier
+            $filename = 'paiements_' . now()->format('Y-m-d_His') . '.csv';
+
+            Log::info('Export CSV paiements généré', [
+                'user_id' => auth()->id(),
+                'total_paiements' => $paiements->count(),
+                'filename' => $filename
+            ]);
+
+            return \Maatwebsite\Excel\Facades\Excel::download($export, $filename, \Maatwebsite\Excel\Excel::CSV, [
+                'Content-Type' => 'text/csv',
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur export CSV paiements: ' . $e->getMessage(), [
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+            ]);
+
+            return redirect()->back()->with('error', 'Erreur lors de l\'export CSV: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Exporter les paiements au format PDF (téléchargement)
+     */
+    public function exportPdf(Request $request, FuzzyNameMatcher $matcher)
+    {
+        try {
+            [$paiements, $donnees, $filename] = $this->buildExportPdf($request, $matcher);
+
+            return app(PdfParLots::class)->reponse(
+                'esbtp.paiements.export-pdf', $paiements, $donnees, 'paiements', $filename,
+                inline: false, orientation: 'landscape'
+            );
+        } catch (ExportPdfTropVolumineuxException $e) {
+            // Pas une panne : la selection est trop large. Le message dit
+            // quoi faire, il ne doit pas etre noye dans un 'Erreur lors de'.
+            return redirect()->back()->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            // \Exception laissait passer les \Error (TypeError, appel sur null) :
+            // ils remontaient en page blanche 500, sans message ni journal.
+            Log::error('Erreur export PDF paiements: ' . $e->getMessage(), [
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+            ]);
+            return redirect()->back()->with('error', 'Erreur lors de l\'export PDF: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Aperçu PDF des paiements (inline, nouvelle tab du navigateur).
+     * Phase 9.5 — preview universel.
+     */
+    public function exportPdfPreview(Request $request, FuzzyNameMatcher $matcher)
+    {
+        try {
+            [$paiements, $donnees, $filename] = $this->buildExportPdf($request, $matcher);
+
+            return app(PdfParLots::class)->reponse(
+                'esbtp.paiements.export-pdf', $paiements, $donnees, 'paiements', $filename,
+                inline: true, orientation: 'landscape'
+            );
+        } catch (ExportPdfTropVolumineuxException $e) {
+            // Pas une panne : la selection est trop large. Le message dit
+            // quoi faire, il ne doit pas etre noye dans un 'Erreur lors de'.
+            return redirect()->back()->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            // \Exception laissait passer les \Error (TypeError, appel sur null) :
+            // ils remontaient en page blanche 500, sans message ni journal.
+            Log::error('Erreur aperçu PDF paiements: ' . $e->getMessage(), [
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+            ]);
+            return redirect()->back()->with('error', 'Erreur lors de l\'aperçu PDF: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Construit l'objet DomPDF pour l'export paiements (download + preview
+     * partagent la même logique). Retourne [Pdf, filename].
+     *
+     * @return array{0: \Barryvdh\DomPDF\PDF, 1: string}
+     */
+    private function buildExportPdf(Request $request, FuzzyNameMatcher $matcher): array
+    {
+        $data = $this->filterService->preparePaiementListing($request, $matcher, [], microtime(true), 'ESBTPPaiementController@buildExportPdf');
+        $paiements = $this->filterService->getAllFilteredPaiements($request, $matcher);
+
+        // Compter AVANT de rendre. DomPDF garde tout le document en memoire
+        // et meurt d'epuisement au-dela de quelques centaines de lignes — une
+        // mort qu'aucun catch ne rattrape et qu'aucun journal n'enregistre.
+        //
+        // Refuser des 500 lignes rendait pourtant l'export inutilisable : la
+        // vue par defaut, c'est toute l'annee, soit plus de 5 000 versements
+        // sur une grosse instance. On rend donc par lots au-dela du seuil,
+        // comme le suivi par categorie le fait deja. Le plafond qui subsiste
+        // ne protege plus la memoire mais le temps de reponse.
+        $total = $paiements->count();
+        if ($total > self::PDF_PAIEMENTS_MAX_LIGNES) {
+            throw new ExportPdfTropVolumineuxException(sprintf(
+                'Trop de paiements pour un PDF (%d, maximum %d). Affinez les filtres (frais, statut, dates, recherche), ou exportez en Excel qui n\'a pas cette limite.',
+                $total,
+                self::PDF_PAIEMENTS_MAX_LIGNES
+            ));
+        }
+
+        // Eager load createdBy si on va afficher la colonne (évite N+1)
+        $paiements->loadMissing('createdBy:id,name');
+
+        $filters = $this->filterService->filtresDocument($request);
+
+        $settings = $this->getReceiptSettings();
+        $schoolInfo = \App\Helpers\SettingsHelper::getSchoolInfo();
+        $pdfCfg = \App\Helpers\SettingsHelper::getPdfSettings();
+
+        $etablissement = [
+            'nom' => $schoolInfo['name'],
+            'adresse' => $schoolInfo['address'],
+            'telephone' => $schoolInfo['phone'],
+            'email' => $schoolInfo['email'],
+            'logo' => $schoolInfo['logo'],
+        ];
+
+        // Logique permissions :
+        // - Si user voit TOUS les paiements (paiements.view) → colonne 'Encaissé par' sur chaque ligne
+        // - Si user voit SEULEMENT ses propres paiements (paiements.view_own) → pas de colonne (redondant
+        //   car c'est lui partout) MAIS son rôle + nom dans le header pour identifier le document.
+        //   Format : "{Rôle français} : {Nom}" — ex "Caissier : N'GUESSAN Marcel".
+        //   Supporte les rôles custom créés par l'admin tenant (Lot 19).
+        $user = auth()->user();
+        $canViewAll = $user && $user->can('paiements.view');
+        $showCreatorColumn = $canViewAll;
+        $creatorHeader = null;
+        if (!$canViewAll && $user && $user->can('paiements.view_own')) {
+            $roleName = optional($user->roles->first())->name;
+            $roleLabels = [
+                'superAdmin' => 'Administrateur',
+                'secretaire' => 'Secrétaire',
+                'comptable' => 'Comptable',
+                'caissier' => 'Caissier',
+                'coordinateur' => 'Coordinateur',
+                'enseignant' => 'Enseignant',
+                'etudiant' => 'Étudiant',
+                'serviceTechnique' => 'Service Technique',
+            ];
+            $displayRole = $roleName ? ($roleLabels[$roleName] ?? ucfirst($roleName)) : null;
+            $creatorHeader = $displayRole ? ($displayRole . ' : ' . $user->name) : $user->name;
+        }
+
+        Log::info('PDF paiements généré', [
+            'user_id' => auth()->id(),
+            'total_paiements' => $paiements->count(),
+            'show_creator_column' => $showCreatorColumn,
+            'creator_header' => $creatorHeader,
+        ]);
+
+        $donnees = [
+            'stats' => $data['stats'],
+            'filters' => $filters,
+            'settings' => $settings,
+            'etablissement' => $etablissement,
+            'pdfCfg' => $pdfCfg,
+            'dateExport' => now(),
+            'showCreatorColumn' => $showCreatorColumn,
+            'creatorHeader' => $creatorHeader,
+        ];
+
+        $filename = 'paiements_' . now()->format('Y-m-d_His') . '.pdf';
+
+        return [$paiements, $donnees, $filename];
+    }
+
+
+}

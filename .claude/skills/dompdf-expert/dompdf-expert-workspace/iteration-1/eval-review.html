@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>dompdf-expert — Eval Review · Iteration 1</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; color: #1e293b; }
+
+  /* ── Layout ── */
+  .shell { display: flex; height: 100vh; }
+  .sidebar { width: 240px; background: #1e293b; color: #e2e8f0; flex-shrink: 0; overflow-y: auto; display: flex; flex-direction: column; }
+  .main { flex: 1; overflow-y: auto; }
+
+  /* ── Sidebar ── */
+  .sidebar-header { padding: 20px 16px 12px; border-bottom: 1px solid #334155; }
+  .sidebar-header h1 { font-size: 13px; font-weight: 700; color: #f1f5f9; }
+  .sidebar-header p { font-size: 11px; color: #94a3b8; margin-top: 3px; }
+  .sidebar-tabs { display: flex; gap: 0; border-bottom: 1px solid #334155; }
+  .tab-btn { flex: 1; padding: 8px 4px; font-size: 11px; color: #94a3b8; background: none; border: none; cursor: pointer; transition: all .15s; }
+  .tab-btn.active { color: #60a5fa; border-bottom: 2px solid #60a5fa; font-weight: 600; }
+  .sidebar-nav { padding: 8px; flex: 1; }
+  .nav-item { display: block; padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; color: #cbd5e1; margin-bottom: 2px; transition: background .1s; }
+  .nav-item:hover { background: #334155; }
+  .nav-item.active { background: #1d4ed8; color: #fff; }
+  .nav-eval { font-weight: 600; color: #f1f5f9; margin-top: 8px; margin-bottom: 2px; padding: 6px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+
+  /* ── Score chips ── */
+  .chip { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 700; margin-left: 6px; }
+  .chip-pass { background: #dcfce7; color: #166534; }
+  .chip-fail { background: #fee2e2; color: #991b1b; }
+  .chip-neutral { background: #dbeafe; color: #1d4ed8; }
+
+  /* ── Content panels ── */
+  .panel { display: none; padding: 24px 28px; }
+  .panel.active { display: block; }
+
+  /* ── Outputs tab ── */
+  .eval-header { margin-bottom: 20px; }
+  .eval-title { font-size: 18px; font-weight: 700; color: #0f172a; }
+  .eval-prompt { background: #f1f5f9; border-left: 3px solid #3b82f6; padding: 12px 14px; border-radius: 4px; font-size: 13px; color: #475569; margin-top: 8px; line-height: 1.5; }
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+  .run-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
+  .run-card-header { padding: 10px 14px; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .run-card-header.with-skill { background: #eff6ff; color: #1d4ed8; border-bottom: 2px solid #3b82f6; }
+  .run-card-header.without-skill { background: #f8fafc; color: #475569; border-bottom: 2px solid #94a3b8; }
+  .run-card-body { padding: 0; }
+  pre.code-block { background: #0f172a; color: #e2e8f0; padding: 14px; font-size: 11px; line-height: 1.55; overflow-x: auto; white-space: pre-wrap; word-break: break-word; max-height: 420px; overflow-y: auto; }
+  .md-content { padding: 14px; font-size: 12.5px; line-height: 1.6; color: #334155; max-height: 420px; overflow-y: auto; }
+  .md-content h2 { font-size: 13px; margin: 12px 0 4px; color: #0f172a; }
+  .md-content h3 { font-size: 12px; margin: 10px 0 4px; color: #374151; }
+  .md-content p { margin-bottom: 8px; }
+  .md-content ul, .md-content ol { padding-left: 16px; margin-bottom: 8px; }
+  .md-content li { margin-bottom: 2px; }
+  .md-content code { background: #f1f5f9; padding: 1px 4px; border-radius: 3px; font-family: monospace; font-size: 11px; }
+  .md-content pre { background: #0f172a; color: #e2e8f0; padding: 10px 12px; border-radius: 6px; font-size: 11px; overflow-x: auto; margin: 8px 0; }
+  .md-content pre code { background: none; padding: 0; color: inherit; }
+  .md-content table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 8px 0; }
+  .md-content table th, .md-content table td { border: 1px solid #e2e8f0; padding: 5px 8px; }
+  .md-content table th { background: #f8fafc; font-weight: 600; }
+
+  /* ── Assertions ── */
+  .assertions-section { margin-top: 20px; }
+  .assertions-title { font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
+  .assertion { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-radius: 6px; margin-bottom: 4px; font-size: 12px; }
+  .assertion.pass { background: #f0fdf4; border: 1px solid #bbf7d0; }
+  .assertion.fail { background: #fff1f2; border: 1px solid #fecdd3; }
+  .assertion-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .assertion-text { font-weight: 600; color: #374151; }
+  .assertion-evidence { color: #6b7280; margin-top: 2px; font-size: 11px; }
+
+  /* ── Diff badges ── */
+  .diff-badges { margin-top: 16px; }
+  .diff-badge { display: inline-flex; align-items: center; gap: 5px; background: #fef9c3; border: 1px solid #fde047; color: #854d0e; padding: 5px 10px; border-radius: 6px; font-size: 11.5px; margin: 3px; }
+  .diff-badge.advantage { background: #eff6ff; border-color: #93c5fd; color: #1e40af; }
+
+  /* ── Benchmark tab ── */
+  .bench-section { margin-bottom: 28px; }
+  .bench-title { font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; }
+  .score-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .score-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; }
+  .score-card-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .05em; }
+  .score-card-value { font-size: 26px; font-weight: 800; margin: 4px 0; }
+  .score-card-value.with { color: #1d4ed8; }
+  .score-card-value.without { color: #64748b; }
+  .score-card-value.delta { color: #16a34a; }
+  .score-card-sub { font-size: 10px; color: #94a3b8; }
+  .eval-row { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+  .eval-row-header { display: flex; align-items: center; padding: 10px 14px; gap: 12px; cursor: pointer; user-select: none; }
+  .eval-row-header:hover { background: #f8fafc; }
+  .eval-row-name { font-weight: 600; font-size: 13px; flex: 1; }
+  .eval-row-scores { display: flex; gap: 16px; align-items: center; }
+  .score-pair { text-align: center; }
+  .score-pair-label { font-size: 9px; color: #94a3b8; text-transform: uppercase; }
+  .score-pair-val { font-size: 14px; font-weight: 700; }
+  .score-pair-val.with { color: #1d4ed8; }
+  .score-pair-val.without { color: #64748b; }
+  .score-pair-val.plus { color: #16a34a; font-size: 12px; }
+  .eval-row-body { padding: 0 14px 12px; font-size: 12px; display: none; }
+  .eval-row-body.open { display: block; }
+  .key-diff { margin-top: 8px; }
+  .key-diff-title { font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 4px; }
+  .key-diff li { color: #374151; margin-bottom: 3px; line-height: 1.45; }
+  .analyst-obs { background: #fafafa; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; }
+  .analyst-obs li { font-size: 12.5px; color: #374151; margin-bottom: 8px; line-height: 1.55; padding-left: 4px; }
+  .analyst-obs li strong { color: #0f172a; }
+
+  /* ── Feedback ── */
+  .feedback-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid #e2e8f0; }
+  .feedback-label { font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+  .feedback-input { width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; color: #374151; resize: vertical; min-height: 60px; font-family: inherit; }
+  .feedback-input:focus { outline: none; border-color: #60a5fa; box-shadow: 0 0 0 2px #dbeafe; }
+  .submit-all-btn { display: block; margin: 20px auto 0; padding: 10px 24px; background: #1d4ed8; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .submit-all-btn:hover { background: #1e40af; }
+  .saved-badge { display: none; color: #16a34a; font-size: 11px; margin-left: 6px; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ── SIDEBAR ── -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <h1>dompdf-expert</h1>
+    <p>Iteration 1 · 3 evals</p>
+  </div>
+  <div class="sidebar-tabs">
+    <button class="tab-btn active" onclick="showTab('outputs')">Outputs</button>
+    <button class="tab-btn" onclick="showTab('benchmark')">Benchmark</button>
+  </div>
+  <nav class="sidebar-nav" id="outputs-nav">
+    <div class="nav-eval">Eval 1 — PDF Paiements</div>
+    <div class="nav-item active" onclick="showRun(1,'with_skill',this)">✦ With Skill <span class="chip chip-pass">8/8</span></div>
+    <div class="nav-item" onclick="showRun(1,'without_skill',this)">○ Baseline <span class="chip chip-fail">6/8</span></div>
+
+    <div class="nav-eval">Eval 2 — Fix tr Background</div>
+    <div class="nav-item" onclick="showRun(2,'with_skill',this)">✦ With Skill <span class="chip chip-pass">3/3</span></div>
+    <div class="nav-item" onclick="showRun(2,'without_skill',this)">○ Baseline <span class="chip chip-pass">3/3</span></div>
+
+    <div class="nav-eval">Eval 3 — Controller exportToPDF</div>
+    <div class="nav-item" onclick="showRun(3,'with_skill',this)">✦ With Skill <span class="chip chip-pass">6/6</span></div>
+    <div class="nav-item" onclick="showRun(3,'without_skill',this)">○ Baseline <span class="chip chip-pass">6/6</span></div>
+  </nav>
+</div>
+
+<!-- ── MAIN ── -->
+<div class="main">
+
+  <!-- OUTPUTS TAB -->
+  <div class="panel active" id="tab-outputs">
+
+    <!-- ─── EVAL 1 WITH SKILL ─── -->
+    <div id="run-1-with_skill" class="run-view active">
+      <div class="eval-header">
+        <div class="eval-title">Eval 1 — PDF Paiements · <span style="color:#1d4ed8;">With Skill</span> <span class="chip chip-pass">8/8 · 100%</span></div>
+        <div class="eval-prompt"><strong>Prompt :</strong> Je veux créer un export PDF pour la page /esbtp/paiements. Header logo + titre, tableau avec colonnes (Étudiant, Montant, Mode, Date, Statut, Catégorie), lignes alternantes, badges statut colorés (vert=validé, orange=en_attente, rouge=rejeté).</div>
+      </div>
+
+      <div class="diff-badges">
+        <span class="diff-badge advantage">✅ DejaVu Sans pour accents français</span>
+        <span class="diff-badge advantage">✅ Header table layout (DomPDF-safe)</span>
+        <span class="diff-badge advantage">✅ .row-even td / .row-odd td (pas :nth-child)</span>
+        <span class="diff-badge advantage">✅ 4 stat cards + tfoot total</span>
+        <span class="diff-badge advantage">✅ $settings['header_bg_color'] ?? '#0453cb'</span>
+      </div>
+
+      <div class="compare-grid">
+        <div class="run-card">
+          <div class="run-card-header with-skill">✦ With Skill — export-pdf.blade.php</div>
+          <div class="run-card-body">
+            <pre class="code-block">&lt;!DOCTYPE html&gt;
+&lt;html lang="fr"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;title&gt;Liste des Paiements&lt;/title&gt;
+    &lt;style&gt;
+        body {
+            font-family: DejaVu Sans, Arial, sans-serif; /* §7: accents fr */
+            font-size: {{ $settings['font_size'] ?? 11 }}px;
+            color: {{ $settings['text_color'] ?? '#1f2937' }};
+        }
+        @page {
+            margin: {{ $settings['margin_top'] ?? 15 }}mm ...;
+        }
+
+        /* §6: background sur thead td, PAS sur tr */
+        .paiements-table thead td {
+            background-color: {{ $settings['header_bg_color'] ?? '#0453cb' }};
+            color: {{ $settings['header_text_color'] ?? '#ffffff' }};
+            padding: 8px 10px;
+            font-weight: bold;
+        }
+
+        /* §6: background alternant sur tbody td, PAS tr */
+        .paiements-table tbody .row-odd td  { background-color: #ffffff; }
+        .paiements-table tbody .row-even td { background-color: #f3f4f6; }
+
+        /* §14: Badges statut */
+        .badge-valide    { background-color: #10b981; }
+        .badge-attente   { background-color: #f59e0b; color: #1f2937; }
+        .badge-rejete    { background-color: #ef4444; }
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    {{-- §14: header block avec table layout --}}
+    &lt;table width="100%"&gt;
+        &lt;tr&gt;
+            &lt;td width="20%"&gt;
+                @if($logoBase64)
+                    &lt;img src="{{ $logoBase64 }}" style="max-height: 55px;"&gt;
+                @endif
+            &lt;/td&gt;
+            &lt;td width="60%" style="text-align: center;"&gt;
+                &lt;div style="font-size: 17px; font-weight: bold;"&gt;LISTE DES PAIEMENTS&lt;/div&gt;
+            &lt;/td&gt;
+            &lt;td width="20%" style="text-align: right;"&gt;Généré le {{ now()->format('d/m/Y') }}&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/table&gt;
+
+    {{-- §14: 4 Stat cards --}}
+    @php
+        $totalMontant  = $paiements-&gt;sum('montant');
+        $countValides  = $paiements-&gt;where('status', 'validé')-&gt;count();
+        $countAttente  = $paiements-&gt;where('status', 'en_attente')-&gt;count();
+    @endphp
+    &lt;table width="100%"&gt;
+        &lt;tr&gt;
+            &lt;td width="24%"&gt;&lt;!-- stat card: Total --&gt;&lt;/td&gt;
+            &lt;td width="24%"&gt;&lt;!-- stat card: Montant total --&gt;&lt;/td&gt;
+            &lt;td width="24%"&gt;&lt;!-- stat card: Validés --&gt;&lt;/td&gt;
+            &lt;td width="24%"&gt;&lt;!-- stat card: En attente --&gt;&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/table&gt;
+
+    {{-- Tableau paiements avec zebra striping correct --}}
+    &lt;table class="paiements-table"&gt;
+        &lt;thead&gt;&lt;tr&gt;&lt;td&gt;N°&lt;/td&gt;&lt;td&gt;Étudiant&lt;/td&gt;...&lt;/tr&gt;&lt;/thead&gt;
+        &lt;tbody&gt;
+            @forelse($paiements as $i =&gt; $paiement)
+                @php $rowClass = $i % 2 === 0 ? 'row-even' : 'row-odd'; @endphp
+                &lt;tr class="{{ $rowClass }}"&gt;
+                    &lt;td&gt;...&lt;/td&gt;
+                &lt;/tr&gt;
+            @empty
+                &lt;tr class="row-odd"&gt;&lt;td colspan="7"&gt;Aucun paiement.&lt;/td&gt;&lt;/tr&gt;
+            @endforelse
+        &lt;/tbody&gt;
+        &lt;tfoot&gt;
+            &lt;tr&gt;
+                &lt;td colspan="2"&gt;Total ({{ $paiements-&gt;count() }} paiements)&lt;/td&gt;
+                &lt;td&gt;{{ number_format($paiements-&gt;sum('montant'), 0, ',', ' ') }} FCFA&lt;/td&gt;
+                &lt;td colspan="4"&gt;&lt;/td&gt;
+            &lt;/tr&gt;
+        &lt;/tfoot&gt;
+    &lt;/table&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+          </div>
+        </div>
+
+        <div class="run-card">
+          <div class="run-card-header without-skill">○ Baseline — export-pdf.blade.php</div>
+          <div class="run-card-body">
+            <pre class="code-block">&lt;!DOCTYPE html&gt;
+&lt;html lang="fr"&gt;
+&lt;head&gt;
+    @include('pdf.partials.theme')
+    &lt;style&gt;
+        body {
+            font-family: 'Arial', sans-serif; /* ⚠️ pas DejaVu → accents cassés */
+            font-size: 10px;
+        }
+
+        /* Header: div-based (pas table) */
+        .header-section {
+            background: #0453cb;
+            text-align: center;
+        }
+
+        /* ⚠️ :nth-child NON supporté par DomPDF ! */
+        .payments-table tbody tr:nth-child(odd) td  { background: #ffffff; }
+        .payments-table tbody tr:nth-child(even) td {
+            background: #f3f4f6; /* alternance ne fonctionnera PAS */
+        }
+
+        /* Badges: OK */
+        .status-valid    { background: #16a34a; }
+        .status-pending  { background: #f59e0b; }
+        .status-rejected { background: #dc2626; }
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    {{-- Header: div (pas table — risque DomPDF) --}}
+    &lt;div class="header-section"&gt;
+        @if($settings['show_logo'] ?? false)
+            &lt;img src="{{ $settings['logo_base64'] }}" ...&gt;
+        @endif
+        &lt;div class="document-title"&gt;Liste des Paiements&lt;/div&gt;
+    &lt;/div&gt;
+
+    {{-- Pas de stat cards --}}
+
+    {{-- Tableau: structure correcte --}}
+    &lt;table class="payments-table"&gt;
+        &lt;thead&gt;
+            &lt;tr&gt;
+                &lt;th&gt;N°&lt;/th&gt;&lt;th&gt;Étudiant&lt;/th&gt;...
+            &lt;/tr&gt;
+        &lt;/thead&gt;
+        &lt;tbody&gt;
+            @foreach($paiements as $index =&gt; $paiement)
+                &lt;tr&gt; {{-- pas de class row-even/row-odd --}}
+                    &lt;td&gt;...&lt;/td&gt;
+                &lt;/tr&gt;
+            @endforeach
+        &lt;/tbody&gt;
+        {{-- pas de tfoot total --}}
+    &lt;/table&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="assertions-section">
+        <div class="assertions-title">Assertions — With Skill (8/8)</div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Utilise DejaVu Sans comme font principale</div><div class="assertion-evidence">font-family: DejaVu Sans, Arial, sans-serif; — §7 référencé en commentaire</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Aucun display:flex ou display:grid</div><div class="assertion-evidence">Pas de flexbox. Toutes les colonnes via &lt;table&gt;</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Utilise &lt;table&gt; pour le layout</div><div class="assertion-evidence">Header table, stat cards table, paiements table — aucun div-layout</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">N'utilise pas asset() pour les images</div><div class="assertion-evidence">$logoBase64 passé depuis contrôleur via prepareLogoBase64()</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Utilise la couleur primaire KLASSCI</div><div class="assertion-evidence">$settings['header_bg_color'] ?? '#0453cb' — settings en priorité, fallback hardcodé</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Backgrounds sur td, pas tr</div><div class="assertion-evidence">.paiements-table thead td { background-color: ... } — .row-even td / .row-odd td</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Badges statut colorés (3 couleurs distinctes)</div><div class="assertion-evidence">badge-valide=#10b981, badge-attente=#f59e0b, badge-rejete=#ef4444</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Header avec logo et titre du document</div><div class="assertion-evidence">Table 3 colonnes: logo + titre centré + date génération (top-right)</div></div></div>
+      </div>
+
+      <div class="feedback-section">
+        <div class="feedback-label">💬 Vos commentaires sur cette sortie (With Skill)</div>
+        <textarea class="feedback-input" id="fb-1-with_skill" placeholder="Ex: Les stat cards sont bien, mais j'aimerais aussi voir les noms de colonnes en français. Le footer est trop discret…"></textarea>
+        <span class="saved-badge" id="saved-1-with_skill">✓ sauvegardé</span>
+      </div>
+    </div>
+
+    <!-- ─── EVAL 1 WITHOUT SKILL ─── -->
+    <div id="run-1-without_skill" class="run-view" style="display:none;">
+      <div class="eval-header">
+        <div class="eval-title">Eval 1 — PDF Paiements · <span style="color:#64748b;">Baseline (sans skill)</span> <span class="chip chip-fail">6/8 · 75%</span></div>
+        <div class="eval-prompt"><strong>Prompt :</strong> Je veux créer un export PDF pour la page /esbtp/paiements. Header logo + titre, tableau avec colonnes (Étudiant, Montant, Mode, Date, Statut, Catégorie), lignes alternantes, badges statut colorés.</div>
+      </div>
+
+      <div class="diff-badges">
+        <span class="diff-badge">⚠️ Arial au lieu de DejaVu Sans → accents FR cassés</span>
+        <span class="diff-badge">⚠️ :nth-child utilisé → non supporté par DomPDF</span>
+        <span class="diff-badge">⚠️ Header en div (pas table)</span>
+        <span class="diff-badge">⚠️ Pas de stat cards, pas de tfoot total</span>
+      </div>
+
+      <div class="assertions-section">
+        <div class="assertions-title">Assertions — Baseline (6/8)</div>
+        <div class="assertion fail"><span class="assertion-icon">❌</span><div><div class="assertion-text">Utilise DejaVu Sans comme font principale</div><div class="assertion-evidence">font-family: 'Arial', sans-serif; — Arial ne supporte pas les accents fr (é, è, à, ç) dans DomPDF</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Aucun display:flex ou display:grid</div><div class="assertion-evidence">Pas de flexbox dans le CSS</div></div></div>
+        <div class="assertion fail"><span class="assertion-icon">❌</span><div><div class="assertion-text">Utilise &lt;table&gt; pour le layout</div><div class="assertion-evidence">Header est un &lt;div class="header-section"&gt; — div-based layout moins fiable dans DomPDF</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">N'utilise pas asset() pour les images</div><div class="assertion-evidence">Utilise $settings['logo_base64'] — base64 OK</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Utilise la couleur primaire KLASSCI</div><div class="assertion-evidence">background: #0453cb hardcodé dans .header-section</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Backgrounds sur td, pas tr</div><div class="assertion-evidence">tr:nth-child(even) td { background } — cible td MAIS :nth-child n'est pas supporté par DomPDF → les lignes alternantes ne fonctionneront pas</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Badges statut colorés (3 couleurs distinctes)</div><div class="assertion-evidence">status-valid=#16a34a, status-pending=#f59e0b, status-rejected=#dc2626</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Header avec logo et titre du document</div><div class="assertion-evidence">div.header-section avec logo + "Liste des Paiements" — pas de table-based</div></div></div>
+      </div>
+
+      <div class="feedback-section">
+        <div class="feedback-label">💬 Vos commentaires sur cette sortie (Baseline)</div>
+        <textarea class="feedback-input" id="fb-1-without_skill" placeholder="Vos observations sur la sortie baseline…"></textarea>
+        <span class="saved-badge" id="saved-1-without_skill">✓ sauvegardé</span>
+      </div>
+    </div>
+
+    <!-- ─── EVAL 2 WITH SKILL ─── -->
+    <div id="run-2-with_skill" class="run-view" style="display:none;">
+      <div class="eval-header">
+        <div class="eval-title">Eval 2 — Fix tr Background · <span style="color:#1d4ed8;">With Skill</span> <span class="chip chip-pass">3/3 · 100%</span></div>
+        <div class="eval-prompt"><strong>Prompt :</strong> Dans pdf-configurable.blade.php, les background-color sur &lt;tr&gt; ne s'affichent pas dans le PDF. Comment corriger ça ? Montre-moi le bon pattern.</div>
+      </div>
+
+      <div class="assertions-section">
+        <div class="assertions-title">Assertions — With Skill (3/3)</div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Identifie le problème : background sur &lt;tr&gt; ignoré par DomPDF</div><div class="assertion-evidence">"DomPDF ne rend pas background-color quand la propriété cible un élément &lt;tr&gt;"</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">La correction cible les &lt;td&gt;</div><div class="assertion-evidence">.section-header td, .subject-row:nth-child(even) td, .summary-row td</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Ne suggère pas flexbox</div><div class="assertion-evidence">Aucune mention de flex. Correction purement CSS selector.</div></div></div>
+      </div>
+
+      <div class="md-content" style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; margin-top:16px; max-height:none;">
+        <h2>Fix: background-color sur &lt;tr&gt; — With Skill</h2>
+        <p><strong>Cause :</strong> DomPDF v2.0 ne rend pas <code>background-color</code> ciblant un <code>&lt;tr&gt;</code>. Le background doit toujours être sur les enfants <code>&lt;td&gt;</code>.</p>
+        <pre><code>/* ❌ WRONG */
+.section-header { background: {{ $pdfPrimary }}; }
+.subject-row:nth-child(even) { background: #f8fafb; }
+
+/* ✅ CORRECT */
+.section-header td { background-color: {{ $pdfPrimary }}; }
+.subject-row:nth-child(even) td { background-color: #f8fafb; }
+.summary-row td { background-color: #e5e7eb; }</code></pre>
+        <p><strong>Pattern général :</strong></p>
+        <pre><code>/* ❌ ignoré */    .header-row { background-color: #0453cb; }
+/* ✅ fonctionne */ .header-row td { background-color: #0453cb; }</code></pre>
+      </div>
+
+      <div class="feedback-section">
+        <div class="feedback-label">💬 Vos commentaires (With Skill)</div>
+        <textarea class="feedback-input" id="fb-2-with_skill" placeholder="Ex: Réponse claire et précise…"></textarea>
+        <span class="saved-badge" id="saved-2-with_skill">✓ sauvegardé</span>
+      </div>
+    </div>
+
+    <!-- ─── EVAL 2 WITHOUT SKILL ─── -->
+    <div id="run-2-without_skill" class="run-view" style="display:none;">
+      <div class="eval-header">
+        <div class="eval-title">Eval 2 — Fix tr Background · <span style="color:#64748b;">Baseline</span> <span class="chip chip-pass">3/3 · 100%</span></div>
+        <div class="eval-prompt"><strong>Prompt :</strong> Dans pdf-configurable.blade.php, les background-color sur &lt;tr&gt; ne s'affichent pas dans le PDF. Comment corriger ça ?</div>
+      </div>
+
+      <div class="md-content" style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; margin-top:16px; max-height:none;">
+        <h2>Fix: background-color sur &lt;tr&gt; — Baseline</h2>
+        <p><strong>Cause :</strong> DomPDF ne supporte pas <code>background-color</code> sur <code>&lt;tr&gt;</code>. De plus, <code>:nth-child()</code> n'est pas supporté.</p>
+        <pre><code>/* APRÈS */
+.section-header td { background-color: {{ $pdfPrimary }}; }
+.subject-row-even td { background-color: #f8fafb; }
+.summary-row td { background-color: #e5e7eb; font-weight: 700; }</code></pre>
+        <p>Et dans Blade, pour remplacer <code>:nth-child</code> :</p>
+        <pre><code>{{-- AVANT --}}
+&lt;tr class="subject-row"&gt;
+
+{{-- APRÈS — Blade $loop->even remplace :nth-child --}}
+&lt;tr class="subject-row{{ $loop->even ? ' subject-row-even' : '' }}"&gt;</code></pre>
+        <p><em>Bonus : identifie aussi l'incompatibilité :nth-child et propose $loop->even — insight supplémentaire par rapport au with-skill.</em></p>
+      </div>
+
+      <div class="assertions-section">
+        <div class="assertions-title">Assertions — Baseline (3/3)</div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Identifie le problème : background sur &lt;tr&gt; ignoré</div><div class="assertion-evidence">Correct. Mentionne aussi :nth-child comme limitation supplémentaire.</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">La correction cible les &lt;td&gt;</div><div class="assertion-evidence">.section-header td, .subject-row-even td, .summary-row td</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Ne suggère pas flexbox</div><div class="assertion-evidence">Aucune mention de flex.</div></div></div>
+      </div>
+
+      <div class="feedback-section">
+        <div class="feedback-label">💬 Vos commentaires (Baseline)</div>
+        <textarea class="feedback-input" id="fb-2-without_skill" placeholder="Ex: Même qualité que le with skill, le $loop->even est un plus intéressant…"></textarea>
+        <span class="saved-badge" id="saved-2-without_skill">✓ sauvegardé</span>
+      </div>
+    </div>
+
+    <!-- ─── EVAL 3 WITH SKILL ─── -->
+    <div id="run-3-with_skill" class="run-view" style="display:none;">
+      <div class="eval-header">
+        <div class="eval-title">Eval 3 — Controller exportToPDF() · <span style="color:#1d4ed8;">With Skill</span> <span class="chip chip-pass">6/6 · 100%</span></div>
+        <div class="eval-prompt"><strong>Prompt :</strong> Crée une méthode exportToPDF() dans ESBTPAttendanceController pour exporter un rapport d'absences étudiant en PDF. Header logo base64, tableau absences, stats, couleurs KLASSCI, patterns standards KLASSCI.</div>
+      </div>
+
+      <div class="diff-badges">
+        <span class="diff-badge advantage">✅ isPhpEnabled=false (sécurité)</span>
+        <span class="diff-badge advantage">✅ Route Model Binding (ESBTPEtudiant $etudiant)</span>
+        <span class="diff-badge advantage">✅ 3 fallbacks logo</span>
+        <span class="diff-badge advantage">✅ Comments §4 §8 §12 référencés</span>
+      </div>
+
+      <div class="assertions-section">
+        <div class="assertions-title">Assertions — With Skill (6/6)</div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Utilise Pdf::loadView()</div><div class="assertion-evidence">$pdf = Pdf::loadView('esbtp.attendances.pdf-rapport-etudiant', [...]) — correct</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Charge les settings via SettingsHelper</div><div class="assertion-evidence">$settings = \App\Helpers\SettingsHelper::getPdfSettings();</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Configure isRemoteEnabled=false</div><div class="assertion-evidence">'isRemoteEnabled' => false, // §1: sécurité</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Active isFontSubsettingEnabled</div><div class="assertion-evidence">'isFontSubsettingEnabled' => true, // §12: taille fichier</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Logo en base64 (pas asset())</div><div class="assertion-evidence">prepareLogoBase64() — storage_path + public_path + 3 fallbacks. Aucun asset().</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Retourne download() avec nom de fichier</div><div class="assertion-evidence">return $pdf->download('absences-{matricule}-{date}.pdf')</div></div></div>
+      </div>
+
+      <div class="feedback-section">
+        <div class="feedback-label">💬 Vos commentaires (With Skill)</div>
+        <textarea class="feedback-input" id="fb-3-with_skill" placeholder="Ex: La méthode est complète. Les stats par matière sont un vrai plus…"></textarea>
+        <span class="saved-badge" id="saved-3-with_skill">✓ sauvegardé</span>
+      </div>
+    </div>
+
+    <!-- ─── EVAL 3 WITHOUT SKILL ─── -->
+    <div id="run-3-without_skill" class="run-view" style="display:none;">
+      <div class="eval-header">
+        <div class="eval-title">Eval 3 — Controller exportToPDF() · <span style="color:#64748b;">Baseline</span> <span class="chip chip-pass">6/6 · 100%</span></div>
+        <div class="eval-prompt"><strong>Prompt :</strong> Crée une méthode exportToPDF() dans ESBTPAttendanceController pour exporter un rapport d'absences étudiant en PDF.</div>
+      </div>
+
+      <div class="diff-badges">
+        <span class="diff-badge">⚠️ Pas de isPhpEnabled=false (sécurité manquante)</span>
+        <span class="diff-badge">⚠️ Fetche l'étudiant via auth()->user()->etudiant</span>
+        <span class="diff-badge">⚠️ 2 fallbacks logo seulement</span>
+      </div>
+
+      <div class="assertions-section">
+        <div class="assertions-title">Assertions — Baseline (6/6)</div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Utilise Pdf::loadView()</div><div class="assertion-evidence">$pdf = Pdf::loadView('esbtp.attendances.export-pdf', $data)</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Charge les settings via SettingsHelper</div><div class="assertion-evidence">$pdfSettings = \App\Helpers\SettingsHelper::getPdfSettings(); — variable nommée $pdfSettings au lieu de $settings</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Configure isRemoteEnabled=false</div><div class="assertion-evidence">'isRemoteEnabled' => false — présent</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Active isFontSubsettingEnabled</div><div class="assertion-evidence">'isFontSubsettingEnabled' => true — présent</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Logo en base64 (pas asset())</div><div class="assertion-evidence">prepareLogoForPdf() avec storage_path + 2 fallbacks public_path. Pas d'asset().</div></div></div>
+        <div class="assertion pass"><span class="assertion-icon">✅</span><div><div class="assertion-text">Retourne download() avec nom de fichier</div><div class="assertion-evidence">return $pdf->download('rapport-absences-{matricule}-{date}.pdf')</div></div></div>
+      </div>
+
+      <div class="feedback-section">
+        <div class="feedback-label">💬 Vos commentaires (Baseline)</div>
+        <textarea class="feedback-input" id="fb-3-without_skill" placeholder="Vos observations sur la sortie baseline…"></textarea>
+        <span class="saved-badge" id="saved-3-without_skill">✓ sauvegardé</span>
+      </div>
+    </div>
+
+    <button class="submit-all-btn" onclick="submitAll()">📥 Soumettre tous les feedbacks</button>
+  </div>
+
+  <!-- BENCHMARK TAB -->
+  <div class="panel" id="tab-benchmark">
+    <div class="bench-section">
+      <div class="bench-title">Benchmark Global — Iteration 1</div>
+      <div class="score-cards">
+        <div class="score-card">
+          <div class="score-card-label">Pass Rate · With Skill</div>
+          <div class="score-card-value with">94.1%</div>
+          <div class="score-card-sub">16/17 assertions passées</div>
+        </div>
+        <div class="score-card">
+          <div class="score-card-label">Pass Rate · Baseline</div>
+          <div class="score-card-value without">88.2%</div>
+          <div class="score-card-sub">15/17 assertions passées</div>
+        </div>
+        <div class="score-card">
+          <div class="score-card-label">Delta</div>
+          <div class="score-card-value delta">+5.9%</div>
+          <div class="score-card-sub">avec_skill − baseline</div>
+        </div>
+        <div class="score-card">
+          <div class="score-card-label">Temps moyen · With Skill</div>
+          <div class="score-card-value with" style="font-size:20px;">160.5s</div>
+          <div class="score-card-sub">−19s vs baseline (plus rapide)</div>
+        </div>
+        <div class="score-card">
+          <div class="score-card-label">Temps moyen · Baseline</div>
+          <div class="score-card-value without" style="font-size:20px;">179.5s</div>
+          <div class="score-card-sub">moyenne sur 3 evals</div>
+        </div>
+        <div class="score-card">
+          <div class="score-card-label">Tokens moyens</div>
+          <div class="score-card-value with" style="font-size:20px;">~106k</div>
+          <div class="score-card-sub">vs ~100k baseline (+5%)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bench-section">
+      <div class="bench-title">Par Eval</div>
+
+      <div class="eval-row">
+        <div class="eval-row-header" onclick="toggleEvalRow('e1')">
+          <div class="eval-row-name">Eval 1 — Création PDF Paiements</div>
+          <div class="eval-row-scores">
+            <div class="score-pair"><div class="score-pair-label">With Skill</div><div class="score-pair-val with">100%</div></div>
+            <div class="score-pair"><div class="score-pair-label">Baseline</div><div class="score-pair-val without">75%</div></div>
+            <div class="score-pair"><div class="score-pair-label">Delta</div><div class="score-pair-val plus">+25%</div></div>
+          </div>
+          <span>▼</span>
+        </div>
+        <div class="eval-row-body" id="e1">
+          <div style="font-size:12px; color:#374151; margin-bottom:8px;">8 assertions · 148s with_skill · 161s baseline · 107k tokens / 96k tokens</div>
+          <div class="key-diff">
+            <div class="key-diff-title">Différences clés :</div>
+            <ul>
+              <li>✅ with_skill : <strong>DejaVu Sans</strong> (accents fr OK) vs ❌ baseline : Arial (accents cassés en production)</li>
+              <li>✅ with_skill : <strong>table-based header</strong> vs ❌ baseline : div header (layout fragile DomPDF)</li>
+              <li>✅ with_skill : <strong>.row-even td / .row-odd td</strong> vs ❌ baseline : :nth-child (NON supporté DomPDF → alternance ne fonctionnera pas)</li>
+              <li>✅ with_skill : <strong>4 stat cards</strong> + <strong>tfoot total</strong> → PDF plus complet et professionnel</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="eval-row">
+        <div class="eval-row-header" onclick="toggleEvalRow('e2')">
+          <div class="eval-row-name">Eval 2 — Fix tr Background</div>
+          <div class="eval-row-scores">
+            <div class="score-pair"><div class="score-pair-label">With Skill</div><div class="score-pair-val with">100%</div></div>
+            <div class="score-pair"><div class="score-pair-label">Baseline</div><div class="score-pair-val without">100%</div></div>
+            <div class="score-pair"><div class="score-pair-label">Delta</div><div class="score-pair-val" style="color:#94a3b8;">0%</div></div>
+          </div>
+          <span>▼</span>
+        </div>
+        <div class="eval-row-body" id="e2">
+          <div style="font-size:12px; color:#374151; margin-bottom:8px;">3 assertions · 107s with_skill · 170s baseline · 97k tokens / 97k tokens</div>
+          <div class="key-diff">
+            <div class="key-diff-title">Observations :</div>
+            <ul>
+              <li>Eval non-discriminante : les deux obtiennent 100%</li>
+              <li>Le fix tr→td est connu et bien documenté — Claude le connaît sans skill</li>
+              <li>Baseline ajoute le pattern <code>$loop→even</code> pour :nth-child (insight supplémentaire)</li>
+              <li><strong>Recommandation :</strong> Remplacer cet eval par un cas plus difficile (multi-colonnes, @font-face, pixel-perfect)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="eval-row">
+        <div class="eval-row-header" onclick="toggleEvalRow('e3')">
+          <div class="eval-row-name">Eval 3 — Controller exportToPDF()</div>
+          <div class="eval-row-scores">
+            <div class="score-pair"><div class="score-pair-label">With Skill</div><div class="score-pair-val with">100%</div></div>
+            <div class="score-pair"><div class="score-pair-label">Baseline</div><div class="score-pair-val without">100%</div></div>
+            <div class="score-pair"><div class="score-pair-label">Delta</div><div class="score-pair-val" style="color:#94a3b8;">0%</div></div>
+          </div>
+          <span>▼</span>
+        </div>
+        <div class="eval-row-body" id="e3">
+          <div style="font-size:12px; color:#374151; margin-bottom:8px;">6 assertions · 226s with_skill · 208s baseline · 113k tokens / 111k tokens</div>
+          <div class="key-diff">
+            <div class="key-diff-title">Différences qualitatives (non capturées par assertions) :</div>
+            <ul>
+              <li>✅ with_skill : <code>isPhpEnabled=false</code> (sécurité) — <strong>manquant dans baseline</strong></li>
+              <li>✅ with_skill : Route Model Binding <code>ESBTPEtudiant $etudiant</code> (meilleur pattern Laravel)</li>
+              <li>✅ with_skill : 3 fallback paths pour logo vs 2 dans baseline</li>
+              <li>✅ with_skill : Commentaires §4 §8 §12 pour maintenabilité future</li>
+              <li><strong>Recommandation :</strong> Ajouter assertion pour isPhpEnabled=false</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bench-section">
+      <div class="bench-title">Observations Analyst</div>
+      <div class="analyst-obs">
+        <ul>
+          <li><strong>Eval 1 est le plus discriminant (+25%) :</strong> Le skill livre une valeur réelle sur la tâche réaliste de création de template PDF. Les deux erreurs critiques du baseline — Arial (accents cassés) et :nth-child (alternance silencieusement cassée) — auraient causé des bugs en production invisibles pendant le développement.</li>
+          <li><strong>Eval 2 est non-discriminant (0%) :</strong> Le fix tr→td est un pattern connu. À remplacer par un test plus difficile : multi-colonnes, @font-face, ou reproduction pixel-perfect d'une preview web.</li>
+          <li><strong>Eval 3 quasi non-discriminant au niveau formel, mais avec_skill gagne qualitativement :</strong> isPhpEnabled=false (sécurité), Route Model Binding, meilleure chaîne de fallback logo. Ajouter isPhpEnabled comme assertion pour le capturer.</li>
+          <li><strong>Performance :</strong> with_skill plus rapide sur evals 1 et 2 (-12s et -63s), légèrement plus lent sur eval 3 (+18s). Différence négligeable en pratique.</li>
+          <li><strong>Conclusion :</strong> Le skill apporte une valeur certaine sur les tâches de création PDF (eval 1), notamment pour les pièges DomPDF-spécifiques (DejaVu Sans, :nth-child, table layouts). Pour maximiser la discrimination dans l'iteration 2, renforcer eval 2 et ajouter isPhpEnabled aux assertions de eval 3.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end .main -->
+</div><!-- end .shell -->
+
+<script>
+  let currentTab = 'outputs';
+  let currentRunId = '1-with_skill';
+
+  function showTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    event.target.classList.add('active');
+  }
+
+  function showRun(evalId, runType, el) {
+    // Hide all run views
+    document.querySelectorAll('.run-view').forEach(v => v.style.display = 'none');
+    // Show selected
+    const view = document.getElementById('run-' + evalId + '-' + runType);
+    if (view) view.style.display = 'block';
+    // Update nav
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+    currentRunId = evalId + '-' + runType;
+  }
+
+  function toggleEvalRow(id) {
+    const body = document.getElementById(id);
+    body.classList.toggle('open');
+  }
+
+  // Auto-save feedback
+  document.querySelectorAll('.feedback-input').forEach(input => {
+    const savedBadge = document.getElementById('saved-' + input.id.replace('fb-', ''));
+    input.addEventListener('input', () => {
+      if (savedBadge) {
+        savedBadge.style.display = 'inline';
+        setTimeout(() => { savedBadge.style.display = 'none'; }, 2000);
+      }
+      localStorage.setItem('fb-' + input.id, input.value);
+    });
+    // Restore saved
+    const saved = localStorage.getItem('fb-' + input.id);
+    if (saved) input.value = saved;
+  });
+
+  function submitAll() {
+    const reviews = [];
+    document.querySelectorAll('.feedback-input').forEach(input => {
+      const runId = input.id.replace('fb-', '').replace(/-/g, '_').replace(/(\d+)_(.+)/, (_, eid, rtype) => `eval-${eid}-${rtype}`);
+      reviews.push({
+        run_id: runId,
+        feedback: input.value,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    const data = JSON.stringify({ reviews, status: 'complete' }, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'feedback.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    alert('✅ feedback.json téléchargé ! Placez-le dans le dossier iteration-1/ du workspace.');
+  }
+</script>
+</body>
+</html>

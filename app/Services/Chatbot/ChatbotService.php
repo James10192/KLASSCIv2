@@ -1,0 +1,741 @@
+<?php
+
+namespace App\Services\Chatbot;
+
+use App\Models\ChatbotConversation;
+use App\Models\ChatbotMessage;
+use App\Models\ChatbotActionLog;
+use App\Models\ChatbotUserPreference;
+use App\Models\ESBTPFraisCategory;
+use App\Models\ESBTPFiliere;
+use App\Models\ESBTPNiveauEtude;
+use App\Domain\Assistant\Assistant;
+use App\Domain\Assistant\Flux\UiMessageStream;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
+
+/**
+ * Service principal du Chatbot KLASSCI.
+ *
+ * 1. Gestion conversation (création, historique)
+ * 2. Appel de l'assistant (App\Domain\Assistant : multi-modèle, outils, repli)
+ * 3. Persistence messages + audit
+ * 4. Formulaires intégrés (frais, inscriptions)
+ */
+class ChatbotService
+{
+    protected Assistant $agent;
+    protected ChatbotSetupGuideService $setupGuide;
+
+    public function __construct(
+        Assistant $agent,
+        ChatbotSetupGuideService $setupGuide
+    ) {
+        $this->agent = $agent;
+        $this->setupGuide = $setupGuide;
+    }
+
+    /**
+     * Envoyer un message et obtenir une réponse.
+     */
+    public function sendMessage(string $message, ?string $sessionId = null, ?array $clientContext = null, ?string $modele = null, bool $relance = false): array
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return ['success' => false, 'message' => 'Vous devez être connecté pour utiliser le chatbot.'];
+        }
+
+        $startTime = microtime(true);
+
+        Log::info('ChatbotService: sendMessage', [
+            'user_id' => $user->id,
+            'message' => mb_substr($message, 0, 100),
+        ]);
+
+        try {
+            // 1. Conversation
+            $conversation = $this->getOrCreateConversation($user->id, $sessionId);
+            $preferences = $this->getUserPreferences($user->id);
+
+            // 2. Détecter nom préféré
+            $preferredNameCandidate = $this->detectPreferredName($message);
+            $memoryAction = $this->buildMemoryAction($preferredNameCandidate, $preferences);
+
+            // 3-4. Question, fichiers joints et contexte de page (même chemin que la diffusion)
+            $this->enregistrerQuestion($conversation, $user->id, $message, $clientContext, $relance);
+
+            // 5. Appel de l'assistant (même boucle que la diffusion, sortie muette)
+            $agentResponse = $this->agent->repondre(
+                $conversation,
+                $message,
+                $user,
+                $preferences,
+                $clientContext,
+                UiMessageStream::silencieux(),
+                $modele,
+                $relance
+            );
+
+            // 6. Construire les display_data finales
+            $displayData = $agentResponse['display_data'];
+            if ($memoryAction) {
+                $displayData = $displayData ?? [];
+                $displayData['follow_up_actions'] = array_values(array_filter(
+                    array_merge($displayData['follow_up_actions'] ?? [], [$memoryAction])
+                ));
+            }
+
+            // 7. Sauvegarder la réponse assistant
+            $assistantMessage = ChatbotMessage::create([
+                'conversation_id' => $conversation->id,
+                'role' => 'assistant',
+                'content' => $agentResponse['text'],
+                'display_type' => $agentResponse['display_type'],
+                'display_data' => $displayData,
+                'deep_link' => $agentResponse['deep_link'],
+                'metadata' => [
+                    'tool_calls' => $agentResponse['tool_calls'],
+                    'engine' => $agentResponse['modele'] ?? null,
+                    'erreur' => !empty($agentResponse['erreur']),
+                    'parties' => $this->partiesAEnregistrer($agentResponse, $memoryAction),
+                    'trace' => $agentResponse['trace'] ?? [],
+                ],
+            ]);
+
+            // 8. Audit log
+            $this->auditToolCalls($conversation, $user->id, $agentResponse['tool_calls'] ?? []);
+            $this->retenirRoutage($conversation, $assistantMessage, $agentResponse);
+
+            // 9. Mettre à jour la conversation (merge, pas overwrite)
+            $conversation->update([
+                'last_activity_at' => now(),
+                'context' => array_filter(array_merge($conversation->context ?? [], [
+                    'last_display' => $agentResponse['display_type'],
+                    'last_tool_calls' => $agentResponse['tool_calls'],
+                ])),
+            ]);
+
+            // 10. Titre auto
+            $this->updateConversationTitleIfNeeded($conversation, $message);
+
+            $duration = round((microtime(true) - $startTime) * 1000, 2);
+            Log::info('ChatbotService: success', ['duration_ms' => $duration]);
+
+            return [
+                'success' => empty($agentResponse['erreur']),
+                'message' => $assistantMessage->content,
+                'display_type' => $assistantMessage->display_type,
+                'display_data' => $assistantMessage->display_data,
+                'deep_link' => $assistantMessage->deep_link,
+                'conversation_id' => $conversation->session_id,
+            ];
+
+        } catch (\Throwable $e) {
+            Log::error('ChatbotService: error', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'message' => "Désolé, une erreur s'est produite. Veuillez réessayer.",
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ];
+        }
+    }
+
+    /**
+     * Envoyer un message en diffusion, au protocole UI message stream v1.
+     *
+     * Ordre des parties : start (avec l'identifiant de conversation) → steps du
+     * modèle (texte, outils) → données d'affichage (data-table, data-cards…) →
+     * message-metadata (message enregistré) → finish → [DONE].
+     *
+     * La réponse est enregistrée comme avec sendMessage, y compris quand le
+     * navigateur a coupé en route (bouton Arrêter) : l'historique garde ce qui a
+     * été montré.
+     */
+    public function sendMessageStream(string $message, ?string $sessionId, ?array $clientContext, UiMessageStream $ui, ?string $modele = null, bool $relance = false): array
+    {
+        $user = Auth::user();
+        if (!$user) {
+            $ui->start((string) \Str::uuid());
+            $ui->error('Vous devez être connecté pour utiliser l\'assistant.');
+            $ui->done();
+            return ['success' => false];
+        }
+
+        try {
+            $conversation = $this->getOrCreateConversation($user->id, $sessionId);
+            $preferences = $this->getUserPreferences($user->id);
+
+            $ui->start((string) \Str::uuid(), ['conversationId' => $conversation->session_id]);
+
+            $preferredNameCandidate = $this->detectPreferredName($message);
+            $memoryAction = $this->buildMemoryAction($preferredNameCandidate, $preferences);
+
+            $this->enregistrerQuestion($conversation, $user->id, $message, $clientContext, $relance);
+
+            $agentResponse = $this->agent->repondre(
+                $conversation, $message, $user, $preferences, $clientContext, $ui, $modele, $relance
+            );
+
+            $displayData = $agentResponse['display_data'];
+            if ($memoryAction && empty($agentResponse['erreur'])) {
+                $displayData = $displayData ?? [];
+                $displayData['follow_up_actions'] = array_values(array_filter(
+                    array_merge($displayData['follow_up_actions'] ?? [], [$memoryAction])
+                ));
+            }
+
+            $assistantMessage = ChatbotMessage::create([
+                'conversation_id' => $conversation->id,
+                'role' => 'assistant',
+                'content' => $agentResponse['text'],
+                'display_type' => $agentResponse['display_type'],
+                'display_data' => $displayData,
+                'deep_link' => $agentResponse['deep_link'],
+                'metadata' => [
+                    'tool_calls' => $agentResponse['tool_calls'],
+                    'engine' => $agentResponse['modele'] ?? null,
+                    'interrompu' => !empty($agentResponse['interrompu']),
+                    'erreur' => !empty($agentResponse['erreur']),
+                    'parties' => $this->partiesAEnregistrer($agentResponse, $memoryAction),
+                    'trace' => $agentResponse['trace'] ?? [],
+                ],
+            ]);
+
+            $this->auditToolCalls($conversation, $user->id, $agentResponse['tool_calls'] ?? []);
+            $this->retenirRoutage($conversation, $assistantMessage, $agentResponse);
+
+            $conversation->update([
+                'last_activity_at' => now(),
+                'context' => array_filter(array_merge($conversation->context ?? [], [
+                    'last_display' => $agentResponse['display_type'],
+                    'last_tool_calls' => $agentResponse['tool_calls'] ?? [],
+                ])),
+            ]);
+
+            if (!empty($agentResponse['interrompu'])) {
+                $ui->abort();
+                $ui->done();
+                return ['success' => true, 'interrompu' => true];
+            }
+
+            // Les widgets sont déjà partis, chacun sous son étape : il ne reste que
+            // les suites proposées et, faute de widget, le lien vers la page.
+            foreach ($this->partiesDeFin($agentResponse, $memoryAction) as $partie) {
+                $partie['type'] === 'suites'
+                    ? $ui->data('suites', $partie['data'])
+                    : $ui->data('lien', ['url' => $partie['url']]);
+            }
+
+            // Titre provisoire tout de suite (la question elle-même) ; le titre rédigé par
+            // le modèle se calcule APRÈS la fin du flux, pour ne pas faire attendre la
+            // réponse d'un second appel au modèle.
+            $titreARediger = empty($conversation->title);
+            if ($titreARediger) {
+                $conversation->update(['title' => $this->sanitizeTitle($message)]);
+            }
+
+            $ui->metadata([
+                'conversationId' => $conversation->session_id,
+                'dbMessageId' => $assistantMessage->id,
+                'title' => $conversation->fresh()->title,
+            ]);
+
+            if (empty($agentResponse['erreur'])) {
+                $ui->finish();
+            }
+            $ui->done();
+
+            if ($titreARediger) {
+                $this->redigerTitreApresCoup($conversation, $message);
+            }
+
+            return ['success' => empty($agentResponse['erreur'])];
+        } catch (\Throwable $e) {
+            Log::error('ChatbotService: stream error', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+            $ui->error("Désolé, une erreur s'est produite. Veuillez réessayer.");
+            $ui->done();
+            return ['success' => false];
+        }
+    }
+
+    /**
+     * « Réessayer » après une réponse en erreur ou arrêtée : cette réponse est
+     * retirée et la question, déjà enregistrée, n'est pas ajoutée une seconde
+     * fois. Sinon la base garderait Q, réponse ratée, Q, et le modèle relirait
+     * sa réponse ratée entre les deux questions.
+     *
+     * @return bool vrai si la question est déjà en base (ne pas la recréer)
+     */
+    private function preparerRelance(ChatbotConversation $conversation, string $message): bool
+    {
+        $derniers = $conversation->messages()->orderByDesc('id')->limit(2)->get();
+        $reponse = $derniers->first();
+
+        if ($reponse && $reponse->role === 'assistant') {
+            $ratee = !empty($reponse->metadata['interrompu']) || !empty($reponse->metadata['erreur']);
+            if (!$ratee) {
+                // Une réponse aboutie ne se remplace pas : c'est une nouvelle question.
+                return false;
+            }
+            $question = $derniers->get(1);
+            if (!$question || $question->role !== 'user' || $question->content !== $message) {
+                return false;
+            }
+            $reponse->delete();
+
+            return true;
+        }
+
+        return $reponse && $reponse->role === 'user' && $reponse->content === $message;
+    }
+
+    /**
+     * Parties de fin d'échange : suites proposées, et le lien vers la page quand
+     * aucun widget ne le porte déjà.
+     */
+    private function partiesDeFin(array $agentResponse, ?array $memoryAction): array
+    {
+        if (!empty($agentResponse['erreur']) || !empty($agentResponse['interrompu'])) {
+            return [];
+        }
+
+        $parties = [];
+        $suites = array_filter([
+            'follow_up' => $agentResponse['suites'] ?? [],
+            'follow_up_actions' => $memoryAction ? [$memoryAction] : [],
+        ]);
+        if ($suites !== []) {
+            $parties[] = ['type' => 'suites', 'data' => $suites];
+        }
+
+        $aDesWidgets = collect($agentResponse['parties'] ?? [])->contains(fn ($p) => ($p['type'] ?? '') === 'widget');
+        if (!$aDesWidgets && !empty($agentResponse['deep_link'])) {
+            $parties[] = ['type' => 'lien', 'url' => $agentResponse['deep_link']];
+        }
+
+        return $parties;
+    }
+
+    /** Ce que l'historique rouvrira : le fil de la réponse, puis ses parties de fin. */
+    private function partiesAEnregistrer(array $agentResponse, ?array $memoryAction): ?array
+    {
+        if (!isset($agentResponse['parties'])) {
+            return null;
+        }
+
+        return array_merge($agentResponse['parties'], $this->partiesDeFin($agentResponse, $memoryAction));
+    }
+
+    /**
+     * La question de la personne, ses fichiers joints et le contexte de page :
+     * commun à la diffusion et au repli sans diffusion.
+     */
+    private function enregistrerQuestion(ChatbotConversation $conversation, int $userId, string $message, ?array $clientContext, bool $relance): void
+    {
+        $pieces = $this->piecesDuMessage($userId, $clientContext['pieces'] ?? []);
+        if (!($relance && $this->preparerRelance($conversation, $message))) {
+            ChatbotMessage::create([
+                'conversation_id' => $conversation->id,
+                'role' => 'user',
+                'content' => $message,
+                'display_type' => 'text',
+                'metadata' => $pieces ? ['pieces' => array_map(fn ($p) => ['id' => $p['id'], 'nom' => $p['nom']], $pieces)] : null,
+            ]);
+        }
+
+        if ($clientContext) {
+            $contexte = array_merge($conversation->context ?? [], [
+                'last_page_url' => $clientContext['current_url'] ?? null,
+                'last_page_path' => $clientContext['current_path'] ?? null,
+                'last_page_title' => $clientContext['page_title'] ?? null,
+            ]);
+            // La conversation se souvient des fichiers joints : « valide » au message
+            // suivant doit encore pouvoir s'appuyer sur eux.
+            if ($pieces) {
+                $contexte['pieces'] = array_slice(array_values(array_unique(array_merge($contexte['pieces'] ?? [], array_column($pieces, 'id')))), -3);
+            }
+            $conversation->update(['context' => array_filter($contexte)]);
+        }
+    }
+
+    /** Les pièces jointes réellement déposées par cette personne (les autres identifiants sont ignorés). */
+    private function piecesDuMessage(int $userId, array $ids): array
+    {
+        $pieces = app(\App\Domain\Assistant\Pieces\PiecesJointes::class);
+
+        return array_values(array_filter(array_map(function ($id) use ($pieces, $userId) {
+            $piece = $pieces->pour($userId, $id);
+
+            return $piece ? ['id' => $id] + $piece : null;
+        }, $ids)));
+    }
+
+    /**
+     * Récupérer l'historique d'une conversation.
+     */
+    public function getHistory(string $sessionId, int $userId): array
+    {
+        $conversation = ChatbotConversation::where('session_id', $sessionId)
+            ->where('user_id', $userId)
+            ->firstOrFail();
+
+        $messages = $conversation->messages()
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        // Une proposition rouverte montre son état RÉEL (validée, refusée, expirée) :
+        // l'état enregistré dans le fil est celui du moment où elle a été faite.
+        $propositions = \App\Models\ChatbotActionLog::where('conversation_id', $conversation->id)
+            ->where('user_id', $userId)->get()->keyBy('id');
+        $retours = \App\Domain\Assistant\Retours\RetourDeReponse::where('conversation_id', $conversation->id)
+            ->where('user_id', $userId)->get()->keyBy('message_id');
+
+        $messages = $messages
+            // Les lignes « ✓ … » et « Proposition refusée » des versions antérieures :
+            // la carte porte désormais son issue, elles l'auraient répétée.
+            ->reject(fn ($m) => isset($m->metadata['action_executee']) || isset($m->metadata['action_refusee']))
+            ->values()
+            ->map(function ($message) use ($propositions, $retours) {
+                $parties = $message->metadata['parties'] ?? null;
+                if (is_array($parties)) {
+                    foreach ($parties as $i => $partie) {
+                        // Le fil enregistre `kind` à côté de `data` (FilDeReponse::widget).
+                        if (($partie['kind'] ?? $partie['data']['kind'] ?? null) === 'approbation') {
+                            $journal = $propositions->get($partie['data']['id'] ?? null);
+                            $parties[$i]['data']['etat'] = $journal ? \App\Domain\Assistant\Actions\ExecutionDesPropositions::etat($journal) : 'expiree';
+                            if ($journal) {
+                                $issue = \App\Domain\Assistant\Actions\ExecutionDesPropositions::issueAffichee($journal);
+                                $parties[$i]['data']['issue_message'] = $issue['message'];
+                                $parties[$i]['data']['issue_lien'] = $issue['lien'];
+                            }
+                        }
+                    }
+                }
+
+                return [
+                    'id' => $message->id,
+                    'role' => $message->role,
+                    'content' => $message->content,
+                    'display_type' => $message->display_type,
+                    'display_data' => $message->display_data,
+                    'deep_link' => $message->deep_link,
+                    'parties' => $parties,
+                    'retour' => ($r = $retours->get($message->id)) ? ['avis' => $r->avis, 'care_reference' => $r->care_reference] : null,
+                    'pieces' => $message->metadata['pieces'] ?? null,
+                    'created_at' => $message->created_at->toIso8601String(),
+                ];
+            });
+
+        return [
+            'success' => true,
+            'messages' => $messages,
+        ];
+    }
+
+    // ─── Formulaires intégrés ───────────────────────────────
+
+    /**
+     * Construire les données du formulaire de création de catégorie de frais.
+     */
+    public function buildMandatoryFraisCategoryFormData(?string $sessionId = null): array
+    {
+        $fields = [
+            [
+                'name' => 'name',
+                'label' => 'Nom de la catégorie',
+                'type' => 'text',
+                'required' => true,
+                'placeholder' => 'Frais d\'inscription',
+            ],
+            [
+                'name' => 'code',
+                'label' => 'Code unique',
+                'type' => 'text',
+                'required' => true,
+                'placeholder' => 'INSCRIPTION',
+                'help' => 'Le code sera converti en majuscules.',
+            ],
+            [
+                'name' => 'description',
+                'label' => 'Description',
+                'type' => 'textarea',
+                'placeholder' => 'Frais d\'inscription obligatoire',
+            ],
+            [
+                'name' => 'default_amount',
+                'label' => 'Montant par défaut (FCFA)',
+                'type' => 'number',
+                'required' => true,
+                'min' => 0,
+                'step' => 1,
+            ],
+            [
+                'name' => 'payment_deadline_days',
+                'label' => 'Délai de paiement (jours)',
+                'type' => 'number',
+                'required' => true,
+                'min' => 1,
+                'max' => 365,
+                'value' => 30,
+            ],
+        ];
+
+        return [
+            'title' => 'Créer une catégorie obligatoire',
+            'description' => 'Catégorie obligatoire pour les inscriptions.',
+            'action_url' => Route::has('chatbot.forms.frais-category.store')
+                ? route('chatbot.forms.frais-category.store') : null,
+            'action_method' => 'POST',
+            'submit_label' => 'Créer la catégorie',
+            'fields' => $fields,
+            'hidden_fields' => $sessionId ? ['conversation_id' => $sessionId] : [],
+        ];
+    }
+
+    /**
+     * Construire les données du formulaire de configuration de frais.
+     */
+    public function buildFraisConfigFormData(?int $categoryId = null, ?string $sessionId = null): ?array
+    {
+        $category = $categoryId
+            ? ESBTPFraisCategory::find($categoryId)
+            : ESBTPFraisCategory::where('is_mandatory', true)->orderBy('id')->first();
+
+        if (!$category) {
+            return null;
+        }
+
+        $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $niveaux = ESBTPNiveauEtude::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+
+        $fields = [
+            ['name' => 'filiere_id', 'label' => 'Filière', 'type' => 'select', 'required' => true,
+                'options' => $filieres->map(fn ($f) => ['value' => $f->id, 'label' => $f->name])->toArray()],
+            ['name' => 'niveau_id', 'label' => 'Niveau', 'type' => 'select', 'required' => true,
+                'options' => $niveaux->map(fn ($n) => ['value' => $n->id, 'label' => $n->name])->toArray()],
+            ['name' => 'amount_affecte', 'label' => 'Montant affecté (FCFA)', 'type' => 'number', 'required' => true, 'min' => 0],
+            ['name' => 'amount_reaffecte', 'label' => 'Montant réaffecté (FCFA)', 'type' => 'number', 'required' => true, 'min' => 0],
+            ['name' => 'amount_non_affecte', 'label' => 'Montant non affecté (FCFA)', 'type' => 'number', 'required' => true, 'min' => 0],
+            ['name' => 'deadline_days', 'label' => 'Délai de paiement (jours)', 'type' => 'number', 'required' => true, 'min' => 1, 'max' => 365, 'value' => 30],
+            ['name' => 'installments_allowed', 'label' => 'Paiement en plusieurs fois', 'type' => 'checkbox'],
+            ['name' => 'max_installments', 'label' => 'Nombre max de tranches', 'type' => 'number', 'min' => 1, 'max' => 12, 'value' => 1],
+        ];
+
+        return [
+            'title' => 'Configuration par classe',
+            'description' => "Frais obligatoire : {$category->name}",
+            'action_url' => Route::has('chatbot.forms.frais-config.store')
+                ? route('chatbot.forms.frais-config.store') : null,
+            'action_method' => 'POST',
+            'submit_label' => 'Enregistrer la configuration',
+            'fields' => $fields,
+            'hidden_fields' => array_filter([
+                'conversation_id' => $sessionId,
+                'category_id' => $category->id,
+            ]),
+        ];
+    }
+
+    /**
+     * Construire les données du formulaire de filtre d'inscriptions.
+     */
+    public function buildInscriptionsFilterFormData(?string $focusField = null, ?string $sessionId = null): array
+    {
+        $filieres = ESBTPFiliere::orderBy('name')->get();
+        $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
+        $annees = \App\Models\ESBTPAnneeUniversitaire::orderBy('name', 'desc')->get();
+
+        $allFields = [
+            'search' => ['name' => 'search', 'label' => 'Recherche (nom, matricule, classe)', 'type' => 'text',
+                'placeholder' => 'Ex: KONAN, MBTS2025/001'],
+            'filiere_id' => ['name' => 'filiere_id', 'label' => 'Filière', 'type' => 'select',
+                'options' => array_merge([['value' => '', 'label' => 'Toutes']],
+                    $filieres->map(fn ($f) => ['value' => $f->id, 'label' => $f->name])->toArray())],
+            'niveau_id' => ['name' => 'niveau_id', 'label' => 'Niveau', 'type' => 'select',
+                'options' => array_merge([['value' => '', 'label' => 'Tous']],
+                    $niveaux->map(fn ($n) => ['value' => $n->id, 'label' => $n->name])->toArray())],
+            'annee_id' => ['name' => 'annee_id', 'label' => 'Année universitaire', 'type' => 'select',
+                'options' => array_merge([['value' => '', 'label' => 'Toutes']],
+                    $annees->map(fn ($a) => ['value' => $a->id, 'label' => $a->name])->toArray())],
+            'status' => ['name' => 'status', 'label' => 'Statut', 'type' => 'select',
+                'options' => [
+                    ['value' => 'all', 'label' => 'Toutes'],
+                    ['value' => 'active', 'label' => 'Actives'],
+                    ['value' => 'en_attente', 'label' => 'En attente'],
+                    ['value' => 'annulée', 'label' => 'Annulées'],
+                    ['value' => 'terminée', 'label' => 'Terminées'],
+                ]],
+        ];
+
+        $fields = $focusField && isset($allFields[$focusField])
+            ? [$allFields[$focusField]]
+            : array_values($allFields);
+
+        return [
+            'title' => 'Filtrer les inscriptions',
+            'description' => 'Laissez un champ vide pour ne pas filtrer.',
+            'focus_field' => $focusField,
+            'action_url' => Route::has('chatbot.forms.inscriptions-filter.store')
+                ? route('chatbot.forms.inscriptions-filter.store') : null,
+            'action_method' => 'POST',
+            'submit_label' => 'Appliquer les filtres',
+            'fields' => $fields,
+            'hidden_fields' => $sessionId ? ['conversation_id' => $sessionId] : [],
+        ];
+    }
+
+    // ─── Helpers privés ────────────────────────────────────
+
+    protected function auditToolCalls(ChatbotConversation $conversation, int $userId, array $toolCalls): void
+    {
+        if (empty($toolCalls)) {
+            return;
+        }
+
+        $lastCall = $toolCalls[array_key_last($toolCalls)] ?? [];
+
+        ChatbotActionLog::create([
+            'conversation_id' => $conversation->id,
+            'user_id' => $userId,
+            'action_type' => 'retrieve',
+            'model_type' => $lastCall['tool'] ?? 'unknown',
+            'action_data' => [
+                'tool_calls' => $toolCalls,
+                'channel' => request()->expectsJson() ? 'json' : 'stream',
+            ],
+            'status' => 'success',
+        ]);
+    }
+
+    protected function getOrCreateConversation(int $userId, ?string $sessionId): ChatbotConversation
+    {
+        if ($sessionId) {
+            $conversation = ChatbotConversation::where('session_id', $sessionId)
+                ->where('user_id', $userId)
+                ->where('is_active', true)
+                ->first();
+
+            if ($conversation) {
+                return $conversation;
+            }
+        }
+
+        return ChatbotConversation::create([
+            'user_id' => $userId,
+            'session_id' => \Str::uuid(),
+            'last_activity_at' => now(),
+            'is_active' => true,
+        ]);
+    }
+
+    protected function getUserPreferences(int $userId): ChatbotUserPreference
+    {
+        return ChatbotUserPreference::firstOrCreate(
+            ['user_id' => $userId],
+            [
+                'response_style' => 'standard',
+                'response_tone' => 'pedagogique',
+                'clarification_mode' => 'auto',
+            ]
+        );
+    }
+
+    protected function detectPreferredName(string $message): ?string
+    {
+        $patterns = [
+            '/\bappelle\s*moi\s+([\p{L}\p{M}\-\s]{2,50})/iu',
+            '/\bje\s*m\'appelle\s+([\p{L}\p{M}\-\s]{2,50})/iu',
+            '/\bmon\s+nom\s+est\s+([\p{L}\p{M}\-\s]{2,50})/iu',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $message, $matches)) {
+                return trim($matches[1]);
+            }
+        }
+
+        return null;
+    }
+
+    protected function buildMemoryAction(?string $preferredName, ChatbotUserPreference $preferences): ?array
+    {
+        if (!$preferredName) {
+            return null;
+        }
+
+        if ($preferences->preferred_name && mb_strtolower($preferences->preferred_name, 'UTF-8') === mb_strtolower($preferredName, 'UTF-8')) {
+            return null;
+        }
+
+        return [
+            'label' => "Sauvegarder \"{$preferredName}\"",
+            'action' => 'save_preferred_name',
+            'value' => $preferredName,
+        ];
+    }
+
+    /**
+     * Rattache la consommation de l'échange à son message, et retient le palier
+     * que le routeur a fait monter : la conversation le garde pour la suite.
+     */
+    private function retenirRoutage(ChatbotConversation $conversation, ChatbotMessage $message, array $reponse): void
+    {
+        app(\App\Domain\Assistant\Consommation\JournalDeConsommation::class)
+            ->rattacherAuMessage($reponse['consommation'] ?? [], $message->id);
+
+        // Palier retenu par la conversation : monté après un échec, redescendu
+        // après des réussites ; null = plus rien à retenir.
+        if (is_array($reponse['palier'] ?? null)) {
+            $contexte = array_merge($conversation->context ?? [], $reponse['palier']);
+            if ($contexte['palier'] === null) {
+                unset($contexte['palier'], $contexte['succes_au_palier']);
+            }
+            $conversation->update(['context' => $contexte]);
+        }
+    }
+
+    protected function updateConversationTitleIfNeeded(ChatbotConversation $conversation, string $message): void
+    {
+        if (!empty($conversation->title)) {
+            return;
+        }
+
+        $newTitle = $this->agent->genererTitre($message, $conversation->user_id, $conversation->id);
+        $newTitle = $this->sanitizeTitle($newTitle ?: $message);
+
+        if ($newTitle) {
+            $conversation->update(['title' => $newTitle]);
+        }
+    }
+
+    /** Remplace le titre provisoire par celui du modèle, une fois la réponse livrée. */
+    protected function redigerTitreApresCoup(ChatbotConversation $conversation, string $message): void
+    {
+        try {
+            $titre = $this->agent->genererTitre($message, $conversation->user_id, $conversation->id);
+            if ($titre) {
+                $conversation->update(['title' => $this->sanitizeTitle($titre)]);
+            }
+        } catch (\Throwable $e) {
+            Log::info('ChatbotService: titre non rédigé', ['conversation_id' => $conversation->id, 'type' => get_class($e)]);
+        }
+    }
+
+    protected function sanitizeTitle(string $title): string
+    {
+        $title = trim(preg_replace('/\s+/', ' ', $title) ?? '');
+        $title = trim($title, " \t\n\r\0\x0B\"'");
+
+        if (mb_strlen($title, 'UTF-8') > 40) {
+            $title = mb_substr($title, 0, 40, 'UTF-8');
+            $title = rtrim($title);
+        }
+
+        return $title;
+    }
+}

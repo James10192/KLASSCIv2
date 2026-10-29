@@ -1,0 +1,5 @@
+l'application sera pour un suivi de projet
+Elle aura pour but de repertorier les projets
+Créer un identifiant à chaque projet
+Faire un formulaire pour renseigner les infos d'un projet
+Un projet comportera(ID projet/Chantier, Libellé du projet/chantier, Description, Type de Projet/Chantier (A renseigner par le chef de service), Responsable, Date de début(Planifiée et réelle), Date de fin(Planifiée initial, Estimée à date), charge de travail(jour/homme), Statut du projet, Taux d'avancement à date, Observation (Décrire l'avancement des étapes périmètre, divers …), Problèmes majeurs identifiés/ incidents en cours(Problèmes/incidents, Mesures envisagées pour assurer la maîtrise), Santé général du projet/chantier)

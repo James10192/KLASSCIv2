@@ -1,0 +1,366 @@
+---
+description: Les features de l'application
+globs: 
+alwaysApply: true
+---
+# Fonctionnalités de l'Application ESBTP
+
+Ce document présente les principales fonctionnalités de l'application ESBTP, leurs interdépendances, et les règles métier associées.
+
+## Vue d'Ensemble
+
+L'ESBTP (École Supérieure du Bâtiment et des Travaux Publics) est une application de gestion scolaire spécialisée pour les études techniques supérieures. Elle permet de gérer l'ensemble des processus administratifs et pédagogiques d'un établissement d'enseignement supérieur technique.
+
+## Architecture des Fonctionnalités
+
+```
+ESBTP Application
+├── Installation & Configuration
+├── Gestion des Utilisateurs & Authentification
+├── Structure Académique
+│   ├── Filières
+│   ├── Niveaux d'Études
+│   └── Classes
+├── Gestion des Étudiants
+│   ├── Inscription
+│   ├── Attribution de Classe
+│   └── Gestion des Parents
+├── Gestion Pédagogique
+│   ├── Matières
+│   ├── Emplois du Temps
+│   ├── Évaluations & Notes
+│   └── Bulletins
+├── Communication
+│   ├── Annonces
+│   └── Notifications
+└── Rapports & Statistiques
+```
+
+## Fonctionnalités Détaillées
+
+### Installation & Configuration
+
+L'application dispose d'un processus d'installation guidé qui permet de configurer les éléments essentiels.
+
+#### Étapes d'Installation
+
+1. **Configuration de la Base de Données**
+   - Vérification de l'existence du fichier `.env`
+   - Création ou mise à jour du fichier `.env` avec les paramètres de base de données
+   - Vérification de la connexion à la base de données
+   - Création de la base de données si elle n'existe pas
+
+2. **Migrations & Configuration Initiale**
+   - Exécution des migrations pour créer les tables nécessaires
+   - Création des rôles et permissions
+   - Configuration des paramètres de base
+
+3. **Création du Compte Super Admin**
+   - Création d'un compte administrateur initial avec toutes les permissions
+
+#### Règles Importantes
+
+- Pas de seeder pour le super admin (il est créé lors de l'installation)
+- Vérification de la compatibilité de la base de données avant installation
+- Affichage visuel de l'état de connexion à la base de données (vert si connecté)
+
+### Gestion des Utilisateurs & Authentification
+
+Système de gestion des utilisateurs avec différents rôles et permissions.
+
+#### Rôles Principaux
+
+1. **Super Admin**
+   - Accès complet à toutes les fonctionnalités
+   - Gestion des autres utilisateurs et de leurs permissions
+   - Configuration globale de l'application
+
+2. **Secrétaire**
+   - Gestion des étudiants
+   - Gestion des classes
+   - Gestion des évaluations et notes
+   - Création des bulletins
+
+3. **Étudiant**
+   - Consultation de son profil
+   - Consultation de ses notes et bulletins
+   - Consultation de son emploi du temps
+   - Réception des annonces
+
+#### Fonctionnalités d'Authentification
+
+- Connexion sécurisée
+- Génération automatique de nom d'utilisateur pour les étudiants (format: `prenom.nom`)
+- Génération de mot de passe aléatoire lors de la création d'un compte étudiant
+- Possibilité de réinitialiser le mot de passe
+
+### Structure Académique
+
+Organisation hiérarchique des composantes académiques de l'établissement.
+
+#### Filières
+
+Représentent les domaines d'études spécifiques.
+
+- **Caractéristiques principales**:
+  - Nom de la filière
+  - Description
+  - Options/Spécialisations
+
+- **Exemples de filières**:
+  - Génie Civil (avec options: Bâtiments, Travaux Publics, Géomètre Topographe, Urbanisme)
+  - Mine - Géologie - Pétrole
+
+#### Niveaux d'Études
+
+Progression académique des étudiants.
+
+- **Exemples**:
+  - BTS Première Année (30 semaines)
+  - BTS Deuxième Année (28 semaines)
+
+#### Classes
+
+Regroupements d'étudiants pour une filière et niveau d'étude spécifiques.
+
+- **Structure**:
+  - Filière + Niveau d'Étude = Classe
+  - Exemple: "BTS Génie Civil option BÂTIMENT 1ère Année"
+
+- **Fonctionnalités**:
+  - Création de classes
+  - Attribution de matières
+  - Organisation des emplois du temps
+  - Gestion des étudiants dans la classe
+
+### Gestion des Étudiants
+
+Fonctionnalités relatives à l'administration des étudiants.
+
+#### Inscription
+
+Processus d'ajout d'un nouvel étudiant dans le système.
+
+- **Informations requises**:
+  - Informations personnelles (nom, prénom, date de naissance, genre, etc.)
+  - Coordonnées (e-mail, téléphone, adresse)
+  - Photo de profil
+  - Date d'admission
+  - Parent(s)
+  - Classe d'affectation
+
+- **Processus**:
+  1. Sélection de la classe (via un modal avec filtres par filière, niveau d'étude, année universitaire)
+  2. Saisie des informations de l'étudiant
+  3. Ajout ou sélection de parent(s) existant(s) (maximum 2 parents)
+  4. Création automatique d'un compte utilisateur pour l'étudiant
+  5. Génération du nom d'utilisateur (`prenom.nom`) et mot de passe aléatoire
+
+#### Gestion des Parents
+
+Association et gestion des parents d'étudiants.
+
+- **Caractéristiques**:
+  - Possibilité d'ajouter jusqu'à deux nouveaux parents lors de l'inscription
+  - Possibilité de sélectionner des parents existants dans la base de données
+  - Définition de la relation avec l'étudiant (père, mère, tuteur, etc.)
+
+### Gestion Pédagogique
+
+Ensemble des fonctionnalités liées aux aspects éducatifs.
+
+#### Matières
+
+Cours enseignés aux étudiants.
+
+- **Organisation**:
+  - Matières regroupées par filière, et niveau d'étude
+  - Attribution automatique des groupes de matières aux classes correspondantes
+
+- **Caractéristiques**:
+  - Nom de la matière
+  - Coefficient pour les calculs de moyenne
+  - Volume horaire par niveau d'étude (ex: Anglais technique - 1ère année: 40h, 2e année: 30h)
+
+
+
+#### Emplois du Temps
+
+Planification des cours et activités.
+
+- **Fonctionnalités**:
+  - Création d'emplois du temps par classe
+  - Organisation des cours par jour et horaire
+  - Attribution des enseignants
+
+#### Évaluations & Notes
+
+Gestion des évaluations et notation des étudiants.
+
+- **Types d'évaluations**:
+  - Examens
+  - Quiz
+  - Devoirs
+  - Autres types personnalisables
+
+- **Gestion des notes**:
+  - Saisie des notes par évaluation, classe et étudiant
+  - Prise en compte des coefficients des matières
+  - Calcul automatique des moyennes
+
+#### Bulletins
+
+Génération des bulletins de notes.
+
+- **Contenu**:
+  - Informations sur l'étudiant et la classe
+  - Liste des matières avec coefficients, notes et moyennes
+  - Moyenne générale
+  - Observations et appréciations
+
+- **Fonctionnalités**:
+  - Génération automatique des bulletins
+  - Impression au format PDF
+  - Envoi par e-mail aux étudiants et parents
+
+### Communication
+
+Outils de communication entre l'administration, les enseignants et les étudiants.
+
+#### Annonces
+
+Publication d'informations importantes.
+
+- **Caractéristiques**:
+  - Destinataires sélectionnables (tous les étudiants, classe spécifique, étudiants individuels)
+  - Objet et corps du message
+  - Pièces jointes (optionnel)
+
+- **Interface**:
+  - Modal de sélection des destinataires avec filtres par classe, filière, etc.
+  - Option "Sélectionner tout"
+  - Éditeur de texte riche pour le corps du message
+
+#### Présence (Attendance)
+
+Suivi de la présence des étudiants aux cours.
+
+- **Fonctionnalités**:
+  - Marquage des présences/absences par cours
+  - Suivi historique des absences
+  - Génération de rapports de présence
+
+## Interdépendances des Fonctionnalités
+
+1. **Structure Académique → Gestion des Étudiants**
+   - Les filières et niveaux d'études doivent être définis avant de pouvoir créer des classes
+   - Les classes doivent exister avant de pouvoir inscrire des étudiants
+
+2. **Gestion des Étudiants → Gestion Pédagogique**
+   - Les étudiants doivent être inscrits et affectés à une classe pour recevoir des notes
+   - Les matières doivent être définies avant de pouvoir créer des évaluations
+
+3. **Gestion Pédagogique → Communication**
+   - Les classes et étudiants doivent exister pour pouvoir envoyer des annonces ciblées
+   - Les emplois du temps doivent être définis pour permettre le suivi de présence
+
+4. **Utilisateurs & Authentification → Toutes les fonctionnalités**
+   - L'attribution des rôles et permissions détermine l'accès aux différentes fonctionnalités
+
+## Processus Métier Clés
+
+### Processus d'Inscription d'un Étudiant
+
+```mermaid
+graph TD
+    A[Début] --> B[Sélection de la classe]
+    B --> C[Saisie des informations de l'étudiant]
+    C --> D[Ajout/Sélection des parents]
+    D --> E[Choix de la relation parent-étudiant]
+    E --> F[Création du compte utilisateur]
+    F --> G[Génération identifiants]
+    G --> H[Fin]
+```
+
+### Processus de Génération de Bulletin
+
+```mermaid
+graph TD
+    A[Début] --> B[Sélection classe]
+    B --> C[Sélection étudiant]
+    C --> D[Récupération des notes]
+    D --> E[Calcul des moyennes]
+    E --> F[Génération du bulletin]
+    F --> G[Fin]
+```
+
+## Interfaces Utilisateur
+
+Principales interfaces par fonctionnalité:
+
+### Installation
+
+- Formulaire de connexion à la base de données
+- Interface de progression de l'installation
+- Formulaire de création du super admin
+
+### Gestion des Utilisateurs
+
+- Liste des utilisateurs avec filtres
+- Formulaire de création/édition d'utilisateur
+- Attribution de rôles et permissions
+
+### Structure Académique
+
+- Interface de gestion des filières
+- Interface de gestion des niveaux d'études
+- Interface de gestion des classes
+
+### Gestion des Étudiants
+
+- Liste des étudiants avec filtres
+- Formulaire d'inscription
+- Modal de sélection de classe
+- Modal de sélection/création de parents
+
+### Gestion Pédagogique
+
+- Interface de gestion des matières
+- Créateur d'emploi du temps
+- Interface de saisie des notes
+- Générateur de bulletins
+
+### Communication
+
+- Interface de création d'annonces
+- Sélecteur de destinataires
+- Interface de suivi des présences
+
+## Points d'Extension et Personnalisation
+
+L'application est conçue pour permettre ces extensions futures:
+
+1. **Module de Paiement**
+   - Suivi des frais de scolarité
+   - Gestion des paiements
+   - Génération de reçus
+
+2. **Module de Bibliothèque**
+   - Gestion des ressources documentaires
+   - Système de prêt
+   - Catalogue en ligne
+
+3. **Interface Mobile**
+   - Application mobile pour les étudiants
+   - Notification push pour les annonces
+   - Consultation des notes et emplois du temps
+
+4. **Intégration LMS**
+   - Connexion avec des plateformes d'apprentissage en ligne
+   - Partage de ressources pédagogiques
+   - Suivi des activités d'apprentissage
+
+5. **Module Statistiques Avancées**
+   - Tableaux de bord analytiques
+   - Visualisation des performances
+   - Indicateurs de qualité de l'enseignement 

@@ -1,0 +1,371 @@
+@extends('layouts.app')
+
+@section('title', 'Modifier la matière : ' . $matiere->name . ' - KLASSCI')
+
+@section('styles')
+<link href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}" rel="stylesheet">
+@endsection
+
+@section('content')
+<div class="main-content">
+    <!-- Header Section -->
+    <div class="dashboard-header">
+        <div class="header-left">
+            <h1><i class="fas fa-edit me-2"></i>Modifier la Matière</h1>
+            <p class="header-subtitle">{{ $matiere->name }}</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ route('esbtp.matieres.show', $matiere) }}" class="btn-acasi secondary me-2">
+                <i class="fas fa-eye me-1"></i>Détails
+            </a>
+            <a href="{{ route('esbtp.matieres.index') }}" class="btn-acasi secondary">
+                <i class="fas fa-list me-1"></i>Liste des matières
+            </a>
+        </div>
+    </div>
+
+    <!-- Success Alert -->
+    @if(session('success'))
+        <div class="card-moderne mb-lg" style="border-left: 4px solid var(--success);">
+            <div class="p-lg">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-check-circle color-success me-2"></i>
+                    <span>{{ session('success') }}</span>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <!-- Error Alert -->
+    @if(session('error'))
+        <div class="card-moderne mb-lg" style="border-left: 4px solid var(--danger);">
+            <div class="p-lg">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-exclamation-circle color-danger me-2"></i>
+                    <span>{{ session('error') }}</span>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <!-- Form Container -->
+    <form action="{{ route('esbtp.matieres.update', $matiere) }}" method="POST">
+        @csrf
+        @method('PUT')
+
+        <!-- Informations générales -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card-moderne">
+                    <div class="main-card-header">
+                        <h3 class="main-card-title">
+                            <i class="fas fa-info-circle"></i>Informations générales
+                        </h3>
+                        <p class="main-card-subtitle">Code et nom de la matière</p>
+                    </div>
+                    <div class="main-card-body">
+                                        <!-- Nom de la matière -->
+                                        <div class="mb-3">
+                                            <label for="name" class="form-label">Nom de la matière <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name', $matiere->name) }}" required>
+                                            @error('name')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+
+                                        <!-- Code de la matière -->
+                                        <div class="mb-3">
+                                            <label for="code" class="form-label">Code de la matière <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control @error('code') is-invalid @enderror" id="code" name="code" value="{{ old('code', $matiere->code) }}" required>
+                                            @error('code')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="card-moderne">
+                                    <div class="main-card-header">
+                                        <h3 class="main-card-title">
+                                            <i class="fas fa-sliders-h"></i>Paramètres d'évaluation
+                                        </h3>
+                                        <p class="main-card-subtitle">Coefficient de la matière</p>
+                                    </div>
+                                    <div class="main-card-body">
+                                        <div class="mb-3">
+                                            <label for="coefficient" class="form-label">Coefficient <span class="text-danger">*</span></label>
+                                            <input type="number" class="form-control @error('coefficient') is-invalid @enderror" id="coefficient" name="coefficient" value="{{ old('coefficient', $matiere->coefficient) }}" min="1" step="0.5" required>
+                                            @error('coefficient')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                        <div class="alert alert-info mb-0">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Les volumes horaires se configurent dans le Planning Général.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card-moderne">
+                                    <div class="main-card-header">
+                                        <h3 class="main-card-title">
+                                            <i class="fas fa-link"></i>Associations
+                                        </h3>
+                                        <p class="main-card-subtitle">Filières et niveaux d'étude</p>
+                                    </div>
+                                    <div class="main-card-body">
+                                        {{-- Témoin : ce formulaire porte bien les deux listes. Sans lui,
+                                             « aucune case cochée » arrive au serveur comme « champ absent »,
+                                             et le contrôleur ne peut pas distinguer un retrait volontaire
+                                             d'une mise à jour qui ne parle pas des liaisons. --}}
+                                        <input type="hidden" name="liaisons_presentes" value="1">
+
+                                        <!-- Filières associées (multi-sélection) -->
+                                        <div class="mb-3">
+                                            <label class="form-label">
+                                                <i class="fas fa-graduation-cap me-1"></i>Filières
+                                                <small class="text-muted">(Sélection multiple autorisée)</small>
+                                            </label>
+                                            <div class="border rounded p-3 @error('filieres') is-invalid @enderror" style="max-height: 200px; overflow-y: auto;">
+                                                @foreach($filieres as $filiere)
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input filiere-check" type="checkbox" 
+                                                           value="{{ $filiere->id }}" 
+                                                           id="edit_filiere_{{ $filiere->id }}" 
+                                                           name="filieres[]"
+                                                           {{ in_array($filiere->id, old('filieres', $matiere->filieres->pluck('id')->toArray())) ? 'checked' : '' }}>
+                                                    <label class="form-check-label" for="edit_filiere_{{ $filiere->id }}">
+                                                        <strong>{{ $filiere->name }}</strong>
+                                                        @if($filiere->code)
+                                                            <small class="text-muted">({{ $filiere->code }})</small>
+                                                        @endif
+                                                    </label>
+                                                </div>
+                                                @endforeach
+                                            </div>
+                                            @error('filieres')
+                                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+
+                                        <!-- Niveaux d'étude associés (multi-sélection) -->
+                                        <div class="mb-3">
+                                            <label class="form-label">
+                                                <i class="fas fa-layer-group me-1"></i>Niveaux d'étude
+                                                <small class="text-muted">(Sélection multiple autorisée)</small>
+                                            </label>
+                                            <div class="border rounded p-3 @error('niveaux') is-invalid @enderror" style="max-height: 200px; overflow-y: auto;">
+                                                @foreach($niveauxEtudes as $niveau)
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input niveau-check" type="checkbox" 
+                                                           value="{{ $niveau->id }}" 
+                                                           id="edit_niveau_{{ $niveau->id }}" 
+                                                           name="niveaux[]"
+                                                           {{ in_array($niveau->id, old('niveaux', $matiere->niveaux->pluck('id')->toArray())) ? 'checked' : '' }}>
+                                                    <label class="form-check-label" for="edit_niveau_{{ $niveau->id }}">
+                                                        <strong>{{ $niveau->name }}</strong>
+                                                        @if($niveau->code)
+                                                            <small class="text-muted">({{ $niveau->code }})</small>
+                                                        @endif
+                                                    </label>
+                                                </div>
+                                                @endforeach
+                                            </div>
+                                            @error('niveaux')
+                                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+
+                                        {{-- La maquette REELLE, et le lien vers l'ecran qui la modifie.
+                                             Cet emplacement affichait le produit cartesien des deux listes
+                                             cochees — des combinaisons que la maquette ne porte pas — et
+                                             l'enregistrement les posait. Voir le commentaire de
+                                             `ESBTPMatiereController::poserLesCouplesDuFormulaire()`. --}}
+                                        <div class="mb-3">
+                                            <label class="form-label">
+                                                <i class="fas fa-diagram-project me-1"></i>Au programme de
+                                            </label>
+                                            @if(empty($couplesDeLaMaquette))
+                                                <div class="alert alert-warning py-2 px-3 mb-2">
+                                                    <i class="fas fa-triangle-exclamation me-2"></i>
+                                                    Cette matière n'est au programme d'aucune filière × niveau : elle n'apparaîtra sur aucun bulletin.
+                                                </div>
+                                            @else
+                                                <div class="d-flex flex-wrap gap-2 mb-2">
+                                                    @foreach($couplesDeLaMaquette as $couple)
+                                                        <a class="badge bg-primary text-wrap p-2 text-decoration-none"
+                                                           href="{{ route('esbtp.matieres.classification', ['filiere_id' => $couple['filiere_id'], 'niveau_id' => $couple['niveau_id']]) }}"
+                                                           title="Ouvrir cette maquette">
+                                                            <i class="fas fa-link me-1"></i>{{ $couple['filiere'] }} ↔ {{ $couple['niveau'] }}
+                                                        </a>
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                            <div class="form-text">
+                                                Les deux listes ci-dessus décrivent les filières et les niveaux de la matière ; elles
+                                                ne décident pas de son programme. Ajouter ou retirer un couple précis se fait sur
+                                                <a href="{{ route('esbtp.matieres.classification', array_filter([
+                                                    'filiere_id' => $couplesDeLaMaquette[0]['filiere_id'] ?? null,
+                                                    'niveau_id' => $couplesDeLaMaquette[0]['niveau_id'] ?? null,
+                                                ])) }}">l'écran Maquette</a>, où il se voit.
+                                            </div>
+                                        </div>
+
+                                        <!-- Type de formation -->
+                                        <div class="mb-3">
+                                            <label for="type_formation" class="form-label">Type de formation <span class="text-danger">*</span></label>
+                                            <select class="form-select @error('type_formation') is-invalid @enderror" id="type_formation" name="type_formation" required>
+                                                <option value="generale" {{ old('type_formation', $matiere->type_formation) == 'generale' ? 'selected' : '' }}>Formation générale</option>
+                                                <option value="technologique_professionnelle" {{ old('type_formation', $matiere->type_formation) == 'technologique_professionnelle' ? 'selected' : '' }}>Formation technologique et professionnelle</option>
+                                            </select>
+                                            @error('type_formation')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+
+                                        <!-- Couleur -->
+                                        <div class="mb-3">
+                                            <label for="couleur" class="form-label">Couleur</label>
+                                            <input type="color" class="form-control form-control-color @error('couleur') is-invalid @enderror" id="couleur" name="couleur" value="{{ old('couleur', $matiere->couleur ?? '#007bff') }}">
+                                            <small class="form-text text-muted">Couleur utilisée pour représenter la matière dans l'emploi du temps</small>
+                                            @error('couleur')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="card-moderne">
+                                    <div class="main-card-header">
+                                        <h3 class="main-card-title">
+                                            <i class="fas fa-align-left"></i>Description et options
+                                        </h3>
+                                        <p class="main-card-subtitle">Informations complémentaires</p>
+                                    </div>
+                                    <div class="main-card-body">
+                                        <!-- Description -->
+                                        <div class="mb-3">
+                                            <label for="description" class="form-label">Description</label>
+                                            <textarea class="form-control @error('description') is-invalid @enderror" id="description" name="description" rows="4">{{ old('description', $matiere->description) }}</textarea>
+                                            @error('description')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+
+                                        <!-- Statut -->
+                                        <div class="form-check form-switch mb-3">
+                                            <input class="form-check-input" type="checkbox" id="is_active" name="is_active" value="1" {{ old('is_active', $matiere->is_active) ? 'checked' : '' }}>
+                                            <label class="form-check-label" for="is_active">Matière active</label>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            <i class="fas fa-info-circle me-1"></i>Une matière inactive ne pourra pas être utilisée dans les emplois du temps ou les évaluations.
+                                        </small>
+
+                                        <!-- Alertes pour les éléments liés -->
+                                        @if($matiere->seancesCours->count() > 0 || $matiere->evaluations->count() > 0)
+                                            <div class="alert alert-warning mt-3 mb-0">
+                                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                                <strong>Attention :</strong> Cette matière est liée à :
+                                                <ul class="mb-0 mt-1">
+                                                    @if($matiere->seancesCours->count() > 0)
+                                                        <li>{{ $matiere->seancesCours->count() }} séance(s) de cours</li>
+                                                    @endif
+                                                    @if($matiere->evaluations->count() > 0)
+                                                        <li>{{ $matiere->evaluations->count() }} évaluation(s)</li>
+                                                    @endif
+                                                </ul>
+                                                La modification de cette matière peut affecter ces éléments.
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12 d-flex justify-content-between">
+                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                    <i class="fas fa-trash me-1"></i>Supprimer
+                                </button>
+                                <div>
+                                    <a href="{{ route('esbtp.matieres.show', $matiere) }}" class="btn-acasi secondary me-2">
+                                        <i class="fas fa-times me-1"></i>Annuler
+                                    </a>
+                                    <button type="submit" class="btn-acasi primary">
+                                        <i class="fas fa-save me-1"></i>Enregistrer les modifications
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmation de suppression -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirmation de suppression</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir supprimer cette matière ?</p>
+                <p><strong>Nom :</strong> {{ $matiere->name }}</p>
+
+                @if($matiere->seancesCours->count() > 0 || $matiere->evaluations->count() > 0)
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Attention :</strong> Cette matière est liée à :
+                        <ul class="mb-0 mt-1">
+                            @if($matiere->seancesCours->count() > 0)
+                                <li>{{ $matiere->seancesCours->count() }} séance(s) de cours</li>
+                            @endif
+                            @if($matiere->evaluations->count() > 0)
+                                <li>{{ $matiere->evaluations->count() }} évaluation(s)</li>
+                            @endif
+                        </ul>
+                        La suppression de cette matière pourrait causer des erreurs dans le système. Assurez-vous de supprimer ces éléments liés avant de continuer.
+                    </div>
+                @endif
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <form action="{{ route('esbtp.matieres.destroy', $matiere) }}" method="POST">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">Confirmer la suppression</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@endsection
+
+@section('scripts')
+<script>
+    $(document).ready(function() {
+        // Initialisation de Select2
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            width: '100%'
+        });
+
+        // Volume horaire géré dans le Planning Général
+
+    });
+</script>
+@endsection

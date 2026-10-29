@@ -1,0 +1,40 @@
+# Task ID: 3
+# Title: Implémentation du dashboard financier temps réel
+# Status: done
+# Dependencies: 1, 2
+# Priority: high
+# Description: Développer le dashboard interactif avec KPIs financiers dynamiques et graphiques pour visualiser les données comptables en temps réel.
+# Details:
+1. Créer un contrôleur `DashboardComptabiliteController.php` avec:
+   - Méthode `index()` pour afficher le dashboard principal
+   - Méthode `getKPIs()` pour récupérer les données en AJAX
+   - Méthode `getChartData()` pour alimenter les graphiques
+
+2. Développer les vues Blade:
+   - `dashboard/index.blade.php` - Layout principal
+   - Composants réutilisables:
+     - `components/kpi-card.blade.php`
+     - `components/chart-container.blade.php`
+
+3. Intégrer Chart.js pour les visualisations:
+   - Graphique d'évolution mensuelle des recettes/dépenses
+   - Graphique de répartition par filière
+   - Graphique de taux de recouvrement
+
+4. Implémenter l'actualisation en temps réel:
+   - AJAX polling toutes les 30 secondes
+   - Mise à jour des KPIs sans rechargement de page
+
+5. Ajouter le système d'alertes:
+   - Notifications visuelles pour seuils critiques
+   - Indicateurs colorés (vert/orange/rouge) selon performance
+
+Utiliser Bootstrap 5 pour le responsive design et assurer la compatibilité avec le thème NextAdmin existant.
+
+# Test Strategy:
+1. Tests fonctionnels pour vérifier le rendu du dashboard
+2. Tests JavaScript pour valider l'actualisation AJAX
+3. Tests de performance pour mesurer le temps de chargement
+4. Tests d'intégration avec les services de données
+5. Tests cross-browser pour assurer la compatibilité
+6. Tests d'accessibilité pour conformité WCAG

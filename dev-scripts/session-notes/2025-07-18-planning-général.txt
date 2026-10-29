@@ -1,0 +1,17 @@
+╭───────────────────────────────────────────────────╮
+│ ✻ Welcome to Claude Code!                         │
+│                                                   │
+│   /help for help, /status for your current setup  │
+│                                                   │
+│   cwd: /mnt/c/xampp/htdocs/ESBTP-yAKROv2Pascal    │
+╰───────────────────────────────────────────────────╯
+● Compact summary (ctrl+r to expand)
+  ⎿  Read resources/views/esbtp/planning-general/index.blade.php (381 lines)
+  ⎿  Read app/Http/Controllers/ESBTPPlanningGeneralController.php (421 lines)
+  ⎿  Read app/Models/ESBTPSeanceCours.php (480 lines)
+  ⎿  Read app/Models/ESBTPEmploiTemps.php (325 lines)
+  ⎿  Todo list read (7 items)
+  ⎿  Claude usage limit reached. Your limit will reset at 4am (Africa/Abidjan).
+
+      • /upgrade to increase your usage limit.
+

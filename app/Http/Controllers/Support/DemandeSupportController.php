@@ -1,0 +1,186 @@
+<?php
+
+namespace App\Http\Controllers\Support;
+
+use App\Domain\Support\Actions\SoumettreDemande;
+use App\Domain\Support\Exceptions\MasterSupportIndisponible;
+use App\Domain\Support\Exceptions\MasterSupportRefus;
+use App\Domain\Support\Exceptions\PorteeAbsente;
+use App\Domain\Support\Models\SupportOutbox;
+use App\Domain\Support\Services\ContexteDePage;
+use App\Domain\Support\Services\DisponibiliteSupport;
+use App\Http\Controllers\Controller;
+use App\Http\Controllers\Support\Concerns\EcritSurUneDemande;
+use App\Http\Controllers\Support\Concerns\PorteeDeLecture;
+use App\Http\Controllers\Support\Concerns\RepondAUnSignalement;
+use App\Http\Requests\Support\RepondreDemandeRequest;
+use App\Http\Requests\Support\SoumettreDemandeRequest;
+use App\Models\Notification;
+use App\Services\Care\ClientMasterSupport;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * KLASSCI Care cote ecole : signaler, puis suivre ses demandes.
+ *
+ * Mince par construction : le contexte se calcule dans ContexteDePage, l'envoi
+ * dans SoumettreDemande, le transport dans ClientMasterSupport. Les demandes
+ * elles-memes vivent au Master ; cette application n'en garde que la boite
+ * d'envoi.
+ */
+class DemandeSupportController extends Controller
+{
+    use EcritSurUneDemande;
+    use RepondAUnSignalement;
+    use PorteeDeLecture;
+
+    public function __construct(
+        private readonly DisponibiliteSupport $disponibilite,
+        private readonly ClientMasterSupport $master,
+    ) {
+    }
+
+    public function store(SoumettreDemandeRequest $request, SoumettreDemande $soumettre): JsonResponse
+    {
+        abort_unless($this->disponibilite->signalement(), 404);
+
+        return $this->repondreAuSignalement(fn () => $soumettre->executer(
+            $request->user(),
+            $request->validated('categorie'),
+            $request->validated('description'),
+            ContexteDePage::assainir((array) $request->validated('contexte', []), $request),
+            $request->validated('cle'),
+            $request->attributes->get('request_id'),
+        ), $this->disponibilite);
+    }
+
+    public function index(Request $request)
+    {
+        abort_unless($this->disponibilite->suivi(), 404);
+
+        $portee = $this->portee($request);
+        $demandes = null;
+        $indisponible = false;
+        try {
+            $demandes = $this->master->lister($request->user()->getKey(), $portee, max(1, (int) $request->query('page', 1)));
+        } catch (MasterSupportIndisponible|MasterSupportRefus) {
+            $indisponible = true;
+        }
+
+        $donnees = [
+            'demandes' => $demandes['data'] ?? [],
+            'meta' => $demandes['meta'] ?? ['page' => 1, 'pages' => 1, 'total' => 0],
+            'portee' => $portee,
+            'indisponible' => $indisponible,
+            'nonLues' => $this->reponsesNonLues($request->user()->getKey()),
+        ];
+        if ($request->ajax()) {
+            return response()->json(['liste' => view('support.demandes._liste', $donnees)->render(), 'portee' => $portee]);
+        }
+
+        return view('support.demandes.index', $donnees + [
+            'boiteEnvoi' => SupportOutbox::signalements()->aMontrer()->where('user_id', $request->user()->getKey())->latest()->get(),
+            'peutVoirEcole' => $request->user()->can('support.tickets.view_school'),
+            'signalementOuvert' => $this->disponibilite->signalement(),
+        ]);
+    }
+
+    public function show(Request $request, string $reference)
+    {
+        abort_unless($this->disponibilite->suivi(), 404);
+        abort_unless(preg_match('/^KC-\d{4}-\d{6,}$/', $reference) === 1, 404);
+
+        try {
+            $demande = $this->master->afficher($reference, $request->user()->getKey(), $this->portee($request, defaut: 'school'));
+        } catch (MasterSupportIndisponible|MasterSupportRefus) {
+            return view('support.demandes.show', ['demande' => null, 'reference' => $reference, 'indisponible' => true]);
+        }
+
+        abort_if($demande === null, 404);
+
+        // Ouvrir la demande vaut lecture de l'avertissement qui y menait.
+        Notification::where('user_id', $request->user()->getKey())->where('is_read', false)
+            ->where('link', route('support.demandes.show', $reference, false))
+            ->update(['is_read' => true]);
+
+        return view('support.demandes.show', [
+            'demande' => $demande,
+            'reference' => $reference,
+            'indisponible' => false,
+            'peutRepondre' => $this->peutRepondre($demande, $request->user()->getKey()),
+            'peutJoindre' => $this->peutJoindre($demande, $request->user()->getKey()),
+            'limites' => $this->master->limites(),
+        ]);
+    }
+
+    /**
+     * La reponse de l'ecole. Pas de boite d'envoi ici : si le Master ne
+     * repond pas, le texte reste dans le formulaire et l'utilisateur le
+     * renvoie, avec la meme cle, sans risque de doublon.
+     */
+    public function repondre(RepondreDemandeRequest $request, string $reference): JsonResponse
+    {
+        abort_unless($this->disponibilite->suivi(), 404);
+        abort_unless(preg_match('/^KC-\d{4}-\d{6,}$/', $reference) === 1, 404);
+
+        $auteur = $request->user()->getKey();
+
+        try {
+            // Toujours `mine` : lire les demandes de l'ecole n'autorise pas a ecrire
+            // sur celles des collegues. Le Master repond 404 hors de ce perimetre.
+            $demande = $this->master->repondre(
+                $reference,
+                $auteur,
+                'mine',
+                $request->validated('corps'),
+                $request->user()->name,
+                $request->validated('cle'),
+            );
+        } catch (PorteeAbsente) {
+            return response()->json(['message' => "Votre établissement ne peut pas encore répondre au support depuis KLASSCI. Écrivez-nous à ".config('app.support_email').'.', 'peut_repondre' => false, 'peut_joindre' => false], 403);
+        } catch (MasterSupportIndisponible) {
+            return response()->json(['message' => "Le support est momentanément injoignable. Votre réponse est conservée ici : renvoyez-la dans un instant."], 503);
+        } catch (MasterSupportRefus $e) {
+            // 404 et non 403 au Master : une reference hors de portee n'existe pas.
+            abort_if($e->statut === 404, 404);
+
+            return $e->codeErreur === 'ticket_closed'
+                ? $this->demandeFermee($reference, $auteur)
+                : $this->refusInattendu($e);
+        }
+
+        return response()->json([
+            'fil' => view('support.demandes._fil', ['messages' => $demande['messages'] ?? []])->render(),
+            'statut' => view('support.demandes._statut', ['statut' => $demande['statut'] ?? []])->render(),
+            'peut_repondre' => $this->peutRepondre($demande, $auteur),
+            'peut_joindre' => $this->peutJoindre($demande, $auteur),
+        ]);
+    }
+
+    /**
+     * Les demandes dont un avertissement « le support a répondu » n'est pas
+     * encore lu. C'est la seule trace de consultation disponible : la
+     * notification est créée par support:suivre-demandes et marquée lue à
+     * l'ouverture de la demande (ou depuis la cloche).
+     *
+     * @return list<string> références
+     */
+    private function reponsesNonLues(int $userId): array
+    {
+        $prefixe = route('support.demandes.index', [], false).'/';
+
+        return Notification::where('user_id', $userId)->where('is_read', false)
+            ->where('link', 'like', $prefixe.'KC-%')
+            ->pluck('link')
+            ->map(fn ($lien) => substr((string) $lien, strlen($prefixe)))
+            ->unique()->values()->all();
+    }
+
+    private function refusInattendu(MasterSupportRefus $e): JsonResponse
+    {
+        Log::error('KLASSCI Care : réponse refusée par le Master', ['statut' => $e->statut, 'code' => $e->codeErreur, 'erreurs' => $e->erreurs]);
+
+        return response()->json(['message' => "Votre réponse n'a pas pu être transmise. Écrivez-nous à ".config('app.support_email').'.'], 422);
+    }
+}

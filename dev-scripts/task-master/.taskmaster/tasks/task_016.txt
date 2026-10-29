@@ -1,0 +1,70 @@
+# Task ID: 16
+# Title: Interface Validation Inscription avec Modal Paiement
+# Status: done
+# Dependencies: 15
+# Priority: medium
+# Description: Interface validation inscription avec modal paiement rapide intégrée et vérification places classes temps réel
+# Details:
+1. Modal paiement Bootstrap 5:
+   - Saisie rapide frais inscription sans changer de page
+   - Sélecteur types paiements: scolarité, cantine, autres frais
+   - Validation côté client avec feedback instantané
+   - CSRF protection et gestion erreurs AJAX
+
+2. Vérification places temps réel:
+   - API call vérification places disponibles classe sélectionnée
+   - Suggestions alternatives si classe pleine
+   - Interface sélection classe alternative avec modal
+   - Mise à jour dynamique places après sélection
+
+3. Interface workflow states:
+   - Indicateurs visuels progression: prospect → validation → étudiant
+   - Badges colorés selon statut avec tooltips explicatifs
+   - Timeline workflow avec actions utilisateur tracées
+   - Boutons contextuels selon étape (valider, rejeter, modifier)
+
+4. JavaScript avancé:
+   - Prévisualisation temps réel formulaire paiement
+   - Validation client avec regex et business rules
+   - Auto-completion classe/filière avec search
+   - Notifications toast pour actions importantes
+
+# Test Strategy:
+1. Tests navigation modal responsive
+2. Tests validation AJAX avec différents scénarios
+3. Tests vérification places API
+4. Tests JavaScript cross-browser
+5. Tests workflow complet via interface
+6. Tests accessibilité WCAG modal
+
+# Subtasks:
+## 16.1. Modal paiement Bootstrap 5 [done]
+### Dependencies: None
+### Description: Modal responsive saisie rapide paiement avec types et montants
+### Details:
+
+
+## 16.2. Vérification places temps réel [done]
+### Dependencies: None
+### Description: AJAX check places disponibles avec suggestions classes alternatives
+### Details:
+
+
+## 16.3. Interface états workflow [done]
+### Dependencies: None
+### Description: Indicateurs visuels progression workflow avec couleurs et icônes
+### Details:
+
+
+## 16.4. Validation AJAX inscription [done]
+### Dependencies: None
+### Description: Submit validation inscription avec feedback et gestion erreurs
+### Details:
+
+
+## 16.5. Tests interface utilisateur [done]
+### Dependencies: None
+### Description: Tests navigation modal, validation, workflow complet
+### Details:
+
+

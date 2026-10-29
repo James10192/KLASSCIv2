@@ -1,0 +1,18 @@
+# Add directories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
+/scripts
+/ESBTP-yAKROv2
+/ESBTP-yAKROv2
+/trash_esbtp_scripts
+/trash_scripts
+/trash_url_scripts
+/scripts_esbtp
+/scripts_projet
+/scripts_projet_esbtp
+/setup_scripts
+/vendor
+/node_modules
+/public/hot
+/public/storage
+/storage/*.key
+/vendor
+

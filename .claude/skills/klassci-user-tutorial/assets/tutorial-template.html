@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<!--
+  Template tutoriel KLASSCI — captures RÉELLES annotées, prêt pour editorial-pdf (Chrome → PDF A4).
+
+  MODE D'EMPLOI (pour l'agent) :
+  1. Remplacer chaque src="file:///.../etapeN-xxx.png" par le chemin RÉEL de la capture (forward slashes).
+     NE JAMAIS reconstruire l'écran : l'<img> doit pointer une vraie capture prise via dev-browser.
+  2. Poser les annotations DANS .shot, en % (top/left/width/height) pour tomber sur le bon élément :
+     - .mark  = badge numéroté (point d'action)         -> style="top:32%; left:12%"
+     - .box   = cadre de surbrillance (zone à regarder)  -> style="top:28%; left:8%; width:40%; height:9%"
+     - .arrow = flèche (pointe vers un élément)           -> rotation via --deg
+  3. Dupliquer <section class="step"> par étape. Vérifier chaque page dans le PDF et réajuster les %.
+  4. Générer le PDF via le skill editorial-pdf (A4 portrait).
+-->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Guide KLASSCI</title>
+<style>
+  @page { size: A4 portrait; margin: 0; }
+  :root {
+    --primary: #0453cb; --primary-d: #033a8e; --secondary: #3b7ddb;
+    --ink: #1e293b; --soft: #475569; --muted: #64748b; --line: #e2e8f0;
+    --surface: #f8fafc; --mark: #0453cb; --hl: #f59e0b; --success: #10b981;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: var(--ink); line-height: 1.55; }
+
+  .page { width: 210mm; min-height: 297mm; padding: 16mm 16mm 14mm; page-break-after: always; position: relative; }
+  .page:last-child { page-break-after: auto; }
+
+  /* Couverture */
+  .cover { background: linear-gradient(135deg, #0a3d8f 0%, var(--primary) 45%, var(--secondary) 100%); color: #fff; display: flex; flex-direction: column; justify-content: center; }
+  .cover .brand { font-weight: 700; letter-spacing: .16em; text-transform: uppercase; font-size: 11pt; opacity: .85; }
+  .cover h1 { font-size: 30pt; font-weight: 750; margin: 14mm 0 6mm; line-height: 1.15; }
+  .cover p { font-size: 13pt; opacity: .9; max-width: 150mm; }
+  .cover .aud { margin-top: 14mm; display: flex; gap: 6mm; flex-wrap: wrap; }
+  .cover .aud span { font-size: 9.5pt; padding: 2mm 4mm; border-radius: 20px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25); }
+
+  /* En-tête d'étape */
+  .step-head { display: flex; align-items: center; gap: 5mm; margin-bottom: 5mm; }
+  .step-num { width: 12mm; height: 12mm; border-radius: 3mm; background: linear-gradient(135deg, var(--primary), var(--secondary)); color: #fff; font-weight: 750; font-size: 16pt; display: flex; align-items: center; justify-content: center; }
+  .step-head h2 { margin: 0; font-size: 17pt; line-height: 1.2; }
+  .step-intro { color: var(--soft); font-size: 11.5pt; margin: 0 0 6mm; max-width: 165mm; }
+  .step-intro b { color: var(--ink); }
+  .path { font-family: Consolas, monospace; font-size: 10pt; background: var(--surface); border: 1px solid var(--line); border-radius: 2mm; padding: .5mm 2mm; }
+
+  /* Conteneur de la capture réelle + overlays */
+  .shot { position: relative; border: 1px solid var(--line); border-radius: 3mm; overflow: hidden; box-shadow: 0 2mm 8mm rgba(4,83,203,.10); }
+  .shot img { display: block; width: 100%; height: auto; }
+
+  /* Overlays d'annotation (positionnés en % PAR-DESSUS l'image réelle) */
+  .mark { position: absolute; width: 8mm; height: 8mm; border-radius: 50%; background: var(--mark); color: #fff; font-weight: 750; font-size: 11pt; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2mm rgba(4,83,203,.22); transform: translate(-50%, -50%); }
+  .box { position: absolute; border: 2.5px solid var(--hl); border-radius: 2mm; box-shadow: 0 0 0 100vmax rgba(0,0,0,0); }
+  .box.primary { border-color: var(--mark); }
+  .arrow { position: absolute; width: 22mm; height: 0; border-top: 3px solid var(--hl); transform-origin: left center; transform: rotate(var(--deg, 0deg)); }
+  .arrow::after { content: ""; position: absolute; right: -1px; top: -3.5px; border-left: 5mm solid var(--hl); border-top: 2.2mm solid transparent; border-bottom: 2.2mm solid transparent; }
+
+  .caption { margin-top: 4mm; font-size: 10.5pt; color: var(--soft); display: flex; align-items: flex-start; gap: 3mm; }
+  .caption .k { flex-shrink: 0; width: 6mm; height: 6mm; border-radius: 50%; background: var(--mark); color: #fff; font-weight: 700; font-size: 9pt; display: flex; align-items: center; justify-content: center; }
+
+  .tip { margin-top: 6mm; display: grid; grid-template-columns: auto 1fr; gap: 3mm; background: var(--surface); border-left: 3px solid var(--success); border-radius: 2mm; padding: 3mm 4mm; font-size: 10.5pt; color: var(--soft); }
+  .tip b { color: var(--ink); }
+
+  .pnum { position: absolute; bottom: 8mm; right: 16mm; font-size: 9pt; color: var(--muted); }
+</style>
+</head>
+<body>
+
+  <!-- COUVERTURE -->
+  <section class="page cover">
+    <div class="brand">KLASSCI · Guide pratique</div>
+    <h1>TITRE DU TUTORIEL</h1>
+    <p>Sous-titre : en une phrase, ce que l'utilisateur saura faire à la fin.</p>
+    <div class="aud"><span>Pour : secrétariat</span><span>Module : Présences</span><span>Durée : 3 min</span></div>
+  </section>
+
+  <!-- ÉTAPE 1 (exemple : cadre + flèche + badge sur une vraie capture) -->
+  <section class="page step">
+    <div class="step-head"><div class="step-num">1</div><h2>Titre de l'étape</h2></div>
+    <p class="step-intro">Action à faire. Chemin de menu : <span class="path">Présence &amp; Absences › Gestion des présences › Présences étudiants</span>.</p>
+
+    <div class="shot">
+      <!-- VRAIE capture (remplacer le chemin) -->
+      <img src="file:///C:/Users/yabla/AppData/Local/Temp/tuto/etape1-menu-presences.png" alt="Étape 1">
+      <!-- Overlays : ajuster les % pour tomber sur le bon élément -->
+      <span class="mark" style="top:30%; left:9%;">1</span>
+      <span class="box" style="top:26%; left:2%; width:22%; height:7%;"></span>
+      <span class="arrow" style="top:30%; left:24%; --deg:8deg;"></span>
+    </div>
+
+    <div class="caption"><span class="k">1</span><span>Cliquez sur <b>Marquer présences</b> dans le menu Présence &amp; Absences.</span></div>
+
+    <div class="tip"><b>Astuce</b><span>Le menu latéral se déplie au survol ; l'entrée se trouve sous « Gestion des présences ».</span></div>
+    <div class="pnum">KLASSCI · 1</div>
+  </section>
+
+  <!-- ÉTAPE 4 (exemple : mise en évidence du badge Tronc commun) -->
+  <section class="page step">
+    <div class="step-head"><div class="step-num">4</div><h2>Repérer les étudiants de tronc commun</h2></div>
+    <p class="step-intro">Les étudiants orientés en spécialité restent affichés avec l'étiquette <b>Tronc commun</b>. Saisissez leur statut comme les autres.</p>
+
+    <div class="shot">
+      <img src="file:///C:/Users/yabla/AppData/Local/Temp/tuto/etape4-liste-etudiants.png" alt="Étape 4">
+      <span class="box primary" style="top:44%; left:30%; width:16%; height:8%;"></span>
+      <span class="mark" style="top:48%; left:29%;">1</span>
+      <span class="box" style="top:44%; left:60%; width:34%; height:8%;"></span>
+      <span class="mark" style="top:48%; left:60%;">2</span>
+    </div>
+
+    <div class="caption"><span class="k">1</span><span>L'étiquette <b>Tronc commun</b> indique un étudiant orienté, présent au titre de son parcours de tronc commun.</span></div>
+    <div class="caption"><span class="k">2</span><span>Choisissez son statut : <b>Présent</b>, <b>Absent</b>, <b>Retard</b> ou <b>Excusé</b>.</span></div>
+    <div class="pnum">KLASSCI · 4</div>
+  </section>
+
+</body>
+</html>

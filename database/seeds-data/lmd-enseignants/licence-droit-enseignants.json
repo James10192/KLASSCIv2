@@ -1,0 +1,1317 @@
+{
+  "_comment": "Enseignants ECUE + responsables UE (inférés) extraits de LICENCE DROIT MAQUETTES.pdf.",
+  "_pdf_source": "LICENCE DROIT MAQUETTES.pdf",
+  "filiere": "DROIT",
+  "filiere_name": "Tronc Commun Droit",
+  "domaine_name": "Sciences Juridiques",
+  "page_semester_map": {
+    "2": 1,
+    "3": 2,
+    "5": 3,
+    "6": 4,
+    "8": 5,
+    "9": 6,
+    "11": 5,
+    "12": 6
+  },
+  "page_level_map": {
+    "2": "L1",
+    "3": "L1",
+    "5": "L2",
+    "6": "L2",
+    "8": "L3",
+    "9": "L3",
+    "11": "L3",
+    "12": "L3"
+  },
+  "stats": {
+    "ecues_total": 68,
+    "ecues_with_teacher": 68,
+    "ues_count": 41,
+    "distinct_teachers": 35
+  },
+  "note": "responsable_ue_inferred = most frequent teacher across the UE's ECUEs (heuristic). The PDF's UE summary block is too scrambled to parse reliably. Manual validation recommended before DB import.",
+  "ues": [
+    {
+      "ue_code": "ACN5001",
+      "responsable_ue_inferred": {
+        "name": "Cissé alassane",
+        "grade": "M.",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "ACN5001.2",
+          "name": "Civisme et Citoyenneté",
+          "enseignants": [
+            {
+              "name": "Cissé alassane",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "COG5001",
+      "responsable_ue_inferred": {
+        "name": "Kanté Vassidiki",
+        "grade": "M.",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "COG5001.1",
+          "name": "Initiation à l'Informatique",
+          "enseignants": [
+            {
+              "name": "Kanté Vassidiki",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DCP5001",
+      "responsable_ue_inferred": {
+        "name": "Sigui Seu Xavier",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "DCP5001.1",
+          "name": "L'Etat des personnes",
+          "enseignants": [
+            {
+              "name": "Sigui Seu Xavier",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "DCP5001.2",
+          "name": "Les Incapacités",
+          "enseignants": [
+            {
+              "name": "Zekpe Evora Yamun",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "IGD5001",
+      "responsable_ue_inferred": {
+        "name": "Camara Mohamed",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "IGD5001.1",
+          "name": "La Notion du Droit",
+          "enseignants": [
+            {
+              "name": "Camara Mohamed",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "IGD5001.2",
+          "name": "La réalisation du Droit",
+          "enseignants": [
+            {
+              "name": "Camara Mohamed",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "TGC5001",
+      "responsable_ue_inferred": {
+        "name": "Sanogo Moussa",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "TGC5001.1",
+          "name": "Théorie Générale de l'Etat",
+          "enseignants": [
+            {
+              "name": "Sanogo Moussa",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DCF5002",
+      "responsable_ue_inferred": {
+        "name": "Silué Kassinibain",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 2,
+      "ecues": [
+        {
+          "code": "DCF5002.1",
+          "name": "Les Différentes Formes d'Unions",
+          "enseignants": [
+            {
+              "name": "Silué Kassinibain",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "DCF5002.2",
+          "name": "La Filiation",
+          "enseignants": [
+            {
+              "name": "Kambou Dare",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DCO5002",
+      "responsable_ue_inferred": {
+        "name": "Droh Hyacinthe",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 2,
+      "ecues": [
+        {
+          "code": "DCO5002.1",
+          "name": "Droit Communautaire Européen",
+          "enseignants": [
+            {
+              "name": "Droh Hyacinthe",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "DCO5002.2",
+          "name": "Droit Communautaire Africain",
+          "enseignants": [
+            {
+              "name": "Camara Mohamed",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "EPO5002",
+      "responsable_ue_inferred": {
+        "name": "Kouassi Yao Martial",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 2,
+      "ecues": [
+        {
+          "code": "EPO5002.1",
+          "name": "Miroéconomie",
+          "enseignants": [
+            {
+              "name": "Kouassi Yao Martial",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "EPO5002.2",
+          "name": "Macroéconomie",
+          "enseignants": [
+            {
+              "name": "Diawara Ibrahim",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "HMF5002",
+      "responsable_ue_inferred": {
+        "name": "Tra Bi Fidèle",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 2,
+      "ecues": [
+        {
+          "code": "HMF5002.1",
+          "name": "Institutions Méditerranéennes",
+          "enseignants": [
+            {
+              "name": "Tra Bi Fidèle",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "HMF5002.2",
+          "name": "Histoire du Droit Foncier",
+          "enseignants": [
+            {
+              "name": "Messa Yavo Deliance",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "REP5002",
+      "responsable_ue_inferred": {
+        "name": "Sanogo Moussa",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 2,
+      "ecues": [
+        {
+          "code": "REP5002.1",
+          "name": "Régimes Politiques Etrangers",
+          "enseignants": [
+            {
+              "name": "Sanogo Moussa",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "REP5002.2",
+          "name": "Régime Politique Ivoirien",
+          "enseignants": [
+            {
+              "name": "Zokolo",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "CON5003",
+      "responsable_ue_inferred": {
+        "name": "Soro Pognire",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 3,
+      "ecues": [
+        {
+          "code": "CON5003.1",
+          "name": "La Formation du Contrat",
+          "enseignants": [
+            {
+              "name": "Soro Pognire",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "CON5003.2",
+          "name": "Exécution du Contrat",
+          "enseignants": [
+            {
+              "name": "Soro Pognire",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DPG5003",
+      "responsable_ue_inferred": {
+        "name": "Silué Kassinibain",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 3,
+      "ecues": [
+        {
+          "code": "DPG5003.1",
+          "name": "Infraction",
+          "enseignants": [
+            {
+              "name": "Silué Kassinibain",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "DPG5003.2",
+          "name": "Répression",
+          "enseignants": [
+            {
+              "name": "Gogbe N'toh Aristide",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DRH5003",
+      "responsable_ue_inferred": {
+        "name": "Esmel Melès Jean-Raoul",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 3,
+      "ecues": [
+        {
+          "code": "DRH5003.1",
+          "name": "Notion de Droits de l'Homme",
+          "enseignants": [
+            {
+              "name": "Esmel Melès Jean-Raoul",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "HID5003",
+      "responsable_ue_inferred": {
+        "name": "Soro Pognire",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 3,
+      "ecues": [
+        {
+          "code": "HID5003.2",
+          "name": "Histoire de la Justice",
+          "enseignants": [
+            {
+              "name": "Soro Pognire",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "OAA5003",
+      "responsable_ue_inferred": {
+        "name": "Sanogo Moussa",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 3,
+      "ecues": [
+        {
+          "code": "OAA5003.1",
+          "name": "Organisation Administrative",
+          "enseignants": [
+            {
+              "name": "Sanogo Moussa",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "CAA5004",
+      "responsable_ue_inferred": {
+        "name": "Sanogo Moussa",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 4,
+      "ecues": [
+        {
+          "code": "CAA5004.1",
+          "name": "Responsabilité Administrative",
+          "enseignants": [
+            {
+              "name": "Sanogo Moussa",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "CAA5004.2",
+          "name": "Recours pour Excès de Pouvoir",
+          "enseignants": [
+            {
+              "name": "Sanogo Moussa",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DAE5004",
+      "responsable_ue_inferred": {
+        "name": "D r Kouakou Etienne",
+        "grade": null,
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 4,
+      "ecues": [
+        {
+          "code": "DAE5004.1",
+          "name": "Droit de l'Agriculture",
+          "enseignants": [
+            {
+              "name": "D r Kouakou Etienne",
+              "grade": null,
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "DAE5004.2",
+          "name": "Droit de l'Environnement",
+          "enseignants": [
+            {
+              "name": "D r Kouakou Etienne",
+              "grade": null,
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DRC5004",
+      "responsable_ue_inferred": {
+        "name": "CAmara Mohamed",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 4,
+      "ecues": [
+        {
+          "code": "DRC5004.1",
+          "name": "Droit Public Colonial",
+          "enseignants": [
+            {
+              "name": "CAmara Mohamed",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "DRC5004.2",
+          "name": "Droit Privé Colonial",
+          "enseignants": [
+            {
+              "name": "CAmara Mohamed",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "FAJ5004",
+      "responsable_ue_inferred": {
+        "name": "Soro Pognire",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 4,
+      "ecues": [
+        {
+          "code": "FAJ5004.1",
+          "name": "Responsabilité Civile",
+          "enseignants": [
+            {
+              "name": "Soro Pognire",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "FAJ5004.2",
+          "name": "Quasi-Contrats",
+          "enseignants": [
+            {
+              "name": "Gogbe N'toh Aristide",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "FIP5004",
+      "responsable_ue_inferred": {
+        "name": "Camara Mohamed",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 4,
+      "ecues": [
+        {
+          "code": "FIP5004.1",
+          "name": "Droit Budgétaire",
+          "enseignants": [
+            {
+              "name": "Camara Mohamed",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "FIP5004.2",
+          "name": "Comptabilité Publique",
+          "enseignants": [
+            {
+              "name": "Kamaté Ismael",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "OJI5004",
+      "responsable_ue_inferred": {
+        "name": "Sigui Seu",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 4,
+      "ecues": [
+        {
+          "code": "OJI5004.1",
+          "name": "Juridictions Judiciaires",
+          "enseignants": [
+            {
+              "name": "Sigui Seu",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "OJI5004.2",
+          "name": "Juridictions Administratives",
+          "enseignants": [
+            {
+              "name": "Sigui Seu",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "CDC5005",
+      "responsable_ue_inferred": {
+        "name": "Diawara Ibrahim",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "CDC5005.1",
+          "name": "Comptabilité Générale",
+          "enseignants": [
+            {
+              "name": "Diawara Ibrahim",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "CDC5005.2",
+          "name": "Droit de la Consommation",
+          "enseignants": [
+            {
+              "name": "Toure Abou",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DCP5005",
+      "responsable_ue_inferred": {
+        "name": "Diarrassoubou Issouf",
+        "grade": "M.",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "DCP5005.2",
+          "name": "Fonds de Commerce",
+          "enseignants": [
+            {
+              "name": "Diarrassoubou Issouf",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DDS5005",
+      "responsable_ue_inferred": {
+        "name": "Esmel Raoul",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "DDS5005",
+          "name": "DROIT DE LA SANTE DRS5005.1 Droit de la Santé 14",
+          "enseignants": [
+            {
+              "name": "Esmel Raoul",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DFO5005",
+      "responsable_ue_inferred": {
+        "name": "Cisse Abib",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "DFO5005.1",
+          "name": "Droit Foncier Urbain",
+          "enseignants": [
+            {
+              "name": "Cisse Abib",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "DFO5005.2",
+          "name": "Droit Foncier Rural",
+          "enseignants": [
+            {
+              "name": "Cisse Abib",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DJP5005",
+      "responsable_ue_inferred": {
+        "name": "Zekpe Evora Yamun",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "DJP5005.1",
+          "name": "Action en Justice",
+          "enseignants": [
+            {
+              "name": "Zekpe Evora Yamun",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DLF5005",
+      "responsable_ue_inferred": {
+        "name": "Beugré Kla Jean-Mari",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "DLF5005.1",
+          "name": "Le Statut des Libertés",
+          "enseignants": [
+            {
+              "name": "Beugré Kla Jean-Mari",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "DLF5005.2",
+          "name": "Les Garanties des Libertés",
+          "enseignants": [
+            {
+              "name": "Flindé",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DRF5005",
+      "responsable_ue_inferred": {
+        "name": "Cisse Abib",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "DRF5005.2",
+          "name": "Système Fiscal Ivoirien",
+          "enseignants": [
+            {
+              "name": "Cisse Abib",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DRO5005",
+      "responsable_ue_inferred": {
+        "name": "Silue Kassinibain",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "DRO5005.1",
+          "name": "Modalités de d'Obligation",
+          "enseignants": [
+            {
+              "name": "Silue Kassinibain",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "DRO5005.2",
+          "name": "Circulation de l'Obligation",
+          "enseignants": [
+            {
+              "name": "Toure Abou",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "FDI5005",
+      "responsable_ue_inferred": {
+        "name": "Camara mohamed",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "FDI5005.1",
+          "name": "Les Sources du DIP",
+          "enseignants": [
+            {
+              "name": "Camara mohamed",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "FDI5005.2",
+          "name": "Les Sujets du DIP",
+          "enseignants": [
+            {
+              "name": "Camara mohamed",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "PAI5005",
+      "responsable_ue_inferred": {
+        "name": "Toure Abou",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "PAI5005.1",
+          "name": "Rédaction de l'Assignation",
+          "enseignants": [
+            {
+              "name": "Toure Abou",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "PAI5005.2",
+          "name": "Rédaction de la Requête",
+          "enseignants": [
+            {
+              "name": "Toure Abou",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "CUG5006",
+      "responsable_ue_inferred": {
+        "name": "Diarrassouba Issouf",
+        "grade": "M.",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "CUG5006.1",
+          "name": "Droit des Assurances",
+          "enseignants": [
+            {
+              "name": "Diarrassouba Issouf",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DAE5006",
+      "responsable_ue_inferred": {
+        "name": "Bogbé N'Toh Aristide",
+        "grade": "M.",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "DAE5006.1",
+          "name": "Droit des Affaires",
+          "enseignants": [
+            {
+              "name": "Bogbé N'Toh Aristide",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "DAE5006.2",
+          "name": "Droit Electoral",
+          "enseignants": [
+            {
+              "name": "Bogbé N'Toh Aristide Droit des Sociétés",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DBS5006",
+      "responsable_ue_inferred": {
+        "name": "Toure Abou",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "DBS5006.1",
+          "name": "Droits des Biens",
+          "enseignants": [
+            {
+              "name": "Toure Abou",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "DBS5006.2",
+          "name": "Droit des Sûrétés",
+          "enseignants": [
+            {
+              "name": "Diarrassouba Issouf",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DEO5006",
+      "responsable_ue_inferred": {
+        "name": "Diarrassouba Issouf",
+        "grade": "M.",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "DEO5006.1",
+          "name": "L'Extinction par l'Exécution",
+          "enseignants": [
+            {
+              "name": "Diarrassouba Issouf",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "DEO5006.2",
+          "name": "L'Extinction sans Exécution",
+          "enseignants": [
+            {
+              "name": "Diarrassouba Issouf",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DES5006",
+      "responsable_ue_inferred": {
+        "name": "Kouakou Etienne",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "DES5006.2",
+          "name": "Droit de la Santé",
+          "enseignants": [
+            {
+              "name": "Kouakou Etienne",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DJP5006",
+      "responsable_ue_inferred": {
+        "name": "Toure Abou",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "DJP5006.1",
+          "name": "Jugement",
+          "enseignants": [
+            {
+              "name": "Toure Abou",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "DJP5006.2",
+          "name": "Voies de Recours",
+          "enseignants": [
+            {
+              "name": "Toure Abou",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DRF5006",
+      "responsable_ue_inferred": {
+        "name": "Cisse Habib",
+        "grade": "M.",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "DRF5006.2",
+          "name": "Système Fiscal Ivoirien",
+          "enseignants": [
+            {
+              "name": "Cisse Habib",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DSC5006",
+      "responsable_ue_inferred": {
+        "name": "Coulibaly Souleymane",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "DSC5006.1",
+          "name": "Droit Commun des Sociétés",
+          "enseignants": [
+            {
+              "name": "Coulibaly Souleymane",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "DSC5006.2",
+          "name": "Droit Spécial des Sociétés",
+          "enseignants": [
+            {
+              "name": "Coulibaly Souleymane",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DST5006",
+      "responsable_ue_inferred": {
+        "name": "Toure Abou",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "DST5006.1",
+          "name": "Droit de la Sécurité Sociale",
+          "enseignants": [
+            {
+              "name": "Toure Abou",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "DST5006.2",
+          "name": "Droit des Transports",
+          "enseignants": [
+            {
+              "name": "Toure Abou",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "IDB5006",
+      "responsable_ue_inferred": {
+        "name": "Kambou Dare",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "IDB5006.1",
+          "name": "Droit bancaire",
+          "enseignants": [
+            {
+              "name": "Kambou Dare",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

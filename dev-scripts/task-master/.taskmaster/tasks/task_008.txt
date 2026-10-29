@@ -1,0 +1,89 @@
+# Task ID: 8
+# Title: Système d'événements et notifications temps réel
+# Status: done
+# Dependencies: 2, 3, 5
+# Priority: medium
+# Description: Implémenter le système d'événements Laravel pour les notifications temps réel et la mise à jour du dashboard lors d'actions importantes.
+# Details:
+1. Créer les événements principaux:
+   ```php
+   // Exemple d'événement pour paiement reçu
+   class PaiementRecu implements ShouldBroadcast {
+       use Dispatchable, InteractsWithSockets, SerializesModels;
+       
+       public $paiement;
+       
+       public function __construct(Paiement $paiement) {
+           $this->paiement = $paiement;
+       }
+       
+       public function broadcastOn() {
+           return new PrivateChannel('comptabilite');
+       }
+       
+       public function broadcastWith() {
+           return [
+               'id' => $this->paiement->id,
+               'montant' => $this->paiement->montant,
+               'etudiant' => $this->paiement->etudiant->nom_complet,
+               'timestamp' => now()->toIso8601String()
+           ];
+       }
+   }
+   ```
+
+2. Implémenter les autres événements clés:
+   - `BonApprouve.php`
+   - `SeuilAtteint.php`
+   - `RelanceEnvoyee.php`
+   - `KPIsCalcules.php`
+
+3. Développer les listeners correspondants:
+   - Mise à jour des KPIs
+   - Envoi de notifications
+   - Déclenchement d'actions automatiques
+
+4. Configurer le broadcasting (optionnel):
+   - Configuration Pusher ou Redis pour WebSockets
+   - Canaux privés pour sécurité
+
+5. Implémenter les notifications Laravel:
+   ```php
+   class PaiementNotification extends Notification {
+       use Queueable;
+       
+       protected $paiement;
+       
+       public function __construct(Paiement $paiement) {
+           $this->paiement = $paiement;
+       }
+       
+       public function via($notifiable) {
+           return ['mail', 'database'];
+       }
+       
+       public function toMail($notifiable) {
+           return (new MailMessage)
+               ->subject('Nouveau paiement reçu')
+               ->line('Un paiement de ' . $this->paiement->montant . ' a été reçu.')
+               ->action('Voir détails', url('/esbtp/comptabilite/paiements/' . $this->paiement->id))
+               ->line('Merci d\'utiliser notre application!');
+       }
+       
+       public function toDatabase($notifiable) {
+           return [
+               'paiement_id' => $this->paiement->id,
+               'montant' => $this->paiement->montant,
+               'etudiant' => $this->paiement->etudiant->nom_complet
+           ];
+       }
+   }
+   ```
+
+# Test Strategy:
+1. Tests unitaires pour chaque événement et listener
+2. Tests d'intégration pour vérifier le déclenchement correct
+3. Tests de broadcasting avec mock de Pusher
+4. Tests de notifications avec mail fake
+5. Tests de performance pour évaluer l'impact des événements
+6. Tests de bout en bout pour les workflows complets

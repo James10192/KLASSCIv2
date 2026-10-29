@@ -1,0 +1,1883 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Exports\NotesClasseMatiereExport;
+use App\Http\Requests\Notes\ImportNotesRequest;
+use App\Http\Requests\Notes\StoreBulkNotesRequest;
+use App\Http\Requests\Notes\StoreNoteRequest;
+use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPBulletin;
+use App\Domain\Academique\CoherenceSystemeAcademique;
+use App\Domain\AcademicPilotage\Exceptions\AcademicPilotageException;
+use App\Domain\AcademicPilotage\Services\AcademicPeriodNormalizer;
+use App\Domain\Notes\SaisieGroupeeDeNotes;
+use App\Models\ESBTPClasse;
+use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPEvaluation;
+use App\Models\ESBTPFiliere;
+use App\Models\ESBTPMatiere;
+use App\Models\ESBTPNiveauEtude;
+use App\Models\ESBTPNote;
+use App\Models\ESBTPSeanceCours;
+use App\Models\User;
+use App\Services\ESBTP\BtsCurrentResultSnapshotService;
+use App\Services\FraisScopeResolver;
+use App\Services\LMD\EtudiantNotesLmdPresenter;
+use App\Services\NoteCalculationService;
+use App\Services\Notes\NoteStudentCohortService;
+use App\Services\Notes\NoteSubmissionSynchronizationService;
+use App\Services\NotesImportService;
+use App\Services\NotesWindowGuard;
+use App\Services\NotificationService;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Maatwebsite\Excel\Facades\Excel;
+
+class ESBTPNoteController extends Controller
+{
+    protected $notificationService;
+    protected NoteStudentCohortService $noteStudentCohortService;
+    protected NotesWindowGuard $notesWindowGuard;
+    protected NoteSubmissionSynchronizationService $noteSubmissionSynchronizationService;
+
+    public function __construct(
+        NotificationService $notificationService,
+        NoteStudentCohortService $noteStudentCohortService,
+        NotesWindowGuard $notesWindowGuard,
+        NoteSubmissionSynchronizationService $noteSubmissionSynchronizationService
+    )
+    {
+        $this->middleware(['auth']);
+        $this->middleware('permission:module.notes_evaluations.access')->except(['studentGrades']); // espace etudiant : la route porte deja notes.view_own|notes.view
+        $this->notificationService = $notificationService;
+        $this->noteStudentCohortService = $noteStudentCohortService;
+        $this->notesWindowGuard = $notesWindowGuard;
+        $this->noteSubmissionSynchronizationService = $noteSubmissionSynchronizationService;
+    }
+
+    private function canManageEvaluationNotes(?User $user, ESBTPEvaluation $evaluation): bool
+    {
+        return app(SaisieGroupeeDeNotes::class)->peutGerer($user, $evaluation);
+    }
+
+    /**
+     * L'accès au document reste limité aux classes confiées à l'enseignant.
+     */
+    private function assertTeacherDocumentScope(int $classeId, ?int $anneeId, ?ESBTPEvaluation $evaluation = null): void
+    {
+        $user = Auth::user();
+        abort_unless($user, 403);
+
+        if (! $user->can('identity.teach') || $user->can('identity.coordinate')) {
+            return;
+        }
+
+        if ($evaluation && ((int) $evaluation->enseignant_id === (int) $user->id
+            || (int) $evaluation->created_by === (int) $user->id)) {
+            return;
+        }
+
+        $teacherId = $user->teacherProfile?->id;
+        $seances = ESBTPSeanceCours::query()
+            ->join('esbtp_emploi_temps', 'esbtp_seance_cours.emploi_temps_id', '=', 'esbtp_emploi_temps.id')
+            ->where('esbtp_seance_cours.classe_id', $classeId)
+            ->where('esbtp_seance_cours.teacher_id', $teacherId);
+        if ($anneeId) {
+            $seances->where('esbtp_emploi_temps.annee_universitaire_id', $anneeId);
+        }
+
+        abort_unless($teacherId && $seances->exists(), 403, 'Cette classe ne vous est pas confiée.');
+    }
+
+    private function studentBelongsToEvaluationCohort(int $studentId, ESBTPEvaluation $evaluation): bool
+    {
+        return $this->noteStudentCohortService
+            ->allowedStudentIdsForEvaluation($evaluation)
+            ->contains($studentId);
+    }
+
+    /**
+     * Affiche la liste des notes avec filtre par classe et matière
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index(Request $request)
+    {
+        // is_current reste le défaut ; l'URL ne change que cet écran et ses appels AJAX.
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', 1)->first();
+        $anneeSelectionnee = $request->filled('annee_universitaire_id')
+            ? ESBTPAnneeUniversitaire::findOrFail((int) $request->input('annee_universitaire_id'))
+            : $anneeCourante;
+        $anneeAcademique = $anneeSelectionnee ? $anneeSelectionnee->name : 'Aucune année active';
+        $anneeSelectionneeId = $anneeSelectionnee?->id;
+        $anneesUniversitaires = ESBTPAnneeUniversitaire::orderByDesc('id')->get();
+
+        $semesterWeights = [
+            'semester1' => floatval(\App\Helpers\SettingsHelper::get('bulletin_semester1_weight', '50')),
+            'semester2' => floatval(\App\Helpers\SettingsHelper::get('bulletin_semester2_weight', '50')),
+        ];
+        if (($semesterWeights['semester1'] + $semesterWeights['semester2']) <= 0) {
+            $semesterWeights = ['semester1' => 50, 'semester2' => 50];
+        }
+
+        // Check if we're using the new modal system (via AJAX call)
+        $isAjax = $request->ajax() || $request->wantsJson();
+
+        $classesQuery = ESBTPClasse::query()
+            ->where(fn($q) => $q->whereNull('systeme_academique')->orWhere('systeme_academique', '!=', 'LMD'))
+            ->withCount(['inscriptions' => function ($query) use ($anneeSelectionnee) {
+                $query->where('status', 'active');
+                if ($anneeSelectionnee) {
+                    $query->where('annee_universitaire_id', $anneeSelectionnee->id);
+                }
+            }])
+            ->with(['filiere.parent', 'niveau', 'annee']);
+
+        // Enseignant : ne voir que les classes où il a des séances dans l'emploi du temps
+        $user = Auth::user();
+        if ($user && $user->can('identity.teach') && ! $user->can('identity.coordinate')) {
+            $teacher = $user->teacherProfile;
+            if ($teacher && $anneeSelectionnee) {
+                $classeIds = ESBTPSeanceCours::query()
+                    ->join('esbtp_emploi_temps', 'esbtp_seance_cours.emploi_temps_id', '=', 'esbtp_emploi_temps.id')
+                    ->where('esbtp_seance_cours.teacher_id', $teacher->id)
+                    ->where('esbtp_emploi_temps.annee_universitaire_id', $anneeSelectionnee->id)
+                    ->distinct()
+                    ->pluck('esbtp_seance_cours.classe_id');
+                $classesQuery->whereIn('id', $classeIds);
+            } elseif ($teacher) {
+                $classeIds = ESBTPSeanceCours::where('teacher_id', $teacher->id)
+                    ->distinct()->pluck('classe_id');
+                $classesQuery->whereIn('id', $classeIds);
+            } else {
+                // Aucun profil enseignant exploitable : ne pas exposer toutes
+                // les classes de l'établissement par défaut.
+                $classesQuery->whereRaw('1 = 0');
+            }
+        }
+
+        if ($request->filled('search')) {
+            $search = trim((string) $request->input('search'));
+            $classesQuery->where(function ($query) use ($search) {
+                $query->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('code', 'like', '%'.$search.'%')
+                    ->orWhereHas('filiere', function ($subQuery) use ($search) {
+                        $subQuery->where('name', 'like', '%'.$search.'%');
+                    })
+                    ->orWhereHas('niveau', function ($subQuery) use ($search) {
+                        $subQuery->where('name', 'like', '%'.$search.'%');
+                    });
+            });
+        }
+
+        if ($request->filled('filiere_id')) {
+            $classesQuery->where('filiere_id', $request->input('filiere_id'));
+        }
+
+        if ($request->filled('niveau_id')) {
+            $classesQuery->where('niveau_etude_id', $request->input('niveau_id'));
+        }
+
+        if ($request->filled('statut')) {
+            $statut = $request->input('statut');
+            if ($statut === 'active') {
+                $classesQuery->where('is_active', true);
+            } elseif ($statut === 'inactive') {
+                $classesQuery->where('is_active', false);
+            }
+        }
+
+        $classesQuery->orderBy('name');
+
+        $classes = $classesQuery->get();
+
+        if ($request->filled('capacite')) {
+            $capacityFilter = $request->input('capacite');
+            $classes = $classes->filter(function ($classe) use ($capacityFilter) {
+                $placesDisponibles = ($classe->places_totales ?? 0) - ($classe->inscriptions_count ?? 0);
+                if ($capacityFilter === 'disponible') {
+                    return $placesDisponibles > 0;
+                }
+                if ($capacityFilter === 'pleine') {
+                    return $placesDisponibles <= 0;
+                }
+                return true;
+            })->values();
+        }
+
+        $classeIds = $classes->pluck('id');
+        $filiereIds = $classes->pluck('filiere_id')->filter()->unique();
+        $niveauIds = $classes->pluck('niveau_etude_id')->filter()->unique();
+
+        $matieresTotals = collect();
+        if ($filiereIds->isNotEmpty() && $niveauIds->isNotEmpty()) {
+            $matiereCounts = DB::table('esbtp_matiere_filiere as mf')
+                ->join('esbtp_matiere_niveau as mn', 'mn.matiere_id', '=', 'mf.matiere_id')
+                ->join('esbtp_matieres as m', 'm.id', '=', 'mf.matiere_id')
+                ->whereIn('mf.filiere_id', $filiereIds)
+                ->whereIn('mn.niveau_etude_id', $niveauIds)
+                ->where('m.is_active', 1)
+                ->select('mf.filiere_id', 'mn.niveau_etude_id', DB::raw('count(distinct mf.matiere_id) as total'))
+                ->groupBy('mf.filiere_id', 'mn.niveau_etude_id')
+                ->get();
+
+            $matiereCountMap = [];
+            foreach ($matiereCounts as $row) {
+                $matiereCountMap[$row->filiere_id.'|'.$row->niveau_etude_id] = (int) $row->total;
+            }
+
+            foreach ($classes as $classe) {
+                if (! $classe->filiere_id || ! $classe->niveau_etude_id) {
+                    $matieresTotals[$classe->id] = 0;
+                    continue;
+                }
+                $key = $classe->filiere_id.'|'.$classe->niveau_etude_id;
+                $matieresTotals[$classe->id] = $matiereCountMap[$key] ?? 0;
+            }
+        }
+
+        $matieresConfigured = ($anneeSelectionnee && $classeIds->isNotEmpty())
+            ? DB::table('esbtp_evaluations')
+                ->select('classe_id', DB::raw('count(distinct matiere_id) as total'))
+                ->where('annee_universitaire_id', $anneeSelectionnee->id)
+                ->whereIn('classe_id', $classeIds)
+                ->groupBy('classe_id')
+                ->pluck('total', 'classe_id')
+            : collect();
+
+        $bulletinAverages = ($anneeSelectionnee && $classeIds->isNotEmpty())
+            ? DB::table('esbtp_bulletins')
+                ->select('classe_id', 'periode', DB::raw('avg(moyenne_generale) as moyenne'), DB::raw('count(*) as total'))
+                ->where('annee_universitaire_id', $anneeSelectionnee->id)
+                ->whereIn('classe_id', $classeIds)
+                ->whereNotNull('moyenne_generale')
+                ->whereNull('archived_at')
+                ->groupBy('classe_id', 'periode')
+                ->get()
+            : collect();
+
+        $avgByClass = [];
+        foreach ($bulletinAverages as $row) {
+            $periodKey = $row->periode === '2' ? 'semestre2' : ($row->periode === '1' ? 'semestre1' : $row->periode);
+            $avgByClass[$row->classe_id][$periodKey] = [
+                'moyenne' => $row->total > 0 ? floatval($row->moyenne) : null,
+                'total' => (int) $row->total,
+            ];
+        }
+
+        $classStatsById = [];
+        foreach ($classes as $classe) {
+            $totalMatieres = (int) ($matieresTotals[$classe->id] ?? 0);
+            $configuredMatieresRaw = (int) ($matieresConfigured[$classe->id] ?? 0);
+            $configuredMatieres = $totalMatieres > 0 ? min($configuredMatieresRaw, $totalMatieres) : 0;
+            $completion = $totalMatieres > 0 ? round(($configuredMatieres / $totalMatieres) * 100) : 0;
+            $moyenneS1 = $avgByClass[$classe->id]['semestre1']['moyenne'] ?? null;
+            $moyenneS2 = $avgByClass[$classe->id]['semestre2']['moyenne'] ?? null;
+            $annual = null;
+            if ($moyenneS1 !== null && $moyenneS2 !== null) {
+                $totalWeight = $semesterWeights['semester1'] + $semesterWeights['semester2'];
+                $annual = $totalWeight > 0
+                    ? (($moyenneS1 * $semesterWeights['semester1']) + ($moyenneS2 * $semesterWeights['semester2'])) / $totalWeight
+                    : null;
+            }
+
+            $classStatsById[$classe->id] = [
+                'matieres_total' => $totalMatieres,
+                'matieres_configured' => $configuredMatieres,
+                'matieres_configured_raw' => $configuredMatieresRaw,
+                'completion' => $completion,
+                'moyenne_s1' => $moyenneS1,
+                'moyenne_s2' => $moyenneS2,
+                'moyenne_annuelle' => $annual,
+            ];
+        }
+
+        // Hero KPI aggregates
+        $heroStats = [
+            'total_matieres' => array_sum(array_column($classStatsById, 'matieres_total')),
+            'total_configured' => array_sum(array_column($classStatsById, 'matieres_configured')),
+            'avg_completion' => count($classStatsById) > 0
+                ? round(array_sum(array_column($classStatsById, 'completion')) / count($classStatsById))
+                : 0,
+            'global_avg' => (function () use ($classStatsById) {
+                $vals = array_filter(array_column($classStatsById, 'moyenne_annuelle'), fn ($v) => $v !== null);
+
+                return count($vals) > 0 ? array_sum($vals) / count($vals) : null;
+            })(),
+        ];
+
+        if ($request->ajax() && $request->boolean('classes_ajax')) {
+            return response()->json([
+                'success' => true,
+                'html' => view('esbtp.notes.partials.classes-items', [
+                    'classes' => $classes,
+                    'classStatsById' => $classStatsById,
+                ])->render(),
+                'total' => $classes->count(),
+                'hero_stats' => $heroStats,
+                'annee_name' => $anneeAcademique,
+                'annee_id' => $anneeSelectionneeId,
+            ]);
+        }
+
+        if ($isAjax) {
+            // For AJAX requests, use the old system
+            $query = ESBTPNote::whereHas('evaluation', function ($q) use ($anneeSelectionnee) {
+                if ($anneeSelectionnee) {
+                    $q->where('annee_universitaire_id', $anneeSelectionnee->id);
+                }
+            })
+                ->with([
+                    'evaluation.matiere',
+                    'evaluation.classe',
+                    'etudiant',
+                    'createdBy',
+                ]);
+
+            // Apply filters
+            if ($request->filled('classe_id')) {
+                $query->whereHas('evaluation', function ($q) use ($request) {
+                    $q->where('classe_id', $request->classe_id);
+                });
+            }
+
+            if ($request->filled('matiere_id')) {
+                $query->whereHas('evaluation', function ($q) use ($request) {
+                    $q->whereHas('matiere', function ($mq) use ($request) {
+                        $mq->where('id', $request->matiere_id);
+                    });
+                });
+            }
+
+            // Get the paginated results
+            $notes = $query->latest()->paginate(50);
+
+            // Get filter options
+            $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
+            $matieres = ESBTPMatiere::whereNull('unite_enseignement_id') // BTS only : exclure les ECUE LMD
+            ->orderBy('name')->get();
+            $filieres = ESBTPFiliere::orderBy('name')->get();
+            $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
+            $allClasses = $classes;
+
+            $evaluationTypes = ESBTPEvaluation::getTypes();
+            $enseignants = Auth::user()->can('identity.teach')
+                ? collect()
+                : User::whereHas('roles', fn ($q) => $q->whereIn('name', ['teacher', 'enseignant']))->orderBy('name')->get();
+
+            return view('esbtp.notes.index', compact('notes', 'classes', 'allClasses', 'matieres', 'anneeAcademique', 'anneeSelectionneeId', 'anneesUniversitaires', 'filieres', 'niveaux', 'classStatsById', 'heroStats', 'semesterWeights', 'evaluationTypes', 'enseignants'));
+        }
+
+        // Get filter options for dropdowns (if needed)
+        $allClasses = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
+        $matieres = ESBTPMatiere::whereNull('unite_enseignement_id') // BTS only : exclure les ECUE LMD
+            ->orderBy('name')->get();
+
+        $filieres = ESBTPFiliere::orderBy('name')->get();
+        $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
+
+        $evaluationTypes = ESBTPEvaluation::getTypes();
+        $enseignants = Auth::user()->can('identity.teach')
+            ? collect()
+            : User::whereHas('roles', fn ($q) => $q->whereIn('name', ['teacher', 'enseignant']))->orderBy('name')->get();
+
+        return view('esbtp.notes.index', compact(
+            'classes',
+            'allClasses',
+            'matieres',
+            'anneeAcademique',
+            'anneeSelectionneeId',
+            'anneesUniversitaires',
+            'filieres',
+            'niveaux',
+            'classStatsById',
+            'heroStats',
+            'semesterWeights',
+            'evaluationTypes',
+            'enseignants'
+        ));
+    }
+
+    /**
+     * Affiche le formulaire de création d'une note.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        abort_unless(Auth::user()?->can('notes.create'), 403);
+        $today = Carbon::today();
+        $evaluationsQuery = ESBTPEvaluation::with(['classe', 'matiere'])
+            ->where('is_published', true)
+            ->whereNotNull('date_evaluation')
+            ->whereDate('date_evaluation', '<=', $today)
+            ->whereIn('status', [
+                ESBTPEvaluation::STATUS_SCHEDULED,
+                ESBTPEvaluation::STATUS_IN_PROGRESS,
+                ESBTPEvaluation::STATUS_COMPLETED,
+            ])
+            ->orderBy('date_evaluation', 'desc');
+
+        $user = Auth::user();
+        if ($user->can('identity.teach') && ! $user->can('identity.coordinate')) {
+            $matieresConfiees = DB::table('esbtp_enseignant_matiere')
+                ->where('enseignant_id', $user->id)
+                ->where('is_active', true)
+                ->pluck('matiere_id');
+            $teacherId = $user->teacherProfile?->id;
+            $classesPlanifiees = $teacherId
+                ? ESBTPSeanceCours::query()
+                    ->where('teacher_id', $teacherId)
+                    ->distinct()
+                    ->pluck('classe_id')
+                : collect();
+
+            $evaluationsQuery->where(fn ($q) => $q
+                ->where('enseignant_id', $user->id)
+                ->orWhere('created_by', $user->id)
+                ->orWhereIn('matiere_id', $matieresConfiees)
+                ->orWhereIn('classe_id', $classesPlanifiees));
+        }
+
+        $evaluations = $evaluationsQuery->get();
+        $etudiants = ESBTPEtudiant::query()
+            ->when($user->can('identity.teach') && ! $user->can('identity.coordinate'), fn ($q) => $q
+                ->whereHas('inscriptions', fn ($inscription) => $inscription
+                    ->whereIn('classe_id', $evaluations->pluck('classe_id'))))
+            ->orderBy('nom')
+            ->get();
+
+        // Ajouter un message flash pour tester
+        session()->flash('info', 'Formulaire de création de note chargé. Veuillez remplir tous les champs requis.');
+
+        return view('esbtp.notes.create', compact('evaluations', 'etudiants'));
+    }
+
+    /**
+     * Enregistre une nouvelle note.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+        abort_unless(Auth::user()?->can('notes.create'), 403);
+        $request->validate([
+            'etudiant_id' => 'required|exists:esbtp_etudiants,id',
+            'evaluation_id' => 'required|exists:esbtp_evaluations,id',
+            'note' => 'required_unless:is_absent,on|numeric|min:0',
+            'is_absent' => 'nullable|in:on,1,true',
+            'commentaire' => 'nullable|string',
+        ], [
+            'etudiant_id.required' => 'L\'étudiant est obligatoire',
+            'evaluation_id.required' => 'L\'évaluation est obligatoire',
+            'note.required_unless' => 'La note est obligatoire si l\'étudiant n\'est pas absent',
+            'note.numeric' => 'La note doit être un nombre',
+            'note.min' => 'La note doit être positive',
+            'is_absent.in' => 'Le statut d\'absence n\'est pas valide',
+        ]);
+
+        $evaluationAutorisee = ESBTPEvaluation::findOrFail($request->integer('evaluation_id'));
+        $this->assertTeacherDocumentScope((int) $evaluationAutorisee->classe_id, (int) $evaluationAutorisee->annee_universitaire_id, $evaluationAutorisee);
+        abort_unless($this->studentBelongsToEvaluationCohort((int) $request->etudiant_id, $evaluationAutorisee), 422, 'Cet étudiant ne fait pas partie de cette évaluation.');
+
+        try {
+            // Débogage : Log du début du try
+            \Log::info('Début du traitement de la note après validation');
+
+            // Vérifier si l'étudiant a déjà une note pour cette évaluation
+            $existingNote = ESBTPNote::where('etudiant_id', $request->etudiant_id)
+                ->where('evaluation_id', $request->evaluation_id)
+                ->first();
+
+            if ($existingNote) {
+                return redirect()->back()
+                    ->with('error', 'Cet étudiant a déjà une note pour cette évaluation.')
+                    ->withInput();
+            }
+
+            // Récupérer l'évaluation pour obtenir le barème et la classe
+            $evaluation = ESBTPEvaluation::findOrFail($request->evaluation_id);
+            if ($evaluation->date_evaluation && $evaluation->date_evaluation->isFuture()) {
+                return redirect()->back()
+                    ->with('error', "La saisie des notes est disponible uniquement après la date d'évaluation.")
+                    ->withInput();
+            }
+            if (! $evaluation->is_published) {
+                return redirect()->back()
+                    ->with('error', 'Cette évaluation n\'est pas publiée. Activez-la avant de saisir les notes.')
+                    ->withInput();
+            }
+
+            // Récupérer la classe associée à l'évaluation
+            $classe_id = $evaluation->classe_id;
+
+            // Récupérer la période de l'évaluation
+            $semestre = $evaluation->periode;
+
+            // Convertir is_absent en booléen
+            $isAbsent = $request->has('is_absent') && in_array($request->is_absent, ['on', '1', 'true', true]);
+
+            // Créer la note
+            $note = new ESBTPNote;
+            $note->etudiant_id = $request->etudiant_id;
+            $note->evaluation_id = $request->evaluation_id;
+            $note->classe_id = $classe_id; // Utiliser la classe de l'évaluation
+            $note->matiere_id = $evaluation->matiere_id; // Ajouter le matiere_id de l'évaluation
+            $note->semestre = $semestre; // Utiliser la période de l'évaluation
+            $note->note = $isAbsent ? 0 : $request->note;
+            $note->is_absent = $isAbsent ? 1 : 0;
+            $note->commentaire = $request->commentaire;
+            $note->created_by = Auth::id();
+            $note->type_evaluation = $evaluation->type; // Ajouter le type d'évaluation
+            $note->annee_universitaire = $evaluation->anneeUniversitaire ? $evaluation->anneeUniversitaire->name : 'N/A'; // Ajouter l'année universitaire
+            $note->save();
+
+            // Envoyer une notification d'absence si l'étudiant est marqué absent
+            if ($note->is_absent) {
+                $this->sendAbsenceNotificationForNote($note, $evaluation);
+            }
+
+            app(\App\Services\NotificationService::class)->notifyStudentNoteAdded($note, Auth::user());
+
+            // Débogage : Log des détails de la note créée
+            \Log::info('Note créée', [
+                'id' => $note->id,
+                'etudiant_id' => $note->etudiant_id,
+                'evaluation_id' => $note->evaluation_id,
+                'note' => $note->note,
+                'is_absent' => $note->is_absent,
+                'classe_id' => $note->classe_id,
+                'semestre' => $note->semestre,
+            ]);
+
+            return redirect()->route('esbtp.notes.index')
+                ->with('success', 'Note créée avec succès.');
+        } catch (\Exception $e) {
+            // Débogage : Log de l'erreur
+            \Log::error('Erreur lors de la création de la note : '.$e->getMessage(), [
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Erreur lors de la création de la note : '.$e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * Affiche une note spécifique.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function show(ESBTPNote $note)
+    {
+        $this->authorize('view', $note);
+
+        $note->load(['evaluation.matiere', 'evaluation.classe', 'etudiant', 'createdBy', 'updatedBy']);
+
+        return view('esbtp.notes.show', compact('note'));
+    }
+
+    /**
+     * Affiche le formulaire de modification d'une note.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function edit(ESBTPNote $note)
+    {
+        $this->authorize('update', $note);
+
+        $note->load(['evaluation.matiere', 'evaluation.classe', 'etudiant']);
+
+        return view('esbtp.notes.edit', compact('note'));
+    }
+
+    /**
+     * Met à jour une note spécifique.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, ESBTPNote $note)
+    {
+        $this->authorize('update', $note);
+
+        $request->validate([
+            'note' => 'required_unless:is_absent,on|numeric|min:0',
+            'is_absent' => 'nullable|in:on,1,true',
+            'commentaire' => 'nullable|string',
+        ]);
+
+        try {
+            // Récupérer l'évaluation associée à cette note
+            $evaluation = $note->evaluation;
+
+            if (! $evaluation) {
+                return redirect()->back()
+                    ->with('error', 'Évaluation introuvable pour cette note.')
+                    ->withInput();
+            }
+
+            // Convertir is_absent en booléen
+            $isAbsent = $request->has('is_absent') && in_array($request->is_absent, ['on', '1', 'true', true]);
+
+            // Synchroniser le semestre avec la période de l'évaluation
+            $note->semestre = $evaluation->periode;
+
+            // Mettre à jour les autres champs
+            $note->note = $isAbsent ? 0 : $request->note;
+            $note->is_absent = $isAbsent ? 1 : 0;
+            $note->commentaire = $request->commentaire;
+            $note->updated_by = Auth::id();
+            $note->save();
+
+            // Débogage : Log des détails de la note mise à jour
+            \Log::info('Note mise à jour', [
+                'id' => $note->id,
+                'etudiant_id' => $note->etudiant_id,
+                'evaluation_id' => $note->evaluation_id,
+                'note' => $note->note,
+                'is_absent' => $note->is_absent,
+                'semestre' => $note->semestre,
+            ]);
+
+            return redirect()->route('esbtp.notes.index')
+                ->with('success', 'Note mise à jour avec succès.');
+        } catch (\Exception $e) {
+            // Débogage : Log de l'erreur
+            \Log::error('Erreur lors de la mise à jour de la note : '.$e->getMessage(), [
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Erreur lors de la mise à jour de la note : '.$e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * Sauvegarde (création ou mise à jour) d'une note via AJAX depuis notes.index.
+     * Retourne toujours du JSON. Utilise un UPSERT pour éviter le "already exists".
+     *
+     * Validation déléguée à StoreNoteRequest :
+     *   - permissions notes.create / notes.edit / notes.manage_own
+     *   - exists evaluation_id / etudiant_id
+     *   - note ≤ barème via la rule NoteRespectsBareme
+     */
+    public function saveNoteAjax(StoreNoteRequest $request)
+    {
+        try {
+            $evaluation = ESBTPEvaluation::findOrFail($request->input('evaluation_id'));
+
+            if (! $evaluation->is_published) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Cette évaluation n'est pas publiée. Activez-la avant de saisir les notes.",
+                ], 422);
+            }
+
+            if (! $this->canManageEvaluationNotes(Auth::user(), $evaluation)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Vous n'êtes pas autorisé à saisir les notes pour cette évaluation.",
+                ], 403);
+            }
+
+            if (! $this->studentBelongsToEvaluationCohort((int) $request->input('etudiant_id'), $evaluation)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Cet étudiant n'appartient pas à la cohorte de cette évaluation.",
+                ], 422);
+            }
+
+            $existingNote = ESBTPNote::where('etudiant_id', $request->input('etudiant_id'))
+                ->where('evaluation_id', $request->input('evaluation_id'))
+                ->first();
+
+            if ($existingNote && $existingNote->isSubmitted() && ! Auth::user()->can('notes.edit')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Vous n'avez pas la permission de modifier les notes déjà enregistrées.",
+                ], 403);
+            }
+
+            // Transaction explicite : la création/modification d'une note
+            // déclenche un Observer (recalcul moyennes) qui peut écrire en
+            // cascade. On garde l'atomicité pour éviter les états partiels.
+            $result = DB::transaction(function () use ($evaluation, $existingNote, $request) {
+                return $this->processNoteEntry($evaluation, $existingNote, [
+                    'etudiant_id'   => $request->input('etudiant_id'),
+                    'evaluation_id' => $request->input('evaluation_id'),
+                    'note'          => $request->input('note'),
+                    'is_absent'     => $request->boolean('is_absent'),
+                    'commentaire'   => $request->input('commentaire'),
+                ], false);
+            });
+
+            // La notification est envoyée APRÈS commit pour éviter qu'un échec
+            // d'envoi ne rollback la note enregistrée.
+            if ($result['is_new_absent']) {
+                $this->sendAbsenceNotificationForNote($result['note'], $evaluation);
+            }
+
+            return response()->json([
+                'success'   => true,
+                'message'   => 'Note enregistrée en brouillon.',
+                'note_id'   => $result['note']->id,
+                'is_absent' => (bool) $result['note']->is_absent,
+                'note'      => $result['note']->note,
+                'submission_status' => $result['note']->submission_status,
+                'is_locked' => $result['note']->isSubmitted() && ! Auth::user()->can('notes.edit'),
+            ]);
+
+        } catch (AcademicPilotageException $e) {
+            // Un verrou de fiche/examen est un conflit métier (409), jamais une panne serveur.
+            return $e->render($request);
+        } catch (\Throwable $e) {
+            // Référence corrélée à la trace interne ; ne jamais exposer SQL ni stack trace au client.
+            $incidentId = (string) Str::uuid();
+            \Log::error('saveNoteAjax error: ' . $e->getMessage(), [
+                'incident_id' => $incidentId,
+                'evaluation_id' => $request->input('evaluation_id'),
+                'etudiant_id' => $request->input('etudiant_id'),
+                'user_id' => Auth::id(),
+                'exception' => $e,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur serveur lors de l\'enregistrement de la note (réf. ' . $incidentId . ').',
+                'incident_id' => $incidentId,
+            ], 500);
+        }
+    }
+
+    /**
+     * Sauvegarde en masse des notes (une seule requête HTTP au lieu d'une par étudiant).
+     *
+     * Validation déléguée à StoreBulkNotesRequest :
+     *   - permissions notes.create / notes.edit / notes.manage_own
+     *   - max 500 notes par batch (anti-abus)
+     *   - exists evaluation_id / etudiant_id sur chaque entrée
+     */
+    public function saveNotesAjaxBulk(StoreBulkNotesRequest $request)
+    {
+        $notes = $request->input('notes', []);
+        $submitFinal = $request->boolean('submit_final');
+
+        try {
+            // Mêmes gardes que l'assistant : SaisieGroupeeDeNotes.
+            $r = app(SaisieGroupeeDeNotes::class)->enregistrer($notes, Auth::user(), $submitFinal);
+            $saved = $r['saved'];
+            $errors = count($r['refused']);
+
+            return response()->json([
+                'success' => $errors === 0,
+                'saved'   => $saved,
+                'errors'  => $errors,
+                'refused' => $r['refused'],
+                'total'   => $r['total'],
+                'submission_status' => $submitFinal ? ESBTPNote::SUBMISSION_SUBMITTED : ESBTPNote::SUBMISSION_DRAFT,
+                'synchronization' => $r['synchronization'],
+                'message' => match (true) {
+                    $errors > 0 => "{$saved} enregistrée(s), {$errors} erreur(s).",
+                    $submitFinal => "{$saved} note(s) validée(s) avec succès.",
+                    default => "{$saved} note(s) enregistrée(s) en brouillon.",
+                },
+            ]);
+        } catch (AcademicPilotageException $e) {
+            // Un verrou de fiche/examen est un conflit métier (409), jamais une panne serveur.
+            return $e->render($request);
+        } catch (\Throwable $e) {
+            // Référence corrélée à la trace interne ; ne jamais exposer SQL ni stack trace au client.
+            $incidentId = (string) Str::uuid();
+            $evaluationId = (int) ($notes[0]['evaluation_id'] ?? 0);
+            $classeId = null;
+            $matiereId = null;
+            $semestreSource = null;
+            $semestreNormalise = null;
+
+            // Diagnostics best effort : une panne SQL ne doit pas en déclencher une autre
+            // et aucun identifiant fourni par le navigateur ne sert de source métier.
+            try {
+                $evaluation = $evaluationId > 0
+                    ? ESBTPEvaluation::query()->find($evaluationId, ['id', 'classe_id', 'matiere_id', 'periode'])
+                    : null;
+                if ($evaluation) {
+                    $classeId = $evaluation->classe_id;
+                    $matiereId = $evaluation->matiere_id;
+                    $semestreSource = (string) $evaluation->periode;
+                    $semestreNormalise = app(AcademicPeriodNormalizer::class)->normalize($semestreSource);
+                }
+            } catch (\Throwable $diagnosticError) {
+                // Les logs principaux restent disponibles même si la base est indisponible.
+            }
+
+            $sqlState = $e instanceof \Illuminate\Database\QueryException || $e instanceof \PDOException
+                ? ($e->errorInfo[0] ?? null)
+                : null;
+            \Log::error('saveNotesAjaxBulk error: ' . $e->getMessage(), [
+                'request_id' => $incidentId,
+                'incident_id' => $incidentId,
+                'user_id' => Auth::id(),
+                'classe_id' => $classeId,
+                'evaluation_id' => $evaluationId ?: null,
+                'matiere_id' => $matiereId,
+                'semestre_source' => $semestreSource,
+                'semestre_normalise' => $semestreNormalise,
+                'exception_class' => get_class($e),
+                'sql_state' => $sqlState,
+                'count' => count($notes),
+                'exception' => $e,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur serveur lors de l\'enregistrement des notes (réf. ' . $incidentId . ').',
+                'incident_id' => $incidentId,
+            ], 500);
+        }
+    }
+
+    /** Notes déjà en base pour les paires saisies, indexées « élève_évaluation ». */
+    private function notesExistantes(array $notes): Collection
+    {
+        return app(SaisieGroupeeDeNotes::class)->notesExistantes($notes);
+    }
+
+    /**
+     * Unicité (UniciteDesNotes) : si quelqu'un vient de créer la même note, sa
+     * saisie n'est pas écrasée — rend null, et la ligne revient à l'écran en rouge.
+     */
+    private function enregistrerSansDoublon(ESBTPEvaluation $evaluation, ?ESBTPNote $note, array $entry, bool $submitFinal): ?array
+    {
+        return app(SaisieGroupeeDeNotes::class)->ecrireSansDoublon($evaluation, $note, $entry, $submitFinal);
+    }
+
+    /**
+     * Logique partagée : crée ou met à jour une note pour un étudiant/évaluation.
+     *
+     * `$entry['is_absent']` est déjà coercé en booléen par les FormRequest
+     * (StoreNoteRequest / StoreBulkNotesRequest). On garde un fallback
+     * defensif pour les call-sites legacy (ex: enregistrerSaisieRapide).
+     */
+    private function processNoteEntry(ESBTPEvaluation $evaluation, ?ESBTPNote $existingNote, array $entry, bool $submitFinal = false): array
+    {
+        return app(SaisieGroupeeDeNotes::class)->ecrire($evaluation, $existingNote, $entry, $submitFinal);
+    }
+
+    /**
+     * Supprime une note spécifique.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy(ESBTPNote $note)
+    {
+        abort_unless(Auth::user()?->can('notes.delete'), 403);
+        $evaluation = $note->evaluation;
+        abort_unless($evaluation, 404);
+        $this->assertTeacherDocumentScope((int) $evaluation->classe_id, (int) $evaluation->annee_universitaire_id, $evaluation);
+
+        try {
+            $note->delete();
+
+            return redirect()->route('esbtp.notes.index')->with('success', 'Note supprimée avec succès.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Erreur lors de la suppression de la note: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Affiche la page de saisie rapide des notes pour une évaluation.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function saisieRapide(ESBTPEvaluation $evaluation)
+    {
+        $user = Auth::user();
+        abort_unless($user?->can('notes.view') || $user?->can('notes.view_own') || $user?->can('notes.create') || $user?->can('notes.edit') || $user?->can('notes.manage_own'), 403);
+        $this->assertTeacherDocumentScope((int) $evaluation->classe_id, (int) $evaluation->annee_universitaire_id, $evaluation);
+        $evaluation->load(['classe', 'matiere', 'notes.etudiant']);
+
+        if ($evaluation->date_evaluation && $evaluation->date_evaluation->isFuture()) {
+            return redirect()
+                ->route('esbtp.evaluations.show', $evaluation)
+                ->with('error', "La saisie des notes est disponible uniquement après la date d'évaluation.");
+        }
+
+        // Ownership check : seulement si user n'a PAS la permission notes.edit globale.
+        // Évite que superAdmin (qui passe par Gate::before et a TOUTES les perms) soit
+        // bloqué comme un enseignant restreint à ses propres évaluations.
+        // Pattern : admin/coordinateur (notes.edit) → accès libre, enseignant (notes.manage_own
+        // uniquement) → restriction à ses propres évaluations.
+        if (! $user->can('notes.edit') && $user->can('notes.manage_own') && $user->can('identity.teach')) {
+            $isOwner = $evaluation->enseignant_id === $user->id || $evaluation->created_by === $user->id;
+            if (! $isOwner) {
+                return redirect()
+                    ->route('teacher.grades')
+                    ->with('error', "Vous n'êtes pas autorisé à saisir les notes pour cette évaluation.");
+            }
+        }
+
+        // La cohorte est celle de l'évaluation, y compris lorsqu'elle appartient
+        // à une année historique.
+        $etudiants = $this->noteStudentCohortService
+            ->studentsForEvaluation($evaluation)
+            ->load(['notes' => function ($query) use ($evaluation) {
+                $query->where('evaluation_id', $evaluation->id);
+            }]);
+
+        // Récupérer uniquement les notes des étudiants de l'année courante pour cette évaluation
+        $etudiantsIds = $etudiants->pluck('id');
+        $notes = $evaluation->notes->whereIn('etudiant_id', $etudiantsIds);
+
+        return view('esbtp.notes.saisie-rapide', compact('evaluation', 'etudiants', 'notes'));
+    }
+
+    /**
+     * Télécharge le PDF de saisie rapide d'une évaluation (attachment).
+     */
+    public function saisieRapidePDF(ESBTPEvaluation $evaluation)
+    {
+        $this->assertTeacherDocumentScope((int) $evaluation->classe_id, (int) $evaluation->annee_universitaire_id, $evaluation);
+        [$pdf, $filename] = $this->buildSaisieRapidePdf($evaluation);
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Aperçu inline du PDF de saisie rapide d'une évaluation.
+     */
+    public function saisieRapidePDFPreview(ESBTPEvaluation $evaluation)
+    {
+        $this->assertTeacherDocumentScope((int) $evaluation->classe_id, (int) $evaluation->annee_universitaire_id, $evaluation);
+        [$pdf, $filename] = $this->buildSaisieRapidePdf($evaluation);
+
+        return $pdf->stream($filename);
+    }
+
+    /**
+     * Construit le PDF de saisie rapide pour une évaluation. Retourne [PDF, filename].
+     */
+    private function buildSaisieRapidePdf(ESBTPEvaluation $evaluation): array
+    {
+        $evaluation->load(['classe', 'matiere']);
+
+        $anneeCourante = ESBTPAnneeUniversitaire::find($evaluation->annee_universitaire_id);
+
+        $etudiants = $this->noteStudentCohortService
+            ->studentsForEvaluation($evaluation)
+            ->load('accessibilityProfile');
+
+        $etablissement = [
+            'nom' => \App\Models\Setting::get('school_name', 'KLASSCI'),
+            'adresse' => \App\Models\Setting::get('school_address', ''),
+            'telephone' => \App\Models\Setting::get('school_phone', ''),
+            'email' => \App\Models\Setting::get('school_email', ''),
+            'logo' => \App\Models\Setting::get('school_logo', ''),
+        ];
+
+        $notesByEtudiant = collect();
+        $isBlank = true;
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('esbtp.notes.saisie-rapide-pdf', compact('evaluation', 'etudiants', 'anneeCourante', 'etablissement', 'notesByEtudiant', 'isBlank'));
+        $pdf->setPaper('A4', 'portrait');
+
+        $filename = 'saisie-notes-'.\Illuminate\Support\Str::slug($evaluation->titre).'-'.date('Y-m-d').'.pdf';
+
+        return [$pdf, $filename];
+    }
+
+    /**
+     * Télécharge le PDF de saisie rapide vierge pour une classe (attachment).
+     */
+    public function saisieRapideBlankPDF(Request $request, ESBTPClasse $classe)
+    {
+        $this->assertTeacherDocumentScope((int) $classe->id, $request->integer('annee_universitaire_id') ?: ESBTPAnneeUniversitaire::where('is_current', true)->value('id'));
+        [$pdf, $filename] = $this->buildSaisieRapideBlankPdf($classe, $request->integer('annee_universitaire_id') ?: null);
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Aperçu inline du PDF de saisie rapide vierge pour une classe.
+     */
+    public function saisieRapideBlankPDFPreview(Request $request, ESBTPClasse $classe)
+    {
+        $this->assertTeacherDocumentScope((int) $classe->id, $request->integer('annee_universitaire_id') ?: ESBTPAnneeUniversitaire::where('is_current', true)->value('id'));
+        [$pdf, $filename] = $this->buildSaisieRapideBlankPdf($classe, $request->integer('annee_universitaire_id') ?: null);
+
+        return $pdf->stream($filename);
+    }
+
+    /**
+     * Construit le PDF vierge de saisie rapide pour une classe. Retourne [PDF, filename].
+     */
+    private function buildSaisieRapideBlankPdf(ESBTPClasse $classe, ?int $anneeUniversitaireId = null): array
+    {
+        $classe->load(['filiere']);
+
+        $anneeCourante = $anneeUniversitaireId
+            ? ESBTPAnneeUniversitaire::findOrFail($anneeUniversitaireId)
+            : ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        $etudiants = $anneeCourante
+            ? $this->noteStudentCohortService
+                ->studentsForClass($classe, $anneeCourante)
+                ->load('accessibilityProfile')
+            : collect();
+
+        $etablissement = [
+            'nom' => \App\Models\Setting::get('school_name', 'KLASSCI'),
+            'adresse' => \App\Models\Setting::get('school_address', ''),
+            'telephone' => \App\Models\Setting::get('school_phone', ''),
+            'email' => \App\Models\Setting::get('school_email', ''),
+            'logo' => \App\Models\Setting::get('school_logo', ''),
+        ];
+
+        $evaluation = (object) [
+            'titre' => '',
+            'matiere' => (object) ['name' => ''],
+            'classe' => $classe,
+            'type' => '',
+            'coefficient' => '',
+            'bareme' => '',
+            'date_evaluation' => null,
+            'duree_minutes' => null,
+        ];
+
+        $notesByEtudiant = collect();
+        $isBlank = true;
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('esbtp.notes.saisie-rapide-pdf', compact('evaluation', 'etudiants', 'anneeCourante', 'etablissement', 'notesByEtudiant', 'isBlank'));
+        $pdf->setPaper('A4', 'portrait');
+
+        $filename = 'saisie-notes-'.\Illuminate\Support\Str::slug($classe->name ?? 'classe').'-'.date('Y-m-d').'.pdf';
+
+        return [$pdf, $filename];
+    }
+
+    /**
+     * Enregistre les notes saisies en masse pour une évaluation.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function enregistrerSaisieRapide(Request $request)
+    {
+        abort_unless(Auth::user()?->can('notes.create') || Auth::user()?->can('notes.edit') || Auth::user()?->can('notes.manage_own'), 403);
+        $request->validate([
+            'evaluation_id' => 'required|exists:esbtp_evaluations,id',
+            'notes' => 'required|array',
+            'notes.*.etudiant_id' => 'required|distinct|exists:esbtp_etudiants,id',
+            'notes.*.valeur' => 'required_without:notes.*.absent|nullable|numeric|min:0',
+            'notes.*.commentaire' => 'nullable|string',
+            'notes.*.absent' => 'nullable|boolean',
+        ], [
+            'notes.*.valeur.required_without' => 'La valeur de la note est obligatoire si l\'étudiant n\'est pas absent',
+            'notes.*.valeur.numeric' => 'La valeur doit être un nombre',
+            'notes.*.valeur.min' => 'La valeur doit être positive',
+        ]);
+
+        $evaluation = ESBTPEvaluation::findOrFail($request->evaluation_id);
+        $user = Auth::user();
+        $this->assertTeacherDocumentScope((int) $evaluation->classe_id, (int) $evaluation->annee_universitaire_id, $evaluation);
+
+        // Voir saisieRapide() pour la justification : exempte les users avec notes.edit
+        // global (superAdmin/coordinateur) du check ownership restrictif.
+        if (! $user->can('notes.edit') && $user->can('notes.manage_own') && $user->can('identity.teach')) {
+            $isOwner = $evaluation->enseignant_id === $user->id || $evaluation->created_by === $user->id;
+            if (! $isOwner) {
+                return redirect()->back()
+                    ->with('error', "Vous n'êtes pas autorisé à modifier les notes pour cette évaluation.")
+                    ->withInput();
+            }
+        }
+
+        if ($evaluation->date_evaluation && $evaluation->date_evaluation->isFuture()) {
+            return redirect()->back()
+                ->with('error', "La saisie des notes est disponible uniquement après la date d'évaluation.")
+                ->withInput();
+        }
+
+        // Vérifier si l'utilisateur a le droit de modifier les notes existantes
+        if (! $user->can('notes.edit')) {
+            $existingNotesCount = ESBTPNote::where('evaluation_id', $evaluation->id)
+                ->where('submission_status', ESBTPNote::SUBMISSION_SUBMITTED)
+                ->count();
+
+            if ($existingNotesCount > 0) {
+                return redirect()->back()
+                    ->with('error', "Vous n'avez pas la permission de modifier les notes déjà enregistrées. Vous pouvez seulement ajouter des notes si aucune n'existe encore.")
+                    ->withInput();
+            }
+        }
+
+        $allowedStudentIds = $this->noteStudentCohortService
+            ->allowedStudentIdsForEvaluation($evaluation)
+            ->all();
+
+        // Séparer strictement AJOUTER et MODIFIER. Une note déjà présente,
+        // y compris encore brouillon, n'est pas modifiable avec notes.create
+        // seul. Précharger les lignes réduit également les N SELECT de la boucle.
+        $incomingStudentIds = collect($request->input('notes', []))
+            ->filter(fn ($data) => (isset($data['valeur']) && $data['valeur'] !== '') || (string) ($data['absent'] ?? '') === '1')
+            ->pluck('etudiant_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $existingNotesByStudent = ESBTPNote::query()
+            ->where('evaluation_id', $evaluation->id)
+            ->whereIn('etudiant_id', $incomingStudentIds)
+            ->get()
+            ->keyBy('etudiant_id');
+
+        if ($existingNotesByStudent->isNotEmpty() && ! $user->can('notes.edit')) {
+            abort_unless($user->can('notes.manage_own')
+                && $existingNotesByStudent->every(fn ($note) => (int) $note->created_by === (int) $user->id),
+                403,
+                'La modification des notes existantes exige un droit spécifique.');
+        }
+
+        // Le droit de MODIFIER ne doit pas autoriser en silence à CRÉER une
+        // note. L'enseignant peut également saisir ses évaluations avec le
+        // droit historique notes.manage_own, mais uniquement s'il en est responsable.
+        $newStudentIds = array_diff($incomingStudentIds, $existingNotesByStudent->keys()->map(fn ($id) => (int) $id)->all());
+        if ($newStudentIds && ! $user->can('notes.create')) {
+            $managesOwnEvaluation = $user->can('notes.manage_own')
+                && ((int) $evaluation->enseignant_id === (int) $user->id
+                    || (int) $evaluation->created_by === (int) $user->id);
+            abort_unless($managesOwnEvaluation, 403, 'La création de nouvelles notes exige un droit spécifique.');
+        }
+
+        // Ce que la saisie a REELLEMENT ecrit, et ce qu'elle a saute. Les lignes
+        // laissees vides sont ignorees en silence depuis toujours : l'ecran
+        // annoncait « enregistrees avec succes » pour cinquante lignes dont une
+        // n'avait rien ecrit, et le suivi de couverture la comptait manquante.
+        // `esbtp_notes.note` etant NOT NULL, une ligne vide ne cree AUCUNE
+        // ligne — c'est la cause la plus banale d'un « toutes les notes ont
+        // pourtant ete saisies ».
+        $enregistrees = 0;
+        $ignorees = [];
+
+        DB::beginTransaction();
+        try {
+            foreach ($request->notes as $noteData) {
+                // Vérifier si nous avons une valeur de note ou si l'étudiant est marqué comme absent
+                $hasValue = isset($noteData['valeur']) && $noteData['valeur'] !== null && $noteData['valeur'] !== '';
+                $isAbsent = isset($noteData['absent']) && $noteData['absent'] == '1';
+
+                // Ignorer les entrées sans valeur et non marquées comme absentes
+                if (! $hasValue && ! $isAbsent) {
+                    $ignorees[] = (int) ($noteData['etudiant_id'] ?? 0);
+
+                    continue;
+                }
+
+                $etudiantId = $noteData['etudiant_id'];
+                if (! in_array((int) $etudiantId, $allowedStudentIds, true)) {
+                    throw new \InvalidArgumentException("Cet étudiant n'appartient pas à la cohorte de cette évaluation.");
+                }
+
+                // Vérifier si l'étudiant a déjà une note pour cette évaluation
+                $note = $existingNotesByStudent->get((int) $etudiantId);
+
+                if ($note) {
+                    // Mise à jour de la note existante
+                    $wasAbsent = $note->is_absent;
+                    $note->note = $isAbsent ? 0 : $noteData['valeur'];
+                    $note->is_absent = $isAbsent;
+                    $note->commentaire = $noteData['commentaire'] ?? null;
+                    $note->updated_by = Auth::id();
+
+                    // S'assurer que tous les champs requis sont définis
+                    if (! $note->matiere_id) {
+                        $note->matiere_id = $evaluation->matiere_id;
+                    }
+                    if (! $note->classe_id) {
+                        $note->classe_id = $evaluation->classe_id;
+                    }
+                    if (! $note->semestre) {
+                        $note->semestre = $evaluation->periode;
+                    }
+                    if (! $note->annee_universitaire) {
+                        $note->annee_universitaire = $evaluation->anneeUniversitaire ? $evaluation->anneeUniversitaire->name : 'N/A';
+                    }
+                    if (! $note->type_evaluation) {
+                        $note->type_evaluation = $evaluation->type;
+                    }
+                    $note->submission_status = ESBTPNote::SUBMISSION_SUBMITTED;
+                    $note->submitted_at = $note->submitted_at ?: now();
+                    $note->submitted_by = $note->submitted_by ?: Auth::id();
+
+                    $note->save();
+
+                    // Envoyer une notification d'absence si l'étudiant vient d'être marqué absent
+                    if ($isAbsent && ! $wasAbsent) {
+                        $this->sendAbsenceNotificationForNote($note, $evaluation);
+                    }
+                } else {
+                    // Création d'une nouvelle note
+                    $note = new ESBTPNote;
+                    $note->evaluation_id = $evaluation->id;
+                    $note->etudiant_id = $etudiantId;
+                    $note->matiere_id = $evaluation->matiere_id;
+                    $note->classe_id = $evaluation->classe_id;
+                    $note->semestre = $evaluation->periode;
+                    $note->annee_universitaire = $evaluation->anneeUniversitaire ? $evaluation->anneeUniversitaire->name : 'N/A';
+                    $note->note = $isAbsent ? 0 : $noteData['valeur'];
+                    $note->type_evaluation = $evaluation->type;
+                    $note->is_absent = $isAbsent;
+                    $note->commentaire = $noteData['commentaire'] ?? null;
+                    $note->created_by = Auth::id();
+                    $note->submission_status = ESBTPNote::SUBMISSION_SUBMITTED;
+                    $note->submitted_at = now();
+                    $note->submitted_by = Auth::id();
+                    $note->save();
+
+                    // Envoyer une notification d'absence si l'étudiant est marqué absent
+                    if ($isAbsent) {
+                        $this->sendAbsenceNotificationForNote($note, $evaluation);
+                    }
+                }
+
+                $enregistrees++;
+            }
+
+            DB::commit();
+
+            return redirect()->route('esbtp.evaluations.show', $evaluation)
+                ->with('success', $this->messageDeSaisieRapide($enregistrees, $ignorees));
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return redirect()->back()
+                ->with('error', 'Une erreur est survenue lors de l\'enregistrement des notes: '.$e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /** Au-dela, nommer les etudiants rend le message illisible. */
+    private const SAISIE_RAPIDE_NOMS_MAX = 5;
+
+    /**
+     * Le compte rendu d'une saisie rapide : ce qui a ete ecrit, et ce qui reste.
+     *
+     * LE TON COMPTE AUTANT QUE LE CHIFFRE. La saisie est progressive par
+     * nature — on note dix eleves, on enregistre, on reprend. Une premiere
+     * version disait « 55 ligne(s) laissee(s) vide(s), donc aucune note
+     * enregistree pour… » dans un message de SUCCES : un enseignant qui vient
+     * de saisir cinq notes sur soixante y lisait un reproche, et l'ecran
+     * devenait desagreable a chaque enregistrement intermediaire.
+     *
+     * « Reste(nt) a saisir » dit la meme chose sans accuser. Le cas qui a
+     * motive tout ceci est justement celui d'UNE ligne oubliee : elle passait
+     * en silence, et le suivi la comptait manquante pendant que la personne
+     * etait certaine d'avoir tout rempli.
+     *
+     * Les noms ne sont donnes que lorsqu'ils tiennent : au-dela de cinq, le
+     * compte seul, et la liste complete se lit sur l'ecran de l'evaluation.
+     *
+     * @param  array<int, int>  $ignorees  identifiants des etudiants dont la ligne etait vide
+     */
+    private function messageDeSaisieRapide(int $enregistrees, array $ignorees): string
+    {
+        $message = $enregistrees . ' note(s) enregistrée(s).';
+
+        $ignorees = array_values(array_unique(array_filter($ignorees)));
+        $reste = count($ignorees);
+
+        if ($reste === 0) {
+            return $message;
+        }
+
+        if ($reste > self::SAISIE_RAPIDE_NOMS_MAX) {
+            return $message . ' ' . $reste . ' ligne(s) reste(nt) à saisir.';
+        }
+
+        $noms = ESBTPEtudiant::whereIn('id', $ignorees)
+            ->get(['id', 'nom', 'prenoms'])
+            ->map(fn (ESBTPEtudiant $etudiant): string => trim($etudiant->nom_complet))
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($noms === []) {
+            return $message . ' ' . $reste . ' ligne(s) reste(nt) à saisir.';
+        }
+
+        // Un identifiant qui ne resout pas — etudiant supprime entre-temps, nom
+        // vide — rendrait la liste plus courte que le compte, et elle se
+        // presenterait pourtant comme exhaustive. On dit alors ce qui manque.
+        $sansNom = $reste - count($noms);
+
+        return $message . ' ' . $reste . ' ligne(s) reste(nt) à saisir : ' . implode(', ', $noms)
+            . ($sansNom > 0 ? ' et ' . $sansNom . ' autre(s)' : '')
+            . '.';
+    }
+
+    /**
+     * Affiche les notes de l'étudiant connecté.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function studentGrades(Request $request)
+    {
+        $user = Auth::user();
+        $etudiant = ESBTPEtudiant::where('user_id', $user->id)->first();
+
+        if (! $etudiant) {
+            return redirect()->route('dashboard')->with('error', 'Profil étudiant non trouvé.');
+        }
+
+        // Récupérer l'année universitaire courante
+        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        // Vérifier si l'étudiant a une inscription active pour l'année courante
+        $inscription = null;
+        if ($anneeCourante) {
+            $inscription = $etudiant->inscriptions()
+                ->where('status', 'active')
+                ->where('annee_universitaire_id', $anneeCourante->id)
+                ->with(['classe.filiere', 'classe.niveauEtude', 'anneeUniversitaire'])
+                ->first();
+        }
+
+        if (! $inscription) {
+            return view('esbtp.etudiants.notes', [
+                'notes' => collect([]),
+                'etudiant' => $etudiant,
+                'inscription' => null,
+                'anneeCourante' => $anneeCourante,
+                'ecran' => null,
+            ])->with('warning', 'Vous n\'avez pas d\'inscription active pour l\'année en cours. Veuillez contacter l\'administration.');
+        }
+
+        // Récupérer les notes de l'année courante uniquement
+        $notes = ESBTPNote::where('etudiant_id', $etudiant->id)
+            ->whereHas('evaluation', function ($query) use ($anneeCourante) {
+                $query->where('annee_universitaire_id', $anneeCourante->id);
+            })
+            ->with(['evaluation', 'matiere'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $ecran = $inscription->classe
+            ? $this->ecranMesNotes($etudiant, $inscription->classe, $anneeCourante, $notes)
+            : null;
+
+        return view('esbtp.etudiants.notes', compact('notes', 'etudiant', 'inscription', 'anneeCourante', 'ecran'));
+    }
+
+    /**
+     * Donnees de l'ecran « Mes notes » par semestre, selon le systeme de la classe.
+     *
+     * LMD : UE puis ECUE avec credits, moyennes et validation, par le presenter
+     * (qui lit la projection du bulletin, jamais un recalcul). BTS : matieres
+     * et evaluations, par le snapshot BTS courant, plus le rang du bulletin
+     * publie quand il existe.
+     *
+     * @return array{systeme: string, semestres: list<array<string, mixed>>}
+     */
+    private function ecranMesNotes(ESBTPEtudiant $etudiant, ESBTPClasse $classe, ESBTPAnneeUniversitaire $annee, Collection $notes): array
+    {
+        if ($classe->isLMD()) {
+            $lmd = app(EtudiantNotesLmdPresenter::class)
+                ->presenter($classe, (int) $etudiant->id, (int) $annee->id, $notes);
+
+            return ['systeme' => FraisScopeResolver::SYSTEME_LMD, 'semestres' => $lmd['semestres']];
+        }
+
+        return ['systeme' => FraisScopeResolver::SYSTEME_BTS, 'semestres' => $this->semestresBtsMesNotes($etudiant, $classe, $annee, $notes)];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function semestresBtsMesNotes(ESBTPEtudiant $etudiant, ESBTPClasse $classe, ESBTPAnneeUniversitaire $annee, Collection $notes): array
+    {
+        $snapshot = app(BtsCurrentResultSnapshotService::class)
+            ->getAnnualSnapshot((int) $etudiant->id, (int) $classe->id, (int) $annee->id);
+
+        $notesParEvaluation = $notes->keyBy('evaluation_id');
+
+        // Seul un bulletin publie donne un rang a l'etudiant.
+        $bulletins = ESBTPBulletin::query()
+            ->where('etudiant_id', $etudiant->id)
+            ->where('annee_universitaire_id', $annee->id)
+            ->where('is_published', true)
+            ->get(['periode', 'rang', 'effectif_classe'])
+            ->keyBy('periode');
+
+        $periodes = ['semestre1' => 'Semestre 1', 'semestre2' => 'Semestre 2', 'annuel' => 'Année'];
+        $semestres = [];
+
+        foreach ($periodes as $periode => $label) {
+            $snap = $periode === 'annuel' ? $snapshot : ($snapshot['semester_snapshots'][$periode] ?? []);
+            $bulletin = $bulletins->get($periode);
+
+            $matieres = collect($snap['subjects'] ?? [])->map(function (array $subject) use ($notesParEvaluation) {
+                $evaluations = collect($subject['evaluations'] ?? [])->map(function (array $evaluation) use ($notesParEvaluation) {
+                    $note = $notesParEvaluation->get($evaluation['evaluation_id'] ?? null);
+                    $absent = (bool) ($note?->is_absent ?? false);
+
+                    return [
+                        'type' => $note?->evaluation?->type,
+                        'titre' => $note?->evaluation?->titre,
+                        'note' => $absent ? null : $evaluation['note'],
+                        'bareme' => (float) ($evaluation['bareme'] ?? 20),
+                        'absent' => $absent,
+                    ];
+                })->values()->all();
+
+                return [
+                    'id' => (int) $subject['matiere_id'],
+                    'name' => (string) $subject['matiere'],
+                    'coefficient' => $subject['coefficient'],
+                    'moyenne' => $subject['moyenne'] !== null ? (float) $subject['moyenne'] : null,
+                    'evaluations' => $evaluations,
+                ];
+            })->values()->all();
+
+            $semestres[] = [
+                'code' => $periode,
+                'label' => $label,
+                'moyenne' => isset($snap['effective_total']) ? (float) $snap['effective_total'] : null,
+                'rang' => $bulletin?->rang !== null ? (int) $bulletin->rang : null,
+                'effectif' => $bulletin?->effectif_classe !== null ? (int) $bulletin->effectif_classe : null,
+                'notes_count' => (int) ($snap['notes_count'] ?? 0),
+                'coefficients_manquants' => (bool) ($snap['coefficients_missing'] ?? false),
+                'statut' => (string) ($snap['state'] ?? 'no_data'),
+                'matieres' => $matieres,
+            ];
+        }
+
+        return $semestres;
+    }
+
+    /**
+     * Affiche le formulaire de saisie rapide des notes.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function saisieRapideForm()
+    {
+        return view('esbtp.notes.saisie-rapide-form');
+    }
+
+    /**
+     * Envoie une notification d'absence à un étudiant lors de la saisie des notes
+     *
+     * @return void
+     */
+    private function sendAbsenceNotificationForNote(ESBTPNote $note, ESBTPEvaluation $evaluation)
+    {
+        app(SaisieGroupeeDeNotes::class)->notifierAbsence($note, $evaluation);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // PR #7 — Excel import/export bidirectionnel + preview impact bulletin
+    // ════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Export Excel des notes d'une classe + matière + période.
+     * Format optimisé pour saisie offline puis ré-import.
+     */
+    public function exportExcel(Request $request)
+    {
+        $user = Auth::user();
+        if (! $user || ! $user->can('notes.export_excel')) {
+            abort(403, "Vous n'avez pas la permission d'exporter les notes.");
+        }
+
+        $validator = \Validator::make($request->all(), [
+            'classe' => ['required', 'integer', 'exists:esbtp_classes,id'],
+            'matiere' => ['required', 'integer', 'exists:esbtp_matieres,id'],
+            'periode' => ['required', 'in:semestre1,semestre2'],
+            'annee_universitaire_id' => ['nullable', 'integer', 'exists:esbtp_annee_universitaires,id'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => $validator->errors()->first()], 422);
+        }
+
+        $classeId = (int) $request->input('classe');
+        $matiereId = (int) $request->input('matiere');
+        $periode = (string) $request->input('periode');
+        $anneeId = $request->filled('annee_universitaire_id')
+            ? (int) $request->input('annee_universitaire_id')
+            : null;
+
+        $this->assertTeacherDocumentScope($classeId, $anneeId);
+
+        $export = new NotesClasseMatiereExport($classeId, $matiereId, $periode, $anneeId);
+
+        if ($export->cellsCount() > 5000) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Volume trop important : '
+                    . $export->studentsCount() . ' étudiants × '
+                    . $export->evaluationsCount() . ' évaluations dépasse la limite de 5000 cellules. Affinez les filtres.',
+            ], 422);
+        }
+
+        $classeSlug = Str::slug($export->classeName() ?? ('classe-' . $classeId));
+        $matiereSlug = Str::slug($export->matiereName() ?? ('matiere-' . $matiereId));
+        $filename = sprintf('notes_%s_%s_%s_%s.xlsx', $classeSlug, $matiereSlug, $periode, now()->format('Ymd-His'));
+
+        return Excel::download($export, $filename);
+    }
+
+    /**
+     * Dry-run : analyse l'import Excel et retourne le diff Avant/Après sans persister.
+     */
+    public function importDryRun(ImportNotesRequest $request, NotesImportService $service)
+    {
+        try {
+            $file = $request->file('file');
+            $parsed = $service->parseFile($file);
+
+            $diff = $service->dryRun(
+                $parsed,
+                (int) $request->input('classe_id'),
+                (int) $request->input('matiere_id'),
+                (string) $request->input('periode'),
+                $request->filled('annee_universitaire_id')
+                    ? (int) $request->input('annee_universitaire_id')
+                    : null
+            );
+
+            return response()->json([
+                'success' => true,
+                'summary' => $diff['summary'],
+                'changes' => $diff['changes'],
+                'errors' => $diff['errors'],
+                'evaluations' => $diff['evaluations'],
+                'parsed_signature' => $this->parsedSignature($parsed),
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('importDryRun error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de lire le fichier Excel : ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * Applique l'import Excel (transaction).
+     */
+    public function importApply(ImportNotesRequest $request, NotesImportService $service)
+    {
+        try {
+            $file = $request->file('file');
+            $parsed = $service->parseFile($file);
+
+            $result = $service->apply(
+                $parsed,
+                (int) $request->input('classe_id'),
+                (int) $request->input('matiere_id'),
+                (string) $request->input('periode'),
+                $request->filled('annee_universitaire_id')
+                    ? (int) $request->input('annee_universitaire_id')
+                    : null
+            );
+
+            if (($result['errors'] ?? 0) > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Import bloqué : ' . $result['errors'] . ' erreur(s) détectée(s). Corrigez le fichier puis réessayez.',
+                    'errors' => $result['error_details'] ?? [],
+                ], 422);
+            }
+
+            return response()->json([
+                'success' => true,
+                'created' => $result['created'],
+                'updated' => $result['updated'],
+                'message' => sprintf('Import réussi : %d note(s) créée(s), %d mise(s) à jour.', $result['created'], $result['updated']),
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('importApply error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'application de l\'import : ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Calcule l'impact d'une note hypothétique sur la moyenne matière + générale.
+     * Utilisé par l'UI temps réel sous chaque ligne étudiant.
+     */
+    public function previewImpact(Request $request, NoteCalculationService $calc)
+    {
+        $user = Auth::user();
+        if (! $user || (! $user->can('notes.view') && ! $user->can('notes.view_own') && ! $user->can('notes.create') && ! $user->can('notes.edit'))) {
+            return response()->json(['success' => false, 'message' => 'Permission refusée.'], 403);
+        }
+
+        $validator = \Validator::make($request->all(), [
+            'etudiant_id' => ['required', 'integer', 'exists:esbtp_etudiants,id'],
+            'classe_id' => ['required', 'integer', 'exists:esbtp_classes,id'],
+            'matiere_id' => ['required', 'integer', 'exists:esbtp_matieres,id'],
+            'periode' => ['required', 'in:semestre1,semestre2'],
+            'evaluation_id' => ['required', 'integer', 'exists:esbtp_evaluations,id'],
+            'hypothetical_note' => ['required', 'numeric', 'min:0'],
+            'is_absent' => ['nullable', 'boolean'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => $validator->errors()->first()], 422);
+        }
+
+        $etudiantId = (int) $request->input('etudiant_id');
+        $classeId = (int) $request->input('classe_id');
+        $matiereId = (int) $request->input('matiere_id');
+        $periode = (string) $request->input('periode');
+        $evaluationId = (int) $request->input('evaluation_id');
+        $hypoValue = (float) $request->input('hypothetical_note');
+        $isAbsent = (bool) $request->input('is_absent', false);
+
+        // Évaluation cible
+        $targetEval = ESBTPEvaluation::find($evaluationId);
+        if (! $targetEval) {
+            return response()->json(['success' => false, 'message' => 'Évaluation introuvable.'], 404);
+        }
+
+        // Validation barème
+        $bareme = max(0.01, (float) $targetEval->bareme);
+        if (! $isAbsent && $hypoValue > $bareme) {
+            return response()->json([
+                'success' => false,
+                'message' => sprintf('Note %s hors barème (max %s).', $hypoValue, $bareme),
+            ], 422);
+        }
+
+        $evaluations = ESBTPEvaluation::query()
+            ->where('classe_id', $classeId)
+            ->where('matiere_id', $matiereId)
+            ->where('annee_universitaire_id', $targetEval->annee_universitaire_id)
+            ->where('periode', $periode)
+            ->where('is_published', 1)
+            ->get();
+
+        // Notes existantes pour cet étudiant sur ces évaluations
+        $notes = ESBTPNote::where('etudiant_id', $etudiantId)
+            ->whereIn('evaluation_id', $evaluations->pluck('id'))
+            ->get()
+            ->keyBy('evaluation_id');
+
+        // Moyenne matière AVANT
+        $moyenneMatiereAvant = $this->computeMatiereAverage($calc, $evaluations, $notes, null, null);
+
+        // Moyenne matière APRÈS (en remplaçant la note de cette éval)
+        $moyenneMatiereApres = $this->computeMatiereAverage($calc, $evaluations, $notes, $evaluationId, [
+            'note' => $hypoValue,
+            'is_absent' => $isAbsent,
+        ]);
+
+        $mentionAvant = $moyenneMatiereAvant !== null ? $calc->getMention($moyenneMatiereAvant) : null;
+        $mentionApres = $moyenneMatiereApres !== null ? $calc->getMention($moyenneMatiereApres) : null;
+
+        // Moyenne générale (toutes matières confondues, période)
+        $moyenneGeneraleAvant = $this->computeGeneralAverage($calc, $etudiantId, $classeId, (int) $targetEval->annee_universitaire_id, $periode, null, null, null);
+        $moyenneGeneraleApres = $this->computeGeneralAverage($calc, $etudiantId, $classeId, (int) $targetEval->annee_universitaire_id, $periode, $matiereId, $evaluationId, [
+            'note' => $hypoValue,
+            'is_absent' => $isAbsent,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'matiere_avant' => $moyenneMatiereAvant,
+            'matiere_apres' => $moyenneMatiereApres,
+            'mention_avant' => $mentionAvant,
+            'mention_apres' => $mentionApres,
+            'moyenne_generale_avant' => $moyenneGeneraleAvant,
+            'moyenne_generale_apres' => $moyenneGeneraleApres,
+            'changed_mention' => $mentionAvant !== $mentionApres,
+        ]);
+    }
+
+    /**
+     * Construit le tableau de notes (note/bareme/coefficient/is_absent) à partir d'une
+     * collection d'évaluations + notes existantes, en appliquant un override hypothétique
+     * sur une évaluation cible si fourni.
+     *
+     * Délègue ensuite le calcul à NoteCalculationService::studentMatiereAverage()
+     * pour garantir la cohérence avec BTS / LMD / bulletins.
+     *
+     * @param  \Illuminate\Support\Collection  $evaluations
+     * @param  \Illuminate\Support\Collection  $notesByEvalId  (keyBy evaluation_id)
+     * @param  array{note: float, is_absent: bool}|null  $override
+     * @return float|null  null si aucune note exploitable (UI = "—"), sinon moyenne sur 20.
+     */
+    private function computeMatiereAverage(
+        NoteCalculationService $calc,
+        $evaluations,
+        $notesByEvalId,
+        ?int $overrideEvalId = null,
+        ?array $override = null
+    ): ?float {
+        $payload = [];
+
+        foreach ($evaluations as $eval) {
+            $bareme = max(0.01, (float) ($eval->bareme ?? 20));
+            $coef = (float) ($eval->coefficient ?? 1);
+
+            if ($overrideEvalId !== null && $eval->id === $overrideEvalId && $override !== null) {
+                $payload[] = [
+                    'note' => (float) $override['note'],
+                    'bareme' => $bareme,
+                    'coefficient' => $coef,
+                    'is_absent' => (bool) $override['is_absent'],
+                ];
+                continue;
+            }
+
+            $note = $notesByEvalId->get($eval->id);
+            if (! $note) {
+                continue;
+            }
+            $payload[] = [
+                'note' => (float) ($note->note ?? 0),
+                'bareme' => $bareme,
+                'coefficient' => $coef,
+                'is_absent' => (bool) $note->is_absent,
+            ];
+        }
+
+        // Aucune note comptable : `null` distingue « vide » de « 0 ». Des
+        // absences seulement : la valeur du reglage d'etablissement, comme au
+        // bulletin — sans quoi ce panneau contredisait le bulletin en mode
+        // par defaut, en ecartant une matiere que le bulletin compte a 0.
+        $moyenne = $calc->studentMatiereAverageOrNull($payload);
+        if ($moyenne !== null) {
+            return $moyenne;
+        }
+
+        $aDesAbsences = collect($payload)->contains(fn ($row) => ! empty($row['is_absent']));
+
+        return $aDesAbsences ? $calc->moyenneSansNoteComptable() : null;
+    }
+
+    /**
+     * Calcule la moyenne générale pondérée (par coefficient matière) d'un étudiant
+     * pour une période donnée.
+     *
+     * Si $overrideMatiereId + $overrideEvalId fournis, recalcule la matière concernée
+     * en remplaçant la note. Délègue à NoteCalculationService.
+     */
+    private function computeGeneralAverage(
+        NoteCalculationService $calc,
+        int $etudiantId,
+        int $classeId, int $anneeUniversitaireId,
+        string $periode,
+        ?int $overrideMatiereId,
+        ?int $overrideEvalId,
+        ?array $override
+    ): ?float {
+        $evaluations = ESBTPEvaluation::query()
+            ->where('classe_id', $classeId)->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->where('periode', $periode)
+            ->where('is_published', 1)
+            ->get();
+
+        if ($evaluations->isEmpty()) {
+            return null;
+        }
+
+        $matiereIds = $evaluations->pluck('matiere_id')->unique()->values()->all();
+
+        // LE TREIZIEME CALCUL DE MOYENNE, et le dernier a avoir ete filtre.
+        //
+        // C'est une vraie moyenne generale ponderee, calculee ici plutot que
+        // par `BulletinService` ou le snapshot — donc aucun des douze filtres
+        // poses ailleurs ne la couvrait. Elle alimente le panneau d'impact
+        // affiche SOUS LA MAIN de l'enseignant qui saisit une note
+        // (`previewImpact()` → `esbtp.notes.preview-impact` → `notes/index`).
+        //
+        // Sans ce filtre, cette branche creait exactement la contradiction
+        // qu'elle pretend supprimer ailleurs : le bulletin, `/esbtp/resultats`,
+        // la fiche etudiant et l'accueil mobile annoncant 14,00, et ce panneau
+        // 10,67 — au moment le plus sensible du parcours.
+        //
+        // `withTrashed()` : `ESBTPClasse` et `ESBTPMatiere` sont en
+        // `SoftDeletes`, et une lecture nue rendrait `null`, ce qui desarmerait
+        // le filtre au lieu de l'appliquer.
+        // `unite_enseignement_id` DOIT etre selectionnee : le prédicat la lit,
+        // et un `->get(['id', 'coefficient'])` la laisserait a `null` — le
+        // filtre serait inerte sans rien signaler (piege #12).
+        $classeCible = ESBTPClasse::withTrashed()->find($classeId);
+
+        $matieres = ESBTPMatiere::withTrashed()
+            ->whereIn('id', $matiereIds)
+            ->get(['id', 'name', 'coefficient', 'unite_enseignement_id'])
+            ->keyBy('id');
+
+        $matiereCoefs = $matieres->mapWithKeys(
+            fn ($m) => [$m->id => max(0.01, (float) ($m->coefficient ?? 1))]
+        );
+
+        $notes = ESBTPNote::where('etudiant_id', $etudiantId)
+            ->whereIn('evaluation_id', $evaluations->pluck('id'))
+            ->get();
+
+        $byMatiere = $evaluations->groupBy('matiere_id');
+
+        $matieresPayload = [];
+
+        foreach ($byMatiere as $matiereId => $evalsMat) {
+            $matiere = $matieres->get((int) $matiereId);
+
+            // Une matiere etrangere au systeme de la classe ne pese pas sur
+            // l'apercu d'impact, comme elle ne pese deja plus sur le bulletin.
+            if ($classeCible && $matiere
+                && ! CoherenceSystemeAcademique::matiereRetenue($matiere, $classeCible, 'apercu impact/moyenne generale')) {
+                continue;
+            }
+
+            $notesMat = $notes->where('matiere_id', $matiereId)->keyBy('evaluation_id');
+
+            $isOverridden = ($overrideMatiereId === (int) $matiereId);
+            $moyMat = $this->computeMatiereAverage(
+                $calc,
+                $evalsMat,
+                $notesMat,
+                $isOverridden ? $overrideEvalId : null,
+                $isOverridden ? $override : null
+            );
+
+            if ($moyMat === null) {
+                continue;
+            }
+
+            $matieresPayload[] = [
+                'moyenne' => $moyMat,
+                'coefficient' => $matiereCoefs->get($matiereId, 1.0),
+            ];
+        }
+
+        if (empty($matieresPayload)) {
+            return null;
+        }
+
+        return $calc->studentGeneralAverage($matieresPayload);
+    }
+
+    /**
+     * Petit hash de la signature du fichier parsé pour idempotence (debug).
+     */
+    private function parsedSignature(array $parsed): string
+    {
+        return substr(md5(json_encode([
+            'rows_count' => count($parsed['rows'] ?? []),
+            'has_meta' => isset($parsed['meta']),
+        ])), 0, 12);
+    }
+}

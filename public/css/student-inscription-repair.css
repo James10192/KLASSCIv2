@@ -1,0 +1,185 @@
+.insc-repair-panel {
+    margin-bottom: 16px;
+    padding: 14px;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+    box-shadow: 0 8px 20px rgba(4,83,203,.07);
+}
+
+.insc-repair-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.insc-repair-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--k-text);
+    font-size: .95rem;
+    font-weight: 800;
+}
+
+.insc-repair-title i {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(4,83,203,.1);
+    color: var(--k-blue);
+}
+
+.insc-repair-sub {
+    margin-top: 3px;
+    color: var(--k-muted);
+    font-size: .76rem;
+    line-height: 1.35;
+}
+
+.insc-repair-toolbar {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) auto auto;
+    gap: 10px;
+    align-items: end;
+}
+
+.insc-repair-field label {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--k-muted);
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.insc-repair-select {
+    width: 100%;
+    min-height: 38px;
+    border: 1px solid var(--k-border);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--k-text);
+    font-size: .84rem;
+    padding: 8px 10px;
+}
+
+.insc-repair-select:focus {
+    outline: 2px solid rgba(4,83,203,.18);
+    border-color: var(--k-blue);
+}
+
+.insc-repair-btn {
+    min-height: 38px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    font-size: .8rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+}
+
+.insc-repair-btn:hover:not(:disabled) { transform: translateY(-1px); }
+.insc-repair-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+.insc-repair-btn.secondary {
+    background: #fff;
+    border-color: #bfdbfe;
+    color: var(--k-blue);
+}
+
+.insc-repair-btn.primary {
+    background: linear-gradient(135deg, var(--k-blue), var(--k-blue-2));
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(4,83,203,.18);
+}
+
+.insc-repair-status {
+    margin-top: 12px;
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: .8rem;
+    line-height: 1.4;
+    color: #1e40af;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+}
+
+.insc-repair-status.ok {
+    color: #047857;
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+}
+
+.insc-repair-status.warn {
+    color: #92400e;
+    background: #fffbeb;
+    border-color: #fde68a;
+}
+
+.insc-repair-status.error {
+    color: #b91c1c;
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
+.insc-repair-result {
+    margin-top: 12px;
+    overflow-x: auto;
+}
+
+.insc-repair-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: .78rem;
+}
+
+.insc-repair-table th,
+.insc-repair-table td {
+    padding: 8px 9px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: top;
+}
+
+.insc-repair-table th {
+    text-align: left;
+    color: #475569;
+    background: #f8fafc;
+    font-size: .7rem;
+    text-transform: uppercase;
+}
+
+.insc-repair-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: .7rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.insc-repair-badge.keep { background: #ecfdf5; color: #047857; }
+.insc-repair-badge.archive { background: #fef2f2; color: #b91c1c; }
+.insc-repair-badge.neutral { background: #eef2ff; color: #3730a3; }
+
+@media (max-width: 768px) {
+    .insc-repair-head { flex-direction: column; }
+    .insc-repair-toolbar { grid-template-columns: 1fr; }
+    .insc-repair-btn { width: 100%; }
+}

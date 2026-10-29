@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>WhatsApp KLASSCI — Coût Meta &amp; budget ADC (interne)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Poppins:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --klassci-blue:       #0453cb;
+    --klassci-blue-deep:  #033a8e;
+    --klassci-blue-soft:  #5e91de;
+    --klassci-blue-tint:  #e8f0fc;
+    --adc-orange:         #f97316;
+    --ink:                #0a0a0a;
+    --ink-2:              #1e293b;
+    --neutral-700:        #404040;
+    --neutral-500:        #737373;
+    --neutral-300:        #d4d4d4;
+    --neutral-200:        #e5e5e5;
+    --neutral-100:        #f5f5f5;
+    --neutral-50:         #fafafa;
+    --white:              #ffffff;
+    --success:            #10b981;
+    --warning:            #f59e0b;
+    --danger:             #dc2626;
+    --serif:              'Fraunces', 'Georgia', serif;
+    --sans:               'Poppins', system-ui, sans-serif;
+    --mono:               'JetBrains Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: var(--sans);
+    color: var(--ink-2);
+    -webkit-font-smoothing: antialiased;
+    font-size: 10.5pt;
+    line-height: 1.55;
+    background: var(--white);
+  }
+
+  @page { size: A4; margin: 0; }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    max-height: 297mm;
+    padding: 18mm 22mm 36mm 22mm;
+    box-sizing: border-box;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .page:last-child { page-break-after: auto !important; break-after: auto !important; }
+
+  .page-footer, .page-number, .section-label, .confid-stamp {
+    position: absolute;
+    font-size: 8pt;
+    color: var(--neutral-500);
+    text-transform: uppercase;
+    z-index: 20;
+    background: var(--white);
+    padding: 3px 6px;
+  }
+  .page-footer { bottom: 12mm; left: 22mm; letter-spacing: 0.2em; }
+  .page-number { bottom: 12mm; right: 22mm; letter-spacing: 0.3em; }
+  .section-label { top: 12mm; right: 22mm; letter-spacing: 0.25em; color: var(--klassci-blue); }
+  .confid-stamp {
+    top: 12mm; left: 22mm;
+    letter-spacing: 0.25em;
+    color: var(--danger);
+    background: rgba(220,38,38,0.06);
+    border: 1px solid rgba(220,38,38,0.3);
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  .page:not(.cover)::before {
+    content: '';
+    position: absolute;
+    left: 22mm; right: 22mm;
+    bottom: 22mm;
+    height: 1px;
+    background: var(--neutral-200);
+    z-index: 15;
+  }
+
+  /* === COVER === */
+  .cover {
+    background: linear-gradient(135deg, #1a0f0a 0%, #2a1810 35%, #0a3d8f 70%, #0453cb 100%);
+    color: var(--white);
+    padding: 0 !important;
+  }
+  .cover-glow {
+    position: absolute;
+    top: -10%; right: -10%;
+    width: 60%; height: 70%;
+    background: radial-gradient(circle, rgba(249,115,22,0.28) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .cover-glow-2 {
+    position: absolute;
+    bottom: -10%; left: -10%;
+    width: 50%; height: 60%;
+    background: radial-gradient(circle, rgba(94,145,222,0.30) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .cover-inner {
+    flex: 1; width: 100%;
+    padding: 22mm;
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    position: relative; z-index: 2;
+  }
+  .cover-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 30px; }
+  .cover-logos {
+    display: flex; align-items: center; gap: 18px;
+    background: var(--white);
+    padding: 14px 22px;
+    border-radius: 14px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+  }
+  .cover-logos img.adc-logo { height: 36px; width: auto; }
+  .cover-logos img.klassci-logo { height: 36px; width: auto; }
+  .cover-logos .x {
+    font-family: var(--serif);
+    font-size: 22px;
+    color: var(--neutral-300);
+    font-style: italic;
+  }
+  .cover-meta {
+    text-align: right; font-size: 9pt;
+    color: rgba(255,255,255,0.85);
+    line-height: 1.55; letter-spacing: 0.04em;
+  }
+  .cover-meta strong { color: var(--white); font-weight: 600; }
+  .cover-meta .confid {
+    display: inline-block;
+    background: rgba(220,38,38,0.20);
+    border: 1px solid rgba(220,38,38,0.5);
+    color: #fca5a5;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 8pt;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    margin-bottom: 8px;
+  }
+
+  .cover-title { max-width: 82%; }
+  .kicker {
+    display: inline-flex; align-items: center; gap: 14px;
+    font-size: 9pt; letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.85);
+    margin-bottom: 18px; font-weight: 500;
+  }
+  .kicker::before {
+    content: ''; display: inline-block;
+    width: 44px; height: 1px;
+    background: var(--adc-orange);
+  }
+  h1.cover-h1 {
+    font-family: var(--serif);
+    font-size: 58pt; line-height: 0.95;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 18px;
+  }
+  h1.cover-h1 em {
+    font-style: italic;
+    color: var(--adc-orange);
+    font-weight: 500;
+  }
+  .lead {
+    font-size: 14pt;
+    color: rgba(255,255,255,0.9);
+    line-height: 1.5;
+    max-width: 72%;
+    font-weight: 300;
+  }
+
+  .cover-bottom {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    font-size: 9pt; color: rgba(255,255,255,0.75);
+    letter-spacing: 0.06em;
+  }
+  .cover-bottom strong { color: var(--white); font-weight: 600; }
+
+  /* === CONTENT === */
+  .page-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 22pt;
+  }
+  .page-head .brand-text {
+    font-family: var(--serif);
+    font-size: 11pt;
+    color: var(--klassci-blue);
+    font-weight: 600;
+  }
+  .page-head .doc-ref {
+    font-size: 8pt; color: var(--neutral-500);
+    text-align: right; letter-spacing: 0.04em;
+  }
+
+  h2 {
+    font-family: var(--serif);
+    font-size: 26pt; line-height: 1.05;
+    font-weight: 500; letter-spacing: -0.015em;
+    color: var(--ink); margin-bottom: 18px;
+  }
+  h2 em { font-style: italic; color: var(--klassci-blue); font-weight: 400; }
+  h3 {
+    font-family: var(--serif);
+    font-size: 16pt; line-height: 1.2;
+    font-weight: 500; color: var(--ink);
+    margin-bottom: 12px; margin-top: 18px;
+  }
+  h4 {
+    font-family: var(--sans);
+    font-size: 10pt; text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--klassci-blue);
+    font-weight: 600; margin-bottom: 8px;
+  }
+  p { max-width: 72ch; color: var(--neutral-700); margin-bottom: 10px; }
+  p.intro {
+    font-family: var(--serif);
+    font-size: 13pt; line-height: 1.5;
+    color: var(--ink-2); font-weight: 400;
+    max-width: 70ch; margin-bottom: 18px;
+  }
+  strong { color: var(--ink); font-weight: 600; }
+  em { font-style: italic; color: var(--klassci-blue); font-weight: 500; }
+
+  .kpi-hero {
+    background: linear-gradient(135deg, #1a0f0a 0%, #2a1810 50%, #0453cb 100%);
+    color: var(--white);
+    padding: 28px 24px;
+    border-radius: 16px;
+    margin: 10px 0 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: relative; overflow: hidden;
+  }
+  .kpi-hero::after {
+    content: '';
+    position: absolute;
+    top: -50%; right: -10%;
+    width: 50%; height: 200%;
+    background: radial-gradient(circle, rgba(249,115,22,0.20), transparent 60%);
+  }
+  .kpi-hero-left { z-index: 2; }
+  .kpi-hero-value {
+    font-family: var(--serif);
+    font-size: 44pt; line-height: 1;
+    font-weight: 600; letter-spacing: -0.02em;
+  }
+  .kpi-hero-value-sub { font-size: 16pt; opacity: 0.85; font-weight: 400; }
+  .kpi-hero-label {
+    font-size: 9pt; text-transform: uppercase;
+    letter-spacing: 0.16em; opacity: 0.85;
+    margin-top: 6px; font-weight: 500;
+  }
+  .kpi-hero-right {
+    text-align: right; z-index: 2;
+    font-size: 9pt; opacity: 0.9;
+    line-height: 1.6;
+  }
+  .kpi-hero-right strong { color: var(--white); font-size: 11pt; }
+
+  .kpi-row { display: flex; gap: 12px; margin: 14px 0 18px; }
+  .kpi {
+    flex: 1;
+    background: linear-gradient(135deg, var(--klassci-blue-deep) 0%, var(--klassci-blue) 70%, var(--klassci-blue-soft) 100%);
+    color: var(--white);
+    padding: 18px 16px;
+    border-radius: 14px;
+    box-shadow: 0 6px 18px rgba(4,83,203,0.18);
+    position: relative; overflow: hidden;
+  }
+  .kpi::after {
+    content: '';
+    position: absolute;
+    top: -30%; right: -30%;
+    width: 80%; height: 100%;
+    background: radial-gradient(circle, rgba(255,255,255,0.12), transparent 60%);
+  }
+  .kpi-value {
+    font-family: var(--serif);
+    font-size: 26pt; line-height: 1;
+    font-weight: 600; letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+  .kpi-label {
+    font-size: 8pt; text-transform: uppercase;
+    letter-spacing: 0.12em; opacity: 0.85;
+    font-weight: 500;
+  }
+  .kpi-sub { font-size: 8pt; opacity: 0.7; margin-top: 4px; }
+
+  /* === Tables === */
+  table {
+    width: 100%; border-collapse: collapse;
+    font-size: 9.5pt; margin: 8px 0 12px;
+  }
+  thead th {
+    background: var(--klassci-blue-tint);
+    color: var(--klassci-blue-deep);
+    font-weight: 600; text-align: left;
+    padding: 8px 10px;
+    border-bottom: 2px solid var(--klassci-blue);
+    text-transform: uppercase;
+    font-size: 8pt; letter-spacing: 0.08em;
+  }
+  thead th.num { text-align: right; }
+  tbody td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--neutral-200);
+    color: var(--neutral-700);
+  }
+  tbody td.num { text-align: right; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; white-space: nowrap; }
+  tbody td.neg { color: var(--danger); font-weight: 600; }
+  tbody td.pos { color: var(--success); font-weight: 600; }
+  tbody td strong { color: var(--ink); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr.total-row td {
+    background: var(--neutral-50); font-weight: 600;
+    color: var(--ink);
+    border-top: 2px solid var(--klassci-blue);
+  }
+  tbody tr.featured td {
+    background: linear-gradient(90deg, rgba(4,83,203,0.06), transparent);
+  }
+
+  /* === Cards tenant === */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 12px 0 14px; }
+  .tenant-card {
+    border: 1px solid var(--neutral-200);
+    border-radius: 12px;
+    padding: 16px 18px;
+    background: var(--white);
+    border-top: 4px solid var(--klassci-blue);
+  }
+  .tenant-card h3 {
+    font-family: var(--serif);
+    font-size: 14pt; color: var(--ink);
+    margin: 0 0 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .tenant-card .line {
+    display: flex; justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--neutral-100);
+    font-size: 9.5pt;
+  }
+  .tenant-card .line:last-child { border-bottom: none; }
+  .tenant-card .line .label { color: var(--neutral-500); }
+  .tenant-card .line .value { font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tenant-card .line.budget {
+    background: linear-gradient(90deg, rgba(249,115,22,0.10), transparent);
+    margin: 4px -8px; padding: 8px 8px;
+    border-radius: 6px; border-bottom: none;
+  }
+  .tenant-card .line.budget .label { color: #b45309; font-weight: 600; }
+  .tenant-card .line.budget .value { color: var(--adc-orange); font-size: 11pt; }
+  .tenant-card .line.real {
+    background: linear-gradient(90deg, rgba(4,83,203,0.08), transparent);
+    margin: 4px -8px; padding: 7px 8px;
+    border-radius: 6px; border-bottom: none;
+  }
+  .tenant-card .line.real .label { color: var(--klassci-blue-deep); }
+  .tenant-card .line.real .value { color: var(--klassci-blue); }
+
+  .badge {
+    display: inline-block;
+    font-size: 7pt; padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    font-weight: 600; letter-spacing: 0.06em;
+    background: var(--klassci-blue);
+    color: var(--white);
+  }
+  .badge-budget { background: var(--adc-orange); }
+
+  /* === Callouts === */
+  .callout {
+    border-left: 3px solid var(--klassci-blue);
+    background: var(--klassci-blue-tint);
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 12px 0;
+    font-size: 9.5pt;
+    color: var(--ink-2);
+  }
+  .callout-success {
+    border-left-color: var(--success);
+    background: rgba(16,185,129,0.06);
+  }
+  .callout-warn {
+    border-left-color: var(--warning);
+    background: rgba(245,158,11,0.06);
+  }
+  .callout-danger {
+    border-left-color: var(--danger);
+    background: rgba(220,38,38,0.06);
+  }
+  .callout strong { color: var(--ink); }
+
+  ul { margin: 8px 0 12px 16px; }
+  li {
+    margin: 5px 0;
+    font-size: 10pt;
+    color: var(--neutral-700);
+  }
+  li strong { color: var(--ink); }
+
+  .small { font-size: 8.5pt; color: var(--neutral-500); }
+  .mono { font-family: var(--mono); font-size: 9pt; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     PAGE 1 — COVER
+     ============================================================ -->
+<section class="page cover">
+  <div class="cover-glow"></div>
+  <div class="cover-glow-2"></div>
+  <div class="cover-inner">
+
+    <div class="cover-top">
+      <div class="cover-logos">
+        <img class="adc-logo" src="file:///C:/Users/yabla/Downloads/adc-assets/logo-horizontal-transparent.png" alt="ADC">
+        <span class="x">×</span>
+        <img class="klassci-logo" src="file:///C:/Users/yabla/Downloads/dev/klassci-landing/public/img/logo-klassci-full.png" alt="KLASSCI">
+      </div>
+      <div class="cover-meta">
+        <div class="confid">INTERNE ADC · NE PAS DIFFUSER</div><br>
+        <strong>Direction ADC uniquement</strong><br>
+        Version 1.0 · 23 mai 2026<br>
+        Référence : WAB-ADC-2026-05
+      </div>
+    </div>
+
+    <div class="cover-title">
+      <div class="kicker">Coût Meta &amp; investissement ADC</div>
+      <h1 class="cover-h1">Combien WhatsApp<br><em>coûte à ADC</em>.</h1>
+      <p class="lead">
+        Détail des coûts Meta réels, budget cible 50 000 FCFA par tenant Élite,
+        projection annuelle dépenses et arbitrages financiers.
+      </p>
+    </div>
+
+    <div class="cover-bottom">
+      <div>
+        Africandigit Consulting · Grand-Bassam, Côte d'Ivoire<br>
+        Document interne <strong>ADC</strong> · Service <strong>KLASSCI WhatsApp</strong>
+      </div>
+      <div>
+        <strong>Marcel Djedje-li</strong> · Head of Development
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================
+     PAGE 2 — SYNTHÈSE BUDGET
+     ============================================================ -->
+<section class="page">
+  <div class="confid-stamp">INTERNE ADC · CONFIDENTIEL</div>
+  <div class="page-head" style="margin-top: 18pt;">
+    <div class="brand-text">KLASSCI · WhatsApp Business — Vue ADC</div>
+    <div class="doc-ref">WAB-ADC-2026-05 · p. 02</div>
+  </div>
+
+  <div class="section-label">01 · Budget cible</div>
+
+  <h2>Budget Meta <em>par tenant Élite</em>.</h2>
+
+  <p class="intro">
+    Ce document détaille ce que coûte réellement à ADC l'offre WhatsApp
+    incluse dans les abonnements KLASSCI. Le module WhatsApp est positionné
+    comme investissement marketing : il ne génère pas de revenu direct sur
+    le quota inclus, mais renforce la valeur perçue et la rétention.
+  </p>
+
+  <div class="kpi-hero">
+    <div class="kpi-hero-left">
+      <div class="kpi-hero-value">50 000 <span class="kpi-hero-value-sub">FCFA</span></div>
+      <div class="kpi-hero-label">Budget Meta · par tenant Élite · par mois</div>
+    </div>
+    <div class="kpi-hero-right">
+      Pour offrir <strong>30 000 messages</strong><br>
+      de quota mensuel inclus<br>
+      <span class="small">≈ 83 USD chez Meta à 600 XOF/USD</span>
+    </div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-value">100k</div>
+      <div class="kpi-label">FCFA / mois — 2 pilotes</div>
+      <div class="kpi-sub">ESBTP-Abidjan + ESBTP-Yakro</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-value">300k</div>
+      <div class="kpi-label">FCFA / mois — 6 tenants</div>
+      <div class="kpi-sub">Projection rollout complet</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-value">3,6 M</div>
+      <div class="kpi-label">FCFA / an — 6 tenants</div>
+      <div class="kpi-sub">Dépense ADC annuelle cible</div>
+    </div>
+  </div>
+
+  <h3>Pourquoi cet investissement</h3>
+
+  <ul>
+    <li><strong>Différenciation produit.</strong> WhatsApp natif est un argument de vente décisif vs concurrents SMS classiques (Wacni, Zukulu) qui ne proposent que du push email/SMS.</li>
+    <li><strong>Rétention parents.</strong> Taux de lecture WhatsApp 80 % vs 25 % SMS = meilleure compliance paiements = meilleure réputation école = renouvellement abonnement.</li>
+    <li><strong>Pré-empte la demande.</strong> Plusieurs prospects ont demandé WhatsApp pendant les démos 2026 ; l'inclure d'office évite le « pourquoi pas WhatsApp ? » dans le funnel commercial.</li>
+    <li><strong>Compense extra-usage.</strong> Le mécanisme de packs sur dépassement permet de récupérer 50 % à 60 % du surcoût en cas de pic saisonnier (rentrée, bulletins, relances).</li>
+  </ul>
+
+  <div class="callout callout-warn">
+    <strong>Modèle économique assumé.</strong> Le module WhatsApp n'est pas
+    rentable en marge directe sur le quota inclus ; c'est un coût marketing
+    inclus dans l'enveloppe d'acquisition et de rétention KLASSCI. Le retour
+    sur investissement passe par la prime d'abonnement (Élite +20 % vs Pro)
+    et la durée de vie du tenant (LTV).
+  </div>
+
+  <div class="page-footer">ADC × KLASSCI · Budget interne 2026 · NE PAS DIFFUSER</div>
+  <div class="page-number">02</div>
+</section>
+
+<!-- ============================================================
+     PAGE 3 — HYPOTHÈSES META
+     ============================================================ -->
+<section class="page">
+  <div class="confid-stamp">INTERNE ADC · CONFIDENTIEL</div>
+  <div class="page-head" style="margin-top: 18pt;">
+    <div class="brand-text">KLASSCI · WhatsApp Business — Vue ADC</div>
+    <div class="doc-ref">WAB-ADC-2026-05 · p. 03</div>
+  </div>
+
+  <div class="section-label">02 · Hypothèses</div>
+
+  <h2>Hypothèses <em>de calibration</em> Meta.</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 38%">Paramètre</th>
+        <th class="num">Valeur retenue</th>
+        <th>Source / justification</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Taux de change USD → XOF</strong></td>
+        <td class="num"><span class="mono">600 XOF / USD</span></td>
+        <td>BCEAO mai 2026 (variations ±3 % observées)</td>
+      </tr>
+      <tr>
+        <td><strong>Coût Meta UTILITY hors-fenêtre 24 h</strong></td>
+        <td class="num"><span class="mono">0,0040 USD / msg</span></td>
+        <td>Tarif Meta « Rest of Africa » catégorie UTILITY</td>
+      </tr>
+      <tr>
+        <td><strong>Coût Meta SERVICE in-window 24 h</strong></td>
+        <td class="num"><span class="mono">Gratuit</span></td>
+        <td>Messages envoyés sous 24 h après contact entrant</td>
+      </tr>
+      <tr>
+        <td><strong>Coût Meta MARKETING</strong></td>
+        <td class="num"><span class="mono">0,0125 USD / msg</span></td>
+        <td>Non utilisé sur pilote, mention contractuelle</td>
+      </tr>
+      <tr>
+        <td><strong>Coût Meta Inbound</strong></td>
+        <td class="num"><span class="mono">Gratuit</span></td>
+        <td>Pas de facturation Meta sur messages entrants</td>
+      </tr>
+      <tr class="featured">
+        <td><strong>Ratio messages hors-fenêtre 24 h</strong></td>
+        <td class="num"><span class="mono">70 %</span></td>
+        <td>Hypothèse école : majorité notifications proactives</td>
+      </tr>
+      <tr>
+        <td><strong>Frais traitement interne / msg inbound</strong></td>
+        <td class="num"><span class="mono">~0,5 FCFA</span></td>
+        <td>Lookup base, routage, journalisation (estim. ADC)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Vérification — pourquoi 50 000 FCFA pour 30 000 messages</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Calcul</th>
+        <th class="num">Volume</th>
+        <th class="num">Tarif Meta</th>
+        <th class="num">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Outbound total quota Élite</td>
+        <td class="num">30 000 msgs</td>
+        <td class="num">—</td>
+        <td class="num">—</td>
+      </tr>
+      <tr>
+        <td>dont in-window 24 h (30 %)</td>
+        <td class="num">9 000 msgs</td>
+        <td class="num"><span class="mono">0 USD</span></td>
+        <td class="num"><span class="mono">0 USD</span></td>
+      </tr>
+      <tr>
+        <td>dont hors-fenêtre 24 h (70 %)</td>
+        <td class="num">21 000 msgs</td>
+        <td class="num"><span class="mono">0,0040 USD</span></td>
+        <td class="num"><span class="mono">84,00 USD</span></td>
+      </tr>
+      <tr class="total-row">
+        <td><strong>Coût Meta total / tenant Élite / mois</strong></td>
+        <td class="num">21 000 payants</td>
+        <td class="num">—</td>
+        <td class="num"><strong>50 400 FCFA</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>Calibration confirmée.</strong> Le budget cible 50 000 FCFA / mois /
+    tenant Élite s'aligne précisément sur le coût Meta réel pour offrir
+    30 000 messages outbound mensuels avec un ratio 70 % hors-fenêtre 24 h.
+    L'écart de 400 FCFA est une réserve absorbant les fluctuations USD/XOF.
+  </div>
+
+  <div class="page-footer">ADC × KLASSCI · Budget interne 2026 · NE PAS DIFFUSER</div>
+  <div class="page-number">03</div>
+</section>
+
+<!-- ============================================================
+     PAGE 4 — COÛT META PAR PLAN
+     ============================================================ -->
+<section class="page">
+  <div class="confid-stamp">INTERNE ADC · CONFIDENTIEL</div>
+  <div class="page-head" style="margin-top: 18pt;">
+    <div class="brand-text">KLASSCI · WhatsApp Business — Vue ADC</div>
+    <div class="doc-ref">WAB-ADC-2026-05 · p. 04</div>
+  </div>
+
+  <div class="section-label">03 · Coût par plan</div>
+
+  <h2>Coût Meta <em>par plan</em> d'abonnement.</h2>
+
+  <p>
+    Décomposition du coût ADC pour offrir le quota WhatsApp inclus à chaque
+    plan KLASSCI. Hypothèse uniforme 70 % messages hors-fenêtre payants.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Plan KLASSCI</th>
+        <th class="num">Quota inclus</th>
+        <th class="num">Msgs payants (70 %)</th>
+        <th class="num">Coût Meta USD</th>
+        <th class="num">Coût Meta FCFA</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Essentiel</strong><br><span class="small">≤ 600 élèves</span></td>
+        <td class="num">5 000 msgs</td>
+        <td class="num">3 500</td>
+        <td class="num"><span class="mono">14,00 USD</span></td>
+        <td class="num"><strong>8 400 FCFA</strong></td>
+      </tr>
+      <tr>
+        <td><strong>Pro</strong><br><span class="small">≤ 1 800 élèves</span></td>
+        <td class="num">15 000 msgs</td>
+        <td class="num">10 500</td>
+        <td class="num"><span class="mono">42,00 USD</span></td>
+        <td class="num"><strong>25 200 FCFA</strong></td>
+      </tr>
+      <tr class="featured">
+        <td><strong>Élite</strong><br><span class="small">≤ 3 500 élèves</span></td>
+        <td class="num">30 000 msgs</td>
+        <td class="num">21 000</td>
+        <td class="num"><span class="mono">84,00 USD</span></td>
+        <td class="num"><strong>50 400 FCFA</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Détail par tenant pilote ESBTP</h3>
+
+  <div class="two-col">
+
+    <div class="tenant-card">
+      <h3>ESBTP-Abidjan <span class="badge">Élite</span></h3>
+      <div class="line"><span class="label">Étudiants actifs</span><span class="value">2 507</span></div>
+      <div class="line"><span class="label">Volume outbound estimé</span><span class="value">20 056 msgs</span></div>
+      <div class="line"><span class="label">Hors-fenêtre (70 %)</span><span class="value">14 039 msgs</span></div>
+      <div class="line"><span class="label">Coût Meta USD</span><span class="value">56,16 USD</span></div>
+      <div class="line real"><span class="label">Coût Meta réel ADC</span><span class="value">33 696 FCFA</span></div>
+      <div class="line budget"><span class="label">Budget alloué ADC</span><span class="value">50 000 FCFA</span></div>
+      <div class="line"><span class="label">Économie vs budget</span><span class="value">+16 304 FCFA</span></div>
+      <div class="line"><span class="label">Taux d'occupation quota</span><span class="value">67 %</span></div>
+    </div>
+
+    <div class="tenant-card">
+      <h3>ESBTP-Yakro <span class="badge">Élite</span></h3>
+      <div class="line"><span class="label">Étudiants actifs (estim.)</span><span class="value">2 000</span></div>
+      <div class="line"><span class="label">Volume outbound estimé</span><span class="value">16 000 msgs</span></div>
+      <div class="line"><span class="label">Hors-fenêtre (70 %)</span><span class="value">11 200 msgs</span></div>
+      <div class="line"><span class="label">Coût Meta USD</span><span class="value">44,80 USD</span></div>
+      <div class="line real"><span class="label">Coût Meta réel ADC</span><span class="value">26 880 FCFA</span></div>
+      <div class="line budget"><span class="label">Budget alloué ADC</span><span class="value">50 000 FCFA</span></div>
+      <div class="line"><span class="label">Économie vs budget</span><span class="value">+23 120 FCFA</span></div>
+      <div class="line"><span class="label">Taux d'occupation quota</span><span class="value">53 %</span></div>
+    </div>
+
+  </div>
+
+  <div class="callout callout-success">
+    <strong>Sous-utilisation favorable.</strong> Les deux pilotes consomment
+    actuellement entre 53 % et 67 % de leur quota Élite, soit un coût Meta réel
+    inférieur au budget alloué. Cette réserve absorbe naturellement les pics
+    saisonniers (rentrée septembre, bulletins juin) sans dépasser l'enveloppe
+    budgétaire ADC.
+  </div>
+
+  <div class="page-footer">ADC × KLASSCI · Budget interne 2026 · NE PAS DIFFUSER</div>
+  <div class="page-number">04</div>
+</section>
+
+<!-- ============================================================
+     PAGE 5 — PROJECTION ANNUELLE 6 TENANTS
+     ============================================================ -->
+<section class="page">
+  <div class="confid-stamp">INTERNE ADC · CONFIDENTIEL</div>
+  <div class="page-head" style="margin-top: 18pt;">
+    <div class="brand-text">KLASSCI · WhatsApp Business — Vue ADC</div>
+    <div class="doc-ref">WAB-ADC-2026-05 · p. 05</div>
+  </div>
+
+  <div class="section-label">04 · Projection</div>
+
+  <h2>Projection annuelle <em>6 tenants</em>.</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Indicateur</th>
+        <th class="num">2 pilotes (mensuel)</th>
+        <th class="num">6 tenants (mensuel)</th>
+        <th class="num">6 tenants (annuel)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Étudiants couverts</td>
+        <td class="num">4 507</td>
+        <td class="num">~13 500</td>
+        <td class="num">—</td>
+      </tr>
+      <tr>
+        <td>Volume outbound estimé</td>
+        <td class="num">36 056 msgs</td>
+        <td class="num">~108 000 msgs</td>
+        <td class="num">~1 296 000 msgs</td>
+      </tr>
+      <tr>
+        <td>Coût Meta réel ADC</td>
+        <td class="num">60 576 FCFA</td>
+        <td class="num">~181 000 FCFA</td>
+        <td class="num">~2 174 000 FCFA</td>
+      </tr>
+      <tr class="featured">
+        <td><strong>Budget alloué ADC</strong></td>
+        <td class="num"><strong>100 000 FCFA</strong></td>
+        <td class="num"><strong>300 000 FCFA</strong></td>
+        <td class="num"><strong>3 600 000 FCFA</strong></td>
+      </tr>
+      <tr>
+        <td>Marge budgétaire (sous-utilisation)</td>
+        <td class="num pos">+39 424 FCFA</td>
+        <td class="num pos">+119 000 FCFA</td>
+        <td class="num pos">+1 426 000 FCFA</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Recettes extra-usage estimées (revenus complémentaires)</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Hypothèse</th>
+        <th class="num">Tenants concernés</th>
+        <th class="num">Pic / an</th>
+        <th class="num">Recette extra</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Pics rentrée septembre</td>
+        <td class="num">6 / 6</td>
+        <td class="num">1 mois</td>
+        <td class="num">~240 000 FCFA</td>
+      </tr>
+      <tr>
+        <td>Pics fin de trimestre (bulletins)</td>
+        <td class="num">6 / 6</td>
+        <td class="num">3 mois</td>
+        <td class="num">~360 000 FCFA</td>
+      </tr>
+      <tr>
+        <td>Pics relances paiement (mai-juin)</td>
+        <td class="num">4 / 6</td>
+        <td class="num">2 mois</td>
+        <td class="num">~120 000 FCFA</td>
+      </tr>
+      <tr class="total-row">
+        <td><strong>Recettes extra-usage annuelles estimées</strong></td>
+        <td class="num">—</td>
+        <td class="num">—</td>
+        <td class="num"><strong>~720 000 FCFA</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>P&amp;L net ADC sur module WhatsApp</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Ligne</th>
+        <th class="num">Annuel 6 tenants</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Recettes extra-usage</td>
+        <td class="num pos">+720 000 FCFA</td>
+      </tr>
+      <tr>
+        <td>Coût Meta réel (sous-utilisation)</td>
+        <td class="num neg">−2 174 000 FCFA</td>
+      </tr>
+      <tr>
+        <td>Coût Meta sur extra-usage</td>
+        <td class="num neg">−288 000 FCFA</td>
+      </tr>
+      <tr class="total-row">
+        <td><strong>P&amp;L net ADC</strong></td>
+        <td class="num neg">−1 742 000 FCFA / an</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-warn">
+    <strong>Investissement marketing assumé.</strong> Le déficit ~1,7 M FCFA est
+    le coût d'acquisition / rétention couvert par la prime Élite (+20 % vs Pro)
+    amortie sur 12 à 18 mois par tenant.
+  </div>
+
+  <div class="page-footer">ADC × KLASSCI · Budget interne 2026 · NE PAS DIFFUSER</div>
+  <div class="page-number">05</div>
+</section>
+
+<!-- ============================================================
+     PAGE 6 — ARBITRAGES + LEVIERS
+     ============================================================ -->
+<section class="page">
+  <div class="confid-stamp">INTERNE ADC · CONFIDENTIEL</div>
+  <div class="page-head" style="margin-top: 18pt;">
+    <div class="brand-text">KLASSCI · WhatsApp Business — Vue ADC</div>
+    <div class="doc-ref">WAB-ADC-2026-05 · p. 06</div>
+  </div>
+
+  <div class="section-label">05 · Arbitrages</div>
+
+  <h2>Leviers <em>de réduction</em> du coût ADC.</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Levier</th>
+        <th>Mécanisme</th>
+        <th class="num">Économie potentielle / an</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Optimiser le ratio in-window</strong></td>
+        <td class="small">Solliciter les parents pour qu'ils répondent (sondages, FAQ) → ouvre la fenêtre 24 h gratuite. Cible : passer de 30 % à 50 % de messages in-window.</td>
+        <td class="num pos">~720 000 FCFA</td>
+      </tr>
+      <tr>
+        <td><strong>Templates UTILITY optimisés</strong></td>
+        <td class="small">Regrouper plusieurs notifications dans 1 message (paiement+absence dans le bulletin hebdo). Cible : −20 % de volume outbound.</td>
+        <td class="num pos">~430 000 FCFA</td>
+      </tr>
+      <tr>
+        <td><strong>Pic Wave / Mobile Money intégré</strong></td>
+        <td class="small">Lien Wave checkout dans 1 message au lieu de 3 (annonce + lien + rappel). Cible : −10 % volume.</td>
+        <td class="num pos">~217 000 FCFA</td>
+      </tr>
+      <tr>
+        <td><strong>Renégociation tarif Meta volume</strong></td>
+        <td class="small">À 6 tenants : 1,3M msgs/an justifie une demande de tarif négocié Meta « Premium » (−15 % outbound). À étudier après pilote.</td>
+        <td class="num pos">~326 000 FCFA</td>
+      </tr>
+      <tr class="total-row">
+        <td><strong>Total leviers cumulables</strong></td>
+        <td class="small">Si tous appliqués : passage de P&amp;L −1,7M à ~0 FCFA</td>
+        <td class="num pos"><strong>~1 693 000 FCFA</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Cas extrêmes à surveiller</h3>
+
+  <ul>
+    <li><strong>Tenant Élite 4 500 élèves</strong> : 36 000 outbound, +6 000 hors quota, recette 23 000 FCFA, marge nette ~18 000 FCFA / mois.</li>
+    <li><strong>Tenant intensif</strong> 60 000 outbound/mois : Pack XL + Pack L = 102 000 FCFA recette, marge nette ~51 600 FCFA / mois.</li>
+    <li><strong>Messages MARKETING</strong> (0,0125 USD) : exclus du quota, pack dédié 8 FCFA/msg si activé.</li>
+  </ul>
+
+  <div class="callout callout-danger">
+    <strong>Risque.</strong> Si tenants restent sous quota sans pic, P&amp;L négatif. Décision 6 mois : confirmer, réduire quota Élite à 20 000 (économie ~600k/an), ou facturer séparément.
+  </div>
+
+  <div class="callout callout-success">
+    <strong>Recommandation Marcel.</strong> Valider pilote ESBTP avec budget 100 000 FCFA / mois. Mesurer 3 mois (quota, in-window, extra). Rollout 6 tenants conditionné à P&amp;L &gt; −2 M FCFA/an.
+  </div>
+
+  <div class="page-footer">ADC × KLASSCI · Budget interne 2026 · NE PAS DIFFUSER</div>
+  <div class="page-number">06</div>
+</section>
+
+</body>
+</html>

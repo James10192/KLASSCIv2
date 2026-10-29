@@ -1,0 +1,479 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Mise en place des migrations et modèles de données",
+        "description": "Créer les nouvelles tables et étendre les tables existantes selon les spécifications du PRD pour supporter les fonctionnalités avancées de comptabilité.",
+        "details": "Créer les migrations Laravel pour:\n1. Nouvelles tables:\n   - `esbtp_types_frais` (nom, periodicite, conditions_json, montant_fixe, est_obligatoire)\n   - `esbtp_relances` (etudiant_id, niveau, type, template_id, statut, response_data_json)\n   - `esbtp_kpis` (nom, valeur, periode, date_calcul, metadata_json)\n   - `esbtp_workflow_steps` (bon_id, etape, statut, user_id, commentaires, timestamp)\n\n2. Extensions des tables existantes:\n   - `esbtp_depenses`: ajouter numero_bon (UNIQUE), statut_workflow, workflow_data_json, approved_by, date_approbation\n   - `esbtp_paiements`: ajouter reference_externe, metadata_json, relance_id, canal_paiement\n   - `esbtp_configurations`: ajouter seuils_alertes_json, templates_relances_json, config_workflow_json\n\n3. Créer ou étendre les modèles Eloquent correspondants avec:\n   - Relations appropriées (belongsTo, hasMany, etc.)\n   - Mutators/Accessors pour les champs JSON\n   - Scopes pour les requêtes fréquentes\n   - Règles de validation\n\n4. Créer des seeders pour les données de test initiales",
+        "testStrategy": "1. Tests unitaires pour valider les relations entre modèles\n2. Tests de migration pour vérifier la création correcte des tables\n3. Tests de rollback pour vérifier la réversibilité des migrations\n4. Tests d'intégrité pour valider les contraintes (clés étrangères, unicité)\n5. Vérifier que les seeders fonctionnent correctement",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Développement des services de base",
+        "description": "Créer les services principaux qui encapsuleront la logique métier du module comptabilité étendu.",
+        "details": "Implémenter les services suivants dans le répertoire `app/Services/`:\n\n1. `ComptabiliteService.php`:\n   - Méthodes de calcul des KPIs financiers (recettes, dépenses, taux recouvrement)\n   - Logique de projection financière\n   - Méthodes d'agrégation pour les tableaux de bord\n\n2. `NotificationService.php`:\n   - Gestion des templates de notification (email, SMS)\n   - Logique d'envoi multi-canal\n   - Suivi des statuts d'envoi\n\n3. `PDFService.php`:\n   - Génération de documents PDF (reçus, bons de sortie, rapports)\n   - Gestion des templates PDF personnalisables\n   - Intégration QR codes pour traçabilité\n\n4. `ReportingService.php`:\n   - Génération de rapports personnalisés\n   - Exports multi-formats (PDF, Excel, CSV)\n   - Logique de programmation des rapports\n\n5. `WorkflowService.php`:\n   - Gestion des étapes d'approbation\n   - Transitions d'état pour les bons de sortie\n   - Historique des actions\n\nUtiliser l'injection de dépendances Laravel pour faciliter les tests et la maintenance.",
+        "testStrategy": "1. Tests unitaires pour chaque méthode de service avec PHPUnit\n2. Tests d'intégration pour vérifier l'interaction entre services\n3. Mocks pour simuler les dépendances externes (email, SMS)\n4. Tests de cas limites et d'exceptions\n5. Benchmarks pour les méthodes critiques en performance",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Implémentation du dashboard financier temps réel",
+        "description": "Développer le dashboard interactif avec KPIs financiers dynamiques et graphiques pour visualiser les données comptables en temps réel.",
+        "details": "1. Créer un contrôleur `DashboardComptabiliteController.php` avec:\n   - Méthode `index()` pour afficher le dashboard principal\n   - Méthode `getKPIs()` pour récupérer les données en AJAX\n   - Méthode `getChartData()` pour alimenter les graphiques\n\n2. Développer les vues Blade:\n   - `dashboard/index.blade.php` - Layout principal\n   - Composants réutilisables:\n     - `components/kpi-card.blade.php`\n     - `components/chart-container.blade.php`\n\n3. Intégrer Chart.js pour les visualisations:\n   - Graphique d'évolution mensuelle des recettes/dépenses\n   - Graphique de répartition par filière\n   - Graphique de taux de recouvrement\n\n4. Implémenter l'actualisation en temps réel:\n   - AJAX polling toutes les 30 secondes\n   - Mise à jour des KPIs sans rechargement de page\n\n5. Ajouter le système d'alertes:\n   - Notifications visuelles pour seuils critiques\n   - Indicateurs colorés (vert/orange/rouge) selon performance\n\nUtiliser Bootstrap 5 pour le responsive design et assurer la compatibilité avec le thème NextAdmin existant.",
+        "testStrategy": "1. Tests fonctionnels pour vérifier le rendu du dashboard\n2. Tests JavaScript pour valider l'actualisation AJAX\n3. Tests de performance pour mesurer le temps de chargement\n4. Tests d'intégration avec les services de données\n5. Tests cross-browser pour assurer la compatibilité\n6. Tests d'accessibilité pour conformité WCAG",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Système de relances automatisées multi-canal",
+        "description": "Développer le système de relances automatiques pour les paiements en retard avec support multi-canal (Email/SMS/Courrier) et workflows de relance à plusieurs niveaux.",
+        "details": "1. Créer un contrôleur `RelancesController.php` avec:\n   - CRUD complet pour les relances\n   - Interface de configuration des templates\n   - Tableau de bord de suivi des campagnes\n\n2. Implémenter les Jobs Laravel:\n   - `EnvoyerRelanceJob.php` pour traitement asynchrone\n   - `PlanifierRelancesJob.php` pour l'automatisation\n\n3. Développer les templates de relance:\n   - Templates email HTML responsive\n   - Templates SMS avec variables dynamiques\n   - Templates PDF pour courriers\n\n4. Créer la logique de segmentation:\n   ```php\n   // Exemple de segmentation par niveau de retard\n   public function segmenterEtudiants() {\n       $niveau1 = Etudiant::with('paiements')\n           ->whereHas('paiements', function($q) {\n               $q->where('date_echeance', '<', now()->subDays(15));\n               $q->where('date_echeance', '>', now()->subDays(30));\n           })->get();\n       \n       $niveau2 = Etudiant::with('paiements')\n           ->whereHas('paiements', function($q) {\n               $q->where('date_echeance', '<', now()->subDays(30));\n               $q->where('date_echeance', '>', now()->subDays(60));\n           })->get();\n       \n       // etc.\n   }\n   ```\n\n5. Intégrer avec services externes:\n   - Configuration SendGrid/Mailjet pour emails\n   - Configuration Nexmo/Twilio pour SMS\n\n6. Développer le tableau de bord de suivi:\n   - Taux d'ouverture/clic des emails\n   - Taux de réponse SMS\n   - Efficacité des campagnes",
+        "testStrategy": "1. Tests unitaires pour la logique de segmentation\n2. Tests d'intégration avec les services d'envoi\n3. Tests de file d'attente pour les jobs asynchrones\n4. Tests de templates avec différentes variables\n5. Tests de bout en bout pour le workflow complet\n6. Mocks pour simuler les réponses des services externes",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          2
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Workflow de bons de sortie numérisés",
+        "description": "Développer le système de bons de sortie numérisés avec workflow d'approbation multi-niveaux, prévisualisation en temps réel et génération PDF automatique.",
+        "details": "1. Créer un contrôleur `BonsSortieController.php` avec:\n   - Création/édition de bons\n   - Prévisualisation temps réel\n   - Soumission pour approbation\n   - Suivi du workflow\n\n2. Implémenter le workflow d'approbation:\n   ```php\n   // Exemple de machine à états pour le workflow\n   class WorkflowBonSortie {\n       const STATUT_BROUILLON = 'brouillon';\n       const STATUT_SOUMIS = 'soumis';\n       const STATUT_VALIDE_N1 = 'valide_niveau1';\n       const STATUT_VALIDE_FINAL = 'valide_final';\n       const STATUT_REJETE = 'rejete';\n       \n       public function peutTransitionner($bonId, $statutActuel, $nouveauStatut, $userId) {\n           // Logique de vérification des permissions\n       }\n       \n       public function transitionner($bonId, $nouveauStatut, $userId, $commentaire = null) {\n           // Logique de transition avec historique\n       }\n   }\n   ```\n\n3. Développer l'interface JavaScript pour la prévisualisation:\n   - Mise à jour en temps réel du PDF\n   - Validation côté client des champs\n   - Interface drag-and-drop pour signatures\n\n4. Intégrer la génération PDF:\n   - Template dynamique avec DomPDF\n   - Intégration QR code pour vérification\n   - Numérotation automatique des bons\n\n5. Créer le système de notifications:\n   - Alertes pour approbateurs\n   - Notifications de changement de statut\n   - Rappels automatiques",
+        "testStrategy": "1. Tests unitaires pour la machine à états du workflow\n2. Tests d'intégration pour les transitions de statut\n3. Tests JavaScript pour la prévisualisation\n4. Tests de génération PDF avec différents contenus\n5. Tests de permissions pour différents rôles utilisateurs\n6. Tests de bout en bout pour le workflow complet",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2,
+          3
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Système de reporting et analytics avancés",
+        "description": "Développer le générateur de rapports personnalisables avec interface drag-and-drop, exports multi-formats et analyses prédictives basées sur l'historique.",
+        "details": "1. Créer un contrôleur `ReportingController.php` avec:\n   - Interface de construction de rapports\n   - Prévisualisation des rapports\n   - Gestion des rapports sauvegardés\n   - Programmation d'envois automatiques\n\n2. Développer l'interface de construction:\n   - Composants drag-and-drop pour les champs\n   - Filtres dynamiques\n   - Options de groupement et agrégation\n   - Prévisualisation instantanée\n\n3. Implémenter les exports multi-formats:\n   ```php\n   // Exemple de factory pour les exports\n   class ExportFactory {\n       public function createExporter($format, $data, $options = []) {\n           switch($format) {\n               case 'pdf':\n                   return new PDFExporter($data, $options);\n               case 'excel':\n                   return new ExcelExporter($data, $options);\n               case 'csv':\n                   return new CSVExporter($data, $options);\n               default:\n                   throw new InvalidArgumentException(\"Format non supporté\");\n           }\n       }\n   }\n   ```\n\n4. Développer les analyses prédictives:\n   - Projections de cash-flow basées sur l'historique\n   - Détection d'anomalies dans les paiements\n   - Tendances par filière et période\n\n5. Créer le système de rapports programmés:\n   - Interface de planification (quotidien, hebdomadaire, mensuel)\n   - Gestion des destinataires\n   - Historique des envois",
+        "testStrategy": "1. Tests unitaires pour les différents exporters\n2. Tests d'intégration pour la génération de rapports\n3. Tests de performance avec grands volumes de données\n4. Tests JavaScript pour l'interface drag-and-drop\n5. Tests de planification des rapports automatiques\n6. Validation des formats d'export (PDF, Excel, CSV)",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          2,
+          3
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Implémentation des jobs et queues asynchrones",
+        "description": "Développer les jobs Laravel pour les traitements lourds en arrière-plan comme les relances, calculs de KPIs, génération de rapports et sauvegardes.",
+        "details": "1. Configurer Laravel Horizon avec Redis:\n   - Installation des dépendances\n   - Configuration des files d'attente prioritaires\n   - Dashboard de monitoring\n\n2. Implémenter les jobs principaux:\n   ```php\n   // Exemple de job pour calcul KPIs\n   class CalculerKPIsJob implements ShouldQueue {\n       use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;\n       \n       protected $periode;\n       \n       public function __construct($periode = 'journalier') {\n           $this->periode = $periode;\n       }\n       \n       public function handle(ComptabiliteService $comptabiliteService) {\n           $kpis = $comptabiliteService->calculerKPIs($this->periode);\n           \n           // Sauvegarder les KPIs calculés\n           foreach($kpis as $nom => $valeur) {\n               KPI::create([\n                   'nom' => $nom,\n                   'valeur' => $valeur,\n                   'periode' => $this->periode,\n                   'date_calcul' => now()\n               ]);\n           }\n           \n           // Déclencher événement pour mise à jour dashboard\n           event(new KPIsCalcules($kpis));\n       }\n   }\n   ```\n\n3. Développer les autres jobs essentiels:\n   - `EnvoyerRelanceJob.php`\n   - `GenererRapportJob.php`\n   - `SauvegardeDataJob.php`\n\n4. Configurer les tâches planifiées:\n   ```php\n   // Dans App\\Console\\Kernel.php\n   protected function schedule(Schedule $schedule) {\n       $schedule->job(new CalculerKPIsJob('journalier'))->dailyAt('23:00');\n       $schedule->job(new CalculerKPIsJob('hebdomadaire'))->weekly()->mondays()->at('01:00');\n       $schedule->job(new CalculerKPIsJob('mensuel'))->monthlyOn(1, '02:00');\n       \n       $schedule->job(new SauvegardeDataJob())->dailyAt('03:00');\n       \n       // Vérifier les paiements en retard et planifier les relances\n       $schedule->job(new PlanifierRelancesJob())->dailyAt('08:00');\n   }\n   ```\n\n5. Implémenter la gestion des échecs et retries:\n   - Logging des erreurs\n   - Politique de retry\n   - Notifications d'échec critique",
+        "testStrategy": "1. Tests unitaires pour chaque job\n2. Tests d'intégration avec Redis\n3. Tests de performance sous charge\n4. Tests de récupération après échec\n5. Tests de planification avec Clock mock\n6. Monitoring des files d'attente en environnement de test",
+        "priority": "high",
+        "dependencies": [
+          2,
+          4,
+          6
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Système d'événements et notifications temps réel",
+        "description": "Implémenter le système d'événements Laravel pour les notifications temps réel et la mise à jour du dashboard lors d'actions importantes.",
+        "details": "1. Créer les événements principaux:\n   ```php\n   // Exemple d'événement pour paiement reçu\n   class PaiementRecu implements ShouldBroadcast {\n       use Dispatchable, InteractsWithSockets, SerializesModels;\n       \n       public $paiement;\n       \n       public function __construct(Paiement $paiement) {\n           $this->paiement = $paiement;\n       }\n       \n       public function broadcastOn() {\n           return new PrivateChannel('comptabilite');\n       }\n       \n       public function broadcastWith() {\n           return [\n               'id' => $this->paiement->id,\n               'montant' => $this->paiement->montant,\n               'etudiant' => $this->paiement->etudiant->nom_complet,\n               'timestamp' => now()->toIso8601String()\n           ];\n       }\n   }\n   ```\n\n2. Implémenter les autres événements clés:\n   - `BonApprouve.php`\n   - `SeuilAtteint.php`\n   - `RelanceEnvoyee.php`\n   - `KPIsCalcules.php`\n\n3. Développer les listeners correspondants:\n   - Mise à jour des KPIs\n   - Envoi de notifications\n   - Déclenchement d'actions automatiques\n\n4. Configurer le broadcasting (optionnel):\n   - Configuration Pusher ou Redis pour WebSockets\n   - Canaux privés pour sécurité\n\n5. Implémenter les notifications Laravel:\n   ```php\n   class PaiementNotification extends Notification {\n       use Queueable;\n       \n       protected $paiement;\n       \n       public function __construct(Paiement $paiement) {\n           $this->paiement = $paiement;\n       }\n       \n       public function via($notifiable) {\n           return ['mail', 'database'];\n       }\n       \n       public function toMail($notifiable) {\n           return (new MailMessage)\n               ->subject('Nouveau paiement reçu')\n               ->line('Un paiement de ' . $this->paiement->montant . ' a été reçu.')\n               ->action('Voir détails', url('/esbtp/comptabilite/paiements/' . $this->paiement->id))\n               ->line('Merci d\\'utiliser notre application!');\n       }\n       \n       public function toDatabase($notifiable) {\n           return [\n               'paiement_id' => $this->paiement->id,\n               'montant' => $this->paiement->montant,\n               'etudiant' => $this->paiement->etudiant->nom_complet\n           ];\n       }\n   }\n   ```",
+        "testStrategy": "1. Tests unitaires pour chaque événement et listener\n2. Tests d'intégration pour vérifier le déclenchement correct\n3. Tests de broadcasting avec mock de Pusher\n4. Tests de notifications avec mail fake\n5. Tests de performance pour évaluer l'impact des événements\n6. Tests de bout en bout pour les workflows complets",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          3,
+          5
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Optimisation des performances et mise en cache",
+        "description": "Implémenter une stratégie de cache Redis pour optimiser les performances du dashboard, des rapports et des calculs fréquents.",
+        "details": "1. Configurer Redis pour Laravel:\n   - Installation et configuration\n   - Définition des stores de cache\n\n2. Implémenter le cache pour les KPIs:\n   ```php\n   // Exemple de méthode avec cache dans ComptabiliteService\n   public function getKPIsDashboard() {\n       return Cache::remember('kpis_dashboard', now()->addMinutes(15), function () {\n           return [\n               'total_recettes' => $this->calculerTotalRecettes(),\n               'total_depenses' => $this->calculerTotalDepenses(),\n               'taux_recouvrement' => $this->calculerTauxRecouvrement(),\n               'projections_mois' => $this->calculerProjectionsMois()\n           ];\n       });\n   }\n   ```\n\n3. Développer l'invalidation intelligente du cache:\n   - Tags pour grouper les caches liés\n   - Invalidation sélective lors des mises à jour\n\n4. Optimiser les requêtes database:\n   - Eager loading des relations\n   - Index composites sur les colonnes de filtrage fréquent\n   - Query caching pour requêtes lourdes\n\n5. Implémenter le lazy loading des assets frontend:\n   - Chargement différé des graphiques\n   - Pagination côté client pour grandes listes\n\n6. Mettre en place le monitoring de performance:\n   - Logging des temps de réponse\n   - Alertes pour requêtes lentes\n   - Dashboard de métriques",
+        "testStrategy": "1. Tests de benchmark avant/après optimisation\n2. Tests de charge avec simulation d'utilisateurs multiples\n3. Tests d'invalidation de cache\n4. Profiling des requêtes SQL\n5. Tests de performance frontend (Lighthouse)\n6. Monitoring en environnement de test avec données volumineuses",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          6,
+          7
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Sécurité et audit trail",
+        "description": "Implémenter les fonctionnalités de sécurité avancées et l'audit trail complet pour toutes les actions sensibles du module comptabilité.",
+        "details": "1. Étendre le système de permissions Spatie:\n   - Définir les permissions granulaires pour le module comptabilité\n   - Configurer les rôles (Comptable, Directeur Financier, etc.)\n   - Middleware pour protection des routes\n\n2. Implémenter l'audit trail avec Laravel Auditing:\n   - Installation et configuration du package\n   - Définir les modèles auditables\n   ```php\n   // Exemple de modèle auditable\n   class Paiement extends Model implements Auditable {\n       use \\OwenIt\\Auditing\\Auditable;\n       \n       protected $auditInclude = [\n           'montant', 'date_paiement', 'mode_paiement', 'statut'\n       ];\n       \n       protected $auditTimestamps = true;\n   }\n   ```\n\n3. Développer l'interface d'audit:\n   - Historique des modifications\n   - Filtres par utilisateur, action, date\n   - Export des logs d'audit\n\n4. Implémenter le chiffrement des données sensibles:\n   - Utilisation des cast encrypted de Laravel\n   - Protection des montants et coordonnées bancaires\n\n5. Configurer la protection contre les attaques:\n   - CSRF protection\n   - Rate limiting sur les API\n   - Validation stricte des entrées\n\n6. Mettre en place les backups sécurisés:\n   - Sauvegarde chiffrée des données\n   - Rotation des backups\n   - Vérification d'intégrité",
+        "testStrategy": "1. Tests de pénétration basiques\n2. Tests des permissions pour différents rôles\n3. Vérification de l'audit trail pour toutes les actions\n4. Tests de chiffrement/déchiffrement\n5. Tests de rate limiting\n6. Validation de la restauration des backups",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Intégration des analytics prédictifs",
+        "description": "Développer les fonctionnalités d'analytics prédictifs pour les projections de cash-flow, la détection d'anomalies et les recommandations basées sur l'historique.",
+        "details": "1. Implémenter les algorithmes de projection:\n   ```php\n   // Exemple de méthode de projection dans ComptabiliteService\n   public function projeterCashFlow($mois = 3) {\n       // Récupérer l'historique des 12 derniers mois\n       $historique = Paiement::selectRaw('YEAR(date_paiement) as annee, MONTH(date_paiement) as mois, SUM(montant) as total')\n           ->where('date_paiement', '>=', now()->subMonths(12))\n           ->groupBy('annee', 'mois')\n           ->orderBy('annee')\n           ->orderBy('mois')\n           ->get()\n           ->toArray();\n       \n       // Calculer les tendances saisonnières\n       $tendances = $this->calculerTendancesSaisonnieres($historique);\n       \n       // Projeter pour les prochains mois\n       $projections = [];\n       $dateActuelle = now();\n       \n       for ($i = 1; $i <= $mois; $i++) {\n           $dateFuture = $dateActuelle->copy()->addMonths($i);\n           $moisFutur = $dateFuture->month;\n           \n           // Appliquer tendance saisonnière + croissance moyenne\n           $projection = $tendances[$moisFutur] * (1 + $this->tauxCroissanceMoyen());\n           \n           $projections[] = [\n               'date' => $dateFuture->format('Y-m'),\n               'montant_projete' => round($projection, 2),\n               'intervalle_confiance' => $this->calculerIntervalleConfiance($projection)\n           ];\n       }\n       \n       return $projections;\n   }\n   ```\n\n2. Développer la détection d'anomalies:\n   - Algorithme de détection des valeurs aberrantes\n   - Alertes automatiques pour écarts significatifs\n   - Tableau de bord des anomalies\n\n3. Implémenter les recommandations:\n   - Suggestions d'optimisation basées sur l'historique\n   - Identification des périodes critiques\n   - Recommandations de relance ciblées\n\n4. Créer les visualisations avancées:\n   - Graphiques de projection avec intervalles de confiance\n   - Heatmaps de performance par période/filière\n   - Indicateurs de tendance\n\n5. Développer le benchmarking:\n   - Comparaisons inter-périodes\n   - Suivi des objectifs vs réalité\n   - Analyse des écarts",
+        "testStrategy": "1. Tests unitaires des algorithmes de projection\n2. Validation avec données historiques connues\n3. Tests de précision des projections\n4. Tests de détection d'anomalies avec cas simulés\n5. Évaluation des recommandations par experts métier\n6. Tests de performance avec grands volumes de données",
+        "priority": "low",
+        "dependencies": [
+          3,
+          6,
+          9
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Documentation et formation utilisateurs",
+        "description": "Créer la documentation complète du système et les supports de formation pour les différents profils d'utilisateurs.",
+        "details": "1. Développer la documentation technique:\n   - Architecture du système\n   - Diagrammes de classes et de séquence\n   - Guide d'installation et configuration\n   - Documentation API pour intégrations futures\n\n2. Créer les guides utilisateurs:\n   - Guide administrateur (4h formation)\n   - Guide comptable (2h formation)\n   - Guide utilisateur standard (1h présentation)\n   - FAQ illustrée\n\n3. Produire les supports de formation:\n   - Présentations PowerPoint\n   - Vidéos tutoriels pour fonctionnalités clés\n   - Exercices pratiques guidés\n\n4. Développer l'aide contextuelle dans l'application:\n   - Tooltips pour fonctionnalités complexes\n   - Guides interactifs pour nouveaux utilisateurs\n   - Base de connaissances intégrée\n\n5. Mettre en place le système de support:\n   - Procédure de remontée des problèmes\n   - Documentation des cas d'usage courants\n   - Procédures de dépannage\n\n6. Créer le plan de déploiement et migration:\n   - Checklist de déploiement\n   - Procédure de migration des données\n   - Plan de rollback en cas de problème",
+        "testStrategy": "1. Revue par pairs de la documentation\n2. Tests utilisateurs avec différents profils\n3. Validation des guides par experts métier\n4. Tests d'accessibilité de la documentation\n5. Évaluation de la clarté par échantillon d'utilisateurs\n6. Simulation de déploiement suivant la documentation",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Modernisation Design Dashboard 2025",
+        "description": "Appliquer tendances UI/UX 2025: design minimaliste, neo-skeuomorphisme, palette professionnelle",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Infrastructure Liaison Comptabilité-Inscription",
+        "description": "Mise en place infrastructure base pour liaison comptabilité-inscription avec workflow inscription → étudiant sécurisé",
+        "details": "1. Extensions tables existantes:\n   - `esbtp_inscriptions`: ajouter workflow_step ENUM('prospect', 'documents_complets', 'en_validation', 'valide', 'etudiant_cree')\n   - Ajouter paiement_validation_id, classe_alternative_id, comptabilite_activee\n   - `esbtp_classes`: ajouter places_totales, places_occupees, places_disponibles (colonne calculée)\n\n2. Nouvelles tables:\n   - `esbtp_inscription_workflow_history` pour audit trail complet\n   - Traçabilité étapes validation avec utilisateur/timestamp/commentaires\n\n3. Modèles Laravel mis à jour:\n   - Relations ESBTPInscription → ESBTPEtudiant → ESBTPPaiement clarifiées\n   - Scopes pour workflow states (prospect, validé, etc.)\n   - Validations business rules (places disponibles, paiement requis)\n\n4. Seeders données test:\n   - Inscriptions différents états workflow\n   - Classes avec places limitées\n   - Historique workflow pour tests",
+        "testStrategy": "1. Tests migrations sécurisées sans perte données\n2. Tests relations modèles avec eager loading\n3. Tests contraintes business (places classes, workflow states)\n4. Tests rollback migrations\n5. Validation seeders avec données cohérentes",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": "14.1",
+            "title": "Migration extension esbtp_inscriptions",
+            "description": "Ajouter workflow_step, paiement_validation_id, classe_alternative_id, comptabilite_activee",
+            "status": "done"
+          },
+          {
+            "id": "14.2",
+            "title": "Migration esbtp_inscription_workflow_history",
+            "description": "Créer table traçabilité workflow avec historique actions",
+            "status": "done"
+          },
+          {
+            "id": "14.3",
+            "title": "Migration extension esbtp_classes",
+            "description": "Ajouter gestion places : places_totales, places_occupees, places_disponibles",
+            "status": "done"
+          },
+          {
+            "id": "14.4",
+            "title": "Mise à jour modèles Laravel",
+            "description": "Relations et méthodes ESBTPInscription, ESBTPClasse, validations",
+            "status": "done"
+          },
+          {
+            "id": "14.5",
+            "title": "Seeders et tests",
+            "description": "Données test workflow inscription et tests unitaires complets",
+            "status": "done"
+          }
+        ]
+      },
+      {
+        "id": 15,
+        "title": "Service Workflow Inscription vers Étudiant",
+        "description": "Développement service complet workflow inscription → étudiant avec validation paiement et gestion places classes",
+        "details": "1. Services principaux:\n   - `InscriptionWorkflowService.php`: validateInscription(), checkClassAvailability(), createStudent()\n   - `ClasseManagementService.php`: gestion places et attribution automatique avec alternatives\n   - Logic business rules: inscription complète → paiement → places → création étudiant\n\n2. Extensions contrôleurs:\n   - ESBTPEtudiantController: createFromInscription(), assignClasse()\n   - ESBTPInscriptionController: validateInscription() avec modal paiement\n   - API endpoints pour vérification places temps réel\n\n3. Events Laravel:\n   ```php\n   // Workflow events\n   event(new InscriptionValidated($inscription, $paiement));\n   event(new EtudiantCreated($etudiant, $inscription));\n   ```\n\n4. États workflow:\n   - prospect → documents_complets → en_validation → valide → etudiant_cree\n   - Transition rules avec permissions et validations\n   - Historique complet dans esbtp_inscription_workflow_history",
+        "testStrategy": "1. Tests unitaires services avec mocks\n2. Tests intégration workflow complet inscription→étudiant\n3. Tests gestion places classes (disponibles/alternatives)\n4. Tests events et listeners\n5. Tests API endpoints validation temps réel\n6. Tests cas limites (classe pleine, paiement échoué)",
+        "priority": "high",
+        "dependencies": [
+          14
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": "15.1",
+            "title": "InscriptionWorkflowService création",
+            "description": "Service principal gestion workflow avec validateInscription(), checkClassAvailability()",
+            "status": "done"
+          },
+          {
+            "id": "15.2",
+            "title": "ClasseManagementService création",
+            "description": "Service gestion places classes avec attribution automatique et alternatives",
+            "status": "done"
+          },
+          {
+            "id": "15.3",
+            "title": "Extension ESBTPEtudiantController",
+            "description": "Méthodes createFromInscription(), assignClasse() pour création automatique",
+            "status": "done"
+          },
+          {
+            "id": "15.4",
+            "title": "Events et Listeners Laravel",
+            "description": "InscriptionValidated, EtudiantCreated avec listeners activation comptabilité",
+            "status": "done"
+          },
+          {
+            "id": "15.5",
+            "title": "Tests intégration workflow",
+            "description": "Tests complets workflow inscription → étudiant avec tous scénarios",
+            "status": "done"
+          }
+        ]
+      },
+      {
+        "id": 16,
+        "title": "Interface Validation Inscription avec Modal Paiement",
+        "description": "Interface validation inscription avec modal paiement rapide intégrée et vérification places classes temps réel",
+        "details": "1. Modal paiement Bootstrap 5:\n   - Saisie rapide frais inscription sans changer de page\n   - Sélecteur types paiements: scolarité, cantine, autres frais\n   - Validation côté client avec feedback instantané\n   - CSRF protection et gestion erreurs AJAX\n\n2. Vérification places temps réel:\n   - API call vérification places disponibles classe sélectionnée\n   - Suggestions alternatives si classe pleine\n   - Interface sélection classe alternative avec modal\n   - Mise à jour dynamique places après sélection\n\n3. Interface workflow states:\n   - Indicateurs visuels progression: prospect → validation → étudiant\n   - Badges colorés selon statut avec tooltips explicatifs\n   - Timeline workflow avec actions utilisateur tracées\n   - Boutons contextuels selon étape (valider, rejeter, modifier)\n\n4. JavaScript avancé:\n   - Prévisualisation temps réel formulaire paiement\n   - Validation client avec regex et business rules\n   - Auto-completion classe/filière avec search\n   - Notifications toast pour actions importantes",
+        "testStrategy": "1. Tests navigation modal responsive\n2. Tests validation AJAX avec différents scénarios\n3. Tests vérification places API\n4. Tests JavaScript cross-browser\n5. Tests workflow complet via interface\n6. Tests accessibilité WCAG modal",
+        "priority": "medium",
+        "dependencies": [
+          15
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": "16.1",
+            "title": "Modal paiement Bootstrap 5",
+            "description": "Modal responsive saisie rapide paiement avec types et montants",
+            "status": "done"
+          },
+          {
+            "id": "16.2",
+            "title": "Vérification places temps réel",
+            "description": "AJAX check places disponibles avec suggestions classes alternatives",
+            "status": "done"
+          },
+          {
+            "id": "16.3",
+            "title": "Interface états workflow",
+            "description": "Indicateurs visuels progression workflow avec couleurs et icônes",
+            "status": "done"
+          },
+          {
+            "id": "16.4",
+            "title": "Validation AJAX inscription",
+            "description": "Submit validation inscription avec feedback et gestion erreurs",
+            "status": "done"
+          },
+          {
+            "id": "16.5",
+            "title": "Tests interface utilisateur",
+            "description": "Tests navigation modal, validation, workflow complet",
+            "status": "done"
+          }
+        ]
+      },
+      {
+        "id": 17,
+        "title": "Nettoyage Séparation Logique Comptabilité-Inscription",
+        "description": "Refactoring complet pour séparer logique comptabilité des pages inscription et découpler modèles/contrôleurs",
+        "details": "1. Nettoyage contrôleurs:\n   - ESBTPInscriptionController: suppression méthodes comptabilité inappropriées\n   - Déplacer logique paiements vers ESBTPComptabiliteController\n   - Séparation claire: inscription = workflow étudiant, comptabilité = gestion financière\n\n2. Purification vues Blade:\n   - Suppression références comptabilité des templates inscription\n   - Composants séparés: inscription-card vs paiement-card\n   - Navigation menu clarifiée: Inscriptions vs Comptabilité\n\n3. Découplage modèles:\n   - Relations ESBTPInscription ↔ ESBTPPaiement clarifiées\n   - Méthodes spécialisées par contexte métier\n   - Scopes séparés: inscriptionEnCours() vs paiementsComptabilite()\n\n4. Permissions granulaires:\n   - inscription.validate (validation workflow)\n   - comptabilite.manage (gestion financière)\n   - Middleware séparés par fonctionnalité\n\n5. Services découplés:\n   - InscriptionService: workflow et gestion étudiant\n   - ComptabiliteService: calculs et reporting financier\n   - Interfaces claires entre services",
+        "testStrategy": "1. Tests régression fonctionnalités existantes\n2. Tests séparation permissions par rôle\n3. Tests navigation interface après refactoring\n4. Tests performance après découplage\n5. Code review architecture découplée\n6. Tests intégration services séparés",
+        "priority": "medium",
+        "dependencies": [
+          16
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": "17.1",
+            "title": "Nettoyage ESBTPInscriptionController",
+            "description": "Suppression méthodes comptabilité inappropriées du contrôleur inscription",
+            "status": "done"
+          },
+          {
+            "id": "17.2",
+            "title": "Purification vues inscription",
+            "description": "Suppression références comptabilité des templates Blade inscription",
+            "status": "done"
+          },
+          {
+            "id": "17.3",
+            "title": "Découplage modèles relations",
+            "description": "Relations claires ESBTPInscription, ESBTPEtudiant avec méthodes spécialisées",
+            "status": "done"
+          },
+          {
+            "id": "17.4",
+            "title": "Permissions granulaires",
+            "description": "Nouveaux droits inscription.validate, separation comptabilite.manage",
+            "status": "done"
+          },
+          {
+            "id": "17.5",
+            "title": "Tests régression complets",
+            "description": "Validation fonctionnalités existantes intactes après refactoring",
+            "status": "done"
+          }
+        ]
+      },
+      {
+        "id": 18,
+        "title": "Infrastructure Bon de Sortie - Approbation Simplifiée",
+        "description": "Infrastructure approbation bon de sortie avec sélection approbateur et notifications automatiques (4 rôles existants)",
+        "details": "1. Extensions base de données:\n   - `esbtp_bons_sortie`: ajouter approbateur_id, notification_sent_at, approved_at\n   - Table `esbtp_bon_sortie_notifications` pour traçabilité envois/lectures\n   - Contraintes: approbateur parmi 4 rôles (superadmin, secretaire, enseignant, etudiant)\n\n2. Workflow approbation simplifié:\n   - Créateur sélectionne approbateur lors création bon\n   - Notification automatique email + app à l'approbateur\n   - Interface approbation avec commentaires et historique\n   - États: brouillon → en_attente → approuve/rejete\n\n3. NotificationService étendu:\n   ```php\n   public function notifyBonApproval($bonId, $approbateurId) {\n       // Email + notification app\n       // Template avec détails bon\n       // Tracking envoi/lecture\n   }\n   ```\n\n4. Templates notifications:\n   - Email HTML responsive pour approbation\n   - Notification in-app avec actions (Approuver/Rejeter/Voir)\n   - SMS optionnel pour cas urgents\n\n5. Interface sélection approbateur:\n   - Dropdown filtré par rôle actif\n   - Suggestions basées historique\n   - Validation business rules (pas auto-approbation)",
+        "testStrategy": "1. Tests workflow approbation complet\n2. Tests notifications multi-canal\n3. Tests permissions approbation par rôle\n4. Tests templates email/app\n5. Tests interface sélection approbateur\n6. Tests cas limites (approbateur inactif, auto-approbation)",
+        "priority": "high",
+        "dependencies": [
+          14
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": "18.1",
+            "title": "Migration extension esbtp_bons_sortie",
+            "description": "Ajouter approbateur_id, notification_sent_at, approved_at pour workflow",
+            "status": "done"
+          },
+          {
+            "id": "18.2",
+            "title": "Table notifications bon sortie",
+            "description": "esbtp_bon_sortie_notifications pour traçabilité envois/lectures",
+            "status": "done"
+          },
+          {
+            "id": "18.3",
+            "title": "Extension NotificationService",
+            "description": "Méthodes notifyBonApproval(), getUsersByRole() pour workflow",
+            "status": "done"
+          },
+          {
+            "id": "18.4",
+            "title": "ESBTPBonSortieController workflow",
+            "description": "Méthodes selectApprobateur(), sendNotification(), approve()",
+            "status": "done"
+          },
+          {
+            "id": "18.5",
+            "title": "Templates notifications",
+            "description": "Templates email et app pour demandes approbation bon sortie",
+            "status": "done"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "title": "Liaison Obligatoire Bon de Sortie - Dépense",
+        "description": "Implémentation liaison obligatoire bon de sortie approuvé pour création dépenses avec traçabilité complète",
+        "details": "1. Migration contrainte obligatoire:\n   - `esbtp_depenses`: bon_sortie_id NOT NULL\n   - Contrainte FK vers esbtp_bons_sortie avec statut 'approuve'\n   - Index composite (bon_sortie_id, statut) pour performance\n\n2. BonDepenseService nouveau:\n   ```php\n   public function getBonsApprouves() {\n       return BonSortie::where('statut', 'approuve')\n           ->whereDoesntHave('depenses')\n           ->with('approbateur')\n           ->get();\n   }\n   \n   public function linkBonToDepense($bonId, $depenseData) {\n       // Validation bon approuvé\n       // Vérification montant cohérent\n       // Création dépense avec traçabilité\n   }\n   ```\n\n3. Interface dépenses rénovée:\n   - Sélecteur bons approuvés avec montants disponibles\n   - Modal création bon rapide si aucun disponible\n   - Workflow: sélection approbateur → notification → attente → création dépense\n   - Alertes visuelles si aucun bon disponible\n\n4. ESBTPDepenseController étendu:\n   - Validation prérequis bon avant création\n   - createBonRapide() pour workflow express\n   - Interface traçabilité bon → dépense\n\n5. Tests intégration end-to-end:\n   - Workflow complet: inscription → étudiant → bon → dépense\n   - Performance avec volumes importants\n   - Cohérence données après toutes opérations",
+        "testStrategy": "1. Tests contraintes base données\n2. Tests BonDepenseService avec mocks\n3. Tests interface dépenses rénovée\n4. Tests workflow création bon rapide\n5. Tests end-to-end inscription→dépense\n6. Tests performance et cohérence données",
+        "priority": "high",
+        "dependencies": [
+          18
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": "19.1",
+            "title": "Migration bon_sortie_id obligatoire",
+            "description": "Extension esbtp_depenses avec bon_sortie_id NOT NULL et contraintes",
+            "status": "done"
+          },
+          {
+            "id": "19.2",
+            "title": "BonDepenseService création",
+            "description": "Service liaison bons-dépenses avec validation statut approuvé",
+            "status": "done"
+          },
+          {
+            "id": "19.3",
+            "title": "ESBTPDepenseController extension",
+            "description": "Méthodes getBonsApprouves(), createBonRapide(), validation workflow",
+            "status": "done"
+          },
+          {
+            "id": "19.4",
+            "title": "Interface dépenses rénovée",
+            "description": "Sélecteur bons approuvés, modal bon express, validation temps réel",
+            "status": "done"
+          },
+          {
+            "id": "19.5",
+            "title": "Tests workflow complet",
+            "description": "Tests intégration inscription→étudiant→bon→dépense end-to-end",
+            "status": "done"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "title": "Implémentation du workflow de validation comptabilité-inscription",
+        "description": "Développer l'interface de validation des inscriptions par l'administration avec liaison obligatoire à un paiement, incluant un système de saisie rapide et la conversion automatique du statut prospect vers étudiant.",
+        "details": "1. Développer l'interface d'administration pour la validation des inscriptions:\n   - Créer un tableau de bord des inscriptions en attente de validation\n   - Implémenter les filtres par statut, date, formation et méthode de paiement\n   - Ajouter des indicateurs visuels pour les dossiers complets/incomplets\n\n2. Implémenter le système de liaison comptabilité-inscription:\n   - Créer le modèle de relation entre Inscription et Paiement\n   - Développer les contraintes de validation empêchant la validation sans paiement associé\n   - Implémenter les règles métier pour la vérification des montants minimums requis\n\n3. Développer la modal de saisie rapide des paiements:\n   - Créer un formulaire modal accessible depuis la liste des inscriptions\n   - Implémenter la validation en temps réel des données de paiement\n   - Ajouter la fonctionnalité d'upload de justificatifs de paiement\n   - Intégrer avec le système de paiement existant\n\n4. Implémenter le workflow de conversion prospect vers étudiant:\n   - Créer le service de vérification de disponibilité des places\n   - Développer l'algorithme de changement de classe si nécessaire\n   - Implémenter la mise à jour automatique du statut après validation\n   - Gérer les notifications aux utilisateurs concernés\n\n5. Intégrer le système de relances comptabilité:\n   - Développer le déclencheur automatique de relances après validation\n   - Configurer les modèles de messages pour différents scénarios\n   - Implémenter la planification des relances selon les règles définies\n\n6. Nettoyer et optimiser la logique comptable dans les formulaires d'inscription:\n   - Refactoriser le code existant pour séparer la logique métier\n   - Simplifier l'interface utilisateur pour la saisie des informations comptables\n   - Ajouter des validations côté client et serveur",
+        "testStrategy": "1. Tests unitaires:\n   - Tester les modèles de relation Inscription-Paiement\n   - Valider les règles de conversion de statut\n   - Vérifier les contraintes de validation des paiements\n\n2. Tests d'intégration:\n   - Tester le workflow complet de validation d'une inscription\n   - Vérifier l'intégration avec le système de paiement\n   - Valider le déclenchement automatique des relances\n\n3. Tests fonctionnels:\n   - Scénarios de validation avec différents types de paiements\n   - Tests de conversion de statut avec/sans places disponibles\n   - Validation du changement automatique de classe\n\n4. Tests de l'interface utilisateur:\n   - Tester la modal de saisie rapide sur différents appareils\n   - Vérifier l'accessibilité et l'ergonomie de l'interface admin\n   - Valider les indicateurs visuels et les filtres\n\n5. Tests de régression:\n   - S'assurer que les modifications n'affectent pas les fonctionnalités existantes\n   - Vérifier la compatibilité avec les données existantes\n   - Tester les cas limites et les scénarios d'erreur",
+        "status": "pending",
+        "dependencies": [
+          2,
+          7,
+          9,
+          11
+        ],
+        "priority": "high",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-07-08T23:51:05.466Z",
+      "updated": "2025-07-11T14:49:57.199Z",
+      "description": "Tasks for master context - Extended with V2.0 Liaison Comptabilité-Inscription-Dépenses (6 nouvelles tâches)"
+    }
+  }
+}

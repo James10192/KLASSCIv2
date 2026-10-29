@@ -1,0 +1,2612 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Proposition ADC × Tysilio — Tysilio Commercial Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Onest:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* TYSILIO palette dominante (sujet = client Tysilio) */
+    --ty-blue:        #003e5c;
+    --ty-blue-deep:   #002337;
+    --ty-blue-soft:   #2a6580;
+    --ty-blue-tint:   #e3eef4;
+    --ty-orange:      #DC663C;
+    --ty-orange-soft: #E88054;
+    --ty-orange-deep: #B5481F;
+    --ty-orange-tint: #fbede5;
+    --ty-yellow:      #F4B82E;
+    --ty-cyan:        #2BA8D1;
+
+    /* ADC accent (cobranding) */
+    --adc-orange:     #f97316;
+
+    /* Inks + neutrals */
+    --ink:            #0a0a0a;
+    --ink-2:          #1e293b;
+    --neutral-700:    #404040;
+    --neutral-500:    #737373;
+    --neutral-300:    #d4d4d4;
+    --neutral-200:    #e5e5e5;
+    --neutral-100:    #f5f5f5;
+    --neutral-50:     #fafafa;
+    --white:          #ffffff;
+    --success:        #10b981;
+    --warning:        #f59e0b;
+
+    /* Type */
+    --serif:          'Fraunces', 'Georgia', serif;
+    --sans:           'Onest', system-ui, sans-serif;
+    --mono:           'Geist Mono', 'JetBrains Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: var(--sans);
+    color: var(--ink-2);
+    -webkit-font-smoothing: antialiased;
+    font-size: 10.5pt;
+    line-height: 1.55;
+    background: var(--white);
+  }
+
+  @page { size: A4; margin: 0; }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    max-height: 297mm;
+    padding: 18mm 22mm 36mm 22mm;
+    box-sizing: border-box;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .page:last-child { page-break-after: auto !important; break-after: auto !important; }
+
+  /* === Headers / footers === */
+  .page-footer,
+  .page-number,
+  .section-label {
+    position: absolute;
+    font-size: 8pt;
+    color: var(--neutral-500);
+    text-transform: uppercase;
+    z-index: 20;
+    background: var(--white);
+    padding: 3px 6px;
+  }
+  .page-footer { bottom: 12mm; left: 22mm; letter-spacing: 0.2em; }
+  .page-number { bottom: 12mm; right: 22mm; letter-spacing: 0.3em; }
+  .section-label { top: 12mm; right: 22mm; letter-spacing: 0.25em; color: var(--ty-orange); font-weight: 600; }
+
+  .page:not(.cover):not(.back-cover)::before {
+    content: '';
+    position: absolute;
+    left: 22mm; right: 22mm;
+    bottom: 22mm;
+    height: 1px;
+    background: var(--neutral-200);
+    z-index: 15;
+  }
+
+  /* === COVER === */
+  .cover {
+    background: linear-gradient(135deg, #002337 0%, #003e5c 40%, #2a6580 100%);
+    color: var(--white);
+    padding: 0 !important;
+  }
+  .cover-glow {
+    position: absolute;
+    top: -10%; right: -10%;
+    width: 60%; height: 70%;
+    background: radial-gradient(circle, rgba(220,102,60,0.35) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .cover-glow-2 {
+    position: absolute;
+    bottom: -15%; left: -15%;
+    width: 55%; height: 65%;
+    background: radial-gradient(circle, rgba(43,168,209,0.25) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .cover-inner {
+    flex: 1; width: 100%;
+    padding: 22mm;
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    position: relative; z-index: 2;
+  }
+  .cover-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 30px; }
+  .cover-logos {
+    display: flex; align-items: center; gap: 18px;
+    background: var(--white);
+    padding: 14px 22px;
+    border-radius: 14px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+  }
+  .cover-logos img.adc-logo { height: 38px; width: auto; }
+  .cover-logos img.tysilio-logo { height: 38px; width: auto; }
+  .cover-logos .x {
+    font-family: var(--serif);
+    font-size: 22px;
+    color: var(--neutral-300);
+    font-style: italic;
+  }
+  .cover-meta {
+    text-align: right; font-size: 9pt;
+    color: rgba(255,255,255,0.85);
+    line-height: 1.55; letter-spacing: 0.04em;
+  }
+  .cover-meta strong { color: var(--white); font-weight: 600; }
+
+  .cover-title { max-width: 84%; }
+  .kicker {
+    display: inline-flex; align-items: center; gap: 14px;
+    font-size: 9pt; letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.85);
+    margin-bottom: 18px; font-weight: 500;
+  }
+  .kicker::before {
+    content: ''; display: inline-block;
+    width: 50px; height: 1px;
+    background: var(--ty-orange);
+  }
+  h1.cover-h1 {
+    font-family: var(--serif);
+    font-size: 58pt; line-height: 0.96;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 22px;
+  }
+  h1.cover-h1 em {
+    font-style: italic;
+    color: var(--ty-orange-soft);
+    font-weight: 500;
+  }
+  .lead {
+    font-size: 14pt;
+    color: rgba(255,255,255,0.92);
+    line-height: 1.5;
+    max-width: 72%;
+    font-weight: 300;
+  }
+
+  .cover-bottom {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    font-size: 9pt; color: rgba(255,255,255,0.75);
+    letter-spacing: 0.06em;
+  }
+  .cover-bottom strong { color: var(--white); font-weight: 600; }
+
+  /* === CONTENT === */
+  .page-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 18pt;
+  }
+  .page-head .brand-text {
+    font-family: var(--serif);
+    font-size: 11pt;
+    color: var(--ty-blue);
+    font-weight: 600;
+  }
+  .page-head .doc-ref {
+    font-size: 8pt; color: var(--neutral-500);
+    text-align: right; letter-spacing: 0.04em;
+  }
+
+  h2 {
+    font-family: var(--serif);
+    font-size: 26pt; line-height: 1.05;
+    font-weight: 500; letter-spacing: -0.015em;
+    color: var(--ink); margin-bottom: 16px;
+  }
+  h2 em { font-style: italic; color: var(--ty-orange); font-weight: 400; }
+  h3 {
+    font-family: var(--serif);
+    font-size: 15pt; line-height: 1.2;
+    font-weight: 500; color: var(--ink);
+    margin-bottom: 10px; margin-top: 14px;
+  }
+  h3.module-h3 {
+    font-family: var(--sans);
+    font-size: 13pt;
+    font-weight: 700;
+    color: var(--ty-blue);
+    margin: 0 0 4px;
+  }
+  h4 {
+    font-family: var(--sans);
+    font-size: 9pt; text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--ty-orange);
+    font-weight: 700; margin-bottom: 8px;
+  }
+  p {
+    max-width: 72ch;
+    color: var(--neutral-700);
+    margin-bottom: 9px;
+    font-size: 10pt;
+  }
+  p.intro {
+    font-family: var(--serif);
+    font-size: 13pt; line-height: 1.5;
+    color: var(--ink-2); font-weight: 400;
+    max-width: 72ch; margin-bottom: 16px;
+  }
+  strong { color: var(--ink); font-weight: 600; }
+  em { font-style: italic; color: var(--ty-orange); font-weight: 500; }
+
+  /* === KPI hero === */
+  .kpi-hero {
+    background: linear-gradient(135deg, var(--ty-blue-deep) 0%, var(--ty-blue) 60%, var(--ty-blue-soft) 100%);
+    color: var(--white);
+    padding: 24px 22px;
+    border-radius: 16px;
+    margin: 8px 0 14px;
+    position: relative; overflow: hidden;
+  }
+  .kpi-hero::after {
+    content: '';
+    position: absolute;
+    top: -50%; right: -10%;
+    width: 50%; height: 200%;
+    background: radial-gradient(circle, rgba(220,102,60,0.20), transparent 60%);
+  }
+  .kpi-hero-row { display: flex; gap: 18px; position: relative; z-index: 2; }
+  .kpi-block { flex: 1; }
+  .kpi-block .v {
+    font-family: var(--serif);
+    font-size: 34pt; line-height: 0.95;
+    font-weight: 600; letter-spacing: -0.02em;
+  }
+  .kpi-block .v-sub { font-size: 14pt; opacity: 0.85; font-weight: 400; }
+  .kpi-block .l {
+    font-size: 8pt; text-transform: uppercase;
+    letter-spacing: 0.14em; opacity: 0.85;
+    margin-top: 6px; font-weight: 600;
+  }
+  .kpi-block .desc { font-size: 8.5pt; opacity: 0.75; margin-top: 4px; line-height: 1.4; }
+
+  .kpi-row { display: flex; gap: 10px; margin: 12px 0 14px; }
+  .kpi {
+    flex: 1;
+    background: linear-gradient(135deg, var(--ty-blue-deep) 0%, var(--ty-blue) 70%, var(--ty-blue-soft) 100%);
+    color: var(--white);
+    padding: 14px 14px;
+    border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(0,62,92,0.18);
+    position: relative; overflow: hidden;
+  }
+  .kpi::after {
+    content: '';
+    position: absolute;
+    top: -30%; right: -30%;
+    width: 80%; height: 100%;
+    background: radial-gradient(circle, rgba(220,102,60,0.16), transparent 60%);
+  }
+  .kpi.kpi-orange {
+    background: linear-gradient(135deg, var(--ty-orange-deep) 0%, var(--ty-orange) 70%, var(--ty-orange-soft) 100%);
+  }
+  .kpi-value {
+    font-family: var(--serif);
+    font-size: 22pt; line-height: 1;
+    font-weight: 600; letter-spacing: -0.02em;
+    margin-bottom: 3px;
+  }
+  .kpi-label {
+    font-size: 7.5pt; text-transform: uppercase;
+    letter-spacing: 0.12em; opacity: 0.88;
+    font-weight: 600;
+  }
+  .kpi-sub { font-size: 8pt; opacity: 0.78; margin-top: 3px; }
+
+  /* === Tables === */
+  table {
+    width: 100%; border-collapse: collapse;
+    font-size: 9pt; margin: 8px 0 10px;
+  }
+  thead th {
+    background: var(--ty-blue-tint);
+    color: var(--ty-blue-deep);
+    font-weight: 700; text-align: left;
+    padding: 7px 9px;
+    border-bottom: 2px solid var(--ty-blue);
+    text-transform: uppercase;
+    font-size: 8pt; letter-spacing: 0.08em;
+  }
+  thead th.num { text-align: right; }
+  tbody td {
+    padding: 6px 9px;
+    border-bottom: 1px solid var(--neutral-200);
+    color: var(--neutral-700);
+  }
+  tbody td.num { text-align: right; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; white-space: nowrap; }
+  tbody td.pos { color: var(--success); font-weight: 600; }
+  tbody td strong { color: var(--ink); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr.total-row td {
+    background: var(--ty-orange-tint); font-weight: 700;
+    color: var(--ink);
+    border-top: 2px solid var(--ty-orange);
+  }
+  tbody tr.featured td {
+    background: linear-gradient(90deg, rgba(220,102,60,0.08), transparent);
+  }
+
+  /* === Module cards === */
+  .module-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0 14px; }
+  .module-card {
+    border: 1px solid var(--neutral-200);
+    border-radius: 12px;
+    padding: 14px 16px;
+    background: var(--white);
+    border-top: 4px solid var(--ty-orange);
+    position: relative;
+  }
+  .module-card .num-circle {
+    position: absolute;
+    top: -12px; left: 14px;
+    width: 28px; height: 28px;
+    background: var(--ty-orange);
+    color: var(--white);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 11pt;
+    font-family: var(--serif);
+    box-shadow: 0 3px 10px rgba(220,102,60,0.35);
+  }
+  .module-card h3 {
+    font-family: var(--sans);
+    font-size: 11.5pt;
+    font-weight: 700;
+    color: var(--ty-blue);
+    margin: 6px 0 4px;
+  }
+  .module-card .tag {
+    font-size: 7.5pt; text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ty-orange);
+    font-weight: 700; margin-bottom: 8px;
+  }
+  .module-card ul {
+    margin: 6px 0 0 16px;
+    padding: 0;
+    font-size: 9pt;
+    color: var(--neutral-700);
+  }
+  .module-card ul li {
+    margin: 3px 0;
+    line-height: 1.45;
+  }
+
+  /* === Diagram boxes === */
+  .arch-diagram {
+    background: var(--neutral-50);
+    border: 1px solid var(--neutral-200);
+    border-radius: 12px;
+    padding: 16px;
+    margin: 10px 0 14px;
+  }
+  .arch-tier {
+    display: flex; gap: 10px;
+    margin-bottom: 10px;
+    align-items: stretch;
+  }
+  .arch-tier-label {
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--ty-blue);
+    font-weight: 700;
+    width: 70px;
+    display: flex; align-items: center;
+    border-right: 2px solid var(--ty-orange);
+    padding-right: 10px;
+  }
+  .arch-boxes { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; }
+  .arch-box {
+    background: var(--white);
+    border: 1px solid var(--neutral-300);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 8.5pt;
+    color: var(--ink-2);
+    font-weight: 500;
+    flex: 1;
+    min-width: 100px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+  }
+  .arch-box.primary {
+    background: var(--ty-blue);
+    color: var(--white);
+    border-color: var(--ty-blue);
+    font-weight: 600;
+  }
+  .arch-box.accent {
+    background: var(--ty-orange-tint);
+    color: var(--ty-orange-deep);
+    border-color: var(--ty-orange);
+    font-weight: 600;
+  }
+  .arch-flow {
+    text-align: center;
+    color: var(--ty-orange);
+    font-size: 10pt;
+    margin: 4px 0;
+    letter-spacing: 0.3em;
+  }
+
+  /* === Package cards === */
+  .pkg-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 12px 0; }
+  .pkg-card {
+    border: 1px solid var(--neutral-200);
+    border-radius: 14px;
+    padding: 18px 14px;
+    background: var(--white);
+    position: relative;
+    display: flex; flex-direction: column;
+  }
+  .pkg-card.featured {
+    border-color: var(--ty-orange);
+    border-width: 2px;
+    background: linear-gradient(180deg, var(--ty-orange-tint) 0%, var(--white) 60%);
+    box-shadow: 0 10px 28px rgba(220,102,60,0.18);
+  }
+  .pkg-card.featured::before {
+    content: 'RECOMMANDÉ';
+    position: absolute;
+    top: -11px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ty-orange);
+    color: var(--white);
+    font-size: 7.5pt;
+    letter-spacing: 0.18em;
+    padding: 4px 14px;
+    border-radius: 50px;
+    font-weight: 700;
+  }
+  .pkg-name {
+    font-family: var(--serif);
+    font-size: 18pt; color: var(--ty-blue);
+    font-weight: 600; margin-bottom: 2px;
+    letter-spacing: -0.01em;
+  }
+  .pkg-target {
+    font-size: 8pt; text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ty-orange);
+    font-weight: 600; margin-bottom: 12px;
+  }
+  .pkg-price {
+    font-family: var(--serif);
+    font-size: 24pt; color: var(--ink);
+    font-weight: 700; line-height: 1;
+    margin-bottom: 4px;
+    letter-spacing: -0.02em;
+  }
+  .pkg-price-sub { font-size: 9pt; color: var(--neutral-500); font-weight: 500; }
+  .pkg-features {
+    margin: 14px 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 8.5pt;
+    color: var(--neutral-700);
+  }
+  .pkg-features li {
+    padding: 5px 0;
+    border-bottom: 1px solid var(--neutral-100);
+    display: flex; align-items: flex-start; gap: 6px;
+  }
+  .pkg-features li:last-child { border-bottom: none; }
+  .pkg-features .check {
+    color: var(--success);
+    font-weight: 700;
+    flex-shrink: 0;
+    width: 12px;
+  }
+  .pkg-features .cross {
+    color: var(--neutral-300);
+    font-weight: 700;
+    flex-shrink: 0;
+    width: 12px;
+  }
+
+  /* === Addon cards === */
+  .addon-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 8px 0 14px; }
+  .addon-card {
+    border: 1px solid var(--neutral-200);
+    border-radius: 10px;
+    padding: 12px 14px;
+    background: var(--white);
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .addon-card .addon-icon {
+    width: 36px; height: 36px;
+    background: var(--ty-orange-tint);
+    color: var(--ty-orange-deep);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 13pt;
+    flex-shrink: 0;
+  }
+  .addon-card .addon-body { flex: 1; }
+  .addon-card h4 {
+    font-family: var(--sans);
+    font-size: 9.5pt;
+    color: var(--ty-blue);
+    text-transform: none;
+    letter-spacing: 0;
+    margin-bottom: 4px;
+    font-weight: 700;
+  }
+  .addon-card .addon-desc {
+    font-size: 8.5pt;
+    color: var(--neutral-700);
+    line-height: 1.4;
+  }
+  .addon-card .addon-price {
+    font-size: 8pt;
+    color: var(--ty-orange);
+    font-weight: 700;
+    margin-top: 4px;
+  }
+
+  /* === Phase cards === */
+  .phase-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin: 12px 0; }
+  .phase-card {
+    background: var(--ty-blue-tint);
+    border-radius: 10px;
+    padding: 12px 12px;
+    border-left: 4px solid var(--ty-orange);
+  }
+  .phase-card .phase-num {
+    font-family: var(--serif);
+    font-size: 22pt;
+    color: var(--ty-orange);
+    font-weight: 700;
+    line-height: 1;
+  }
+  .phase-card .phase-title {
+    font-size: 9.5pt;
+    color: var(--ty-blue);
+    font-weight: 700;
+    margin: 4px 0 6px;
+  }
+  .phase-card .phase-duration {
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ty-orange);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .phase-card .phase-desc {
+    font-size: 8pt;
+    color: var(--neutral-700);
+    line-height: 1.4;
+  }
+
+  /* === Callouts === */
+  .callout {
+    border-left: 3px solid var(--ty-blue);
+    background: var(--ty-blue-tint);
+    padding: 10px 14px;
+    border-radius: 0 8px 8px 0;
+    margin: 10px 0;
+    font-size: 9pt;
+    color: var(--ink-2);
+  }
+  .callout-orange {
+    border-left-color: var(--ty-orange);
+    background: var(--ty-orange-tint);
+  }
+  .callout-success {
+    border-left-color: var(--success);
+    background: rgba(16,185,129,0.06);
+  }
+  .callout strong { color: var(--ink); }
+
+  .quote {
+    background: var(--ty-blue-tint);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin: 10px 0;
+    position: relative;
+    font-family: var(--serif);
+  }
+  .quote::before {
+    content: '"';
+    position: absolute;
+    top: 4px; left: 14px;
+    font-size: 38pt;
+    color: var(--ty-orange);
+    line-height: 1;
+    font-weight: 700;
+    font-style: italic;
+  }
+  .quote-text {
+    font-style: italic;
+    font-size: 11pt;
+    color: var(--ink-2);
+    padding-left: 22px;
+    line-height: 1.45;
+  }
+  .quote-author {
+    margin-top: 8px;
+    padding-left: 22px;
+    font-family: var(--sans);
+    font-size: 8.5pt;
+    color: var(--neutral-500);
+    font-style: normal;
+    font-weight: 600;
+  }
+  .quote-author strong { color: var(--ty-blue); }
+
+  ul { margin: 6px 0 10px 16px; }
+  li {
+    margin: 4px 0;
+    font-size: 9.5pt;
+    color: var(--neutral-700);
+  }
+  li strong { color: var(--ink); }
+
+  .small { font-size: 8.5pt; color: var(--neutral-500); }
+  .mono { font-family: var(--mono); font-size: 9pt; }
+
+  .cta-box {
+    background: linear-gradient(135deg, var(--ty-orange-deep) 0%, var(--ty-orange) 100%);
+    color: var(--white);
+    padding: 18px 22px;
+    border-radius: 12px;
+    margin: 12px 0;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 14px;
+    box-shadow: 0 6px 22px rgba(220,102,60,0.25);
+  }
+  .cta-box-left { flex: 1; }
+  .cta-box-title {
+    font-family: var(--serif);
+    font-size: 16pt;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 4px;
+  }
+  .cta-box-desc { font-size: 9.5pt; opacity: 0.92; }
+  .cta-box-right {
+    background: var(--white);
+    color: var(--ty-orange-deep);
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 10pt;
+    white-space: nowrap;
+  }
+
+  /* === Back cover === */
+  .back-cover {
+    background: linear-gradient(180deg, var(--ty-blue) 0%, var(--ty-blue-deep) 100%);
+    color: var(--white);
+    padding: 22mm !important;
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+  }
+  .back-cover h2 { color: var(--white); }
+  .back-cover h2 em { color: var(--ty-orange-soft); }
+  .back-cover p { color: rgba(255,255,255,0.85); max-width: 90%; }
+  .back-cover .contact-block {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin: 12px 0;
+    backdrop-filter: blur(8px);
+  }
+  .back-cover .contact-block h4 {
+    color: var(--ty-orange-soft);
+    margin-bottom: 8px;
+  }
+  .back-cover .contact-block p {
+    color: rgba(255,255,255,0.9);
+    font-size: 9.5pt;
+    margin: 3px 0;
+    font-family: var(--sans);
+    font-style: normal;
+  }
+  .back-cover .contact-block p strong {
+    font-family: var(--sans);
+    font-style: normal;
+    color: var(--white);
+    font-weight: 600;
+  }
+  .back-cover .contact-block p em {
+    font-family: var(--sans);
+    font-style: normal;
+    color: var(--ty-orange-soft);
+    font-weight: 600;
+  }
+  .back-cover-logos {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--white);
+    padding: 12px 18px;
+    border-radius: 12px;
+    align-self: flex-start;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.18);
+  }
+  .back-cover-logos img { height: 32px; width: auto; }
+  .back-cover-logos .x {
+    font-family: var(--serif);
+    font-size: 18px;
+    color: var(--neutral-300);
+    font-style: italic;
+  }
+
+  /* === UI MOCKUPS — Premium Dark SaaS === */
+  .mockup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 8px 0 12px; }
+  .mockup-block .mockup-label {
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--ty-orange);
+    font-weight: 700;
+    margin-bottom: 6px;
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .mockup-block .mockup-label .num-tiny {
+    font-family: var(--serif);
+    font-size: 14pt;
+    color: var(--ty-orange);
+    line-height: 0.8;
+    font-weight: 600;
+  }
+  .ui-mockup {
+    background: #0b1622;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 16px 40px rgba(0,35,55,0.28), 0 2px 6px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.05);
+    height: 215px;
+    display: flex; flex-direction: column;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .ui-bar {
+    background: linear-gradient(180deg, #0f1e2d 0%, #0a1623 100%);
+    padding: 7px 11px;
+    display: flex; align-items: center; gap: 6px;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .ui-bar .dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+  }
+  .ui-bar .dot:nth-child(1) { background: #FF5F57; }
+  .ui-bar .dot:nth-child(2) { background: #FEBC2E; }
+  .ui-bar .dot:nth-child(3) { background: #28C840; }
+  .ui-bar .ui-url {
+    color: rgba(255,255,255,0.65);
+    font-family: var(--mono);
+    font-size: 6.5pt;
+    margin-left: 12px;
+    flex: 1;
+    background: rgba(255,255,255,0.04);
+    padding: 3px 10px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.04);
+    font-weight: 500;
+  }
+  .ui-content {
+    flex: 1;
+    padding: 12px 14px;
+    background: linear-gradient(160deg, #0e1c2b 0%, #0a1622 100%);
+    overflow: hidden;
+    font-size: 7.5pt;
+    color: rgba(255,255,255,0.85);
+    position: relative;
+  }
+  .ui-title {
+    font-size: 7pt;
+    font-weight: 700;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  /* === Kanban mockup === */
+  .ui-kanban {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+  }
+  .ui-kanban .col {
+    background: rgba(255,255,255,0.03);
+    border-radius: 6px;
+    padding: 6px 5px 8px;
+    border: 1px solid rgba(255,255,255,0.05);
+    border-top: 2px solid rgba(255,255,255,0.1);
+  }
+  .ui-kanban .col.active {
+    border-top-color: var(--ty-orange);
+    background: rgba(220,102,60,0.04);
+  }
+  .ui-kanban .col h5 {
+    font-size: 5.8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+    color: rgba(255,255,255,0.55);
+    margin-bottom: 6px;
+    font-weight: 700;
+    display: flex; justify-content: space-between;
+  }
+  .ui-kanban .col h5 .count {
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.7);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 5.5pt;
+  }
+  .ui-kanban .col.active h5 .count {
+    background: rgba(220,102,60,0.2);
+    color: var(--ty-orange-soft);
+  }
+  .ui-kanban .lead {
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.92);
+    padding: 4px 5px;
+    border-radius: 4px;
+    font-size: 6pt;
+    margin-bottom: 3px;
+    font-weight: 500;
+    line-height: 1.35;
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+  .ui-kanban .lead .amt {
+    font-family: var(--mono);
+    font-size: 5.5pt;
+    color: rgba(255,255,255,0.55);
+    display: block;
+    margin-top: 2px;
+  }
+  .ui-kanban .lead.hot {
+    background: linear-gradient(135deg, rgba(220,102,60,0.25), rgba(220,102,60,0.10));
+    border-color: rgba(220,102,60,0.40);
+    color: var(--ty-orange-soft);
+    font-weight: 600;
+  }
+  .ui-kanban .lead.hot .amt { color: rgba(232,128,84,0.75); }
+  .ui-kanban .lead.won {
+    background: linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08));
+    border-color: rgba(16,185,129,0.38);
+    color: #6ee7b7;
+    font-weight: 600;
+  }
+  .ui-kanban .lead.won .amt { color: rgba(110,231,183,0.65); }
+
+  /* === Chat IA mockup === */
+  .ui-chat {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ui-msg {
+    padding: 7px 10px;
+    border-radius: 10px;
+    font-size: 6.8pt;
+    line-height: 1.45;
+    max-width: 86%;
+  }
+  .ui-msg.user {
+    background: linear-gradient(135deg, var(--ty-orange-deep), var(--ty-orange));
+    color: var(--white);
+    align-self: flex-end;
+    border-bottom-right-radius: 3px;
+    box-shadow: 0 4px 12px rgba(220,102,60,0.25);
+  }
+  .ui-msg.ia {
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.92);
+    align-self: flex-start;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-bottom-left-radius: 3px;
+  }
+  .ui-msg.ia .ia-head {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 5.8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+    color: var(--ty-orange-soft);
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .ui-msg.ia .ia-head::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: var(--ty-orange);
+    border-radius: 50%;
+    box-shadow: 0 0 6px var(--ty-orange);
+  }
+  .ui-msg.ia .ia-row { display: flex; justify-content: space-between; padding: 1px 0; font-size: 6.5pt; }
+  .ui-msg.ia .ia-row .ia-k { color: rgba(255,255,255,0.55); }
+  .ui-msg.ia .ia-row .ia-v { color: var(--white); font-weight: 600; font-family: var(--mono); font-size: 6.3pt; }
+  .ui-msg .ia-confidence {
+    margin-top: 5px; padding-top: 4px;
+    border-top: 1px dashed rgba(255,255,255,0.12);
+    font-size: 5.8pt;
+    color: rgba(110,231,183,0.85);
+    font-weight: 600;
+  }
+
+  /* === Devis mockup === */
+  .ui-devis {
+    background: rgba(255,255,255,0.04);
+    border-radius: 8px;
+    padding: 10px 11px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .ui-devis-header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding-bottom: 6px;
+    margin-bottom: 7px;
+  }
+  .ui-devis-header .num {
+    font-size: 7pt;
+    color: var(--ty-orange-soft);
+    font-weight: 700;
+    font-family: var(--mono);
+    letter-spacing: 0.04em;
+  }
+  .ui-devis-header .v {
+    font-size: 5.8pt;
+    color: rgba(255,255,255,0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-weight: 600;
+  }
+  .ui-devis-row {
+    display: flex; justify-content: space-between;
+    font-size: 6.5pt;
+    padding: 3px 0;
+    color: rgba(255,255,255,0.7);
+    border-bottom: 1px dashed rgba(255,255,255,0.05);
+  }
+  .ui-devis-row:last-of-type { border-bottom: none; }
+  .ui-devis-row .val {
+    color: var(--white); font-weight: 600;
+    font-family: var(--mono);
+    font-size: 6.2pt;
+  }
+  .ui-devis-total {
+    margin-top: 6px;
+    padding: 7px 10px;
+    background: linear-gradient(135deg, var(--ty-orange-deep), var(--ty-orange));
+    border-radius: 6px;
+    display: flex; justify-content: space-between; align-items: baseline;
+    color: var(--white);
+    font-weight: 700;
+    font-size: 7.5pt;
+    box-shadow: 0 4px 10px rgba(220,102,60,0.30);
+  }
+  .ui-devis-total .lbl {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 6pt;
+    opacity: 0.92;
+  }
+  .ui-devis-total .amt {
+    font-family: var(--mono);
+    font-size: 8.5pt;
+  }
+
+  /* === Portail mockup === */
+  .ui-portail {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .ui-stat {
+    background: rgba(255,255,255,0.04);
+    border-radius: 7px;
+    padding: 7px 9px;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-left: 2px solid var(--ty-orange);
+  }
+  .ui-stat.green { border-left-color: #10b981; }
+  .ui-stat .v {
+    font-family: var(--serif);
+    font-size: 16pt;
+    color: var(--white);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .ui-stat .v .u {
+    font-size: 7pt;
+    color: rgba(255,255,255,0.55);
+    font-weight: 500;
+    margin-left: 2px;
+  }
+  .ui-stat .l {
+    font-size: 5.8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+    color: rgba(255,255,255,0.55);
+    font-weight: 700;
+    margin-top: 4px;
+  }
+  .ui-stat .delta {
+    font-size: 5.5pt;
+    color: #6ee7b7;
+    font-weight: 600;
+    margin-top: 2px;
+  }
+  .ui-chart {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 7px;
+    padding: 8px 9px 6px;
+    grid-column: span 2;
+    height: 64px;
+    display: flex; flex-direction: column;
+  }
+  .ui-chart-label {
+    font-size: 5.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+    color: rgba(255,255,255,0.45);
+    font-weight: 700;
+    margin-bottom: 4px;
+    display: flex; justify-content: space-between;
+  }
+  .ui-chart-bars {
+    flex: 1; display: flex; align-items: flex-end;
+    gap: 4px; justify-content: space-between;
+  }
+  .ui-chart-bars .bar {
+    flex: 1;
+    background: linear-gradient(180deg, var(--ty-orange-soft), var(--ty-orange-deep));
+    border-radius: 2px 2px 0 0;
+    position: relative;
+    min-height: 8%;
+  }
+  .ui-chart-bars .bar.peak {
+    background: linear-gradient(180deg, #fdba74, var(--ty-orange));
+    box-shadow: 0 0 8px rgba(220,102,60,0.5);
+  }
+
+  /* Map photo strip */
+  .map-section {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 12px;
+    margin: 6px 0 10px;
+  }
+  .map-img {
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--ty-blue-tint);
+    height: 180px;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  .photo-trio {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 6px;
+    height: 180px;
+  }
+  .photo-trio .ph {
+    background-size: cover;
+    background-position: center;
+    border-radius: 6px;
+    position: relative;
+  }
+  .photo-trio .ph::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(0deg, rgba(0,0,0,0.3), transparent 50%);
+    border-radius: 6px;
+  }
+  .photo-trio .ph.big { grid-column: span 2; }
+  .photo-trio .ph .lbl {
+    position: absolute;
+    bottom: 4px; left: 6px;
+    color: var(--white);
+    font-size: 6.5pt;
+    font-weight: 600;
+    z-index: 2;
+    background: rgba(0,0,0,0.5);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* === Annexe full-page mockups === */
+  .annex-cover { display: flex; align-items: baseline; gap: 16px; margin-bottom: 8px; }
+  .annex-num {
+    font-family: var(--serif);
+    font-size: 56pt; line-height: 0.9;
+    font-weight: 600;
+    color: var(--ty-orange);
+    letter-spacing: -0.04em;
+  }
+  .annex-tag {
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--ty-orange);
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .annex-meta { font-size: 9pt; color: var(--neutral-500); font-weight: 500; margin-top: 2px; }
+  .annex-lead {
+    font-family: var(--serif);
+    font-size: 12.5pt; color: var(--ink-2);
+    line-height: 1.5;
+    margin: 6px 0 14px;
+    max-width: 82ch;
+  }
+  .annex-mockup { height: 410px; margin: 6px 0 14px; }
+  .annex-mockup .ui-content { padding: 18px 22px; font-size: 9.5pt; }
+  .annex-mockup .ui-title { font-size: 8.5pt; margin-bottom: 14px; letter-spacing: 0.14em; }
+  .annex-mockup .ui-kanban { gap: 8px; }
+  .annex-mockup .ui-kanban .col { padding: 10px 9px 13px; border-radius: 8px; }
+  .annex-mockup .ui-kanban .col h5 { font-size: 7pt; margin-bottom: 10px; }
+  .annex-mockup .ui-kanban .col h5 .count { padding: 2px 6px; border-radius: 4px; font-size: 6.5pt; }
+  .annex-mockup .ui-kanban .lead { font-size: 7.5pt; padding: 7px 8px; margin-bottom: 6px; border-radius: 5px; }
+  .annex-mockup .ui-kanban .lead .amt { font-size: 6.5pt; margin-top: 3px; }
+  .annex-mockup .ui-chat { gap: 12px; }
+  .annex-mockup .ui-msg { font-size: 8.5pt; padding: 12px 16px; border-radius: 14px; }
+  .annex-mockup .ui-msg.ia .ia-head { font-size: 7pt; margin-bottom: 7px; }
+  .annex-mockup .ui-msg.ia .ia-row { font-size: 8pt; padding: 3px 0; }
+  .annex-mockup .ui-msg.ia .ia-row .ia-v { font-size: 7.8pt; }
+  .annex-mockup .ui-msg .ia-confidence { font-size: 7pt; margin-top: 8px; padding-top: 6px; }
+  .annex-mockup .ui-devis { padding: 14px 16px; }
+  .annex-mockup .ui-devis-header .num { font-size: 8.5pt; }
+  .annex-mockup .ui-devis-row { font-size: 8.5pt; padding: 6px 0; }
+  .annex-mockup .ui-devis-row .val { font-size: 8pt; }
+  .annex-mockup .ui-devis-total { padding: 12px 16px; font-size: 10pt; border-radius: 8px; }
+  .annex-mockup .ui-devis-total .lbl { font-size: 8pt; }
+  .annex-mockup .ui-devis-total .amt { font-size: 13pt; }
+  .annex-mockup .ui-portail { gap: 10px; }
+  .annex-mockup .ui-stat { padding: 12px 14px; border-radius: 9px; }
+  .annex-mockup .ui-stat .v { font-size: 28pt; }
+  .annex-mockup .ui-stat .v .u { font-size: 10pt; margin-left: 4px; }
+  .annex-mockup .ui-stat .l { font-size: 7pt; margin-top: 6px; }
+  .annex-mockup .ui-stat .delta { font-size: 7pt; margin-top: 4px; }
+  .annex-mockup .ui-chart { height: 120px; padding: 12px 14px; }
+  .annex-mockup .ui-chart-label { font-size: 7pt; margin-bottom: 8px; }
+  .annex-mockup .ui-chart-bars { gap: 6px; }
+
+  .annex-features {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin-top: 4px;
+  }
+  .annex-feature {
+    border-left: 2px solid var(--ty-orange);
+    padding: 4px 10px 4px 14px;
+  }
+  .annex-feature h4 {
+    font-family: var(--sans);
+    font-size: 9.5pt;
+    color: var(--ty-blue);
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: 0;
+    margin-bottom: 4px;
+  }
+  .annex-feature p {
+    font-size: 8.5pt;
+    color: var(--neutral-700);
+    line-height: 1.45;
+    margin: 0;
+  }
+
+  /* Photo cover */
+  .photo-strip {
+    height: 110px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 10px;
+    margin: 8px 0 10px;
+    position: relative;
+    overflow: hidden;
+  }
+  .photo-strip::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, rgba(0,62,92,0.55), transparent 60%);
+  }
+  .photo-strip .photo-label {
+    position: absolute;
+    bottom: 10px; left: 14px;
+    color: var(--white);
+    font-size: 9pt;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    z-index: 2;
+    background: rgba(0,0,0,0.4);
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     PAGE 1 — COVER
+     ============================================================ -->
+<section class="page cover">
+  <div class="cover-glow"></div>
+  <div class="cover-glow-2"></div>
+  <div class="cover-inner">
+
+    <div class="cover-top">
+      <div class="cover-logos">
+        <img class="adc-logo" src="file:///C:/Users/yabla/Downloads/adc-assets/logo-horizontal-transparent.png" alt="ADC">
+        <span class="x">×</span>
+        <img class="tysilio-logo" src="file:///C:/Users/yabla/Downloads/tysilio-assets/logo.svg" alt="Tysilio">
+      </div>
+      <div class="cover-meta">
+        <strong>PROPOSITION COMMERCIALE</strong><br>
+        Version 1.0 · 23 mai 2026<br>
+        Référence : ADC-TYS-2026-05<br>
+        Destinataire : <strong>Direction Tysilio</strong>
+      </div>
+    </div>
+
+    <div class="cover-title">
+      <div class="kicker">Automatisation de la gestion commerciale</div>
+      <h1 class="cover-h1">Tysilio<br>Commercial <em>Hub</em>.</h1>
+      <p class="lead">
+        Une plateforme intégrée pour multiplier par trois la capacité commerciale de
+        Tysilio sans recruter. CRM solaire, agent IA de dimensionnement, générateur de
+        devis &amp; ROI, portail client connecté à votre EMS.
+      </p>
+    </div>
+
+    <div class="cover-bottom">
+      <div>
+        Africandigit Consulting · Grand-Bassam, Côte d'Ivoire<br>
+        Édité par <strong>ADC</strong> pour <strong>Tysilio</strong>
+      </div>
+      <div>
+        <strong>africandigitconsulting.com</strong> · tysilio.com
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================
+     PAGE 2 — SYNTHÈSE EXÉCUTIVE
+     ============================================================ -->
+<section class="page">
+  <div class="page-head">
+    <div class="brand-text">ADC × Tysilio · Proposition</div>
+    <div class="doc-ref">ADC-TYS-2026-05 · p. 02</div>
+  </div>
+
+  <div class="section-label">01 · Synthèse</div>
+
+  <h2>Multiplier votre <em>capacité commerciale</em> par trois.</h2>
+
+  <p class="intro">
+    Tysilio livre des centrales solaires industrielles parmi les plus exigeantes
+    d'Afrique de l'Ouest et d'Europe. Votre engagement — <em>« transformer le
+    soleil en source d'économie »</em> — repose sur une expertise technique
+    rare et une méthodologie éprouvée. Cette proposition vous présente une
+    plateforme dédiée, conçue pour industrialiser votre cycle commercial sans
+    diluer la qualité de votre approche sur mesure.
+  </p>
+
+  <div class="kpi-hero">
+    <div class="kpi-hero-row">
+      <div class="kpi-block">
+        <div class="v">×3 <span class="v-sub">capacité</span></div>
+        <div class="l">Devis émis par mois</div>
+        <div class="desc">Sizing IA + devis automatisé libèrent vos ingénieurs seniors</div>
+      </div>
+      <div class="kpi-block">
+        <div class="v">−80% <span class="v-sub">temps</span></div>
+        <div class="l">Sur le dimensionnement initial</div>
+        <div class="desc">De 5 jours d'ingé senior à 1 demi-journée de validation</div>
+      </div>
+      <div class="kpi-block">
+        <div class="v">ROI 6 <span class="v-sub">mois</span></div>
+        <div class="l">Amortissement de l'investissement</div>
+        <div class="desc">Sur la base de +3 devis signés/an générés par la plateforme</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Pourquoi maintenant</h3>
+
+  <ul>
+    <li><strong>Vous grandissez vite.</strong> Présence en 5 pays africains (Sénégal, Mali, Niger, Togo, Somalie) + France et Allemagne. La croissance multi-pays exige une coordination commerciale industrialisée.</li>
+    <li><strong>Vos projets sont techniques.</strong> Chaque proposition mobilise plusieurs jours d'expertise senior. Cette expertise doit être capitalisée dans un outil, pas répétée à chaque devis.</li>
+    <li><strong>Votre méthodologie est mature.</strong> Le triptyque <strong>Écouter → Adapter → Déployer</strong> est en place chez vos clients (Cajou Espoir, NBB Gasélia). Il mérite d'être encodé dans un système.</li>
+    <li><strong>Vos clients demandent du reporting.</strong> CO₂ évités, kWh produits, économie diesel : un portail client transforme ces données en arguments de renouvellement et d'upsell.</li>
+  </ul>
+
+  <div class="callout callout-orange">
+    <strong>Notre engagement.</strong> ADC propose une solution livrable en 8 mois,
+    co-construite avec votre équipe technique et commerciale. Pas de plateforme
+    standard reskinnée : un produit dédié à Tysilio, hébergé en Afrique,
+    aligné sur votre charte graphique et votre méthodologie.
+  </div>
+
+  <div class="page-footer">ADC × Tysilio · Commercial Hub · Mai 2026</div>
+  <div class="page-number">02</div>
+</section>
+
+<!-- ============================================================
+     PAGE 3 — COMPRÉHENSION TYSILIO
+     ============================================================ -->
+<section class="page">
+  <div class="page-head">
+    <div class="brand-text">ADC × Tysilio · Proposition</div>
+    <div class="doc-ref">ADC-TYS-2026-05 · p. 03</div>
+  </div>
+
+  <div class="section-label">02 · Compréhension</div>
+
+  <h2>Notre lecture de <em>Tysilio</em>.</h2>
+
+  <div class="photo-strip" style="background-image: url('file:///C:/Users/yabla/Downloads/tysilio-assets/veynes.jpg');">
+    <span class="photo-label">Centrale solaire Veynes — Réalisation Tysilio</span>
+  </div>
+
+  <p>
+    Né en 2016 de la fusion entre <strong>Gaitasun</strong> (conseil photovoltaïque
+    B2B France) et <strong>Tysilio Développement</strong> (marché africain),
+    Tysilio est positionné comme <strong>intégrateur d'énergie solaire industrielle</strong>
+    sur deux continents. Votre mission : <em>« transformer le soleil en source d'économie »</em>
+    pour des sites industriels critiques. Quatre associés fondateurs réunissant
+    plus de 10 ans d'expérience chacun en ingénierie, commercial, finance et droit.
+  </p>
+
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-value">10</div>
+      <div class="kpi-label">Pays de présence</div>
+      <div class="kpi-sub">FR · DE · SN · ML · NE · TG · CI · CM · GH · SO</div>
+    </div>
+    <div class="kpi kpi-orange">
+      <div class="kpi-value">160 → 920</div>
+      <div class="kpi-label">kWc par projet</div>
+      <div class="kpi-sub">Centrales hybrides PV / Réseau / ESS</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-value">21+</div>
+      <div class="kpi-label">Études de cas livrées</div>
+      <div class="kpi-sub">Depuis 2016, multi-secteurs</div>
+    </div>
+    <div class="kpi kpi-orange">
+      <div class="kpi-value">9+</div>
+      <div class="kpi-label">Références majeures</div>
+      <div class="kpi-sub">PRODAC · Cajou Espoir · NBB · MSF · Aramine…</div>
+    </div>
+  </div>
+
+  <h3>Vos six secteurs cibles</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Secteur</th>
+        <th>Problématique énergétique</th>
+        <th>Référence Tysilio</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Agro-alimentaire</strong></td><td>Dépendance diesel, micro-coupures critiques sur lignes de production</td><td>Cajou Espoir SA (Togo), TOSSOLIA</td></tr>
+      <tr><td><strong>Brasseries</strong></td><td>Charge thermique continue, sécurisation alimentation 24/7</td><td>NBB · Groupe Gasélia (Mali)</td></tr>
+      <tr><td><strong>Exploitation minière</strong></td><td>Sites isolés, transport carburant coûteux, ESS indispensable</td><td>Aramine</td></tr>
+      <tr><td><strong>Commerce / services</strong></td><td>Optimisation OPEX, image RSE</td><td>PRODAC, ME Rental</td></tr>
+      <tr><td><strong>Humanitaire / ONG</strong></td><td>Autonomie énergétique zones isolées, fiabilité</td><td>Médecins Sans Frontières</td></tr>
+      <tr><td><strong>Collectivités locales</strong></td><td>Décarbonation, autonomie territoriale</td><td>Ville de Châteaurenard</td></tr>
+    </tbody>
+  </table>
+
+  <div class="quote">
+    <div class="quote-text">
+      Tysilio a mené une analyse exhaustive de nos besoins et nous a continuellement
+      conseillé en cherchant à comprendre notre modèle d'affaires et les réalités
+      de production à nos deux usines.
+    </div>
+    <div class="quote-author">
+      <strong>Jérôme Poulin</strong> — Directeur Général, Cajou Espoir SA
+    </div>
+  </div>
+
+  <div class="page-footer">ADC × Tysilio · Commercial Hub · Mai 2026</div>
+  <div class="page-number">03</div>
+</section>
+
+<!-- ============================================================
+     PAGE 4 — DIAGNOSTIC 4 FRICTIONS
+     ============================================================ -->
+<section class="page">
+  <div class="page-head">
+    <div class="brand-text">ADC × Tysilio · Proposition</div>
+    <div class="doc-ref">ADC-TYS-2026-05 · p. 04</div>
+  </div>
+
+  <div class="section-label">03 · Diagnostic</div>
+
+  <h2>Quatre <em>frictions</em> dans votre cycle commercial.</h2>
+
+  <p class="intro">
+    Reconstitution du cycle commercial type Tysilio : Prospect → Qualification →
+    Audit terrain → Sizing PV+ESS → Devis et ROI → Présentation décideurs →
+    Contrat → Livraison → Commissioning → Suivi performance.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 6%">#</th>
+        <th style="width: 26%">Friction</th>
+        <th>Coût opérationnel actuel</th>
+        <th>Impact business</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong style="color: var(--ty-orange); font-size: 14pt; font-family: var(--serif);">F1</strong></td>
+        <td><strong>Sizing technique chronophage</strong><br><span class="small">PV + ESS + STS + EMS dimensionnement</span></td>
+        <td><strong>3 à 5 jours</strong> d'ingénieur senior par devis. Cette ressource est rare et chère.</td>
+        <td>Bloque la capacité commerciale au-delà de <strong>3 à 4 leads</strong> simultanés.</td>
+      </tr>
+      <tr>
+        <td><strong style="color: var(--ty-orange); font-size: 14pt; font-family: var(--serif);">F2</strong></td>
+        <td><strong>Devis et ROI non standardisés</strong><br><span class="small">PowerPoint reconstruit à chaque fois</span></td>
+        <td>1 à 2 jours par devis. Qualité variable selon le commercial.</td>
+        <td>Argumentation CO₂ et financière inégale. Perte de cohérence marque.</td>
+      </tr>
+      <tr>
+        <td><strong style="color: var(--ty-orange); font-size: 14pt; font-family: var(--serif);">F3</strong></td>
+        <td><strong>Pipeline prospect dispersé</strong><br><span class="small">Email + WhatsApp + appels + notes</span></td>
+        <td>Aucune visibilité agrégée. Relances oubliées.</td>
+        <td><strong>10 à 20 %</strong> des leads perdus par absence de suivi rigoureux.</td>
+      </tr>
+      <tr>
+        <td><strong style="color: var(--ty-orange); font-size: 14pt; font-family: var(--serif);">F4</strong></td>
+        <td><strong>Reporting client post-déploiement</strong><br><span class="small">Ad hoc, manuel, fragmenté</span></td>
+        <td>Plusieurs heures par mois et par site, sans format unifié.</td>
+        <td>Le client ne voit pas la valeur en continu. Renouvellement et upsell difficiles.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Chiffrage de la perte commerciale annuelle estimée</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Poste</th>
+        <th class="num">Volume</th>
+        <th class="num">Coût annuel estimé</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Temps ingénieur senior absorbé par devis manuels</td>
+        <td class="num">~120 jours / an</td>
+        <td class="num">~24 M FCFA</td>
+      </tr>
+      <tr>
+        <td>Leads perdus faute de suivi (15 % du pipeline)</td>
+        <td class="num">~6 projets / an</td>
+        <td class="num">opportunité ~120 M FCFA</td>
+      </tr>
+      <tr>
+        <td>Temps commercial sur tâches administratives</td>
+        <td class="num">~30 % du temps</td>
+        <td class="num">~12 M FCFA</td>
+      </tr>
+      <tr class="total-row">
+        <td><strong>Coût d'opportunité commercial estimé</strong></td>
+        <td class="num">—</td>
+        <td class="num"><strong>~36 M FCFA + 120 M opportunité</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-orange">
+    <strong>Notre conviction.</strong> Ces frictions sont structurelles et croissent
+    avec votre développement. Plus Tysilio se déploie dans de nouveaux pays, plus le
+    besoin d'industrialisation commerciale devient critique.
+  </div>
+
+  <div class="page-footer">ADC × Tysilio · Commercial Hub · Mai 2026</div>
+  <div class="page-number">04</div>
+</section>
+
+<!-- ============================================================
+     PAGE 5 — SOLUTION VUE D'ENSEMBLE
+     ============================================================ -->
+<section class="page">
+  <div class="page-head">
+    <div class="brand-text">ADC × Tysilio · Proposition</div>
+    <div class="doc-ref">ADC-TYS-2026-05 · p. 05</div>
+  </div>
+
+  <div class="section-label">04 · Solution</div>
+
+  <h2>Tysilio <em>Commercial Hub</em> — vue d'ensemble.</h2>
+
+  <p class="intro">
+    Une plateforme intégrée à quatre modules complémentaires, conçue pour
+    couvrir l'intégralité de votre cycle commercial, depuis le premier contact
+    prospect jusqu'au reporting client annuel.
+  </p>
+
+  <div class="arch-diagram">
+    <div class="arch-tier">
+      <div class="arch-tier-label">Front<br>Tysilio</div>
+      <div class="arch-boxes">
+        <div class="arch-box primary">Commerciaux<br>(CRM + Devis)</div>
+        <div class="arch-box primary">Ingénieurs<br>(Sizing + Validation)</div>
+        <div class="arch-box primary">Direction<br>(Pilotage + KPIs)</div>
+      </div>
+    </div>
+    <div class="arch-flow">▼ ▼ ▼</div>
+    <div class="arch-tier">
+      <div class="arch-tier-label">Hub<br>Métier</div>
+      <div class="arch-boxes">
+        <div class="arch-box accent">①&nbsp;CRM Solaire</div>
+        <div class="arch-box accent">②&nbsp;Sizing IA</div>
+        <div class="arch-box accent">③&nbsp;Devis &amp; ROI</div>
+        <div class="arch-box accent">④&nbsp;Portail Client</div>
+      </div>
+    </div>
+    <div class="arch-flow">▼ ▼ ▼</div>
+    <div class="arch-tier">
+      <div class="arch-tier-label">Données<br>&amp; APIs</div>
+      <div class="arch-boxes">
+        <div class="arch-box">Base MySQL</div>
+        <div class="arch-box">EMS Tysilio</div>
+        <div class="arch-box">WhatsApp Biz</div>
+        <div class="arch-box">Email SMTP</div>
+        <div class="arch-box">Claude IA</div>
+      </div>
+    </div>
+    <div class="arch-flow">▼</div>
+    <div class="arch-tier">
+      <div class="arch-tier-label">Clients<br>Tysilio</div>
+      <div class="arch-boxes">
+        <div class="arch-box primary">Cajou Espoir · NBB · PRODAC · MSF · Aramine · …</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Réponse aux quatre frictions</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Friction</th>
+        <th>Module résolvant</th>
+        <th>Gain attendu</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>F1 — Sizing chronophage</td><td><strong>Module 2 — Sizing IA</strong></td><td class="pos">−80 % temps ingénieur senior</td></tr>
+      <tr><td>F2 — Devis et ROI non standardisés</td><td><strong>Module 3 — Devis &amp; ROI Generator</strong></td><td class="pos">100 % cohérent, 30 min/devis</td></tr>
+      <tr><td>F3 — Pipeline dispersé</td><td><strong>Module 1 — CRM Solaire</strong></td><td class="pos">0 lead oublié, scoring auto</td></tr>
+      <tr><td>F4 — Reporting client post-livraison</td><td><strong>Module 4 — Portail Client</strong></td><td class="pos">Renouvellement + upsell facilités</td></tr>
+    </tbody>
+  </table>
+
+  <div class="page-footer">ADC × Tysilio · Commercial Hub · Mai 2026</div>
+  <div class="page-number">05</div>
+</section>
+
+<!-- ============================================================
+     PAGE 6 — MODULES 1 + 2
+     ============================================================ -->
+<section class="page">
+  <div class="page-head">
+    <div class="brand-text">ADC × Tysilio · Proposition</div>
+    <div class="doc-ref">ADC-TYS-2026-05 · p. 06</div>
+  </div>
+
+  <div class="section-label">05 · Modules 1-2</div>
+
+  <h2>Modules <em>CRM Solaire</em> et <em>Sizing IA</em>.</h2>
+
+  <div class="module-grid">
+
+    <div class="module-card">
+      <div class="num-circle">1</div>
+      <div class="tag">Résout F3 — Pipeline dispersé</div>
+      <h3>CRM Solaire Industriel</h3>
+      <p class="small">Pipeline visuel dédié au cycle commercial Tysilio, avec phases métier adaptées.</p>
+      <ul>
+        <li><strong>Phases pipeline</strong> Prospect → Qualif → Audit → Devis → Négociation → Signé → En cours → Livré</li>
+        <li><strong>Fiche prospect enrichie</strong> consommation kWh/mois, dépendance diesel, micro-coupures, budget, décideurs cartographiés</li>
+        <li><strong>Scoring lead automatique</strong> par taille site, urgence, budget, secteur</li>
+        <li><strong>Relances multi-canal</strong> email + WhatsApp Business + SMS configurables par phase</li>
+        <li><strong>Multi-pays</strong> vue consolidée FR / DE / SN / ML / NE / TG / SO</li>
+        <li><strong>Multi-langue</strong> interface français + anglais (optionnel)</li>
+        <li><strong>Permissions granulaires</strong> commercial / ingénieur / direction / partenaire</li>
+        <li><strong>Vue prévisionnelle</strong> signatures probables M+3 par pays</li>
+      </ul>
+    </div>
+
+    <div class="module-card">
+      <div class="num-circle">2</div>
+      <div class="tag">Résout F1 — Sizing chronophage</div>
+      <h3>Agent IA Sizing &amp; Pré-Devis</h3>
+      <p class="small">Assistant IA qui absorbe l'expertise senior et la rend disponible à chaque commercial.</p>
+      <ul>
+        <li><strong>Input client</strong> consommation, contraintes site, contraintes diesel, budget cible</li>
+        <li><strong>Output IA</strong> dimensionnement PV / ESS / STS / EMS pré-validé avec justifications techniques</li>
+        <li><strong>RAG sur cas Tysilio</strong> Cajou Espoir, NBB Gasélia, futurs déploiements alimentent la base de connaissances</li>
+        <li><strong>Validation senior obligatoire</strong> avant envoi client — l'IA propose, l'ingénieur tranche</li>
+        <li><strong>Variantes proposées</strong> Économique / Performance / Premium avec compromis explicites</li>
+        <li><strong>Coût Meta IA</strong> Claude Sonnet, environ 5 USD par devis</li>
+        <li><strong>Apprentissage continu</strong> chaque devis validé enrichit le RAG</li>
+        <li><strong>Garde-fou anti-hallucination</strong> ranges techniques verrouillés sur règles métier</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <h4>Comment cela se traduit pour vos équipes</h4>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Avant</th>
+        <th>Avec Tysilio Commercial Hub</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Pipeline éclaté dans 4 boîtes mail différentes</td>
+        <td class="pos">Pipeline unifié, vu en temps réel par le DG depuis son téléphone</td>
+      </tr>
+      <tr>
+        <td>5 jours d'ingénieur senior pour chaque dimensionnement</td>
+        <td class="pos">3 heures de validation senior sur un sizing IA pré-calculé</td>
+      </tr>
+      <tr>
+        <td>Expertise stockée dans la tête de 2 personnes</td>
+        <td class="pos">Expertise capitalisée et accessible à toute l'équipe</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="page-footer">ADC × Tysilio · Commercial Hub · Mai 2026</div>
+  <div class="page-number">06</div>
+</section>
+
+<!-- ============================================================
+     PAGE 7 — MODULES 3 + 4
+     ============================================================ -->
+<section class="page">
+  <div class="page-head">
+    <div class="brand-text">ADC × Tysilio · Proposition</div>
+    <div class="doc-ref">ADC-TYS-2026-05 · p. 07</div>
+  </div>
+
+  <div class="section-label">05 · Modules 3-4</div>
+
+  <h2>Modules <em>Devis &amp; ROI</em> et <em>Portail Client</em>.</h2>
+
+  <div class="module-grid">
+
+    <div class="module-card">
+      <div class="num-circle">3</div>
+      <div class="tag">Résout F2 — Devis non standardisés</div>
+      <h3>Générateur Devis &amp; Simulateur ROI</h3>
+      <p class="small">Documents commerciaux cohérents en charte Tysilio, en 30 minutes.</p>
+      <ul>
+        <li><strong>Devis PDF auto-généré</strong> avec branding Tysilio (logo, palette officielle), BOM détaillé, planning chantier 15 jours, garanties</li>
+        <li><strong>Templates par secteur</strong> brasserie, agro, mine, télécom, ONG, collectivité</li>
+        <li><strong>Variantes en 3 clics</strong> Économique / Performance / Premium prêtes à présenter</li>
+        <li><strong>Simulateur ROI interactif</strong> envoyé au client, qui ajuste ses paramètres et voit en direct ses économies € + tonnes CO₂ + amortissement</li>
+        <li><strong>Argumentaire RSE auto</strong> rapport CO₂ certifiable, prêt pour rapport extra-financier client</li>
+        <li><strong>Multi-devise</strong> XOF, FCFA Mali, EUR, USD selon le pays prospect</li>
+        <li><strong>Signature électronique</strong> intégration DocuSign / Yousign optionnelle</li>
+        <li><strong>Archive versionnée</strong> chaque devis tracé avec auteur et date</li>
+      </ul>
+    </div>
+
+    <div class="module-card">
+      <div class="num-circle">4</div>
+      <div class="tag">Résout F4 — Reporting client absent</div>
+      <h3>Portail Client + Monitoring EMS</h3>
+      <p class="small">Vitrine permanente de la valeur Tysilio chez chaque client.</p>
+      <ul>
+        <li><strong>Tableau de bord client</strong> production kWh, économies € vs facture précédente, tonnes CO₂ évitées</li>
+        <li><strong>Connecteur EMS Tysilio</strong> intégration API directe ou import CSV mensuel</li>
+        <li><strong>Alertes proactives</strong> sous-performance détectée → opportunité commerciale (extension, maintenance)</li>
+        <li><strong>Rapport annuel CO₂</strong> auto-généré, marketing-ready pour les parties prenantes du client</li>
+        <li><strong>Support client intégré</strong> ticketing simple lié au CRM Tysilio</li>
+        <li><strong>Mobile-friendly</strong> PWA accessible smartphone, pas d'app à installer</li>
+        <li><strong>White-label</strong> portail à la charte Tysilio pour vos clients premium</li>
+        <li><strong>Notifications push</strong> WhatsApp / email sur événements importants</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="quote">
+    <div class="quote-text">
+      Félicitations à toute l'équipe Tysilio pour son professionnalisme durant la
+      conception et la réalisation de cette centrale. Un projet ambitieux pour
+      faire face à la crise énergétique extrêmement difficile que traverse le
+      Mali aujourd'hui.
+    </div>
+    <div class="quote-author">
+      <strong>Teneman Konaté</strong> — Sous-directeur Maintenance, NBB · Groupe Gasélia
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>Effet boule de neige.</strong> Un client qui voit en continu son CO₂ évité et ses économies est <strong>3× plus susceptible</strong> de souscrire à une extension ou un module ESS additionnel. Le portail = canal de renouvellement.
+  </div>
+
+  <div class="page-footer">ADC × Tysilio · Commercial Hub · Mai 2026</div>
+  <div class="page-number">07</div>
+</section>
+
+<!-- ============================================================
+     PAGE 8 — ADD-ONS PREMIUM
+     ============================================================ -->
+<section class="page">
+  <div class="page-head">
+    <div class="brand-text">ADC × Tysilio · Proposition</div>
+    <div class="doc-ref">ADC-TYS-2026-05 · p. 08</div>
+  </div>
+
+  <div class="section-label">06 · Add-ons</div>
+
+  <h2>Modules <em>complémentaires</em> à la carte.</h2>
+
+  <p class="intro">
+    Au-delà des quatre modules cœur, ces extensions enrichissent la solution
+    selon vos priorités stratégiques. Ils peuvent être activés dès le démarrage
+    ou ajoutés progressivement.
+  </p>
+
+  <div class="addon-grid">
+
+    <div class="addon-card">
+      <div class="addon-icon">A</div>
+      <div class="addon-body">
+        <h4>Audit énergétique IA pré-vente</h4>
+        <div class="addon-desc">Le prospect envoie 3 mois de factures électriques. L'IA produit un diagnostic et une proposition d'opportunité PV chiffrée en moins de 5 min. Accélérateur de qualification.</div>
+        <div class="addon-price">+3 M FCFA · livré en 4 semaines</div>
+      </div>
+    </div>
+
+    <div class="addon-card">
+      <div class="addon-icon">B</div>
+      <div class="addon-body">
+        <h4>Dashboard exécutif Tysilio</h4>
+        <div class="addon-desc">Vue temps réel KPIs commerciaux par pays, pipeline value, taux de conversion, performance commerciaux. Pour la direction et le Comex Tysilio.</div>
+        <div class="addon-price">+2,5 M FCFA · livré en 3 semaines</div>
+      </div>
+    </div>
+
+    <div class="addon-card">
+      <div class="addon-icon">C</div>
+      <div class="addon-body">
+        <h4>Multi-langue FR + EN + DE</h4>
+        <div class="addon-desc">Interface bilingue ou trilingue, devis et portail client adaptés selon la langue du destinataire. Essentiel pour vos prospects français, allemands, et internationaux.</div>
+        <div class="addon-price">+2 M FCFA · livré en 3 semaines</div>
+      </div>
+    </div>
+
+    <div class="addon-card">
+      <div class="addon-icon">D</div>
+      <div class="addon-body">
+        <h4>Conformité RGPD + audit sécurité</h4>
+        <div class="addon-desc">Audit OWASP complet, chiffrement at rest des données client, mise en conformité RGPD pour vos opérations Europe. Document de conformité livré.</div>
+        <div class="addon-price">+4 M FCFA · livré en 6 semaines</div>
+      </div>
+    </div>
+
+    <div class="addon-card">
+      <div class="addon-icon">E</div>
+      <div class="addon-body">
+        <h4>Connecteurs ERP &amp; comptabilité</h4>
+        <div class="addon-desc">Intégration Sage, SAP Business One, ou ERP local. Devis signés synchronisés automatiquement vers la facturation et la trésorerie Tysilio.</div>
+        <div class="addon-price">+5 M FCFA · livré en 6 semaines</div>
+      </div>
+    </div>
+
+    <div class="addon-card">
+      <div class="addon-icon">F</div>
+      <div class="addon-body">
+        <h4>Formation équipe Tysilio + certification</h4>
+        <div class="addon-desc">Programme de 4 jours : commerciaux, ingénieurs, direction. Certification interne ADC × Tysilio remise aux participants. Pack vidéo de formation continue.</div>
+        <div class="addon-price">+3 M FCFA · livré sur place ou visio</div>
+      </div>
+    </div>
+
+    <div class="addon-card">
+      <div class="addon-icon">G</div>
+      <div class="addon-body">
+        <h4>Support 24/7 + SLA Premium</h4>
+        <div class="addon-desc">Astreinte technique 7j/7, garantie de rétablissement sous 4h ouvrées, priorité absolue sur tickets critiques. Tableau de bord SLA dédié.</div>
+        <div class="addon-price">+1,5 M FCFA / mois</div>
+      </div>
+    </div>
+
+    <div class="addon-card">
+      <div class="addon-icon">H</div>
+      <div class="addon-body">
+        <h4>App mobile native iOS + Android</h4>
+        <div class="addon-desc">Application native pour les équipes terrain (audit, photos site, capture signature). Synchronisation offline pour zones isolées (typique projets miniers).</div>
+        <div class="addon-price">+8 M FCFA · livré en 12 semaines</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="callout callout-orange">
+    <strong>Bundles préférentiels.</strong> Souscrire 3 add-ons simultanément lors
+    de la signature donne droit à <strong>−15 %</strong> sur le total. Souscrire
+    5+ add-ons donne droit à <strong>−25 %</strong> sur le total. Le bundle
+    « International » (Multi-langue + RGPD + ERP) est particulièrement
+    pertinent pour votre déploiement France-Allemagne.
+  </div>
+
+  <div class="page-footer">ADC × Tysilio · Commercial Hub · Mai 2026</div>
+  <div class="page-number">08</div>
+</section>
+
+<!-- ============================================================
+     PAGE 9 — ARCHITECTURE TECHNIQUE
+     ============================================================ -->
+<section class="page">
+  <div class="page-head">
+    <div class="brand-text">ADC × Tysilio · Proposition</div>
+    <div class="doc-ref">ADC-TYS-2026-05 · p. 09</div>
+  </div>
+
+  <div class="section-label">07 · Architecture</div>
+
+  <h2>Architecture <em>technique</em> et sécurité.</h2>
+
+  <p>
+    Stack industriel éprouvé, maîtrisé par l'équipe ADC, déployable en Afrique
+    de l'Ouest avec souveraineté des données.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Couche</th>
+        <th>Technologie retenue</th>
+        <th>Justification</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Back-end applicatif</strong></td>
+        <td>Laravel 12 (PHP 8.3)</td>
+        <td>Maturité, écosystème abondant, équipe locale recrutable</td>
+      </tr>
+      <tr>
+        <td><strong>Base de données</strong></td>
+        <td>MySQL 8</td>
+        <td>Robuste, sauvegardes simples, hébergement abordable</td>
+      </tr>
+      <tr>
+        <td><strong>Front-end utilisateurs</strong></td>
+        <td>Blade + Alpine.js + Tailwind CSS</td>
+        <td>Léger, rapide, PWA mobile-ready sans complexité React</td>
+      </tr>
+      <tr>
+        <td><strong>Agent IA</strong></td>
+        <td>Anthropic Claude (API) + RAG vectoriel</td>
+        <td>Référence du marché, qualité supérieure sur l'analyse technique</td>
+      </tr>
+      <tr>
+        <td><strong>File queues</strong></td>
+        <td>Redis (queues + cache)</td>
+        <td>Asynchrone pour relances, génération PDF, IA</td>
+      </tr>
+      <tr>
+        <td><strong>Génération PDF</strong></td>
+        <td>DomPDF Laravel</td>
+        <td>Éprouvé sur production KLASSCI (10 écoles)</td>
+      </tr>
+      <tr>
+        <td><strong>Notifications</strong></td>
+        <td>WhatsApp Business API + SMTP + SMS</td>
+        <td>Multi-canal, taux de lecture WhatsApp &gt; 80 %</td>
+      </tr>
+      <tr>
+        <td><strong>Hébergement</strong></td>
+        <td>OVH Dakar (option 1) ou serveur dédié Lomé/Bamako (option 2)</td>
+        <td>Souveraineté données Afrique, latence réduite</td>
+      </tr>
+      <tr>
+        <td><strong>Sauvegardes</strong></td>
+        <td>Snapshot quotidien + sauvegarde mensuelle hors-site</td>
+        <td>RPO 24h, RTO 4h, conformité standards industriels</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Sécurité par défaut</h3>
+
+  <ul>
+    <li><strong>Authentification</strong> 2FA optionnel pour comptes direction, tokens API rotables</li>
+    <li><strong>Chiffrement</strong> données sensibles chiffrées en base (consommation client, prix négociés)</li>
+    <li><strong>Audit log</strong> toutes les actions tracées avec horodatage, IP, utilisateur</li>
+    <li><strong>Permissions granulaires</strong> par rôle, par pays, par module</li>
+    <li><strong>Webhooks signés</strong> HMAC SHA-256 pour tous les flux entrants (EMS, paiement, etc.)</li>
+    <li><strong>Backups testés</strong> restauration validée tous les trimestres</li>
+  </ul>
+
+  <div class="callout">
+    <strong>Référence ADC.</strong> Cette même stack opère <strong>KLASSCI</strong> en
+    production chez 10 écoles supérieures multi-pays, avec plus de 13 000 utilisateurs
+    actifs cumulés. Le code et l'infrastructure ont fait leurs preuves en conditions
+    réelles depuis 2024.
+  </div>
+
+  <div class="page-footer">ADC × Tysilio · Commercial Hub · Mai 2026</div>
+  <div class="page-number">09</div>
+</section>
+
+<!-- ============================================================
+     PAGE 10 — ROADMAP 4 PHASES
+     ============================================================ -->
+<section class="page">
+  <div class="page-head">
+    <div class="brand-text">ADC × Tysilio · Proposition</div>
+    <div class="doc-ref">ADC-TYS-2026-05 · p. 10</div>
+  </div>
+
+  <div class="section-label">08 · Roadmap</div>
+
+  <h2>Roadmap de <em>livraison</em> en 8 mois.</h2>
+
+  <p>
+    Méthodologie agile, sprints de 2 semaines, démos hebdomadaires à l'équipe
+    Tysilio, ajustements continus. La méthodologie ADC reprend votre triptyque
+    <strong>Écouter → Adapter → Déployer</strong>.
+  </p>
+
+  <div class="phase-grid">
+
+    <div class="phase-card">
+      <div class="phase-num">0</div>
+      <div class="phase-duration">2 semaines</div>
+      <div class="phase-title">Discovery &amp; Cadrage</div>
+      <div class="phase-desc">Workshop équipe Tysilio à Grand-Bassam, audit processus actuels, digitalisation cas historiques (alimente RAG IA), validation archi finale.</div>
+    </div>
+
+    <div class="phase-card">
+      <div class="phase-num">1</div>
+      <div class="phase-duration">3 mois</div>
+      <div class="phase-title">Fondation CRM + Devis</div>
+      <div class="phase-desc">Module 1 (CRM Solaire) + Module 3 (Devis &amp; ROI) en production. Permissions multi-utilisateurs, charte Tysilio appliquée, pilote 1 commercial.</div>
+    </div>
+
+    <div class="phase-card">
+      <div class="phase-num">2</div>
+      <div class="phase-duration">2 mois</div>
+      <div class="phase-title">Agent IA Sizing</div>
+      <div class="phase-desc">Module 2 en production. Agent IA avec RAG sur cas Tysilio, validation senior obligatoire, intégration WhatsApp Business.</div>
+    </div>
+
+    <div class="phase-card">
+      <div class="phase-num">3</div>
+      <div class="phase-duration">2 mois</div>
+      <div class="phase-title">Portail Client &amp; Monitoring</div>
+      <div class="phase-desc">Module 4 en production. Connecteur EMS Tysilio, dashboard client, rapport annuel CO₂ auto-généré, alertes proactives.</div>
+    </div>
+
+  </div>
+
+  <h3>Gouvernance projet</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Rituel</th>
+        <th>Fréquence</th>
+        <th>Participants</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Démo sprint avec équipe Tysilio</td><td>Toutes les 2 semaines</td><td>Équipe ADC + Pilote Tysilio</td></tr>
+      <tr><td>Comité de pilotage</td><td>Mensuel</td><td>DG Tysilio + Marcel ADC</td></tr>
+      <tr><td>Revue d'architecture technique</td><td>Fin de chaque phase</td><td>Lead Tech ADC + ingé senior Tysilio</td></tr>
+      <tr><td>Recette utilisateurs</td><td>Fin de chaque phase</td><td>3 utilisateurs Tysilio (com + ingé + dir)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Critères de succès par phase</h3>
+
+  <ul>
+    <li><strong>Phase 1</strong> 1 commercial pilote Tysilio utilise activement le CRM, 5 devis générés via le nouveau template</li>
+    <li><strong>Phase 2</strong> 3 devis IA pré-générés et validés par ingénieur senior, gain de temps mesuré et documenté</li>
+    <li><strong>Phase 3</strong> 1 client Tysilio (Cajou Espoir ou NBB) actif sur le portail client, rapport CO₂ généré et envoyé</li>
+    <li><strong>Phase 4 — Onboarding</strong> 100 % de l'équipe commerciale formée, transition complète vers le Hub</li>
+  </ul>
+
+  <div class="page-footer">ADC × Tysilio · Commercial Hub · Mai 2026</div>
+  <div class="page-number">10</div>
+</section>
+
+<!-- ============================================================
+     PAGE 11 — 3 PACKAGES + BUDGET
+     ============================================================ -->
+<section class="page">
+  <div class="page-head">
+    <div class="brand-text">ADC × Tysilio · Proposition</div>
+    <div class="doc-ref">ADC-TYS-2026-05 · p. 11</div>
+  </div>
+
+  <div class="section-label">09 · Investissement</div>
+
+  <h2>Trois <em>packages</em> au choix.</h2>
+
+  <div class="pkg-grid">
+
+    <div class="pkg-card">
+      <div class="pkg-name">Démarrage</div>
+      <div class="pkg-target">PILOTE 6 MOIS</div>
+      <div class="pkg-price">22 M <span class="pkg-price-sub">FCFA</span></div>
+      <ul class="pkg-features">
+        <li><span class="check">✓</span> Discovery + Phase 1 (CRM + Devis)</li>
+        <li><span class="check">✓</span> 5 utilisateurs Tysilio</li>
+        <li><span class="check">✓</span> 1 pays (Togo OU Mali)</li>
+        <li><span class="check">✓</span> Charte Tysilio appliquée</li>
+        <li><span class="cross">×</span> Pas d'agent IA Sizing</li>
+        <li><span class="cross">×</span> Pas de portail client</li>
+        <li><span class="cross">×</span> Pas d'add-ons inclus</li>
+        <li><span class="check">✓</span> Maintenance 6 mois (300k FCFA/mois)</li>
+      </ul>
+    </div>
+
+    <div class="pkg-card featured">
+      <div class="pkg-name">Hub Complet</div>
+      <div class="pkg-target">RECOMMANDÉ TYSILIO</div>
+      <div class="pkg-price">38 M <span class="pkg-price-sub">FCFA</span></div>
+      <ul class="pkg-features">
+        <li><span class="check">✓</span> 4 modules complets (CRM + IA + Devis + Portail)</li>
+        <li><span class="check">✓</span> 15 utilisateurs Tysilio</li>
+        <li><span class="check">✓</span> Multi-pays (5 pays africains)</li>
+        <li><span class="check">✓</span> Charte Tysilio premium</li>
+        <li><span class="check">✓</span> Agent IA Sizing + RAG Tysilio</li>
+        <li><span class="check">✓</span> Portail client connecté EMS</li>
+        <li><span class="check">✓</span> Formation équipe 4 jours</li>
+        <li><span class="check">✓</span> Maintenance 12 mois (700k FCFA/mois)</li>
+      </ul>
+    </div>
+
+    <div class="pkg-card">
+      <div class="pkg-name">Premium International</div>
+      <div class="pkg-target">EXPANSION FR · DE</div>
+      <div class="pkg-price">58 M <span class="pkg-price-sub">FCFA</span></div>
+      <ul class="pkg-features">
+        <li><span class="check">✓</span> Tout Hub Complet inclus</li>
+        <li><span class="check">✓</span> 30 utilisateurs Tysilio</li>
+        <li><span class="check">✓</span> 7 pays (FR + DE inclus)</li>
+        <li><span class="check">✓</span> Multi-langue FR + EN + DE</li>
+        <li><span class="check">✓</span> Conformité RGPD + audit OWASP</li>
+        <li><span class="check">✓</span> Connecteur ERP (Sage / SAP)</li>
+        <li><span class="check">✓</span> Audit énergétique IA pré-vente</li>
+        <li><span class="check">✓</span> Support 24/7 + SLA Premium (12 mois)</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <h3>Comparatif investissement vs gain Tysilio</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Indicateur</th>
+        <th class="num">Démarrage</th>
+        <th class="num">Hub Complet</th>
+        <th class="num">Premium Intl.</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Investissement initial</td>
+        <td class="num">22 M FCFA</td>
+        <td class="num"><strong>38 M FCFA</strong></td>
+        <td class="num">58 M FCFA</td>
+      </tr>
+      <tr>
+        <td>Maintenance annuelle</td>
+        <td class="num">3,6 M / an</td>
+        <td class="num">8,4 M / an</td>
+        <td class="num">18 M / an</td>
+      </tr>
+      <tr>
+        <td>Gain temps ingénieur senior</td>
+        <td class="num">~20 % / an</td>
+        <td class="num pos">~80 % / an</td>
+        <td class="num pos">~80 % / an</td>
+      </tr>
+      <tr>
+        <td>Devis émis additionnels / an</td>
+        <td class="num">+5</td>
+        <td class="num pos">+15</td>
+        <td class="num pos">+25</td>
+      </tr>
+      <tr>
+        <td>Estimation projets signés add. / an</td>
+        <td class="num">+1</td>
+        <td class="num pos">+3</td>
+        <td class="num pos">+5</td>
+      </tr>
+      <tr class="total-row">
+        <td><strong>ROI estimé an 1</strong></td>
+        <td class="num">~18 mois</td>
+        <td class="num"><strong>~6 mois</strong></td>
+        <td class="num"><strong>~4 mois</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="page-footer">ADC × Tysilio · Commercial Hub · Mai 2026</div>
+  <div class="page-number">11</div>
+</section>
+
+<!-- ============================================================
+     PAGE 12 — MÉTHODOLOGIE + ÉQUIPE + NEXT STEPS
+     ============================================================ -->
+<section class="page">
+  <div class="page-head">
+    <div class="brand-text">ADC × Tysilio · Proposition</div>
+    <div class="doc-ref">ADC-TYS-2026-05 · p. 12</div>
+  </div>
+
+  <div class="section-label">10 · ADC</div>
+
+  <h2>L'équipe ADC <em>à votre service</em>.</h2>
+
+  <h3>Méthodologie alignée sur Tysilio</h3>
+
+  <p>
+    Nous avons reconnu votre triptyque <strong>Écouter / Adapter / Déployer</strong>
+    et l'avons intégré à notre propre méthodologie. La symétrie d'approche garantit
+    une collaboration fluide.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Phase Tysilio</th>
+        <th>Équivalent ADC</th>
+        <th>Livrable</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Écouter</strong></td><td>Discovery workshops</td><td>Cahier des charges co-construit, validé par les 3 personae Tysilio</td></tr>
+      <tr><td><strong>Adapter</strong></td><td>Sprints agiles 2 sem.</td><td>Démos hebdomadaires, ajustements continus, recette par phase</td></tr>
+      <tr><td><strong>Déployer</strong></td><td>Mise en production progressive</td><td>1 pilote → 1 pays → multi-pays, formation, transfert de compétences</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Équipe dédiée au projet Tysilio</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Membre</th>
+        <th>Rôle sur le projet</th>
+        <th>Engagement</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Marcel Djedje-li</strong></td><td>Head of Development, lead technique + agent IA</td><td>40 % temps</td></tr>
+      <tr><td><strong>Bede Abel Josias</strong></td><td>General Manager, pilotage projet + relation client</td><td>20 % temps</td></tr>
+      <tr><td><strong>Yablai Ruben Virgil</strong></td><td>Frontend lead, expérience utilisateur</td><td>60 % temps</td></tr>
+      <tr><td><strong>Issouf Ouedraogo</strong></td><td>Full-stack + DBA, intégrations EMS et ERP</td><td>50 % temps</td></tr>
+      <tr><td><strong>Hermann Koré</strong></td><td>Commercial + accompagnement adoption</td><td>20 % temps</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Nos références concrètes</h3>
+
+  <ul>
+    <li><strong>KLASSCI</strong> SaaS de gestion scolaire en production chez 10 écoles supérieures africaines depuis 2024. 13 000+ utilisateurs actifs cumulés. Stack identique à celle proposée à Tysilio.</li>
+    <li><strong>WOURI</strong> agent IA WhatsApp en beta pour agriculteurs ivoiriens, 4 langues locales, conseil agricole pour saisons changeantes.</li>
+    <li><strong>ADC Paie</strong> moteur de paie ivoirien complet en cours de finalisation, validé par audit comptable externe.</li>
+  </ul>
+
+  <div class="cta-box">
+    <div class="cta-box-left">
+      <div class="cta-box-title">Prochaine étape — Kickoff Workshop</div>
+      <div class="cta-box-desc">2 jours en présentiel à Grand-Bassam ou à Lomé, calendrier à convenir. Tous les chiffres consolidés et budget ferme à la sortie.</div>
+    </div>
+    <div class="cta-box-right">Réservons une date</div>
+  </div>
+
+  <div class="page-footer">ADC × Tysilio · Commercial Hub · Mai 2026</div>
+  <div class="page-number">12</div>
+</section>
+
+<!-- ============================================================
+     ANNEXE 1 — CRM SOLAIRE
+     ============================================================ -->
+<section class="page">
+  <div class="page-head">
+    <div class="brand-text">ADC × Tysilio · Annexes</div>
+    <div class="doc-ref">ADC-TYS-2026-05 · Annexe 1</div>
+  </div>
+
+  <div class="section-label">A1 · Interface</div>
+
+  <div class="annex-cover">
+    <div class="annex-num">01</div>
+    <div>
+      <div class="annex-tag">Module 1 · Aperçu interface</div>
+      <h2 style="margin-bottom: 0;">CRM Solaire — <em>Pipeline visuel</em>.</h2>
+      <div class="annex-meta">Vue commercial · Multi-pays · Suivi temps réel</div>
+    </div>
+  </div>
+
+  <p class="annex-lead">
+    Tableau de bord du pipeline commercial Tysilio, consolidé sur les dix pays
+    de présence. Chaque carte représente un prospect avec son montant estimé
+    et son stade. Les leads chauds remontent automatiquement par scoring IA.
+  </p>
+
+  <div class="ui-mockup annex-mockup">
+    <div class="ui-bar">
+      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      <span class="ui-url">tysilio-hub.com/crm/pipeline · Vue commercial Q2-2026</span>
+    </div>
+    <div class="ui-content">
+      <div class="ui-title">Pipeline commercial · 11 leads actifs · 2 167 M XOF</div>
+      <div class="ui-kanban">
+        <div class="col">
+          <h5>Prospect <span class="count">4</span></h5>
+          <div class="lead">Brasserie Niger<span class="amt">~ 145M XOF</span></div>
+          <div class="lead">Cimenterie ML<span class="amt">~ 320M XOF</span></div>
+          <div class="lead">Hôpital Dakar<span class="amt">~ 88M XOF</span></div>
+          <div class="lead">Textile CI<span class="amt">~ 165M XOF</span></div>
+        </div>
+        <div class="col active">
+          <h5>Audit <span class="count">3</span></h5>
+          <div class="lead hot">Mine Aramine<span class="amt">~ 450M XOF</span></div>
+          <div class="lead hot">Agro Burkina<span class="amt">~ 210M XOF</span></div>
+          <div class="lead">Carrière Ghana<span class="amt">~ 175M XOF</span></div>
+        </div>
+        <div class="col">
+          <h5>Devis <span class="count">2</span></h5>
+          <div class="lead">CFAO Sénégal<span class="amt">~ 178M XOF</span></div>
+          <div class="lead">SOMDIAA TG<span class="amt">~ 240M XOF</span></div>
+        </div>
+        <div class="col">
+          <h5>Signé <span class="count">2</span></h5>
+          <div class="lead won">NBB Mali<span class="amt">528M XOF</span></div>
+          <div class="lead won">Cajou TG<span class="amt">192M XOF</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annex-features">
+    <div class="annex-feature">
+      <h4>Vue multi-pays consolidée</h4>
+      <p>Filtres pays, secteur, commercial. Pivot temps réel sur 10 pays africains et européens.</p>
+    </div>
+    <div class="annex-feature">
+      <h4>Scoring lead IA</h4>
+      <p>Algorithme propriétaire qui priorise les leads selon taille site, budget, urgence diesel.</p>
+    </div>
+    <div class="annex-feature">
+      <h4>Relances multi-canal</h4>
+      <p>WhatsApp Business, email, SMS configurables par phase. Aucun lead oublié.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">ADC × Tysilio · Annexe interface · Mai 2026</div>
+  <div class="page-number">A1</div>
+</section>
+
+<!-- ============================================================
+     ANNEXE 2 — SIZING IA
+     ============================================================ -->
+<section class="page">
+  <div class="page-head">
+    <div class="brand-text">ADC × Tysilio · Annexes</div>
+    <div class="doc-ref">ADC-TYS-2026-05 · Annexe 2</div>
+  </div>
+
+  <div class="section-label">A2 · Interface</div>
+
+  <div class="annex-cover">
+    <div class="annex-num">02</div>
+    <div>
+      <div class="annex-tag">Module 2 · Aperçu interface</div>
+      <h2 style="margin-bottom: 0;">Sizing IA — <em>Dimensionnement assisté</em>.</h2>
+      <div class="annex-meta">Vue ingénieur · Agent IA + validation senior</div>
+    </div>
+  </div>
+
+  <p class="annex-lead">
+    L'ingénieur saisit la consommation et les contraintes du site. L'agent IA
+    propose un dimensionnement complet PV / ESS / STS / EMS avec justification,
+    confiance modèle, et amortissement estimé. La validation senior reste obligatoire.
+  </p>
+
+  <div class="ui-mockup annex-mockup">
+    <div class="ui-bar">
+      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      <span class="ui-url">tysilio-hub.com/sizing/agent-ia · Cas brasserie NBB</span>
+    </div>
+    <div class="ui-content">
+      <div class="ui-title">Agent IA · Brasserie NBB Mali · 920 kWc</div>
+      <div class="ui-chat">
+        <div class="ui-msg user">
+          <strong>Saisie ingénieur</strong><br>
+          Site : brasserie industrielle 920 kWc · Bamako Mali<br>
+          Consommation moyenne : 12 000 kWh/mois (24/7 production)<br>
+          Diesel actuel : groupe 200 kVA · 18 micro-coupures/mois<br>
+          Budget cible : 200 M XOF · ROI &lt; 7 ans
+        </div>
+        <div class="ui-msg ia">
+          <div class="ia-head">Agent IA · Sizing recommandé</div>
+          <div class="ia-row"><span class="ia-k">PV solaire</span><span class="ia-v">280 kWc · 8 toitures</span></div>
+          <div class="ia-row"><span class="ia-k">ESS stockage</span><span class="ia-v">400 kWh · LiFePO4</span></div>
+          <div class="ia-row"><span class="ia-k">STS Tysilio</span><span class="ia-v">basculement &lt; 20 ms</span></div>
+          <div class="ia-row"><span class="ia-k">EMS Tysilio</span><span class="ia-v">pilotage 24/7</span></div>
+          <div class="ia-row"><span class="ia-k">Investissement</span><span class="ia-v">192 M XOF HT</span></div>
+          <div class="ia-row"><span class="ia-k">Amortissement</span><span class="ia-v">5,2 ans</span></div>
+          <div class="ia-row"><span class="ia-k">CO₂ évité / an</span><span class="ia-v">~205 tonnes</span></div>
+          <div class="ia-confidence">⬤ Confiance modèle 92 % · validation senior requise avant envoi devis client</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annex-features">
+    <div class="annex-feature">
+      <h4>RAG sur cas Tysilio</h4>
+      <p>Chaque cas validé (Cajou, NBB) enrichit la base de connaissances. L'IA apprend de votre expertise.</p>
+    </div>
+    <div class="annex-feature">
+      <h4>Garde-fou anti-hallucination</h4>
+      <p>Ranges techniques verrouillés sur règles métier. Pas d'écart absurde possible.</p>
+    </div>
+    <div class="annex-feature">
+      <h4>Gain de temps massif</h4>
+      <p>De 5 jours d'ingénieur senior à 3h de validation sur un dimensionnement pré-calculé.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">ADC × Tysilio · Annexe interface · Mai 2026</div>
+  <div class="page-number">A2</div>
+</section>
+
+<!-- ============================================================
+     ANNEXE 3 — DEVIS & ROI
+     ============================================================ -->
+<section class="page">
+  <div class="page-head">
+    <div class="brand-text">ADC × Tysilio · Annexes</div>
+    <div class="doc-ref">ADC-TYS-2026-05 · Annexe 3</div>
+  </div>
+
+  <div class="section-label">A3 · Interface</div>
+
+  <div class="annex-cover">
+    <div class="annex-num">03</div>
+    <div>
+      <div class="annex-tag">Module 3 · Aperçu interface</div>
+      <h2 style="margin-bottom: 0;">Devis &amp; ROI — <em>Génération automatique</em>.</h2>
+      <div class="annex-meta">Vue commercial · PDF prêt à envoyer · ROI simulé client</div>
+    </div>
+  </div>
+
+  <p class="annex-lead">
+    Le devis se construit automatiquement à partir du sizing IA validé : BOM
+    détaillé, planning chantier 15 jours, garanties Tysilio, variantes Économique
+    / Performance / Premium. Le simulateur ROI est envoyé au client qui ajuste
+    ses paramètres en direct.
+  </p>
+
+  <div class="ui-mockup annex-mockup">
+    <div class="ui-bar">
+      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      <span class="ui-url">tysilio-hub.com/devis/2026-128 · Brasserie NBB Mali</span>
+    </div>
+    <div class="ui-content">
+      <div class="ui-title">Devis Tysilio · NBB Mali · Variante Performance</div>
+      <div class="ui-devis">
+        <div class="ui-devis-header">
+          <span class="num">TYS-2026-128</span>
+          <span class="v">Version 1.0 · 23 mai 2026</span>
+        </div>
+        <div class="ui-devis-row"><span>Modules PV 280 kWc (8 toitures)</span><span class="val">68 M XOF</span></div>
+        <div class="ui-devis-row"><span>Onduleurs 70 kVA × 4 unités</span><span class="val">22 M XOF</span></div>
+        <div class="ui-devis-row"><span>ESS 400 kWh stockage LiFePO4</span><span class="val">82 M XOF</span></div>
+        <div class="ui-devis-row"><span>STS Tysilio + EMS pilotage</span><span class="val">24 M XOF</span></div>
+        <div class="ui-devis-row"><span>Câblage + installation 15 jours</span><span class="val">30 M XOF</span></div>
+        <div class="ui-devis-total">
+          <span class="lbl">Total HT · Variante Performance</span>
+          <span class="amt">192 M XOF</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annex-features">
+    <div class="annex-feature">
+      <h4>Templates par secteur</h4>
+      <p>Brasserie, agro, mine, télécom, ONG, collectivité. Arguments métiers pré-rédigés.</p>
+    </div>
+    <div class="annex-feature">
+      <h4>Simulateur ROI client</h4>
+      <p>Lien envoyé au client qui ajuste sa conso et voit en direct ses économies et son CO₂ évité.</p>
+    </div>
+    <div class="annex-feature">
+      <h4>Signature électronique</h4>
+      <p>Intégration DocuSign / Yousign optionnelle. Devis signé revient automatiquement au CRM.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">ADC × Tysilio · Annexe interface · Mai 2026</div>
+  <div class="page-number">A3</div>
+</section>
+
+<!-- ============================================================
+     ANNEXE 4 — PORTAIL CLIENT
+     ============================================================ -->
+<section class="page">
+  <div class="page-head">
+    <div class="brand-text">ADC × Tysilio · Annexes</div>
+    <div class="doc-ref">ADC-TYS-2026-05 · Annexe 4</div>
+  </div>
+
+  <div class="section-label">A4 · Interface</div>
+
+  <div class="annex-cover">
+    <div class="annex-num">04</div>
+    <div>
+      <div class="annex-tag">Module 4 · Aperçu interface</div>
+      <h2 style="margin-bottom: 0;">Portail client — <em>Monitoring CO₂</em>.</h2>
+      <div class="annex-meta">Vue client · Production temps réel · Rapport annuel CO₂</div>
+    </div>
+  </div>
+
+  <p class="annex-lead">
+    Le client se connecte sur son portail dédié et voit sa production en temps
+    réel, son CO₂ évité cumulé, ses économies vs facture précédente. Connecté
+    directement à l'EMS Tysilio. Génère automatiquement le rapport annuel RSE
+    marketing-ready.
+  </p>
+
+  <div class="ui-mockup annex-mockup">
+    <div class="ui-bar">
+      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      <span class="ui-url">portail.cajou-espoir.tysilio.com · Dashboard production</span>
+    </div>
+    <div class="ui-content">
+      <div class="ui-title">Production Cajou Espoir · Avril 2026 · Vue mensuelle</div>
+      <div class="ui-portail">
+        <div class="ui-stat">
+          <div class="v">22,5<span class="u"> MWh</span></div>
+          <div class="l">Produit ce mois</div>
+          <div class="delta">↑ 18 % vs mars 2026</div>
+        </div>
+        <div class="ui-stat green">
+          <div class="v">17,0<span class="u"> t CO₂</span></div>
+          <div class="l">Évités ce mois</div>
+          <div class="delta">↑ +2,1 t vs N-1</div>
+        </div>
+        <div class="ui-chart">
+          <div class="ui-chart-label">
+            <span>kWh / jour · 7 derniers jours</span>
+            <span style="color: rgba(110,231,183,0.85);">●  Tendance ▲ +14 %</span>
+          </div>
+          <div class="ui-chart-bars">
+            <div class="bar" style="height: 35%;"></div>
+            <div class="bar" style="height: 55%;"></div>
+            <div class="bar" style="height: 65%;"></div>
+            <div class="bar" style="height: 58%;"></div>
+            <div class="bar peak" style="height: 88%;"></div>
+            <div class="bar" style="height: 72%;"></div>
+            <div class="bar peak" style="height: 92%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annex-features">
+    <div class="annex-feature">
+      <h4>Connecteur EMS Tysilio</h4>
+      <p>Intégration API directe avec votre EMS propriétaire. Données rafraîchies à la minute.</p>
+    </div>
+    <div class="annex-feature">
+      <h4>Rapport annuel CO₂</h4>
+      <p>PDF marketing-ready, prêt pour rapport RSE client. Renforce votre valeur perçue.</p>
+    </div>
+    <div class="annex-feature">
+      <h4>Alertes proactives</h4>
+      <p>Sous-performance détectée → opportunité commerciale (extension, maintenance).</p>
+    </div>
+  </div>
+
+  <div class="page-footer">ADC × Tysilio · Annexe interface · Mai 2026</div>
+  <div class="page-number">A4</div>
+</section>
+
+<!-- ============================================================
+     PAGE 13 — BACK COVER
+     ============================================================ -->
+<section class="page back-cover">
+
+  <div>
+    <div class="back-cover-logos">
+      <img src="file:///C:/Users/yabla/Downloads/adc-assets/logo-horizontal-transparent.png" alt="ADC">
+      <span class="x">×</span>
+      <img src="file:///C:/Users/yabla/Downloads/tysilio-assets/logo.svg" alt="Tysilio">
+    </div>
+
+    <h2 style="margin-top: 30px;">Construisons <em>ensemble</em>.</h2>
+
+    <p>
+      Cette proposition est valable 60 jours à compter du 23 mai 2026. Tous les
+      montants sont indicatifs et seront consolidés à l'issue du Discovery
+      Workshop. ADC reste à disposition pour toute clarification.
+    </p>
+
+    <div class="contact-block">
+      <h4>Africandigit Consulting (ADC)</h4>
+      <p><strong>Marcel Djedje-li</strong> — Head of Development Department</p>
+      <p>Siti Dia, Grand-Bassam Monckey-ville, Côte d'Ivoire</p>
+      <p>+225 27 32 797 523 · +225 05 95 45 98 43</p>
+      <p>africandigitconsulting@gmail.com</p>
+      <p>africandigitconsulting.com</p>
+    </div>
+
+    <div class="contact-block">
+      <h4>Pour Tysilio</h4>
+      <p>Cette proposition est adressée à la <strong>Direction Tysilio</strong>.</p>
+      <p>Référence document : <span class="mono" style="color: rgba(255,255,255,0.95);">ADC-TYS-2026-05</span></p>
+      <p>Date : 23 mai 2026 · Version 1.0</p>
+    </div>
+  </div>
+
+  <div>
+    <p style="font-size: 8.5pt; color: rgba(255,255,255,0.5); margin-top: 20px;">
+      Document confidentiel. Édité par Africandigit Consulting (ADC) pour
+      Tysilio. Aucune reproduction ou diffusion sans autorisation préalable
+      d'ADC. Marques citées : Tysilio, KLASSCI, WOURI, Cajou Espoir, NBB,
+      PRODAC sont les propriétés respectives de leurs détenteurs.
+    </p>
+  </div>
+
+</section>
+
+</body>
+</html>

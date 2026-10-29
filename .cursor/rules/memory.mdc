@@ -1,0 +1,62 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# PROJECT MEMORY SYSTEM
+
+## MEMORY INITIALIZATION
+- ALWAYS create or update PROJECT_MEMORY.md before generating any code
+- If PROJECT_MEMORY.md doesn't exist, create it with the template below
+- Update it after every significant development session
+
+## PROJECT_MEMORY.md STRUCTURE
+The PROJECT_MEMORY.md file must include these sections:
+
+### 1. Project Overview
+- Purpose and goals of the project
+- Key stakeholders and target users
+- Core functionality
+
+### 2. Architecture
+- High-level architectural diagram or description
+- Design patterns and principles followed
+- Third-party integrations
+
+### 3. Directory Structure
+- Complete file organization with purpose of each directory
+- Special conventions or patterns used
+
+### 4. File Inventory
+- List of key files with their purposes
+- Relationships between files
+
+### 5. Database Schema
+- Tables, columns, relationships, and indexes
+- Entity-relationship diagrams if applicable
+- Migration history
+
+### 6. API Routes
+- All endpoints with methods, parameters, and handlers
+- Authentication requirements
+- Response formats
+
+### 7. Component Registry
+- Reusable components and their purposes
+- Component dependencies and relationships
+
+### 8. Naming Conventions
+- Project-specific naming patterns
+- Glossary of domain-specific terms
+
+### 9. Technical Decisions
+- Record of architectural decisions with rationales
+- Alternatives considered and why they were rejected
+- Technical debt and future improvement plans
+
+## VERIFICATION PROTOCOL
+- Before creating any new file, verify it doesn't already exist in PROJECT_MEMORY.md
+- Before creating database tables/columns, verify no similar structures exist
+- Before implementing functionality, check if similar components exist
+- Always search for singular/plural variants and synonyms of component names
+- Document any new components immediately in PROJECT_MEMORY.md

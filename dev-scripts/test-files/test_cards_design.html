@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test du Design des Cartes - Planning Général</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-rgb: 37, 99, 235;
+            --secondary: #1e40af;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+        }
+
+        body {
+            background-color: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Grid des combinaisons */
+        .combinaisons-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        /* Carte de combinaison moderne */
+        .combinaison-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+            position: relative;
+            min-height: 220px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .combinaison-card:hover {
+            transform: translateY(-12px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Header section avec logo et statut */
+        .card-header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 1.5rem 1.5rem 1rem 1.5rem;
+        }
+
+        .card-logo-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex: 1;
+        }
+
+        .school-logo {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.25);
+        }
+
+        .filiere-niveau-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .filiere-name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+            margin-bottom: 0.25rem;
+        }
+
+        .niveau-name {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* Badge de statut moderne */
+        .status-badge {
+            padding: 0.5rem;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            min-width: 32px;
+            height: 32px;
+            flex-shrink: 0;
+        }
+
+        .status-badge.configured {
+            background: rgba(16, 185, 129, 0.1);
+            color: #059669;
+        }
+
+        .status-badge.partial {
+            background: rgba(245, 158, 11, 0.1);
+            color: #d97706;
+        }
+
+        .status-badge.not-configured {
+            background: rgba(156, 163, 175, 0.1);
+            color: #6b7280;
+        }
+
+        /* Section du corps avec statistiques */
+        .card-body-section {
+            flex: 1;
+            padding: 0 1.5rem 1rem 1.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(var(--primary-rgb), 0.03);
+            border-radius: 12px;
+            border: 1px solid rgba(var(--primary-rgb), 0.08);
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-description {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            line-height: 1.2;
+        }
+
+        /* Section footer avec bouton */
+        .card-footer-section {
+            padding: 1rem 1.5rem 1.5rem 1.5rem;
+            margin-top: auto;
+        }
+
+        .btn-configure-modern {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 0.875rem 1rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-configure-modern:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(var(--primary-rgb), 0.3);
+        }
+
+        .btn-configure-modern:active {
+            transform: translateY(0);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 992px) {
+            .combinaisons-grid {
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                gap: 1.5rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .combinaisons-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                margin-top: 1.5rem;
+            }
+
+            .combinaison-card {
+                min-height: 200px;
+            }
+
+            .card-header-section {
+                padding: 1.25rem 1.25rem 0.75rem 1.25rem;
+            }
+
+            .card-body-section {
+                padding: 0 1.25rem 0.75rem 1.25rem;
+            }
+
+            .card-footer-section {
+                padding: 0.75rem 1.25rem 1.25rem 1.25rem;
+            }
+
+            .school-logo {
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
+            }
+
+            .filiere-name {
+                font-size: 0.9rem;
+            }
+
+            .niveau-name {
+                font-size: 0.8rem;
+            }
+
+            .stat-number {
+                font-size: 1.25rem;
+            }
+
+            .stat-description {
+                font-size: 0.7rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .combinaison-card {
+                min-height: 180px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+
+            .stat-item {
+                padding: 0.75rem;
+            }
+
+            .card-logo-info {
+                gap: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="mb-4">Test du Design des Cartes - Planning Général</h1>
+                
+                <!-- Grid des combinaisons -->
+                <div class="combinaisons-grid">
+                    
+                    <!-- Carte 1 - Statut Complet -->
+                    <div class="combinaison-card">
+                        <!-- Header avec logo école et badge statut -->
+                        <div class="card-header-section">
+                            <div class="card-logo-info">
+                                <div class="school-logo">
+                                    <i class="fas fa-university"></i>
+                                </div>
+                                <div class="filiere-niveau-info">
+                                    <div class="filiere-name">BTS1 BATIMENT</div>
+                                    <div class="niveau-name">Première année BTS</div>
+                                </div>
+                            </div>
+                            <div class="status-badge configured">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Corps de la carte avec statistiques -->
+                        <div class="card-body-section">
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <div class="stat-number">5/5</div>
+                                    <div class="stat-description">Matières configurées</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-number">260h</div>
+                                    <div class="stat-description">Volume horaire total</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Footer avec bouton de configuration -->
+                        <div class="card-footer-section">
+                            <button class="btn-configure-modern">
+                                <i class="fas fa-cog me-2"></i>Configurer les volumes
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Carte 2 - Statut Partiel -->
+                    <div class="combinaison-card">
+                        <div class="card-header-section">
+                            <div class="card-logo-info">
+                                <div class="school-logo">
+                                    <i class="fas fa-university"></i>
+                                </div>
+                                <div class="filiere-niveau-info">
+                                    <div class="filiere-name">BTS1 TRAVAUX PUBLICS</div>
+                                    <div class="niveau-name">Première année BTS</div>
+                                </div>
+                            </div>
+                            <div class="status-badge partial">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="card-body-section">
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <div class="stat-number">3/7</div>
+                                    <div class="stat-description">Matières configurées</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-number">180h</div>
+                                    <div class="stat-description">Volume horaire total</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-footer-section">
+                            <button class="btn-configure-modern">
+                                <i class="fas fa-cog me-2"></i>Configurer les volumes
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Carte 3 - Statut Non configuré -->
+                    <div class="combinaison-card">
+                        <div class="card-header-section">
+                            <div class="card-logo-info">
+                                <div class="school-logo">
+                                    <i class="fas fa-university"></i>
+                                </div>
+                                <div class="filiere-niveau-info">
+                                    <div class="filiere-name">BTS2 BATIMENT</div>
+                                    <div class="niveau-name">Deuxième année BTS</div>
+                                </div>
+                            </div>
+                            <div class="status-badge not-configured">
+                                <i class="fas fa-plus-circle"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="card-body-section">
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <div class="stat-number">0/8</div>
+                                    <div class="stat-description">Matières configurées</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-number">0h</div>
+                                    <div class="stat-description">Volume horaire total</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-footer-section">
+                            <button class="btn-configure-modern">
+                                <i class="fas fa-cog me-2"></i>Configurer les volumes
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Carte 4 - Exemple supplémentaire -->
+                    <div class="combinaison-card">
+                        <div class="card-header-section">
+                            <div class="card-logo-info">
+                                <div class="school-logo">
+                                    <i class="fas fa-university"></i>
+                                </div>
+                                <div class="filiere-niveau-info">
+                                    <div class="filiere-name">BTS1 GÉNIE CIVIL</div>
+                                    <div class="niveau-name">Première année BTS</div>
+                                </div>
+                            </div>
+                            <div class="status-badge partial">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="card-body-section">
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <div class="stat-number">4/6</div>
+                                    <div class="stat-description">Matières configurées</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-number">220h</div>
+                                    <div class="stat-description">Volume horaire total</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-footer-section">
+                            <button class="btn-configure-modern">
+                                <i class="fas fa-cog me-2"></i>Configurer les volumes
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

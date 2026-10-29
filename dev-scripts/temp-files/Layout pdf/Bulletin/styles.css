@@ -1,0 +1,273 @@
+/* Styles généraux */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f8f9fa;
+    color: #000;
+    font-size: 12px;
+}
+
+.container {
+    background-color: white;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    padding: 20px 30px;
+    border-radius: 0;
+    max-width: 1000px;
+    /* border: 2px solid #000; */
+}
+
+/* En-tête */
+header {
+    margin-bottom: 15px;
+}
+
+.republic-title {
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.motto {
+    font-style: italic;
+    font-size: 12px;
+}
+
+.ministry-title {
+    font-size: 12px;
+}
+
+.bulletin-header {
+    font-weight: bold;
+    font-size: 14px;
+    text-transform: uppercase;
+}
+
+.edition-date, .cycle-info, .diploma-info, .diploma-code {
+    font-size: 12px;
+}
+
+.academic-year {
+    font-size: 12px;
+    font-weight: bold;
+    margin-top: 20px;
+}
+
+/* Logo ESBTP */
+.esbtp-logo {
+    max-width: 150px;
+    margin: 0 auto;
+    position: relative;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 120px;
+}
+
+.esbtp-logo img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    border: none;
+    box-shadow: none;
+    object-fit: contain;
+}
+
+/* Informations de l'école */
+.school-info {
+    margin-top: 10px;
+}
+
+.school-name {
+    font-size: 14px;
+    /* Couleur verte du logo ESBTP */
+    color: #0A6B31;
+    font-weight: bold;
+}
+
+.school-contact {
+    font-size: 10px;
+    color: #333;
+}
+
+/* Tableaux d'informations de l'étudiant */
+.student-table {
+    font-size: 12px;
+    margin-bottom: 10px;
+    /* border: 1px solid #000; */
+}
+
+.student-table td {
+    padding: 4px 8px;
+    /* border: 1px solid #000; */
+}
+
+.fw-bold {
+    font-weight: bold;
+}
+/* Tableaux des notes */
+.student-info-container {
+    border: 2px solid #000;
+}
+
+/* Tableaux des notes */
+.table-top {
+    font-size: 12px;
+    /* border: 1px solid #000; */
+    margin-bottom: 10px;
+}
+
+.table-top th, .table-top td {
+    padding: 4px 8px;
+    /* border: 1px solid #000; */
+    vertical-align: middle;
+}
+
+/* Tableaux des notes */
+.table {
+    font-size: 12px;
+    /* border: 1px solid #000; */
+    margin-bottom: 10px;
+}
+
+.table th, .table td {
+    padding: 4px 8px;
+    /* border: 1px solid #000; */
+    vertical-align: middle;
+}
+
+.table-header th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+.section-header {
+    background-color: #000;
+    color: white;
+    font-weight: bold;
+    text-align: center;
+}
+
+.total-row {
+    background-color: #f2f2f2;
+    font-weight: bold;
+    border-bottom: 2px solid #000;
+    /* margin-bottom: -44rem; */
+}
+
+/* Résultats */
+.result-value {
+    background-color: #f2f2f2;
+    font-weight: bold;
+    text-align: center;
+}
+
+.result-cadre {
+    border: 1px solid #000;
+    padding: 0 20px;
+}
+
+/* Décision et signature */
+.decision-section {
+    margin-top: 30px;
+    border-top: 1px solid #000;
+    padding-top: 20px;
+}
+
+.decision-title, .signature-title {
+    font-weight: bold;
+    font-size: 12px;
+    margin-bottom: 30px;
+}
+
+.decision-result {
+    font-weight: bold;
+    font-size: 16px;
+    margin-top: 20px;
+    font-style: italic;
+}
+
+.signature-box {
+    height: 60px;
+    width: 150px;
+    margin: 0 auto;
+    border-bottom: 1px solid #000;
+}
+
+/* Pied de page */
+footer {
+    margin-top: 30px;
+    font-size: 10px;
+    text-align: center;
+    border-top: 1px solid #000;
+    padding-top: 5px;
+}
+
+/* Bouton d'impression */
+#print-button {
+    transition: all 0.3s ease;
+    background-color: #4CAF50;
+    border-color: #4CAF50;
+}
+
+#print-button:hover {
+    background-color: #388E3C;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+    
+    .esbtp-logo {
+        width: 120px;
+        height: 60px;
+    }
+    
+    .logo-letter-e, .logo-letter-s, .logo-letter-b, .logo-letter-t, .logo-letter-p {
+        font-size: 24px;
+    }
+    
+    .logo-underline {
+        width: 80px;
+        top: 28px;
+    }
+    
+    .logo-tagline {
+        font-size: 7px;
+        top: 35px;
+        width: 120px;
+    }
+}
+
+
+
+/* Impression Il faut configurer le resultat de l'impression au format A4 */
+@media print 
+{
+    
+    body 
+    {
+        width: 27.7cm;
+        height: 29.7cm;
+        margin: 0cm;
+        padding: 0;
+        background: white;
+        color: black;
+    }
+
+    .btn {
+        display: none; /* Cache le bouton lors de l'impression */
+    }
+    
+    .container {
+        box-shadow: none;
+        padding: 0;
+        max-width: 100%;
+        border: 1px solid #000;
+    }
+    
+    
+} 

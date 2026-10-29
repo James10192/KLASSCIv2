@@ -1,0 +1,447 @@
+# Blade pitfalls — bugs silencieux qui crashent au runtime
+
+## Quand s'active
+
+Cette rule s'active dès que tu :
+- Modifies un fichier `.blade.php` (vue, partial, layout, composant)
+- Crées une nouvelle vue
+- Vois une erreur Laravel `ParseError` / `unexpected token` mentionnant un fichier `.blade.php`
+- Diagnostiques un crash 500 sur une page qui rend une vue Blade
+
+## Pourquoi cette rule existe
+
+Le compiler Blade Laravel a deux footguns SILENCIEUX qui ne sont PAS détectés par `php artisan view:cache` (qui compile sans erreur), mais qui crashent PHP au runtime quand la vue est effectivement rendue. Ces deux bugs ont déjà fait perdre du temps en mai 2026 :
+
+1. **Bug `@can` dans un commentaire JS** (incident PR #361, 2026-05-07) — 500 sur `/esbtp/inscriptions/create` parce que `// gating @can côté Blade` dans un commentaire JS était parsé comme directive `@can(...)`.
+
+2. **Bug `@php(expr)` shortform mangé par `@php...@endphp` block regex** (incident hotfix PR ~#370, 2026-05-08) — 500 sur 4 PDFs (liste-appel, liste-complete, etudiants/export, classes/export) parce que `@php($_logo = ...)` shortform était englouti par le regex de bloc qui mangeait jusqu'au prochain `@endphp`.
+
+Les deux bugs sont silencieux à la compilation, et seuls les utilisateurs qui hit la page/PDF les déclenchent.
+
+## Pitfall #1 — `@php(expr)` shortform mangé par `@php...@endphp` block regex
+
+### Le piège
+
+Laravel utilise le regex `(?<!@)@php(.*?)@endphp/s` pour capturer les blocs `@php ... @endphp` AVANT toute autre compilation (`BladeCompiler::storePhpBlocks`). **Le regex ne distingue PAS** :
+- La **shortform** `@php(expr)` (parens, sans `@endphp` propre)
+- La **block form** `@php ... @endphp`
+
+Si ton fichier contient `@php(expr)` ET un `@php ... @endphp` plus loin → le regex capture `@php(` du shortform comme ouverture de bloc et engloutit tout jusqu'au prochain `@endphp`. Le contenu intermédiaire (autres `@if`, `@foreach`, HTML, etc.) est laissé textuel et **jamais compilé**. Les `@endif`, `@endforeach` plus bas, eux, sont compilés normalement → orphelins → ParseError PHP.
+
+### Symptôme
+
+Erreur PHP au runtime du type :
+```
+syntax error, unexpected token "endforeach", expecting end of file
+syntax error, unexpected token "endif", expecting end of file
+```
+…dans un fichier `storage/framework/views/<hash>.php`.
+
+### ❌ INTERDIT
+
+```blade
+{{-- Fichier contenant @php(...) shortform ET @php...@endphp block plus loin --}}
+@php($_logo = \App\Helpers\SettingsHelper::resolveLogoBase64())
+...
+@php $autreVar = ...; @endphp  {{-- ce @endphp mange tout depuis @php( --}}
+```
+
+### ✅ FIX
+
+Toujours utiliser la **block form sur une seule ligne** :
+
+```blade
+@php $_logo = \App\Helpers\SettingsHelper::resolveLogoBase64(); @endphp
+```
+
+C'est aussi compact que la shortform et **immune au regex bug**.
+
+### Détection au quotidien
+
+```bash
+# Si présent ET il y a @endphp plus loin → suspect immédiat
+grep -n "@php(" path/to/file.blade.php
+```
+
+## Pitfall #2 — Directives `@xxx` dans les commentaires JS/HTML/string
+
+### Le piège
+
+Blade scanne **tout le fichier** pour les directives `@xxx`, **y compris à l'intérieur** de :
+- Commentaires JavaScript (`// ...`)
+- Commentaires HTML (`<!-- ... -->`)
+- Strings JS (`"texte avec @if"`)
+- Attributs HTML (`title="@can(...)"`)
+
+Le moteur ne parse PAS le langage hôte — c'est juste un regex pass.
+
+### Symptôme
+
+Erreur Blade :
+```
+syntax error, unexpected end of file, expecting "elseif" or "else" or "endif"
+```
+Le grep ferait un compte balanced de `@if`/`@endif` qui semble OK, parce que le faux `@if` dans le commentaire ne se voit pas immédiatement.
+
+### ❌ INTERDIT
+
+```blade
+<script>
+    // gating @can côté Blade  {{-- Blade voit @can comme directive ! --}}
+    // pour le cas @if($x) on fait Y
+</script>
+```
+
+### ✅ FIX (au choix)
+
+**Option 1** — Reformuler pour éviter le mot-directive :
+```blade
+<script>
+    // gating Blade côté serveur
+</script>
+```
+
+**Option 2** — Échapper avec `@@xxx` (Blade émet `@xxx` littéral à la sortie) :
+```blade
+<script>
+    // see @@can directive in the partial
+</script>
+```
+
+### Détection au quotidien
+
+```bash
+# Cherche toute directive Blade dans un commentaire JS ou HTML
+grep -nE "//.*@(can|if|foreach|endif|else|elseif|endcan|endforeach|push|once|section)" file.blade.php
+grep -nE "<!--.*@(can|if|foreach|endif|else|elseif|endcan|endforeach|push|once|section)" file.blade.php
+```
+
+## Pitfall #3 — Composants `<x-...>` dans les commentaires CSS / JS / HTML
+
+### Le piège
+
+Blade scanne **tout le fichier** pour les invocations `<x-component-name>` — y compris à l'intérieur :
+- Commentaires CSS dans `<style>` ou `@push('styles')` (ex: `/* le hero contient <x-export-modal> */`)
+- Commentaires HTML (`<!-- <x-foo> -->`)
+- Commentaires JS (`// <x-bar> est utilisé ici`)
+- Strings JS (`"opens <x-baz>"`)
+
+Si la chaîne `<x-mon-composant>` apparaît littéralement, Blade **émet le code de rendu du composant** (`<?php if($component->shouldRender()): ?> ... <?php endif; ?>`). Si le commentaire contient SEULEMENT l'ouverture (sans `</x-mon-composant>` ni auto-close `/>`), Blade émet le `<?php if(...): ?>` mais jamais le `<?php endif; ?>` correspondant → orphelin → ParseError au runtime.
+
+### Symptôme
+
+Identique à Pitfall #2 :
+```
+syntax error, unexpected end of file, expecting "elseif" or "else" or "endif"
+```
+
+Particulièrement vicieux sur la page `/esbtp/comptabilite/analytics` (incident 2026-05-09, commit fix `b3b43e9b` après) : un commentaire CSS expliquant *pourquoi* le hero est sans overflow:hidden contenait littéralement `<x-export-modal>`, ce qui injectait un `<?php if(isset($component)) {...} ?>` orphelin dans le compiled view.
+
+### ❌ INTERDIT
+
+```blade
+@push('styles')
+<style>
+/* ===== Hero =====
+   Ce hero contient un <x-export-modal> dropdown qui doit déborder. */
+.an-hero { ... }
+</style>
+@endpush
+```
+
+```blade
+<script>
+    // L'utilisateur clique <x-confirm-modal> avant de soumettre
+    document.querySelector('button').addEventListener(...);
+</script>
+```
+
+### ✅ FIX (au choix)
+
+**Option 1** — Encadrer le nom de composant entre parenthèses ou backticks :
+```css
+/* Ce hero contient un dropdown export (composant x-export-modal) */
+/* Ce hero contient un dropdown `<x-export-modal>` */   /* backticks */
+```
+
+**Option 2** — Casser le pattern `<x-` avec un espace :
+```css
+/* Ce hero contient un < x-export-modal > qui... */
+```
+
+**Option 3** — Réécrire pour ne pas mentionner le tag :
+```css
+/* Ce hero contient un dropdown export qui doit pouvoir déborder. */
+```
+
+### Détection au quotidien
+
+```bash
+# Cherche un <x-composant> littéral dans un commentaire CSS, HTML, JS, Blade
+grep -rEn '/\*[^*]*<x-[a-z]' resources/views/
+grep -rEn '<!--[^>]*<x-[a-z]' resources/views/
+grep -rEn '//[^\n]*<x-[a-z]' resources/views/
+grep -rEn '\{\{--[^-]*<x-[a-z]' resources/views/
+```
+
+## Pitfall #4 — `@json([…])` avec array literal multiligne
+
+### Le piège
+
+`@json(...)` est une directive Blade qui s'attend à recevoir **un seul argument PHP**, sérialisé en JSON dans la sortie. Quand cet argument est un **array literal `[ … ]` multiligne**, le parser Blade interne match mal les parenthèses internes. Il voit `@json([` puis quand il rencontre `])` à la fin (split sur plusieurs lignes), il ne reconstruit pas correctement la paire `( ... )` extérieure de `@json(...)`.
+
+Résultat : Laravel compile la vue sans erreur, mais au runtime PHP lance :
+
+```
+Unclosed '[' on line N does not match ')'
+```
+
+…dans `storage/framework/views/<hash>.php`. La cause apparente est sur la ligne `]);` mais la vraie origine est `@json([` plus haut.
+
+### Symptôme
+
+500 sur la page qui rend la vue. Stack trace contient :
+```
+Exception: Unclosed '[' on line XXX does not match ')'
+(View: /path/to/view.blade.php)
+   at /storage/framework/views/<hash>.php:YYY
+```
+
+### ❌ INTERDIT
+
+```blade
+<script>
+const rules = @json([
+    'zero' => (float) (($attendanceRules['zero'] ?? null) ?? 0.13),
+    'one' => (float) (($attendanceRules['one'] ?? null) ?? 0.0),
+    'two_or_more' => (float) (($attendanceRules['two'] ?? null) ?? -0.13),
+]);
+</script>
+```
+
+→ Compile silent, mais crash 500 au rendu.
+
+### ✅ FIX — extraire l'array en variable avant `@json()`
+
+```blade
+@php
+$_attendanceRules = [
+    'zero' => (float) (($attendanceRules['zero'] ?? null) ?? 0.13),
+    'one' => (float) (($attendanceRules['one'] ?? null) ?? 0.0),
+    'two_or_more' => (float) (($attendanceRules['two'] ?? null) ?? -0.13),
+];
+@endphp
+<script>
+const rules = @json($_attendanceRules);
+</script>
+```
+
+### Variantes du même piège
+
+- `@js([multiligne])` — même bug, même fix
+- `@json($expr ?? [valeur, par, défaut])` quand `[valeur,par,défaut]` est multiligne
+- Toute directive Blade `@xxx(...)` qui prend 1 argument PHP et où cet argument est multiligne
+
+### Règle simple
+
+**Si tu dois passer un array à `@json()`, `@js()`, ou toute directive Blade qui prend un argument PHP : prépare-le AVANT dans un `@php $var = [...]; @endphp` puis appelle `@json($var)`. Jamais d'array literal multiligne dans la parenthèse.**
+
+### Détection au quotidien
+
+```bash
+# Cherche @json/@js avec un [ qui n'est pas suivi de ] sur la même ligne
+grep -nE "@(json|js)\(\[\s*$" path/to/file.blade.php
+```
+
+## Pitfall #5 — JavaScript invalide dans un `<script>` inline
+
+### Le piège
+
+Blade ne lit pas le JavaScript : il le recopie. `php artisan view:cache` compile, `php -l`
+sur la vue compilée passe (le JS n'est pour PHP que du texte), les tests Feature
+rendent la page en 200. **Seul le navigateur analyse le script — et une seule erreur
+de syntaxe lui fait ignorer le bloc `<script>` entier.** Aucune fonction du bloc
+n'existe, les boutons ne font plus rien, et la seule trace est une ligne rouge dans
+la console de l'utilisateur.
+
+### Incident fondateur (PR #1257, septembre 2026)
+
+Une correction d'accents a réécrit, dans
+`resources/views/esbtp/bulletins/partials/select-scripts.blade.php` :
+
+```js
+this.pushToast({ type: 'error', message: 'Sélectionnez la classe, l'année universitaire et la période avant de configurer.' });
+```
+
+L'apostrophe de `l'année` ferme la chaîne. Tout le script de `/esbtp/bulletins/select`
+est tombé, et tout est resté vert. Version cassée, pour rejouer le contrôle :
+`git show cb7da1b01:resources/views/esbtp/bulletins/partials/select-scripts.blade.php`.
+
+### ✅ FIX
+
+Échapper (`'l\'année'`), ou changer de guillemets (`"l'année"`). Une correction
+d'accents en masse ne touche jamais les chaînes JS sans que ce contrôle soit repassé.
+
+### Le contrôle — `.githooks/blade-js-check.js`
+
+Appelé par le hook pre-commit (et par `--arbre`). Pour chaque `<script>` sans `src`
+et de type JavaScript, il neutralise ce que Blade injecte, puis fait analyser le
+résultat par V8 (`vm.Script`, le même analyseur que `node --check`, sans un processus
+par bloc — l'arbre entier passe en deux secondes) :
+
+| Motif Blade | Remplacé par | Pourquoi |
+|---|---|---|
+| `{{-- … --}}` | rien | jamais rendu — un `<script>` commenté n'est pas vérifié |
+| `{!! … !!}` | `null` | expression |
+| `{{ … }}` | `__blade` | un identifiant, pas `0` : `window.{{ $factory }} = …` est courant |
+| `@json(…)` / `@js(…)` | `null` | parenthèses **comptées** (chaînes PHP sautées) : jusqu'à trois niveaux d'imbrication, un regex s'y perd |
+| `@php … @endphp` | rien | où qu'il s'ouvre, y compris en milieu de ligne |
+| ligne `@directive(…)` | rien | `@if`, `@foreach`, `@can`… arguments multilignes compris |
+| `@verbatim … @endverbatim` | laissé tel quel | c'est du JS brut |
+| `@@x`, `@{{` | `@x`, `{{` | ce que Blade émet |
+
+Les sauts de ligne avalés par un remplacement sont rendus au saut de ligne suivant :
+le numéro signalé est **celui de la vue Blade**, même après un `{{ route(…) }}` écrit
+sur trois lignes à l'intérieur d'une chaîne.
+
+Les balises sont parcourues dans l'ordre du document, comme le fait le navigateur :
+un `<script>` cité dans une feuille de style (`/* lus par le <script> en bas */`) ou
+un commentaire HTML n'est que du texte. Les `type="application/json"` et autres types
+non JavaScript sont ignorés ; `type="module"` est signalé comme non vérifié (voir les
+angles morts).
+
+**Sans node**, le hook le dit (`node introuvable, syntaxe JavaScript des <script> NON
+vérifiée`) et laisse passer : les quatre autres pièges restent contrôlés.
+
+### Calibration (26 septembre 2026)
+
+863 vues suivies, **362 blocs `<script>` analysés**. Le contrôle attrape la version
+cassée de `select-scripts.blade.php` à la ligne 48. Sur l'arbre, il a trouvé **un vrai
+défaut** et zéro faux positif une fois les règles ci-dessus posées :
+`esbtp/admin/attendance/forgotten-codes.blade.php`, dont le `DOMContentLoaded` n'était
+jamais refermé. Le bloc entier était ignoré. L'accolade est posée dans le même
+chantier, mais **cela ne répare pas l'écran**, et ce n'est pas annoncé comme tel : une
+fois le script exécuté, `ESBTPForgottenCodeController::generateManualCode()` écrit
+`'type' => 'manuel'` dans une colonne `enum('session', 'journee', 'personnalise')`
+(MySQL strict) et rend un 500. La page n'est de toute façon liée nulle part, et son
+middleware exige un rôle `secretary` qui n'existe pas (le rôle s'appelle
+`secretaire`) : seul un superAdmin qui tape l'URL y arrive. À traiter à part, si
+l'écran doit vivre.
+
+Les six fausses alertes de la première version, pour ne pas les réintroduire : `{{ }}`
+en position de nom de propriété (remplacé par `0`), `{{ }}` multiligne dans une chaîne
+(sauts de ligne rendus sur place), `@php` en milieu de ligne, `<script>` cité dans un
+commentaire CSS.
+
+### Angles morts assumés
+
+- Une directive **en milieu de ligne** autre que `@json`/`@js`/`@php`
+  (`x = @if($a) 1 @else 2 @endif;`) n'est pas neutralisée : le contrôle signalerait
+  une erreur. Aucune occurrence aujourd'hui ; si elle apparaît, extraire la valeur
+  dans un `@php` au-dessus.
+- Seule la **syntaxe** est vérifiée : une variable inconnue, une faute de frappe dans
+  un nom de fonction, une erreur à l'exécution passent.
+- Le JavaScript des attributs (`onclick="…"`, `x-data="…"`, `@click="…"`) n'est pas lu.
+- Seule la première erreur d'un bloc est rendue : corriger, puis relancer.
+- Quand l'erreur suit, **sur la même ligne logique**, un remplacement multiligne
+  (`foo({{ route('x',` ⏎ `[…]) }}, 'mal fermé);`), le numéro rendu précède la vraie
+  ligne **d'autant de lignes que le remplacement en a avalé** : les sauts de ligne
+  avalés ne sont rendus qu'au saut suivant.
+- Un bloc qui **ne peut pas** être vérifié n'est jamais sauté en silence : un
+  `{{`, `{!!`, `@json(` ou `@php` jamais refermé dans le bloc, ou un
+  `<script type="module">` (analyse de module non prise en charge), est signalé sur
+  la sortie d'erreur (`… non vérifié`), sans faire échouer le commit. Aucun des deux
+  n'existe dans l'arbre au 26 septembre 2026.
+
+## Le hook qui les attrape — `.githooks/pre-commit`
+
+Depuis septembre 2026, les cinq pièges sont refusés **au commit** (le cinquième, le
+JavaScript, seulement si `node` est installé), sur la version
+mise en index (pas l'arbre de travail — c'est elle qui part). Installation :
+`sh .githooks/install.sh`.
+
+Le détecteur du piège #1 tient compte de **l'ordre** : un `@php(...)` court placé
+**après** le dernier `@endphp` du fichier n'est pas englouti, puisque le regex de
+bloc cherche le `@endphp` *suivant* et n'en trouve aucun. C'est ce qui rend
+`personnel/unified-index.blade.php` sain malgré ses cinq shortforms — mais fragile :
+y ajouter un bloc `@php…@endphp` plus bas déclencherait le piège, et le hook le
+refuserait alors.
+
+Les pièges #2 et #3 vivent **à l'intérieur des commentaires**, qui courent sur
+plusieurs lignes : un `grep` ligne à ligne rate précisément l'incident fondateur du
+piège #3 (le `/*` sur une ligne, le `<x-export-modal>` sur la suivante). Le hook est
+donc un automate à états, pas une collection de `grep`.
+
+**Ce qu'il ne considère pas comme un piège, et pourquoi :**
+
+- **Dans un `{{-- … --}}`** — `BladeCompiler::compileString()` appelle
+  `compileComments()` **avant** `compileComponentTags()` : le commentaire Blade est
+  supprimé avant que composants et directives ne soient compilés. En revanche
+  `storeUncompiledBlocks()` passe **encore avant** : commenter un `@php(` en Blade ne
+  le protège pas, et le hook le refuse toujours.
+- **Dans un `@php … @endphp`** — extrait par `storeUncompiledBlocks()`, donc jamais
+  scanné pour les composants ni les directives. Un `<x-pdf-document>` cité dans un
+  docblock PHP est sans danger (c'est le cas de `liste-appel-pdf.blade.php`).
+- **`/*` et `//` hors `<style>`, `<script>` ou `@push('styles'|'scripts')`** — ailleurs
+  ce ne sont pas des commentaires. Une seule attribut HTML, `accept="image/*"`, avait
+  suffi à coller l'état « commentaire ouvert » jusqu'au bas du fichier et à faire
+  remonter cinq fausses alertes lors de la calibration.
+
+Angles morts assumés : un commentaire JS dans un attribut `onclick`, et un `@php(`
+suivi de son `@endphp` sur **la même ligne** (dégât confiné à cette ligne).
+
+**Auditer tout le dépôt d'un coup** — le hook sait aussi scanner l'arbre entier, ce
+qui rend le chiffre de calibration reproductible en une commande :
+
+```bash
+sh .githooks/pre-commit --arbre   # 0 = aucune vue piégée
+```
+
+Au 14 septembre 2026 : **769 vues suivies, 0 signalée** pour les pièges #1 à #4.
+Au 26 septembre 2026 : **863 vues, 0 signalée** avec le piège #5 (après correction de
+`forgotten-codes.blade.php`, voir plus haut). Un `@@can` échappé est
+correctement accepté.
+
+**Attention** : contrairement au contrôle de message de commit, aucun garde-fou
+serveur ne rejoue ces règles. `--no-verify` ici ne déplace pas l'échec — il le
+laisse aller jusqu'en production.
+
+## Audit obligatoire avant de pousser un .blade.php modifié
+
+```bash
+# 1. Comptage des directives — chaque paire doit être équilibrée
+grep -oE "@(if|endif|foreach|endforeach|php|endphp|can|endcan|cannot|endcannot|push|endpush|once|endonce|section|endsection|forelse|endforelse|isset|endisset)\b" file.blade.php | sort | uniq -c
+
+# 2. Détection des shortforms @php(  dans un fichier avec @endphp plus loin
+grep -n "@php(" file.blade.php
+# Si présent ET il y a @endphp dans le même fichier → convertir en block form
+
+# 3. Détection des directives dans commentaires
+grep -nE "//.*@(can|if|foreach|endif|else)" file.blade.php
+grep -nE "<!--.*@(can|if|foreach|endif|else)" file.blade.php
+
+# 4. Force lint du compiled output (CATCH les 2 bugs ci-dessus)
+rm storage/framework/views/*.php
+php artisan view:cache
+for f in storage/framework/views/*.php; do php -l "$f" 2>&1 | grep -v "No syntax errors"; done
+# Si l'output mentionne "Parse error" → un bug silencieux est resté
+```
+
+**Important** : `php artisan view:cache` SEUL ne suffit pas — il compile sans erreur même quand les bugs ci-dessus sont présents. Il faut **php -l** sur les compiled views pour détecter le mauvais output.
+
+## Anti-patterns à BLOQUER en review
+
+1. ❌ `@php(expr)` shortform dans un fichier qui contient AUSSI `@php ... @endphp` block plus loin
+2. ❌ `@can`, `@if`, `@foreach`, `@endif`, etc. littéraux dans un commentaire JS (`// @can(...)`) ou HTML (`<!-- @if(...) -->`)
+3. ❌ `<x-mon-composant>` littéral dans un commentaire CSS (`/* <x-foo> */`), JS (`// <x-bar>`), HTML ou string
+4. ❌ `@json([...])` ou `@js([...])` avec un array literal **multiligne** dans la parenthèse → toujours extraire en `@php $var = [...]; @endphp` puis `@json($var)`
+4. ❌ Tester un Blade modifié uniquement avec `php artisan view:cache` sans `php -l` du compiled output
+5. ❌ Commit d'une vue avec `--no-verify` après un remplacement de texte en masse (accents, libellés) : c'est exactement ce qui casse le JS sans que rien d'autre ne le voie
+6. ❌ Mélanger les deux formes `@php(...)` et `@php...@endphp` dans le même fichier (toujours préférer la block form pour la cohérence)
+
+## Voir aussi
+
+- `feedback_blade_directive_in_comments.md` (mémoire — incident PR #361 mai 2026)
+- `feedback_blade_php_shortform_eats_block.md` (mémoire — incident hotfix mai 2026)
+- `.claude/skills/dompdf-expert/SKILL.md` section 12.5 (mêmes bugs documentés côté skill PDF, car les PDFs sont les victimes les plus fréquentes via le pattern `@php($_logo = ...)`)
+- Code Laravel concerné : `vendor/laravel/framework/src/Illuminate/View/Compilers/BladeCompiler.php::storePhpBlocks` (ligne ~389 de la version Laravel 12)

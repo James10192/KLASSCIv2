@@ -1,0 +1,124 @@
+# Rule: Import de maquettes LMD via klassci-cli / API `/api/cli/lmd/import`
+
+## Quand s'active
+
+Quand tu :
+- Intègres une **maquette LMD** (liste des matières d'une classe : UE + ECUE + crédits) depuis un PDF/Excel vers un tenant
+- Appelles `POST /api/cli/lmd/import`, `/api/cli/lmd/link-ues`, `/api/cli/lmd/link-classes`, `/api/cli/lmd/cleanup`, `/api/cli/lmd/tree`
+- Touches à `app/Services/LMD/LMDImportService.php`, `ParcoursUeSyncService`, `CLILMDSetupController`
+- Peuples les matières d'un parcours Génie Civil sur **esbtp-abidjan** (chantier maquettes Mme Santana, juin 2026)
+
+## Architecture du partage (CRUCIAL)
+
+Une **UE et ses ECUE peuvent être partagées** entre plusieurs domaines / mentions / parcours / semestres (confirmé Marcel, juin 2026). Le partage est matérialisé par des **pivots many-to-many**, PAS par les FK directes (legacy) :
+
+| Lien | FK directe (legacy) | Pivot many-to-many (partage) |
+|---|---|---|
+| UE → Parcours | `esbtp_unites_enseignement.parcours_id` | **`esbtp_lmd_parcours_ue`** (`ParcoursUeSyncService`) |
+| Matière(ECUE) → UE | `esbtp_matieres.unite_enseignement_id` | **`esbtp_ue_matiere`** |
+| Matière → Filière | (supprimée 2025-04) | **`esbtp_matiere_filiere`** |
+
+`ESBTPUniteEnseignement::ecues()` lit **le pivot `esbtp_ue_matiere` d'abord**, et retombe sur le `hasMany` (FK directe) seulement si le pivot est vide.
+
+## Partage d'une UE entre parcours par l'`import` (depuis septembre 2026)
+
+`LMDImportService::import()` :
+- **UE↔Parcours** : `parcoursUeSync->sync($parcours, $links, detachMissing:false)` peuple `esbtp_lmd_parcours_ue` en **mode append**. Une UE déjà tenue par un autre parcours (même `code`) est **partagée, pas réécrite** : sa fiche (`parcours_id`, `semestre`, `credit`, `niveau_id`) reste celle du premier import ; le second parcours reçoit son propre semestre sur le lien, et son crédit y est gravé (`esbtp_lmd_parcours_ue.credit`) s'il diffère de celui de la fiche. ✅
+- **ECUE↔UE** : `upsertECUE()` écrit la FK `esbtp_matieres.unite_enseignement_id` (rétro-compat) **et** la ligne de pivot `esbtp_ue_matiere` **réservée au parcours importé** (`parcours_id`). Deux parcours qui partagent une UE peuvent donc importer des éléments différents sans se déposséder. ✅
+- **Refus restant** (`ConflitDeMaquette`, transaction annulée, tous les conflits listés) : un ECUE dont le `code` appartient déjà à une **autre UE** — l'import le reparenterait et le retirerait de la première.
+- **Refus de reparentage** (septembre 2026) : une mention dont le `code` appartient déjà à une mention d'un **autre domaine**, ou un parcours dont le `code` appartient à un parcours d'une **autre mention**. `updateOrCreate` les déplaçait en silence, maquette comprise. Piège fréquent : sans `code` dans la maquette, le code se déduit du nom, donc deux « Gestion » dans deux domaines se télescopent. Donner un code propre à chaque mention et parcours.
+- **Niveaux** : `niveaux.*.type` est conservé (déduit de l'année à défaut : 4-5 → Master) et doit correspondre à l'année (Master 1 = année 4, `App\Rules\AnneeDuCycleLmd`).
+
+**Côté écran** (`/esbtp/lmd/ue`) : le modal ECUE porte un champ **Maquette** (commune / réservée à un parcours), prérempli avec le filtre Parcours ; chaque ligne d'élément affiche « Commun » ou le code du parcours qui la réserve ; le retrait vise la maquette de la ligne cliquée.
+
+## Même code, deux parcours, deux enseignements (septembre 2026)
+
+USAT imprime `AGR2103` / `AGR21031` en Productions Animales ET en Productions Végétales, pour des UE et ECUE **totalement différentes**. Le code n'est unique que dans un parcours. Ne JAMAIS faire tomber l'unicité de `esbtp_matieres.code` / `esbtp_unites_enseignement.code` pour autant : une dizaine de lecteurs retrouvent une ligne par son code.
+
+- **Clé interne suffixée** : `AGR2103~LPA`. `CodeDeMaquette::affiche()` / l'accesseur `code_affiche` rend ce qui précède le tilde. Pas de colonne `code_maquette` (elle dériverait de `code`). Le tilde est déjà la convention « suffixe interne » (`~suppr-`) et il est refusé à la saisie. Pas de tiret : de vrais codes en portent (`ENA4005-AGRO`).
+- **Jamais deviné** : l'école le dit (case « UE propre à ce parcours » dans `/esbtp/lmd/ue`, clé `propre_au_parcours` à l'import). Une UE propre porte TOUJOURS le suffixe : c'est la marque que relisent le formulaire et la modale ECUE pour dériver les codes de ses éléments.
+- **Plus de renommage silencieux** : même code + intitulé différent sur un élément servi ailleurs (`CodeDeMaquette::servieAilleurs`) → conflit à l'import, 422 au formulaire. Même règle pour une UE partagée d'intitulé différent.
+- **Unicité par parcours** gardée dans `ParcoursUeSyncService` (passage commun du formulaire, de l'import et de « Lier à des parcours »).
+- **Documents officiels** (bulletins LMD, relevé, PV annuel, notes étudiant, ajournés) impriment `code_affiche`. Tout nouveau lecteur qui imprime un code d'UE/ECUE LMD fait de même.
+- `LMDEnseignantsImporter` s'abstient (avertissement) quand un code désigne plusieurs éléments.
+
+Cas USAT : AGR2103 (id 130) est partagée LPA+LPV avec des ECUE réservées à LPV. Pour LPA : retirer LPA de l'UE 130 (« Lier à des parcours »), puis créer AGR2103 propre à LPA ; idem pour MML2103, IAP2103, EME2103 (non rattachées à LPA). Ne pas saisir les ECUE animales dans l'UE 130 : l'intitulé de l'UE resterait commun.
+
+## Idempotence & sécurité
+
+- `import` = upsert idempotent par `code` (domaine/mention/parcours/filière/UE/ECUE). Re-run = no-op si inchangé. **PAS de dry-run** sur `import` → la revue humaine du payload EST le dry-run.
+- `cleanup` (soft-delete UE/ECUE/planif d'un parcours pour ré-import propre) = `dry_run:true` par défaut. UE avec ECUE portant des évaluations = protégée.
+- `link-ues` / `link-classes` = `append` / `dry_run` par défaut (jamais de detach silencieux).
+- Token requis : `cli:admin` (write), `cli:read` (tree).
+
+## Schéma payload `import`
+
+```jsonc
+{
+  "domaine":  {"name","code"},
+  "mention":  {"name","code"},
+  "parcours": {"name","code","credits_licence":180},
+  "filiere":  {"name","code"},               // requis pour les planifications
+  "niveaux":  [{"name":"Licence 1","year":1}], // match firstOrCreate(year+type='Licence')
+  "ues": [{
+    "code","name","type_ue","credit","niveau_year":1,"semestre":1,
+    "is_optional":false,"ordre":0,
+    "ecues":[{"code","name","credit_ecue","cm","td","tp","projet","tpe"}]
+  }]
+}
+```
+- `type_ue` absent → défaut `TypeUE::FONDAMENTALE`.
+- Chaque semestre LMD UEMOA = **30 crédits** (somme des `credit` des UE). Valider AVANT d'envoyer.
+- Codes maquette à nettoyer à la source : points parasites (`BPM311.` → `BPM311`), doublons, séquences sautées.
+
+## Workflow recommandé (prod)
+
+1. `GET /api/cli/lmd/tree` → récupérer codes domaine/mention/parcours/filière **existants** (réutiliser, ne pas dupliquer).
+2. Transcrire la maquette → payload JSON ; **valider somme crédits = 30/semestre** + cohérence UE = Σ ECUE.
+3. Décider du sort des ECUE réellement partagées entre UE (cf piège ci-dessus).
+4. **Faire valider le payload** par le décideur (pas de dry-run API ; tenant prod = >2000 étudiants).
+5. `POST /api/cli/lmd/import` ; vérifier `stats` retournées.
+6. Re-`GET /tree` + contrôle visuel `/esbtp/lmd/ue` filtré sur le parcours.
+
+## État chantier Génie Civil esbtp-abidjan (juin 2026)
+
+- Domaine `ST` (Sciences et Technologies) · Mention `GC` (Génie Civil).
+- Parcours `BU` (Bâtiment et Urbanisme, filière BU) et `TIR` (Travaux Publics, filière TP).
+- Déjà intégrés (5 maquettes initiales) : L1-BU-S2, L2-TP-S4, L3-TIR-S6, L1-BU(doublon écarté), L3-BU-S6.
+- **Intégrés juin 2026 via `/api/cli/lmd/import`** :
+  - **S1 L1** : `LBU1` (BU, 6 UE/19 ECUE) + `LTP1` (TIR, 5 UE/15 ECUE). RDM TP renommée `TPPM311` (lossless).
+  - **S3 L2** : `LBU2` (BU, 7 UE/19 ECUE) + `LTP2` (TIR, 7 UE/22 ECUE). 4 ECUE partagées BU↔TP à crédits divergents rendues distinctes côté TIR (`BSMII132→TPSMII132`, `BSMII134→TPSMII134`, `BLSH632→TPLSH632`, `BOJG733→TPOJG733`) → à fusionner via la réconciliation UI.
+  - **S5 L3** : `SEM5_LBU3` (BU, 9 UE/19 ECUE) + `SEM5_LTP3` (TIR, 7 UE/18 ECUE). Codes B*/TP* distincts, pas de collision.
+  - **S4 L2** : `SEM4_BU` (BU, 7 UE/23 ECUE) — en-tête PDF « LICENCE 1 » erroné, c'est bien Semestre 4 (confirmé école). Coquille `BSTM321` triple corrigée en `BSTM321/322/323`.
+- Pattern de transcription : `.lmd_import_tmp/gen.py` (S1), `gen_s3.py` (S3), `gen_s45.py` (S4/S5) — valident Σ crédits = 30/semestre avant POST.
+- **Vérification couverture via `/api/cli/lmd/tree`** (champs `ue_par_semestre_col` + `ue_par_semestre_pivot`, juin 2026). ⚠️ **Compter par le PIVOT `esbtp_lmd_parcours_ue.semestre` (autorité), PAS par `UE.semestre`** : la colonne UE peut être désynchronisée (réécrite par un import d'un autre semestre partageant le même code UE) → faux « semestre manquant ». Couverture réelle (pivot) :
+  - **BU** : S1=6, **S2=7**, S3=7, S4=7, S5=9, S6=3 → **complet S1→S6** (S6 light à 3 UE = possiblement partiel).
+  - **TIR** : S1=5, S2=6, S3=7, S4=7, S5=7, S6=7 → **complet S1→S6**.
+- **Note** : 7 UE de BU rattachées à 2 semestres dans le pivot (UE partagées S2/S3 ou artefact import initial) — à réconcilier/nettoyer si non voulu.
+- **État : maquettes Génie Civil complètes** (les 2 parcours, S1→S6). Restent des vérifs qualité : BU-S6 (3 UE, à compléter ?) + doublons cross-parcours à fusionner via la réconciliation.
+
+## Référentiel UEMOA / CAMES — crédits & tronc commun (deep research, juin 2026)
+
+Sourcé pour trancher les divergences de crédits entre maquettes d'un même niveau/semestre :
+
+- **Directive 03/2007/CM/UEMOA** : division en **semestres de 30 crédits** (Licence = 180, Master = 300, Doctorat = 480). Obligation **contraignante** du 30/semestre. [e-docucenter.uemoa.int](https://e-docucenter.uemoa.int/fr/directive-ndeg032007cmuemoa-portant-adoption-du-systeme-licence-master-doctorat-lmd-dans-les) · [dge.gouv.ci (PDF)](https://www.dge.gouv.ci/sites/default/files/tableau/TEXTES%20COMMUNAUTAIRES%20CLASSSIFIES/UEMOA/DIRECTIVE/Directive-%20n%C2%B0%2003-2007-cm-uemoa_portant_adoption_lmd.pdf)
+- **Répartition par typologie d'UE** : UE Fondamentales + Transversales = **75–85 %** des 30 crédits du semestre ; optionnelles/complémentaires = 15–25 %. → check de validation utile sur une maquette.
+- **Les crédits PAR UE ne sont PAS prescrits par UEMOA** : chaque établissement les fixe librement, tant que le semestre totalise 30. Donc des crédits différents pour la même matière entre 2 parcours **ne violent aucun standard** — ce n'est ni interdit ni imposé. Seule l'école tranche si c'est voulu ou une erreur de saisie.
+- **Mutualisation L1 NON imposée** : aucune règle UEMOA n'oblige un tronc commun L1 identique entre parcours d'une même mention. C'est une **pratique** d'étendue institutionnelle. Réf. : [Manuel LMD CAMES](https://www.lecames.org/wp-content/uploads/2023/11/Manuel_LMD_CAMES.pdf).
+- **ESBTP (Côte d'Ivoire)** : modèle annoncé « **tronc commun** puis 5 options (Bâtiment, Travaux Publics, Urbanisme, Topographie…) ». [esbtp-ci.net](https://www.esbtp-ci.net/) → cohérent avec un L1 largement mutualisé entre BU et TP.
+
+**Règle de décision crédits divergents** : ne JAMAIS auto-réécrire les crédits d'une maquette contre un « standard UEMOA par UE » qui n'existe pas. Respecter la source (chaque semestre = 30), importer tel quel, et **exposer les quasi-doublons (même matière, code/crédit/coef différents entre parcours) dans une UI de réconciliation** que l'école pilote. Seul invariant à valider automatiquement : Σ crédits UE du semestre = 30 (et idéalement le ratio 75–85 % fondamental+transversal).
+
+## Feature « Réconciliation des doublons UE/ECUE » (à construire)
+
+Demande Marcel (juin 2026) : quand code / crédit / coefficient divergent pour la même matière entre parcours/mentions/domaines/semestres, garder les entités distinctes MAIS offrir un **bouton intelligent de détection + fusion** dans l'UI LMD :
+- **Détection** : matcher les quasi-doublons par similarité de `name` (normalisé) à travers UE/ECUE, signaler les écarts de `code` / `credit` / `coefficient` / `niveau` / `semestre`.
+- **Anticipation** : proposer la fusion vers une entité partagée (1 UE/ECUE liée à N parcours via pivots `esbtp_lmd_parcours_ue` / `esbtp_ue_matiere`) OU le maintien distinct, au choix.
+- **Sécurité** : ne jamais fusionner une matière portant des évaluations/notes sans confirmation forte ; dry-run + aperçu de l'impact ; audit.
+- **UEMOA-aware** : après fusion, re-valider Σ crédits = 30/semestre par parcours.
+
+## Voir aussi
+
+- `app/Services/LMD/LMDImportService.php` · `ParcoursUeSyncService` · `CLILMDSetupController`
+- `.claude/rules/classe-lmd-filiere-as-mention.md` · `.claude/rules/lmd-bts-matieres-single-source.md`
+- `RAPPORT-ESBTP-Abidjan-Maquettes-LMD.pdf` (note de suivi ADC)

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Status Button</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .save-status-btn {
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+        .save-status-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .save-status-btn:disabled {
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Test du bouton de sauvegarde de statut</h2>
+        
+        <div class="card">
+            <div class="card-body">
+                <form action="#" method="POST" class="d-inline status-form">
+                    <div class="d-flex align-items-center gap-1" style="min-width: 180px;">
+                        <select name="status" class="form-select form-select-sm status-select py-1 px-2 status-draft" style="min-width: 120px;" data-original-value="draft">
+                            <option value="draft" selected>📝 Brouillon</option>
+                            <option value="scheduled">📅 Planifiée</option>
+                            <option value="in_progress">⏳ En cours</option>
+                            <option value="completed">✅ Terminée</option>
+                            <option value="cancelled">❌ Annulée</option>
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-success save-status-btn" style="display: none; min-width: 32px;" title="Sauvegarder les modifications">
+                            <i class="fas fa-save"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    $(document).ready(function() {
+        console.log('🚀 TEST STATUS SCRIPT LOADED');
+        console.log('🔍 Found status selects:', $('.status-select').length);
+        console.log('🔍 Found save buttons:', $('.save-status-btn').length);
+        
+        // Handle status change - show save button instead of auto-submit
+        $('body').on('change', '.status-select', function() {
+            console.log('✅ Status select changed');
+            var $select = $(this);
+            var $form = $select.closest('form');
+            var $saveBtn = $form.find('.save-status-btn');
+            var originalValue = $select.attr('data-original-value');
+            var currentValue = $select.val();
+            
+            console.log('📊 Original:', originalValue, 'Current:', currentValue);
+            
+            // Show/hide save button based on whether value changed
+            if (currentValue !== originalValue) {
+                $saveBtn.show().css('display', 'inline-flex');
+                console.log('✅ Showing save button');
+            } else {
+                $saveBtn.hide();
+                console.log('❌ Hiding save button');
+            }
+        });
+        
+        // Handle save button click
+        $('body').on('click', '.save-status-btn', function(e) {
+            e.preventDefault();
+            console.log('✅ Save button clicked');
+            
+            var $btn = $(this);
+            var $form = $btn.closest('form');
+            var $select = $form.find('.status-select');
+            
+            // Show loading state
+            $btn.prop('disabled', true);
+            $btn.html('<i class="fas fa-spinner fa-spin"></i>');
+            $select.prop('disabled', true);
+            
+            // Simulate form submission
+            setTimeout(function() {
+                alert('Form would be submitted now!');
+                // Reset for testing
+                $btn.prop('disabled', false);
+                $btn.html('<i class="fas fa-save"></i>');
+                $select.prop('disabled', false);
+            }, 2000);
+        });
+    });
+    </script>
+</body>
+</html>

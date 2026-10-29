@@ -1,0 +1,1123 @@
+{
+  "_comment": "Enseignants ECUE + responsables UE (inférés) extraits de LICENCE SCIENCES DE LA VIE ET DE LA TERRE MAQUETTES.pdf.",
+  "_pdf_source": "LICENCE SCIENCES DE LA VIE ET DE LA TERRE MAQUETTES.pdf",
+  "filiere": "SVT",
+  "filiere_name": "Sciences de la Vie et de la Terre",
+  "domaine_name": "Sciences de la Vie et de la Terre",
+  "page_semester_map": {
+    "2": 1,
+    "3": 2,
+    "5": 3,
+    "6": 4,
+    "8": 5,
+    "9": 6
+  },
+  "page_level_map": {
+    "2": "L1",
+    "3": "L1",
+    "5": "L2",
+    "6": "L2",
+    "8": "L3",
+    "9": "L3"
+  },
+  "stats": {
+    "ecues_total": 59,
+    "ecues_with_teacher": 59,
+    "ues_count": 34,
+    "distinct_teachers": 41
+  },
+  "note": "responsable_ue_inferred = most frequent teacher across the UE's ECUEs (heuristic). The PDF's UE summary block is too scrambled to parse reliably. Manual validation recommended before DB import.",
+  "ues": [
+    {
+      "ue_code": "ALC2001",
+      "responsable_ue_inferred": {
+        "name": "Dongui Kouamé Bini",
+        "grade": "Pr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "ALC2001.1",
+          "name": "Atomistique",
+          "enseignants": [
+            {
+              "name": "Dongui Kouamé Bini",
+              "grade": "Pr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "ALC2001.2",
+          "name": "Liaisons Chimiques",
+          "enseignants": [
+            {
+              "name": "Dongui Kouamé Bini",
+              "grade": "Pr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "ANG2001",
+      "responsable_ue_inferred": {
+        "name": "Djopié",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "ANG2001",
+          "name": "ANGLAIS ANG2001.1 Anglais 10",
+          "enseignants": [
+            {
+              "name": "Djopié",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "BCM2001",
+      "responsable_ue_inferred": {
+        "name": "Guirieoulou Claver",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "BCM2001.1",
+          "name": "Cellule et Virus",
+          "enseignants": [
+            {
+              "name": "Guirieoulou Claver",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "BPV2001",
+      "responsable_ue_inferred": {
+        "name": "Koulibaly Annick",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "BPV2001.1",
+          "name": "Base de la Biologie Végétale",
+          "enseignants": [
+            {
+              "name": "Koulibaly Annick",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "GMR2001",
+      "responsable_ue_inferred": {
+        "name": "Brou Etienne",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "GMR2001.1",
+          "name": "Géodynamique Interne",
+          "enseignants": [
+            {
+              "name": "Brou Etienne",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "GMR2001.2",
+          "name": "Cristallographie et Minéralogie",
+          "enseignants": [
+            {
+              "name": "Niangoran",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "MAG2001",
+      "responsable_ue_inferred": {
+        "name": "Tapé Jean Georges",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "MAG2001.1",
+          "name": "Analyse",
+          "enseignants": [
+            {
+              "name": "Tapé Jean Georges",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "MAG2001.2",
+          "name": "Algèbre",
+          "enseignants": [
+            {
+              "name": "Tapé Jean Georges",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "MEO2001",
+      "responsable_ue_inferred": {
+        "name": "Kouadio Yves",
+        "grade": "Pr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "MEO2001.1",
+          "name": "Mécanique",
+          "enseignants": [
+            {
+              "name": "Kouadio Yves",
+              "grade": "Pr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "MEO2001.2",
+          "name": "Optique",
+          "enseignants": [
+            {
+              "name": "Kouadio Yves",
+              "grade": "Pr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "BMS2002",
+      "responsable_ue_inferred": {
+        "name": "Minoungou D Yigerta",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 2,
+      "ecues": [
+        {
+          "code": "BMS2002.1",
+          "name": "Molécules Simples",
+          "enseignants": [
+            {
+              "name": "Minoungou D Yigerta",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "BMS2002.2",
+          "name": "Molécules de Taille Moyenne",
+          "enseignants": [
+            {
+              "name": "Brou Konan",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "INFO2002",
+      "responsable_ue_inferred": {
+        "name": "Bedje Akou Simplice",
+        "grade": "M.",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 2,
+      "ecues": [
+        {
+          "code": "INFO2002",
+          "name": "INFORMATIQUE INFO2002.1 Informatique 0",
+          "enseignants": [
+            {
+              "name": "Bedje Akou Simplice",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "MET2002",
+      "responsable_ue_inferred": {
+        "name": "N'dri Brou Etienne",
+        "grade": null,
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 2,
+      "ecues": [
+        {
+          "code": "MET2002.1",
+          "name": "Géodynamique Externe",
+          "enseignants": [
+            {
+              "name": "N'dri Brou Etienne",
+              "grade": null,
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "MET2002.2",
+          "name": "Pédologie",
+          "enseignants": [
+            {
+              "name": "Bakayoko SIDIKY",
+              "grade": "Pr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "MET2002.3",
+          "name": "Pétrologie",
+          "enseignants": [
+            {
+              "name": "Kouassi Kouamé Alfred",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "TCC2002",
+      "responsable_ue_inferred": {
+        "name": "Coulibaly Souleymane",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 2,
+      "ecues": [
+        {
+          "code": "TCC2002.1",
+          "name": "Thermodynamique Chimique",
+          "enseignants": [
+            {
+              "name": "Coulibaly Souleymane",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "TPE2002",
+      "responsable_ue_inferred": {
+        "name": "Esmel",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 2,
+      "ecues": [
+        {
+          "code": "TPE2002.1",
+          "name": "Thermodynamique Physique",
+          "enseignants": [
+            {
+              "name": "Esmel",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "TPE2002.2",
+          "name": "Electricité",
+          "enseignants": [
+            {
+              "name": "Kouadio YVES",
+              "grade": "Pr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "ASI2003",
+      "responsable_ue_inferred": {
+        "name": "Bogui N'drin Ezechiel",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 3,
+      "ecues": [
+        {
+          "code": "ASI2003.1",
+          "name": "Anglais Scientifique",
+          "enseignants": [
+            {
+              "name": "Bogui N'drin Ezechiel",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "ASI2003.2",
+          "name": "Informatique",
+          "enseignants": [
+            {
+              "name": "Traore Ismael",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "BCH2003",
+      "responsable_ue_inferred": {
+        "name": "Gnahoua",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 3,
+      "ecues": [
+        {
+          "code": "BCH2003.2",
+          "name": "Enzymologie",
+          "enseignants": [
+            {
+              "name": "Gnahoua",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "BCH2003.3",
+          "name": "Bioénergétique",
+          "enseignants": [
+            {
+              "name": "Angaman",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "BFG2003",
+      "responsable_ue_inferred": {
+        "name": "Manizan Ama Lethicia",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 3,
+      "ecues": [
+        {
+          "code": "BFG2003.2",
+          "name": "Mutation Génétique",
+          "enseignants": [
+            {
+              "name": "Manizan Ama Lethicia",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "CHO2003",
+      "responsable_ue_inferred": {
+        "name": "Camara Tchanga Etienne",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 3,
+      "ecues": [
+        {
+          "code": "CHO2003.1",
+          "name": "Chimie Organique Générale",
+          "enseignants": [
+            {
+              "name": "Camara Tchanga Etienne",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "CHO2003.2",
+          "name": "Chimie Organique Structurale",
+          "enseignants": [
+            {
+              "name": "Camara Tchanga Etienne",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "PEG2003",
+      "responsable_ue_inferred": {
+        "name": "N'dri Brou Etienne",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 3,
+      "ecues": [
+        {
+          "code": "PEG2003.1",
+          "name": "Minéralogie",
+          "enseignants": [
+            {
+              "name": "N'dri Brou Etienne",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "PEG2003.2",
+          "name": "Pétrographie",
+          "enseignants": [
+            {
+              "name": "Niangoran Kouadio Charles",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "PHA2003",
+      "responsable_ue_inferred": {
+        "name": "N'gou M'boh Epi Reine",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 3,
+      "ecues": [
+        {
+          "code": "PHA2003.2",
+          "name": "Tissus Nerveux",
+          "enseignants": [
+            {
+              "name": "N'gou M'boh Epi Reine",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "PRS2003",
+      "responsable_ue_inferred": {
+        "name": "N'dri Jean Marc",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 3,
+      "ecues": [
+        {
+          "code": "PRS2003.1",
+          "name": "Probabilités",
+          "enseignants": [
+            {
+              "name": "N'dri Jean Marc",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "PRS2003.2",
+          "name": "Statistiques",
+          "enseignants": [
+            {
+              "name": "Okou",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "HYG2004",
+      "responsable_ue_inferred": {
+        "name": "Brou Loukou Alexis",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 4,
+      "ecues": [
+        {
+          "code": "HYG2004.1",
+          "name": "Hydrologie",
+          "enseignants": [
+            {
+              "name": "Brou Loukou Alexis",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "HYG2004.2",
+          "name": "Hydrogéologie",
+          "enseignants": [
+            {
+              "name": "Zile Alex",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "PAS2004",
+      "responsable_ue_inferred": {
+        "name": "Kouassi kouame Alfred",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 4,
+      "ecues": [
+        {
+          "code": "PAS2004.1",
+          "name": "Paléontologie",
+          "enseignants": [
+            {
+              "name": "Kouassi kouame Alfred",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "PAS2004.2",
+          "name": "Stratigraphie",
+          "enseignants": [
+            {
+              "name": "Niangoran Kouadio Charles",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "PEG2004",
+      "responsable_ue_inferred": {
+        "name": "Bakayoko Sidiky",
+        "grade": "Pr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 4,
+      "ecues": [
+        {
+          "code": "PEG2004.1",
+          "name": "Formation et Evolution du Sol",
+          "enseignants": [
+            {
+              "name": "Bakayoko Sidiky",
+              "grade": "Pr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "PEG2004.2",
+          "name": "Géomorphologie-Cartographie",
+          "enseignants": [
+            {
+              "name": "N'dri Brou Etienne",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "PHV2004",
+      "responsable_ue_inferred": {
+        "name": "Kouame Konan Joel",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 4,
+      "ecues": [
+        {
+          "code": "PHV2004.1",
+          "name": "Nutrition Hydrique et Minérale",
+          "enseignants": [
+            {
+              "name": "Kouame Konan Joel",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "PHV2004.2",
+          "name": "Nutrition Carbonée et Azotée",
+          "enseignants": [
+            {
+              "name": "Boye Mambe",
+              "grade": "Pr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "PHY2004",
+      "responsable_ue_inferred": {
+        "name": "Kouadio Yves",
+        "grade": "Pr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 4,
+      "ecues": [
+        {
+          "code": "PHY2004.1",
+          "name": "Montage en Physique",
+          "enseignants": [
+            {
+              "name": "Kouadio Yves",
+              "grade": "Pr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "PHY2004.2",
+          "name": "Physique des Particules",
+          "enseignants": [
+            {
+              "name": "kezo",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "PHY2004.3",
+          "name": "Transferts Thermiques",
+          "enseignants": [
+            {
+              "name": "GbEHE",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "ANG2005",
+      "responsable_ue_inferred": {
+        "name": "Bogui N'drin Ezechiel",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "ANG2005.1",
+          "name": "Listening",
+          "enseignants": [
+            {
+              "name": "Bogui N'drin Ezechiel",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "ANG2005.2",
+          "name": "Writing",
+          "enseignants": [
+            {
+              "name": "Bogui N'drin Ezechiel",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "AVN2005",
+      "responsable_ue_inferred": {
+        "name": "Djedje Betro Patrick",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "AVN2005.1",
+          "name": "Groupes Alimentaires",
+          "enseignants": [
+            {
+              "name": "Djedje Betro Patrick",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "AVN2005.2",
+          "name": "Valeur Nutritionnelle",
+          "enseignants": [
+            {
+              "name": "Djedje Betro Patrick",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "AVN2005.3",
+          "name": "Digestion",
+          "enseignants": [
+            {
+              "name": "Djedje Betro Patrick",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "ECG2005",
+      "responsable_ue_inferred": {
+        "name": "Koulibaly Annick",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "ECG2005.1",
+          "name": "Ecologie Végétale",
+          "enseignants": [
+            {
+              "name": "Koulibaly Annick",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "GBM2005",
+      "responsable_ue_inferred": {
+        "name": "Gore Bi Boh Nestor",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "GBM2005.2",
+          "name": "Génétique Formelle",
+          "enseignants": [
+            {
+              "name": "Gore Bi Boh Nestor",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "INF2005",
+      "responsable_ue_inferred": {
+        "name": "Traore Ismael",
+        "grade": "M.",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "INF2005",
+          "name": "INFORMATIQUE INF2005.1 Informatique 10",
+          "enseignants": [
+            {
+              "name": "Traore Ismael",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "UEL2005",
+      "responsable_ue_inferred": {
+        "name": "Coulibaly Kolotcholoma",
+        "grade": "M.",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "UEL2005.1",
+          "name": "EPS",
+          "enseignants": [
+            {
+              "name": "Coulibaly Kolotcholoma",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "UEL2005.2",
+          "name": "Vie Coopérative",
+          "enseignants": [
+            {
+              "name": "Koulibaly Annick",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "HDV2006",
+      "responsable_ue_inferred": {
+        "name": "Boye Mambe Auguste",
+        "grade": "Pr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "HDV2006.1",
+          "name": "Hormologie Végétale",
+          "enseignants": [
+            {
+              "name": "Boye Mambe Auguste",
+              "grade": "Pr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "IDH2006",
+      "responsable_ue_inferred": {
+        "name": "Cemeti Antoine",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "IDH2006.2",
+          "name": "Droit de l'Homme",
+          "enseignants": [
+            {
+              "name": "Cemeti Antoine",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "MIM2006",
+      "responsable_ue_inferred": {
+        "name": "Dah Dossounon Yigerta",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "MIM2006.1",
+          "name": "Microbiologie Générale",
+          "enseignants": [
+            {
+              "name": "Dah Dossounon Yigerta",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "MIM2006.2",
+          "name": "Immulogie",
+          "enseignants": [
+            {
+              "name": "N'gou M'boh Epi Reine",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "PGF2006",
+      "responsable_ue_inferred": {
+        "name": "N'gou M'boh Epi Reine",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "PGF2006.1",
+          "name": "Fonctions de Relation",
+          "enseignants": [
+            {
+              "name": "N'gou M'boh Epi Reine",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "PGF2006.2",
+          "name": "Fonctions de Nutrition",
+          "enseignants": [
+            {
+              "name": "N'gou M'boh Epi Reine",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

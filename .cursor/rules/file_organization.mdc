@@ -1,0 +1,173 @@
+---
+description: Organisation des Fichiers et Bonnes Pratiques
+globs: 
+alwaysApply: true
+---
+---
+description: Organisation des Fichiers et Bonnes Pratiques
+globs: 
+alwaysApply: true
+---
+Ce document définit les règles pour organiser et créer des fichiers et dossiers dans l'application ESBTP afin de maintenir une structure cohérente, légère et facile à comprendre.
+
+## Principes Généraux
+
+1. **Minimalisme**: Ne créer que les fichiers nécessaires. Éviter la duplication.
+2. **Cohérence**: Suivre les conventions de nommage et d'organisation de Laravel.
+3. **Clarité**: Le nom et l'emplacement d'un fichier doivent refléter son rôle.
+4. **Modularité**: Organiser les fichiers par fonctionnalité ou domaine.
+5. **Séparation des préoccupations**: Distinguer les couches de présentation, logique métier et accès aux données.
+
+## Structure des Dossiers
+
+La structure de base de l'application ESBTP suit les conventions Laravel avec quelques spécificités:
+
+```
+ESBTP/
+├── app/
+│   ├── Console/              # Commandes Artisan personnalisées
+│   ├── Exceptions/           # Gestionnaires d'exceptions personnalisés
+│   ├── Http/
+│   │   ├── Controllers/      # Contrôleurs de l'application
+│   │   │   ├── ESBTP/        # Contrôleurs spécifiques à ESBTP
+│   │   │   │   ├── Admin/    # Contrôleurs pour l'administration
+│   │   │   │   └── ...
+│   │   ├── Middleware/       # Middleware personnalisés
+│   │   └── Requests/         # Requêtes de formulaire et validation
+│   ├── Models/               # Modèles Eloquent
+│   │   ├── ESBTP/            # Modèles spécifiques à ESBTP
+│   │   └── ...
+│   ├── Providers/            # Fournisseurs de services
+│   ├── Services/             # Services métier
+│   │   ├── ESBTP/            # Services spécifiques à ESBTP
+│   │   └── ...
+│   └── Traits/               # Traits PHP réutilisables
+├── bootstrap/                # Fichiers de démarrage de l'application
+├── config/                   # Fichiers de configuration
+├── database/
+│   ├── factories/            # Définitions de factories pour les tests
+│   ├── migrations/           # Migrations de base de données
+│   │   ├── esbtp/            # Migrations spécifiques à ESBTP
+│   │   └── ...
+│   └── seeders/              # Classes de seeders
+├── public/                   # Point d'entrée web et assets publics
+│   ├── css/                  # Fichiers CSS compilés
+│   ├── js/                   # Fichiers JavaScript compilés
+│   ├── images/               # Images publiques
+│   │   ├── esbtp/            # Images spécifiques à ESBTP
+│   │   └── ...
+│   └── ...
+├── resources/                # Ressources non-compilées
+│   ├── css/                  # Fichiers CSS/SCSS source
+│   ├── js/                   # Fichiers JavaScript source
+│   ├── lang/                 # Fichiers de traduction
+│   └── views/                # Templates Blade
+│       ├── install/          # Vues pour l'installation
+│       ├── esbtp/            # Vues spécifiques à ESBTP
+│       │   ├── admin/        # Vues d'administration
+│       │   ├── students/     # Vues pour les étudiants
+│       │   └── ...
+│       ├── layouts/          # Layouts partagés
+│       └── ...
+├── routes/                   # Définitions de routes
+├── storage/                  # Fichiers générés par l'application
+├── tests/                    # Tests automatisés
+└── vendor/                   # Dépendances (généré par Composer)
+```
+
+## Conventions de Nommage des Fichiers
+
+### Contrôleurs
+- Format: `NomEntitéController.php`
+- Exemple: `ESBTPFiliereController.php`
+- Utilisation: `class ESBTPFiliereController extends Controller`
+
+### Modèles
+- Format: `NomEntité.php` (singulier)
+- Exemple: `ESBTPFiliere.php`
+- Utilisation: `class ESBTPFiliere extends Model`
+
+### Migrations
+- Format: `YYYY_MM_DD_HHMMSS_create_nom_table_table.php` ou `YYYY_MM_DD_HHMMSS_update_nom_table_table.php`
+- Exemple: `2023_06_01_123456_create_esbtp_filieres_table.php`
+- Classe: `class CreateESBTPFilieresTable extends Migration`
+
+### Vues
+- Format: `nom-vue.blade.php`
+- Organisation: `/dossier/sous-dossier/action.blade.php`
+- Exemple: `/esbtp/filieres/index.blade.php`
+
+### JavaScript
+- Format: `nom-script.js`
+- Exemple: `filieres-manager.js`
+
+### CSS/SCSS
+- Format: `nom-style.scss` ou `nom-style.css`
+- Exemple: `esbtp-theme.scss`
+
+## Règles de Création de Fichiers
+
+### Avant de Créer un Nouveau Fichier
+1. **Vérifier la nécessité**: Est-ce que le fichier est vraiment nécessaire?
+2. **Vérifier l'existence**: Est-ce qu'un fichier similaire existe déjà?
+3. **Considérer la réutilisation**: Est-ce que la fonctionnalité peut être ajoutée à un fichier existant?
+
+### Lors de la Création d'un Nouveau Fichier
+1. **Emplacement approprié**: Placer dans le dossier correspondant à sa fonction
+2. **Nommage cohérent**: Suivre les conventions de nommage
+3. **En-tête de documentation**: Inclure description, auteur, date et rôle
+4. **Namespace correct**: Définir le bon namespace selon l'emplacement
+5. **Importations organisées**: Grouper les importations par type et origine
+
+### Après la Création d'un Nouveau Fichier
+1. **Références**: Mettre à jour les références dans d'autres fichiers si nécessaire
+2. **Tests**: Créer ou mettre à jour les tests correspondants
+3. **Documentation**: Mettre à jour la documentation du projet si nécessaire
+
+## Règles pour la Création de Scripts
+
+### Scripts PHP
+1. **Entête de script**: Inclure description, auteur, utilisation
+2. **Gestion des erreurs**: Implémenter la gestion appropriée des erreurs
+3. **Logs**: Inclure des logs pour les opérations importantes
+4. **Paramètres**: Valider les paramètres d'entrée
+
+### Scripts JavaScript
+1. **Modularité**: Créer des modules réutilisables
+2. **Commentaires**: Documenter les fonctions et logiques complexes
+3. **Éviter les conflits**: Utiliser des modules ou namespaces pour éviter les conflits
+4. **Minification**: Préparer les scripts pour la minification
+
+### Scripts Shell
+1. **Shebang**: Commencer par `#!/bin/bash` ou équivalent
+2. **Permissions**: S'assurer que le script a les bonnes permissions (`chmod +x`)
+3. **Validation**: Valider les arguments et l'environnement
+4. **Messages d'erreur**: Fournir des messages d'erreur clairs
+
+## Bonnes Pratiques pour les Contrôleurs
+
+1. **Contrôleurs légers**: Les contrôleurs ne doivent contenir que la logique de présentation
+2. **Services**: Déplacer la logique métier complexe dans des services dédiés
+3. **Actions uniques**: Une méthode de contrôleur ne doit faire qu'une seule chose
+4. **Validation**: Utiliser des classes de requête pour la validation
+
+## Bonnes Pratiques pour les Vues
+
+1. **Réutilisation**: Utiliser des composants et partials pour le code réutilisable
+2. **Logique minimale**: Limiter la logique dans les templates Blade
+3. **Organisation**: Regrouper les vues par fonctionnalité
+4. **Cohérence**: Maintenir une structure cohérente dans les vues similaires
+
+## Bonnes Pratiques pour les Modèles
+
+1. **Relations**: Définir clairement les relations entre modèles
+2. **Scopes**: Utiliser des scopes de requête pour la logique de requête réutilisable
+3. **Accesseurs/Mutateurs**: Utiliser des accesseurs et mutateurs pour la logique de transformation
+4. **Événements**: Utiliser des observateurs ou des événements pour les effets secondaires
+
+## Consignes de Maintenance du Code
+
+1. **Éviter la sur-ingénierie**: Ne pas créer des abstractions inutiles
+2. **Garder les choses simples**: Privilégier la clarté à la complexité
+3. **Refactoriser régulièrement**: Ne pas laisser la dette technique s'accumuler
+4. **Code propre**: Suivre les principes de code propre (SOLID, DRY, KISS) 

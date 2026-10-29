@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulletin ESBTP</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome pour les icônes -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+
+<style>
+.btn-container 
+        {
+            text-align: center;
+            margin-top: 20px;
+        }
+.btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #ff1500;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+/* Styles spécifiques pour l'impression */
+@media print {
+    body {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .container {
+        width: 100%;
+        max-width: 100%;
+        padding: 10px;
+        margin: 0;
+    }
+    
+    .btn-container {
+        display: none; /* Masquer le bouton d'impression lors de l'impression */
+    }
+    
+    /* Assurer que les tableaux s'affichent correctement */
+    table {
+        width: 100% !important;
+        page-break-inside: avoid;
+    }
+    
+    /* Éviter les sauts de page indésirables */
+    header, .student-info, .grades-table, .absences-table, .results-section, .decision-section {
+        page-break-inside: avoid;
+    }
+    
+    /* Assurer que les images s'affichent correctement */
+    img {
+        max-width: 100%;
+        height: auto;
+    }
+    
+    /* Assurer que le pied de page reste en bas */
+    .decision-section {
+        margin-top: 20px;
+    }
+    
+    /* Préserver l'alignement des éléments du header */
+    header .row {
+        display: flex !important;
+        width: 100% !important;
+    }
+    
+    header .col-md-4, 
+    header .col-md-6, 
+    header .col-md-3 {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    
+    .text-start, .text-center, .text-end {
+        text-align: inherit !important;
+    }
+    
+    .republic-title, .motto, .ministry-title,
+    .bulletin-header, .edition-date, .cycle-info,
+    .diploma-info, .diploma-code,
+    .school-name, .school-contact, .academic-year {
+        margin-bottom: 0 !important;
+    }
+    
+    /* Conserver les alignements spécifiques */
+    .text-start {
+        text-align: left !important;
+    }
+    
+    .text-center {
+        text-align: center !important;
+    }
+    
+    .text-end {
+        text-align: right !important;
+    }
+}
+</style>
+
+</head>
+<body>
+    <div class="container mt-4 mb-5">
+        <!-- Bouton d'impression -->
+        <!-- <div class="d-flex justify-content-end mb-3 print-hidden">
+            <button id="print-button" class="btn btn-primary">
+                <i class="fas fa-print me-2"></i> Imprimer le bulletin
+            </button>
+        </div> -->
+
+        <!-- En-tête du bulletin -->
+        <header>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="text-start">
+                        <p class="mb-0 republic-title">République de Côte d'Ivoire</p>
+                        <p class="mb-0 motto"><small>Union-Discipline-Travail</small></p>
+                        <p class="mb-1 ministry-title">Ministère de l'Enseignement Supérieur</p>
+                        <p class="mb-0 ministry-title">et de la Recherche Scientifique</p>
+                    </div>
+                </div>
+                <div class="col-md-4"></div>
+                <div class="col-md-4">
+                    <div class="text-end">
+                        <p class="mb-0 bulletin-header">BULLETIN DE NOTES</p>
+                        <p class="mb-0 bulletin-header">premier semestre</p>
+                        <p class="mb-1 edition-date">Edition du: <span id="edition-date">3/4/2023</span></p>
+                        <p class="mb-0 cycle-info">Cycle: </p>
+                        <p class="mb-0 diploma-info">Brevet de Technicien Superieur</p>
+                        <p class="mb-0 diploma-code">BTS</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="esbtp-logo">
+                        <img src="logo.jpeg" alt="Logo ESBTP" class="img-fluid">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-center school-info">
+                        <p class="mb-0 school-name">Ecole Spéciale</p>
+                        <p class="mb-0 school-name">du Bâtiment et des Travaux Publics</p>
+                        <p class="mb-0 school-contact">BP 2541 Yamoussoukro - Email: esbtpabidjan@esbtp-ci.net</p>
+                        <p class="mb-0 school-contact">Tél/Fax: 30 64 39 93 - Cel: 07 07 79 84 85</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-end">
+                        <p class="academic-year">Année Scolaire: <span id="academic-year">2022-2023</span></p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="student-info-container">
+            <!-- Informations de l'étudiant -->
+        <section class="student-info mt-4">
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table-top student-table">
+                        <tr>
+                            <td class="fw-bold">Matricule :</td>
+                            <td><span id="student-id">BTP202501</span></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Nom et Prénoms :</td>
+                            <td><span id="student-name">Kouame Yao Yves Armand </span></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Date de Naissance :</td>
+                            <td><span id="birth-date">12/03/2005</span></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Redoublant :</td>
+                            <td><span id="repeating">Non</span></td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <table class="table-top student-table">
+                        <tr>
+                            <td class="fw-bold">Classe :</td>
+                            <td><span id="student-class">Géomètre topographe</span></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Année d'étude :</td>
+                            <td><span id="study-year">2ème année</span></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Effectif :</td>
+                            <td><span id="class-size">30</span></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tableau des matières et notes -->
+        <section class="grades-table mt-3">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Matière</th>
+                        <th>Moyenne M</th>
+                        <th>Coef C</th>
+                        <th>Moy.Pond M*C</th>
+                        <th>Rang</th>
+                        <th>Professeurs</th>
+                        <th>Appréciations</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="section-header">
+                        <td colspan="7">Enseignement Général</td>
+                    </tr>
+                    <tr>
+                        <td>Anglais</td>
+                        <td>0.00</td>
+                        <td>3</td>
+                        <td>0.00</td>
+                        <td></td>
+                        <td>M.FOFANA Lassina</td>
+                        <td>Nul</td>
+                    </tr>
+                    <tr>
+                        <td>Gestion</td>
+                        <td>0.00</td>
+                        <td>2</td>
+                        <td>0.00</td>
+                        <td></td>
+                        <td>M.YAO YAOBLE</td>
+                        <td>Nul</td>
+                    </tr>
+                    <tr>
+                        <td>Informatique</td>
+                        <td>0.00</td>
+                        <td>3</td>
+                        <td>0.00</td>
+                        <td></td>
+                        <td>Mme MANDOUA Nadège</td>
+                        <td>Nul</td>
+                    </tr>
+                    <tr>
+                        <td>Mathématiques</td>
+                        <td>0.00</td>
+                        <td>4</td>
+                        <td>0.00</td>
+                        <td></td>
+                        <td>M.BONE Oussama</td>
+                        <td>Nul</td>
+                    </tr>
+                    <tr>
+                        <td>Physique</td>
+                        <td>0.00</td>
+                        <td>3</td>
+                        <td>0.00</td>
+                        <td></td>
+                        <td>M.KOFFI Bruno</td>
+                        <td>Nul</td>
+                    </tr>
+                    <tr>
+                        <td>Technique d'Expression Française</td>
+                        <td>0.00</td>
+                        <td>2</td>
+                        <td>0.00</td>
+                        <td></td>
+                        <td>M.DJE Charles</td>
+                        <td>Nul</td>
+                    </tr>
+                    <tr class="total-row">
+                        <td>Moyenne enseignement général</td>
+                        <td colspan="6">0.00</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Tableau des notes - Enseignement Technique -->
+        <section class="grades-table mt-2">
+            <table class="table table-bordered">
+                <thead>
+                    <tr class="section-header">
+                        <td colspan="7">Enseignement Technique</td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Aménagement foncier cadastre</td>
+                        <td>0.00</td>
+                        <td>3</td>
+                        <td>0.00</td>
+                        <td></td>
+                        <td>M.ASSALE Arsène</td>
+                        <td>Nul</td>
+                    </tr>
+                    <tr>
+                        <td>Calculs Topo</td>
+                        <td>0.00</td>
+                        <td>5</td>
+                        <td>0.00</td>
+                        <td></td>
+                        <td>M.YAO Niamba</td>
+                        <td>Nul</td>
+                    </tr>
+                    <tr>
+                        <td>CAO-DAO</td>
+                        <td>0.00</td>
+                        <td>2</td>
+                        <td>0.00</td>
+                        <td></td>
+                        <td>M.KIGNELMAN Christian</td>
+                        <td>Nul</td>
+                    </tr>
+                    <tr>
+                        <td>Géodésie</td>
+                        <td>0.00</td>
+                        <td>3</td>
+                        <td>0.00</td>
+                        <td></td>
+                        <td>M.AKA Bleh</td>
+                        <td>Nul</td>
+                    </tr>
+                    <tr>
+                        <td>Topométrie appliquée au génie civil</td>
+                        <td>0.00</td>
+                        <td>3</td>
+                        <td>0.00</td>
+                        <td></td>
+                        <td>M.ATTA Atta</td>
+                        <td>Nul</td>
+                    </tr>
+                    <tr>
+                        <td>Topométrie générale</td>
+                        <td>0.00</td>
+                        <td>4</td>
+                        <td>0.00</td>
+                        <td></td>
+                        <td>M.KOUASSI Jean</td>
+                        <td>Nul</td>
+                    </tr>
+                    <tr>
+                        <td>Photogrammétrie Analogique</td>
+                        <td>0.00</td>
+                        <td>3</td>
+                        <td>0.00</td>
+                        <td></td>
+                        <td>M.ANE Jean</td>
+                        <td>Nul</td>
+                    </tr>
+                    <tr>
+                        <td>Traitement de données/Télédétection</td>
+                        <td>0.00</td>
+                        <td>2</td>
+                        <td>0.00</td>
+                        <td></td>
+                        <td>M.TRAORE Salim</td>
+                        <td>Nul</td>
+                    </tr>
+                    <tr class="total-row">
+                        <td>Moyenne enseignement technique</td>
+                        <td colspan="6">0.00</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Absences -->
+        <section class="absences-table mt-2">
+            <table class="table table-bordered">
+                <thead>
+                    <tr class="section-header">
+                        <td colspan="7">Nombre d'heures d'absence</td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Absences justifiées</td>
+                        <td>00 Heure(s)</td>
+                        <td colspan="3"></td>
+                        <td>Absences non justifiées</td>
+                        <td>04 Heure(s)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Résultats -->
+        <section class="results-section mt-2">
+            <div class="row">
+                <div class="col-12">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr class="section-header">
+                                <td colspan="7">RESULTATS</td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Moyenne Brute</td>
+                                <td class="result-value"><span class="result-cadre">0.00</span></td>
+                                <td class="text-center">MENTION</td>
+                                <td></td>
+                                <td class="text-center">STATISTIQUES</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>Note d'assiduité</td>
+                                <td class="result-value"><span class="result-cadre">0.00</span></td>
+                                <td class="text-center">Félicitation</td>
+                                <td><span class="result-cadre"></span></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>Moyenne 1er Semestre</td>
+                                <td class="result-value"><span class="result-cadre">0.00</span></td>
+                                <td class="text-center">Encouragement</td>
+                                <td><span class="result-cadre"></span></td>
+                                <td>Plus forte moyenne</td>
+                                <td><span class="result-cadre">13.06</span></td>
+                            </tr>
+                            <tr>
+                                <td>Rang</td>
+                                <td class="result-value"><span class="result-cadre">6ème</span></td>
+                                <td class="text-center">Tableau d'honneur</td>
+                                <td><span class="result-cadre"></span></td>
+                                <td>Plus faible moyenne</td>
+                                <td><span class="result-cadre">1.56</span></td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td></td>
+                                <td class="text-center">Avertissement (Travail)</td>
+                                <td><span class="result-cadre"></span></td>
+                                <td>Moyenne de la classe</td>
+                                <td><span class="result-cadre">9.24</span></td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td></td>
+                                <td class="text-center">Blâme (Conduite)</td>
+                                <td><span class="result-cadre"></span></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Signatures et décision -->
+        <section class="decision-section mt-4">
+            <div class="row">
+                <div class="col-md-6 text-center">
+                    <p class="decision-title">Décision du conseil de classe</p>
+                    <p class="decision-result">Travail Insuffisant</p>
+                </div>
+                <div class="col-md-6 text-center">
+                    <p class="signature-title">
+                        Signature de la Directrice des Etudes<br>
+                        <img src="signa.png" alt="Signature" width="250" height="150">
+                    </p>
+                    
+                </div>
+            </div>
+        </section>
+        </div>
+       
+        <!-- Pied de page -->
+        <center> <small><em>Bulletin informatisé, aucun duplicata n'est délivré</em><small></center>
+        
+        <div class="btn-container">
+            <button class="btn" onclick="window.print()">Imprimer</button>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src=""></script>
+</body>
+</html> 

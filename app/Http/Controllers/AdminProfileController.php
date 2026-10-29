@@ -1,0 +1,231 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Rules\MotDePasseNonGenerique;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
+
+class AdminProfileController extends Controller
+{
+    /**
+     * Create a new controller instance.
+     *
+     * @return void
+     */
+    public function __construct()
+    {
+        $this->middleware('auth');
+        // Gate par permission et non par liste de roles : chaque nouveau role
+        // (caissier, responsable/service scolarite, agent d'inscription) doit
+        // pouvoir consulter sa fiche sans qu'on rouvre ce constructeur.
+        // Cf. .claude/rules/customizable-roles.md
+        $this->middleware('permission:admin.access|identity.direct_studies|identity.registrar'
+            . '|identity.registrar_clerk|identity.enrollment_officer|identity.communicate|identity.coordinate|identity.teach');
+    }
+
+    /**
+     * Affiche le profil de l'administrateur ou du secrétaire.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index()
+    {
+        $user = Auth::user();
+        $roleName = $user->roles->first()?->name;
+        $roleLabel = $roleName
+            ? (app(\App\Services\PermissionRegistry::class)->roleMeta($roleName)['label'] ?? $roleName)
+            : 'Utilisateur';
+
+        return view('admin.profile', compact('user', 'roleLabel'));
+    }
+
+    /**
+     * Met à jour le profil de l'administrateur ou du secrétaire.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request)
+    {
+        // Logs minimaux pour traçabilité — JAMAIS de $request->all() qui leak
+        // name/email/phone/address en plain log (audit sécurité 2026-05-21).
+        \Log::info('Début de la mise à jour du profil admin', [
+            'user_id' => auth()->id(),
+            'has_file' => $request->hasFile('profile_photo'),
+            'fields_provided' => array_keys($request->except(['_token', 'password', 'password_confirmation', 'profile_photo'])),
+        ]);
+
+        try {
+            $user = auth()->user();
+
+            // Validation des données
+            // Si c'est un upload de photo uniquement (AJAX), on ne valide que la photo
+            if ($request->ajax() && $request->hasFile('profile_photo') && !$request->has('name')) {
+                $request->validate([
+                    'profile_photo' => 'required|image|mimes:jpg,jpeg,png|max:2048'
+                ]);
+            } else {
+                // Validation complète pour la modification du profil
+                $request->validate([
+                    'name' => 'required|string|max:255',
+                    'email' => 'nullable|string|email|max:255|unique:users,email,' . $user->id,
+                    'first_name' => 'nullable|string|max:255',
+                    'last_name' => 'nullable|string|max:255',
+                    'phone' => 'nullable|string|max:20',
+                    'address' => 'nullable|string|max:500',
+                    'city' => 'nullable|string|max:255',
+                    'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
+                ]);
+            }
+
+            \Log::info('Validation passée avec succès');
+
+            // Mise à jour des champs du profil si fournis
+            if ($request->has('name')) {
+                $user->name = $request->name;
+            }
+            if ($request->has('email')) {
+                $email = $request->input('email');
+                $user->email = ($email === null || $email === '') ? null : $email;
+            }
+            if ($request->has('first_name')) {
+                $user->first_name = $request->first_name;
+            }
+            if ($request->has('last_name')) {
+                $user->last_name = $request->last_name;
+            }
+            $composed = trim(($user->first_name ?? '').' '.($user->last_name ?? ''));
+            if ($composed !== '' && $request->input('name') === $user->getOriginal('name')) {
+                $user->name = $composed;
+            }
+            if ($request->has('phone')) {
+                $user->phone = $request->phone;
+            }
+            if ($request->has('address')) {
+                $user->address = $request->address;
+            }
+            if ($request->has('city')) {
+                $user->city = $request->city;
+            }
+
+            // Traitement de la photo de profil
+            if ($request->hasFile('profile_photo')) {
+                \Log::info('Photo de profil détectée', [
+                    'original_name' => $request->file('profile_photo')->getClientOriginalName(),
+                    'mime_type' => $request->file('profile_photo')->getMimeType(),
+                    'size' => $request->file('profile_photo')->getSize()
+                ]);
+
+                // Supprimer l'ancienne photo si elle existe
+                if ($user->profile_photo_path) {
+                    \Log::info('Suppression de l\'ancienne photo', [
+                        'old_path' => $user->profile_photo_path
+                    ]);
+                    Storage::disk('public')->delete($user->profile_photo_path);
+                }
+
+                // Stocker la nouvelle photo
+                $path = $request->file('profile_photo')->store('profile-photos', 'public');
+                \Log::info('Nouvelle photo stockée', [
+                    'new_path' => $path,
+                    'full_url' => Storage::disk('public')->url($path)
+                ]);
+
+                $user->profile_photo_path = $path;
+            }
+
+            $user->save();
+            \Log::info('Profil mis à jour avec succès', [
+                'user_id' => $user->id,
+                'profile_photo_path' => $user->profile_photo_path
+            ]);
+
+            // Pour les requêtes AJAX, renvoyer une réponse JSON
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Profil mis à jour avec succès',
+                    'profile_photo_url' => $user->profile_photo_path ? Storage::url($user->profile_photo_path) : null
+                ]);
+            }
+
+            return redirect()->back()->with('success', 'Profil mis à jour avec succès');
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            // Trace seulement en local — éviter leak chemin/structure en prod.
+            \Log::error('Erreur lors de la mise à jour du profil', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'trace' => app()->environment('local') ? $e->getTraceAsString() : null,
+            ]);
+
+            // Pour les requêtes AJAX, renvoyer une erreur JSON
+            // (jamais $e->getMessage() en prod — peut leak du contexte technique)
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Une erreur est survenue lors de la mise à jour du profil'
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', 'Une erreur est survenue lors de la mise à jour du profil');
+        }
+    }
+
+    /**
+     * Met à jour les informations professionnelles de l'administrateur.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\Response
+     */
+    public function updateProfessionalInfo(Request $request)
+    {
+        $request->validate([
+            'position' => 'nullable|string|max:255',
+            'department' => 'nullable|string|max:255',
+            'office_location' => 'nullable|string|max:255',
+            'employee_id' => 'nullable|string|max:50',
+            'appointment_date' => 'nullable|date',
+        ]);
+
+        $user = Auth::user();
+        $user->position = $request->position;
+        $user->department = $request->department;
+        $user->office_location = $request->office_location;
+        $user->employee_id = $request->employee_id;
+        $user->appointment_date = $request->appointment_date;
+
+        $user->save();
+
+        return redirect()->route('admin.profile')->with('success', 'Informations professionnelles mises à jour avec succès');
+    }
+
+    /**
+     * Met à jour le mot de passe de l'administrateur ou du secrétaire.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\Response
+     */
+    public function updatePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => ['required', 'string', 'current_password'],
+            'password' => ['required', 'string', 'min:8', 'confirmed', 'different:current_password', new MotDePasseNonGenerique],
+        ], [
+            'current_password.current_password' => 'Le mot de passe actuel est incorrect.',
+            'password.different' => 'Le nouveau mot de passe doit être différent de l\'actuel.',
+        ]);
+
+        $user = Auth::user();
+
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        return redirect()->route('admin.profile')->with('success', 'Mot de passe mis à jour avec succès');
+    }
+}

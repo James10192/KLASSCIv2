@@ -1,0 +1,747 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\ESBTPAnnonce;
+use App\Models\ESBTPClasse;
+use App\Models\ESBTPEtudiant;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use App\Models\ESBTPFiliere;
+use App\Models\ESBTPNiveauEtude;
+use Carbon\Carbon;
+use App\Notifications\ESBTPNotification;
+use App\Services\NotificationService;
+use App\Jobs\Annonces\DiffuserAnnonceParCourriel;
+use Illuminate\Support\Facades\Log;
+use App\Support\ListeInfinie;
+
+class ESBTPAnnonceController extends Controller
+{
+    /**
+     * Limites de sélection (alignées sur la config Choices.js côté front).
+     * Si on les change ici, mettre à jour aussi `maxItemCount` dans
+     * resources/views/esbtp/annonces/_form-scripts.blade.php.
+     */
+    private const MAX_CLASSES = 20;
+    private const MAX_ETUDIANTS = 50;
+
+    protected $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
+
+    /**
+     * Règles de validation partagées entre store() et update().
+     * Évite la duplication des 8 règles + 9 messages personnalisés.
+     */
+    private function annonceValidationRules(): array
+    {
+        return [
+            'titre' => 'required|string|max:255',
+            'contenu' => 'required|string',
+            'date_publication' => 'nullable|date',
+            'date_expiration' => 'required|date|after_or_equal:date_publication',
+            'type' => 'required|in:general,classe,etudiant',
+            'priorite' => 'required|in:0,1,2',
+            'classes' => 'required_if:type,classe|array|max:' . self::MAX_CLASSES,
+            'classes.*' => 'integer|exists:esbtp_classes,id',
+            'etudiants' => 'required_if:type,etudiant|array|max:' . self::MAX_ETUDIANTS,
+            'etudiants.*' => 'integer|exists:esbtp_etudiants,id',
+            'piece_jointe' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:5120',
+            'send_email' => 'sometimes|boolean',
+        ];
+    }
+
+    private function annonceValidationMessages(): array
+    {
+        return [
+            'titre.required' => 'Le titre est obligatoire',
+            'contenu.required' => 'Le contenu est obligatoire',
+            'date_expiration.required' => 'La date d\'expiration est obligatoire',
+            'date_expiration.after_or_equal' => 'La date d\'expiration doit être postérieure ou égale à la date de publication',
+            'priorite.required' => 'La priorité est obligatoire',
+            'classes.required_if' => 'Veuillez sélectionner au moins une classe',
+            'classes.max' => 'Vous ne pouvez sélectionner que ' . self::MAX_CLASSES . ' classes maximum',
+            'etudiants.required_if' => 'Veuillez sélectionner au moins un étudiant',
+            'etudiants.max' => 'Vous ne pouvez sélectionner que ' . self::MAX_ETUDIANTS . ' étudiants maximum',
+            'piece_jointe.mimes' => 'Le fichier doit être au format PDF, Word, Excel ou image (JPG, PNG)',
+            'piece_jointe.max' => 'Le fichier ne doit pas dépasser 5 MB',
+        ];
+    }
+
+    /**
+     * Gère l'upload (et la suppression de l'ancien fichier le cas échéant).
+     * Mute $annonce->piece_jointe en place. Retourne true si un nouveau fichier
+     * a été stocké, false sinon (i.e. pas de fichier dans la requête).
+     */
+    private function handlePieceJointeUpload(Request $request, ESBTPAnnonce $annonce): bool
+    {
+        if (!$request->hasFile('piece_jointe')) {
+            return false;
+        }
+
+        // Suppression de l'ancien fichier (uniquement en mode update — sur store, c'est null)
+        if ($annonce->piece_jointe && \Storage::disk('public')->exists($annonce->piece_jointe)) {
+            \Storage::disk('public')->delete($annonce->piece_jointe);
+        }
+
+        $file = $request->file('piece_jointe');
+        $filename = time() . '_' . $file->getClientOriginalName();
+        $annonce->piece_jointe = $file->storeAs('annonces', $filename, 'public');
+
+        return true;
+    }
+
+    /**
+     * Affiche la liste des annonces.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index(Request $request)
+    {
+        $annonces = ESBTPAnnonce::with(['classes', 'etudiants', 'user'])
+            ->orderBy('created_at', 'desc')
+            // Departage stable : la liste se charge par tranches.
+            ->orderBy('id', 'desc')
+            ->paginate(10);
+
+        // La suite : en lignes de tableau sur ordinateur, en cartes sur telephone.
+        if (ListeInfinie::demandee($request)) {
+            $vue = $request->input('vue') === 'grille' ? 'esbtp.annonces._carte' : 'esbtp.annonces._ligne';
+
+            return ListeInfinie::reponse($annonces, fn ($annonce) => view($vue, compact('annonce'))->render());
+        }
+
+        // Préparation des statistiques
+        $stats = [
+            'total' => ESBTPAnnonce::count(),
+            'published' => ESBTPAnnonce::where('is_published', true)->count(),
+            'pending' => ESBTPAnnonce::where('is_published', false)->count(),
+            'urgent' => ESBTPAnnonce::where('priorite', 2)->count()
+        ];
+
+        return view('esbtp.annonces.index', compact('annonces', 'stats'));
+    }
+
+    /**
+     * Affiche le formulaire de création d'une annonce.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        $classes = ESBTPClasse::where('is_active', true)
+            ->withCount(['inscriptions as current_inscriptions_count' => function ($query) {
+                $query->anneeEnCours();
+            }])
+            ->orderBy('name')
+            ->get();
+        $etudiants = ESBTPEtudiant::with(['inscriptions' => function ($query) {
+                $query->anneeEnCours()->latest();
+            }])
+            ->withCount(['inscriptions as current_inscriptions_count' => function ($query) {
+                $query->anneeEnCours();
+            }])
+            ->whereHas('inscriptions', function ($query) {
+                $query->anneeEnCours();
+            })
+            ->distinct()
+            ->orderBy('nom')
+            ->orderBy('prenoms')
+            ->get();
+        $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
+        $niveaux = ESBTPNiveauEtude::where('is_active', true)->orderBy('name')->get();
+
+        return view('esbtp.annonces.create', compact('classes', 'etudiants', 'filieres', 'niveaux'));
+    }
+
+    /**
+     * Enregistre une nouvelle annonce.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+        $request->validate($this->annonceValidationRules(), $this->annonceValidationMessages());
+
+        DB::beginTransaction();
+        try {
+            // Déterminer le statut de publication basé sur l'action
+            $action = $request->get('action', 'save_draft');
+            $is_published = ($action === 'publish');
+
+            $annonce = new ESBTPAnnonce();
+            $annonce->titre = $request->titre;
+            $annonce->contenu = $request->contenu;
+            // En brouillon, on stocke quand même `now()` comme date de création logique :
+            // la colonne BDD est NOT NULL et la publication réelle réécrira cette valeur.
+            $annonce->date_publication = $is_published ? now() : ($request->date_publication ?: now());
+            $annonce->date_expiration = $request->date_expiration;
+            $annonce->type = $request->type;
+            $annonce->priorite = $request->priorite;
+            $annonce->is_published = $is_published;
+            $annonce->email_notification_enabled = $request->boolean('send_email');
+            $annonce->created_by = Auth::id();
+
+            $this->handlePieceJointeUpload($request, $annonce);
+
+            $annonce->save();
+
+            // Attacher les classes ou les étudiants selon le type
+            if ($request->type == 'classe' && $request->has('classes')) {
+                $annonce->classes()->attach($request->classes);
+            } elseif ($request->type == 'etudiant' && $request->has('etudiants')) {
+                $annonce->etudiants()->attach($request->etudiants);
+            }
+
+            // Envoyer des notifications si l'annonce est publiée
+            if ($annonce->is_published && $annonce->date_publication <= now()) {
+                $this->sendAnnonceNotification($annonce);
+                // Envoyer notification administrative aux autres admins
+                $this->notificationService->notifyAdminsNewAnnouncement($annonce, Auth::user());
+            }
+
+            DB::commit();
+            $this->planifierCourrielsAnnonce($annonce, $is_published);
+            return redirect()->route('esbtp.annonces.index')
+                ->with('success', 'L\'annonce a été créée avec succès');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()
+                ->with('error', 'Une erreur est survenue lors de la création de l\'annonce: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * Affiche une annonce spécifique.
+     *
+     * @param  \App\Models\ESBTPAnnonce  $annonce
+     * @return \Illuminate\Http\Response
+     */
+    public function show(ESBTPAnnonce $annonce)
+    {
+        $annonce->load(['classes', 'etudiants', 'user']);
+        return view('esbtp.annonces.show', compact('annonce'));
+    }
+
+    /**
+     * Vérifie si une annonce peut encore être modifiée (< 15 min après publication)
+     */
+    private function canEditAnnonce($annonce)
+    {
+        if (!$annonce->is_published) {
+            return true; // Brouillons toujours modifiables
+        }
+
+        $publishedAt = $annonce->created_at;
+        if ($annonce->date_publication && $annonce->date_publication > $annonce->created_at) {
+            $publishedAt = $annonce->date_publication;
+        }
+
+        return $publishedAt->diffInMinutes(now()) <= 15;
+    }
+
+    /**
+     * Affiche le formulaire de modification d'une annonce.
+     *
+     * @param  \App\Models\ESBTPAnnonce  $annonce
+     * @return \Illuminate\Http\Response
+     */
+    public function edit(ESBTPAnnonce $annonce)
+    {
+        // Vérifier si l'annonce est expirée
+        if ($annonce->isExpired()) {
+            return redirect()->route('esbtp.annonces.show', $annonce)
+                ->with('error', 'Cette annonce est expirée et ne peut plus être modifiée.');
+        }
+
+        // Vérification règle 15 minutes
+        if (!$this->canEditAnnonce($annonce)) {
+            $publishedAt = $annonce->created_at;
+            if ($annonce->date_publication && $annonce->date_publication > $annonce->created_at) {
+                $publishedAt = $annonce->date_publication;
+            }
+            $minutesElapsed = $publishedAt->diffInMinutes(now());
+
+            return redirect()->route('esbtp.annonces.show', $annonce)
+                ->with('error', "Cette annonce ne peut plus être modifiée (publiée il y a {$minutesElapsed} minutes). Vous pouvez la supprimer et en créer une nouvelle.");
+        }
+
+        // Chargement des données avec même structure que create
+        $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
+        $etudiants = ESBTPEtudiant::with(['inscriptions' => function ($query) {
+                $query->anneeEnCours()->latest();
+            }])
+            ->whereHas('inscriptions', function ($query) {
+                $query->anneeEnCours();
+            })
+            ->distinct()
+            ->orderBy('nom')
+            ->orderBy('prenoms')
+            ->get();
+        $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
+        $niveaux = ESBTPNiveauEtude::where('is_active', true)->orderBy('name')->get();
+
+        return view('esbtp.annonces.edit', compact('annonce', 'classes', 'etudiants', 'filieres', 'niveaux'));
+    }
+
+    /**
+     * Met à jour une annonce spécifique.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\ESBTPAnnonce  $annonce
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, ESBTPAnnonce $annonce)
+    {
+        // Vérifier si l'annonce est expirée
+        if ($annonce->isExpired()) {
+            return redirect()->route('esbtp.annonces.show', $annonce)
+                ->with('error', 'Cette annonce est expirée et ne peut plus être modifiée.');
+        }
+
+        // Double vérification règle 15 minutes
+        if (!$this->canEditAnnonce($annonce)) {
+            return redirect()->route('esbtp.annonces.show', $annonce)
+                ->with('error', 'Cette annonce ne peut plus être modifiée.');
+        }
+
+        $request->validate($this->annonceValidationRules(), $this->annonceValidationMessages());
+
+        DB::beginTransaction();
+        try {
+            $wasPublished = $annonce->is_published;
+
+            // Déterminer le statut de publication basé sur l'action
+            $action = $request->get('action', 'update');
+            $is_published = false;
+
+            if ($action === 'publish') {
+                $is_published = true;
+            } elseif ($action === 'update' && $wasPublished) {
+                $is_published = true; // Garder le statut publié si déjà publié
+            }
+
+            $annonce->titre = $request->titre;
+            $annonce->contenu = $request->contenu;
+            $annonce->date_publication = $is_published && !$wasPublished ? now() : ($request->date_publication ?? $annonce->date_publication ?? now());
+            $annonce->date_expiration = $request->date_expiration;
+            $annonce->type = $request->type;
+            $annonce->priorite = $request->priorite;
+            $annonce->is_published = $is_published;
+            if (!$wasPublished) {
+                $annonce->email_notification_enabled = $request->boolean('send_email');
+            }
+            $annonce->updated_by = Auth::id();
+
+            $this->handlePieceJointeUpload($request, $annonce);
+
+            $annonce->save();
+
+            // Mettre à jour les associations
+            $annonce->classes()->detach();
+            $annonce->etudiants()->detach();
+
+            if ($request->type == 'classe' && $request->has('classes')) {
+                $annonce->classes()->attach($request->classes);
+            } elseif ($request->type == 'etudiant' && $request->has('etudiants')) {
+                $annonce->etudiants()->attach($request->etudiants);
+            }
+
+            // Envoyer des notifications si l'annonce devient publiée et est prévue pour maintenant ou le passé
+            if ($annonce->is_published && !$wasPublished && $annonce->date_publication <= now()) {
+                $this->sendAnnonceNotification($annonce);
+                // Envoyer notification administrative aux autres admins
+                $this->notificationService->notifyAdminsNewAnnouncement($annonce, Auth::user());
+            }
+
+            DB::commit();
+            $this->planifierCourrielsAnnonce($annonce, $is_published && !$wasPublished);
+            return redirect()->route('esbtp.annonces.index')
+                ->with('success', 'L\'annonce a été mise à jour avec succès');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()
+                ->with('error', 'Une erreur est survenue lors de la mise à jour de l\'annonce: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * Supprime une annonce spécifique.
+     *
+     * @param  \App\Models\ESBTPAnnonce  $annonce
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy(ESBTPAnnonce $annonce)
+    {
+        try {
+            // Détacher d'abord toutes les relations
+            $annonce->classes()->detach();
+            $annonce->etudiants()->detach();
+
+            // Supprimer le fichier associé s'il existe
+            if ($annonce->piece_jointe && \Storage::disk('public')->exists($annonce->piece_jointe)) {
+                \Storage::disk('public')->delete($annonce->piece_jointe);
+            }
+
+            // Puis supprimer l'annonce
+            $annonce->delete();
+
+            return redirect()->route('esbtp.annonces.index')
+                ->with('success', 'L\'annonce a été supprimée avec succès');
+        } catch (\Exception $e) {
+            return redirect()->route('esbtp.annonces.index')
+                ->with('error', 'Une erreur est survenue lors de la suppression de l\'annonce: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Pour chaque message de la tranche, s'il a ete lu par l'etudiant et quand.
+     */
+    private function marquerLecture($messages, ESBTPEtudiant $etudiant): void
+    {
+        foreach ($messages as $message) {
+            if ($message->type == 'etudiant') {
+                $pivot = $message->etudiants()->wherePivot('etudiant_id', $etudiant->id)->first();
+                if ($pivot) {
+                    $message->is_read = (bool) $pivot->pivot->is_read;
+                    $message->read_at = $pivot->pivot->read_at;
+                } else {
+                    $message->is_read = false;
+                    $message->read_at = null;
+                }
+            } else {
+                // Pour les messages généraux et de classe, vérifier dans la table pivot
+                $readStatus = DB::table('esbtp_annonce_lectures')
+                    ->where('annonce_id', $message->id)
+                    ->where('etudiant_id', $etudiant->id)
+                    ->first();
+
+                $message->is_read = $readStatus ? true : false;
+                $message->read_at = $readStatus ? $readStatus->read_at : null;
+            }
+        }
+    }
+
+    /**
+     * La suite des messages de l'etudiant : leurs cartes et leurs modales seules.
+     */
+    private function suiteDesMessages($messages): \Illuminate\Http\JsonResponse
+    {
+        return ListeInfinie::reponse($messages, fn ($message) => view('esbtp.annonces._message-etudiant', compact('message'))->render());
+    }
+
+    /**
+     * Affiche les messages pour un étudiant
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function studentAnnonces(Request $request)
+    {
+        $user = Auth::user();
+        $etudiant = ESBTPEtudiant::where('user_id', $user->id)->first();
+
+        // Si l'utilisateur n'est pas un étudiant (superAdmin pour preview),
+        // afficher toutes les annonces publiées avec stats représentatives.
+        if (!$etudiant) {
+            $messages = ESBTPAnnonce::where('is_published', true)
+                ->where('date_publication', '<=', now())
+                ->where(function($q) {
+                    $q->whereNull('date_expiration')->orWhere('date_expiration', '>=', now());
+                })
+                ->orderBy('priorite', 'desc')
+                ->orderBy('created_at', 'desc')
+                // Departage stable : la liste se charge par tranches.
+                ->orderBy('id', 'desc')
+                ->paginate(10);
+
+            foreach ($messages as $message) {
+                $message->is_read = true;
+                $message->read_at = null;
+            }
+
+            if (ListeInfinie::demandee($request)) {
+                return $this->suiteDesMessages($messages);
+            }
+
+            $stats = [
+                'total' => $messages->total(),
+                'unread' => 0,
+                'urgent' => $messages->total() > 0
+                    ? ESBTPAnnonce::where('is_published', true)
+                        ->where('date_publication', '<=', now())
+                        ->where(function($q) {
+                            $q->whereNull('date_expiration')->orWhere('date_expiration', '>=', now());
+                        })
+                        ->where('priorite', 2)
+                        ->count()
+                    : 0,
+            ];
+
+            return view('esbtp.annonces.student-annonces', compact('messages', 'stats', 'etudiant'));
+        }
+
+        // Récupérer la classe de l'année universitaire en cours
+        $classeId = $etudiant->inscriptions()
+            ->anneeEnCours()
+            ->latest()
+            ->value('classe_id');
+
+        // Closure qui applique les filtres d'audience (général / classe / étudiant)
+        $audienceFilter = function ($query) use ($classeId, $etudiant) {
+            $query->where(function($q) use ($classeId, $etudiant) {
+                // Messages généraux
+                $q->where('type', 'general');
+
+                // Messages pour la classe de l'étudiant (si disponible)
+                if ($classeId) {
+                    $q->orWhere(function($sq) use ($classeId) {
+                        $sq->where('type', 'classe')
+                           ->whereHas('classes', function($cq) use ($classeId) {
+                                $cq->where('esbtp_classes.id', $classeId);
+                           });
+                    });
+                }
+
+                // Messages spécifiques à l'étudiant
+                $q->orWhere(function($sq) use ($etudiant) {
+                    $sq->where('type', 'etudiant')
+                       ->whereHas('etudiants', function($eq) use ($etudiant) {
+                            $eq->where('esbtp_etudiants.id', $etudiant->id);
+                       });
+                });
+            });
+        };
+
+        // Builder de base réutilisable pour pagination + comptes
+        $baseBuilder = ESBTPAnnonce::where('is_published', true)
+            ->where('date_publication', '<=', now())
+            ->where(function($q) {
+                $q->whereNull('date_expiration')->orWhere('date_expiration', '>=', now());
+            })
+            ->tap($audienceFilter);
+
+        // Pagination des messages affichés (ordre priorité desc puis date desc)
+        $messages = (clone $baseBuilder)
+            ->orderBy('priorite', 'desc')
+            ->orderBy('created_at', 'desc')
+            // Departage stable : la liste se charge par tranches.
+            ->orderBy('id', 'desc')
+            ->paginate(10);
+
+        $this->marquerLecture($messages, $etudiant);
+
+        if (ListeInfinie::demandee($request)) {
+            return $this->suiteDesMessages($messages);
+        }
+
+        // Statistiques globales (pas seulement page courante) avec builders frais
+        $totalCount = (clone $baseBuilder)->count();
+
+        $unreadCount = (clone $baseBuilder)
+            ->where(function($q) use ($etudiant) {
+                // Non lu = soit pas dans esbtp_annonce_lectures (général/classe),
+                //        soit pivot etudiant avec is_read=false (etudiant)
+                $q->where(function($sq) use ($etudiant) {
+                    $sq->whereIn('type', ['general', 'classe'])
+                       ->whereDoesntHave('lectures', function($lq) use ($etudiant) {
+                           $lq->where('etudiant_id', $etudiant->id);
+                       });
+                })->orWhere(function($sq) use ($etudiant) {
+                    $sq->where('type', 'etudiant')
+                       ->whereHas('etudiants', function($eq) use ($etudiant) {
+                           $eq->where('esbtp_etudiants.id', $etudiant->id)
+                              ->where('esbtp_annonce_etudiant.is_read', false);
+                       });
+                });
+            })
+            ->count();
+
+        $urgentCount = (clone $baseBuilder)
+            ->where('priorite', 2)
+            ->count();
+
+        $stats = [
+            'total' => $totalCount,
+            'unread' => $unreadCount,
+            'urgent' => $urgentCount,
+        ];
+
+        return view('esbtp.annonces.student-annonces', compact('messages', 'stats', 'etudiant'));
+    }
+
+    /**
+     * Marque un message comme lu par l'étudiant connecté
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function markAsRead($id)
+    {
+        $user = Auth::user();
+        $etudiant = ESBTPEtudiant::where('user_id', $user->id)->firstOrFail();
+        $annonce = ESBTPAnnonce::findOrFail($id);
+
+        try {
+            DB::beginTransaction();
+
+            if ($annonce->type == 'etudiant') {
+                // Pour les messages spécifiques aux étudiants
+                $annonce->marquerCommeLue($etudiant->id);
+            } else {
+                // Pour les messages généraux et de classe
+                // Vérifier si une entrée existe déjà
+                $exists = DB::table('esbtp_annonce_lectures')
+                    ->where('annonce_id', $id)
+                    ->where('etudiant_id', $etudiant->id)
+                    ->exists();
+
+                if (!$exists) {
+                    // Créer une nouvelle entrée
+                    DB::table('esbtp_annonce_lectures')->insert([
+                        'annonce_id' => $id,
+                        'etudiant_id' => $etudiant->id,
+                        'read_at' => Carbon::now(),
+                        'created_at' => Carbon::now(),
+                        'updated_at' => Carbon::now()
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            if (request()->ajax()) {
+                return response()->json(['success' => true]);
+            }
+
+            return redirect()->back()->with('success', 'Message marqué comme lu.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            if (request()->ajax()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            }
+
+            return redirect()->back()->with('error', 'Une erreur est survenue: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Marque tous les messages comme lus par l'étudiant connecté
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function markAllAsRead()
+    {
+        $user = Auth::user();
+        $etudiant = ESBTPEtudiant::where('user_id', $user->id)->firstOrFail();
+
+        try {
+            DB::beginTransaction();
+
+            // Récupérer tous les messages non lus de l'étudiant
+            $classeId = $etudiant->inscriptions()
+                ->anneeEnCours()
+                ->latest()
+                ->value('classe_id');
+
+            $query = ESBTPAnnonce::where('is_published', true)
+                ->where('date_publication', '<=', now())
+                ->where(function($q) use ($etudiant, $classeId) {
+                    // Messages généraux
+                    $q->where('type', 'general');
+
+                    // Messages pour la classe de l'étudiant
+                    if ($classeId) {
+                        $q->orWhere(function($sq) use ($classeId) {
+                            $sq->where('type', 'classe')
+                               ->whereHas('classes', function($cq) use ($classeId) {
+                                    $cq->where('esbtp_classes.id', $classeId);
+                               });
+                        });
+                    }
+
+                    // Messages spécifiques à l'étudiant
+                    $q->orWhere(function($sq) use ($etudiant) {
+                        $sq->where('type', 'etudiant')
+                           ->whereHas('etudiants', function($eq) use ($etudiant) {
+                                $eq->where('esbtp_etudiants.id', $etudiant->id);
+                           });
+                    });
+                })
+                ->whereDoesntHave('lectures', function($q) use ($etudiant) {
+                    $q->where('etudiant_id', $etudiant->id);
+                });
+
+            $messages = $query->get();
+
+            // Marquer tous les messages comme lus
+            foreach ($messages as $message) {
+                if ($message->type == 'etudiant') {
+                    $message->marquerCommeLue($etudiant->id);
+                } else {
+                    // Pour les messages généraux et de classe
+                    DB::table('esbtp_annonce_lectures')->insert([
+                        'annonce_id' => $message->id,
+                        'etudiant_id' => $etudiant->id,
+                        'read_at' => Carbon::now(),
+                        'created_at' => Carbon::now(),
+                        'updated_at' => Carbon::now()
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            if (request()->ajax()) {
+                return response()->json(['success' => true]);
+            }
+
+            return redirect()->back()->with('success', 'Tous les messages ont été marqués comme lus.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            if (request()->ajax()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            }
+
+            return redirect()->back()->with('error', 'Une erreur est survenue: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Envoie des notifications aux étudiants concernés par une annonce
+     *
+     * @param ESBTPAnnonce $annonce
+     * @return void
+     */
+    /** Planifie l'envoi APRÈS commit : aucune diffusion sur un rollback. */
+    private function planifierCourrielsAnnonce(ESBTPAnnonce $annonce, bool $premierePublication): void
+    {
+        if (!$premierePublication || !$annonce->email_notification_enabled || $annonce->date_publication->isFuture()) {
+            return;
+        }
+
+        try {
+            DiffuserAnnonceParCourriel::dispatch($annonce->id);
+        } catch (\Throwable $e) {
+            Log::error('Impossible de planifier les courriels d\'annonce', [
+                'annonce_id' => $annonce->id, 'erreur' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function sendAnnonceNotification(ESBTPAnnonce $annonce)
+    {
+        // Utiliser le service de notifications centralisé avec l'expéditeur
+        $this->notificationService->notifyNewAnnouncement($annonce, Auth::user());
+    }
+}

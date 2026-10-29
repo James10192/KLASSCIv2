@@ -1,0 +1,71 @@
+# Task ID: 17
+# Title: Nettoyage Séparation Logique Comptabilité-Inscription
+# Status: done
+# Dependencies: 16
+# Priority: medium
+# Description: Refactoring complet pour séparer logique comptabilité des pages inscription et découpler modèles/contrôleurs
+# Details:
+1. Nettoyage contrôleurs:
+   - ESBTPInscriptionController: suppression méthodes comptabilité inappropriées
+   - Déplacer logique paiements vers ESBTPComptabiliteController
+   - Séparation claire: inscription = workflow étudiant, comptabilité = gestion financière
+
+2. Purification vues Blade:
+   - Suppression références comptabilité des templates inscription
+   - Composants séparés: inscription-card vs paiement-card
+   - Navigation menu clarifiée: Inscriptions vs Comptabilité
+
+3. Découplage modèles:
+   - Relations ESBTPInscription ↔ ESBTPPaiement clarifiées
+   - Méthodes spécialisées par contexte métier
+   - Scopes séparés: inscriptionEnCours() vs paiementsComptabilite()
+
+4. Permissions granulaires:
+   - inscription.validate (validation workflow)
+   - comptabilite.manage (gestion financière)
+   - Middleware séparés par fonctionnalité
+
+5. Services découplés:
+   - InscriptionService: workflow et gestion étudiant
+   - ComptabiliteService: calculs et reporting financier
+   - Interfaces claires entre services
+
+# Test Strategy:
+1. Tests régression fonctionnalités existantes
+2. Tests séparation permissions par rôle
+3. Tests navigation interface après refactoring
+4. Tests performance après découplage
+5. Code review architecture découplée
+6. Tests intégration services séparés
+
+# Subtasks:
+## 17.1. Nettoyage ESBTPInscriptionController [done]
+### Dependencies: None
+### Description: Suppression méthodes comptabilité inappropriées du contrôleur inscription
+### Details:
+
+
+## 17.2. Purification vues inscription [done]
+### Dependencies: None
+### Description: Suppression références comptabilité des templates Blade inscription
+### Details:
+
+
+## 17.3. Découplage modèles relations [done]
+### Dependencies: None
+### Description: Relations claires ESBTPInscription, ESBTPEtudiant avec méthodes spécialisées
+### Details:
+
+
+## 17.4. Permissions granulaires [done]
+### Dependencies: None
+### Description: Nouveaux droits inscription.validate, separation comptabilite.manage
+### Details:
+
+
+## 17.5. Tests régression complets [done]
+### Dependencies: None
+### Description: Validation fonctionnalités existantes intactes après refactoring
+### Details:
+
+

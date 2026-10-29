@@ -1,0 +1,43 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# FRONTEND COMPONENT STANDARDS
+@base.mdc
+
+Description: Standards for React components
+Globs: src/components/**/*.{jsx,tsx}
+
+## COMPONENT STRUCTURE
+- Use functional components with hooks instead of class components
+- Keep components small and focused on a single responsibility
+- Extract complex logic into custom hooks
+- Use prop destructuring for clarity
+- Add PropTypes or TypeScript interfaces for all props
+- Use default props where appropriate
+
+## STATE MANAGEMENT
+- Minimize component state when possible
+- Use context API for shared state across multiple components
+- Consider using reducer pattern for complex state
+- Avoid prop drilling deeper than 2-3 levels
+
+## PERFORMANCE OPTIMIZATION
+- Use React.memo for pure components that render often
+- Implement useMemo and useCallback for expensive calculations and callbacks
+- Avoid unnecessary re-renders by isolating state
+- Use virtual lists for large datasets
+
+## ACCESSIBILITY
+- Use semantic HTML elements
+- Include ARIA attributes where necessary
+- Ensure keyboard navigation works properly
+- Maintain sufficient color contrast
+- Test with screen readers
+
+## STYLING
+- Follow the project's styling methodology (CSS Modules, Styled Components, etc.)
+- Use responsive design principles
+- Implement theme variables for consistency
+- Avoid inline styles except for dynamic values

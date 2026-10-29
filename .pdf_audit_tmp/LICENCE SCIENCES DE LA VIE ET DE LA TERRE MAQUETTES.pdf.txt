@@ -1,0 +1,768 @@
+
+--- PAGE 1 ---
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+LICENCE 1 SVT 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+--- PAGE 2 ---
+Semestre 1 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 1
+SEMESTRE: 1
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+MAG2001.1 Analyse 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Tapé Jean 
+Georges
+MAG2001.2 Algèbre 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Tapé Jean 
+Georges
+MEO2001.1 Mécanique 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Prof Kouadio Yves
+MEO2001.2 Optique 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Prof Kouadio Yves
+ALC2001.1 Atomistique 15 15 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Prof Dongui 
+Kouamé Bini
+ALC2001.2 Liaisons Chimiques 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Prof Dongui 
+Kouamé Bini
+BCM2001.1 Cellule  et Virus 6 4 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Guirieoulou 
+Claver
+BCM2001.2 Membrane Plasmique, 
+Hyaloplasme et Cytosquelette 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Guirieoulou 
+Claver
+BCM2001.3 Organites Intracellulaires et 
+Rôles 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Guirieoulou 
+Claver
+GMR2001.1 Géodynamique Interne 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Brou Etienne
+GMR2001.2 Cristallographie et Minéralogie 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Niangoran
+BPV2001.1 Base de la Biologie Végétale 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Koulibaly Annick
+BPV2001.2 Base de la Physiologie Végétale 8 4 0 0 12 18 30 1 Français 40 60 Obligatoire Prof Boyé Mambé
+Technique d'expression écrite et 
+orale 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire
+Methodoloie du travail 
+universitaire 8 4 0 0 12 18 30 1 Présentiel Français 40 60 Obligatoire
+ANG2001 ANGLAIS ANG2001.1 Anglais 10 10 0 0 20 30 50 2 2 Présentiel Anglais Mineur 40 60 Obligatoire Dr Djopié Dr Djopié 
+157 147 0 0 304 456 760 30 30
+MEO2001 MECANIQUE ET OPTIQUE
+ATOMISTIQUE ET 
+LIAISONS CHIMIQUESALC2001
+UE DE CULTURE GENERALE
+4
+4
+5
+GMR2001
+GEODYNAMIQUE 
+INTERNE-
+CRISTALLOGRAPHIE ET 
+MINERALOGIE
+Dr Guirieoulo 
+Claver5
+UE DE METHODOLOGIE
+BPV2001
+BCM2001
+Prof Kouadio 
+Yves
+UNIVERSITE EPHRATA
+SCIENCES ET TECHNOLOGIE
+AGROFORESTERIE -SVT
+4 Dr Tapé Jean 
+Georges
+Mode 
+d'évaluatio
+n Fonctionnali
+té
+Enseignant chargé 
+de l'ECUE
+Mode 
+d'apprentis
+sage
+Langue 
+d'apprentiss
+age
+Importance
+Majeur
+Majeur
+Majeur
+Majeur
+Majeur
+UE FONDAMENTALES
+MAG2001 MATHEMATIQUES 
+GENERALES
+Responsable 
+de l'UE
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+CREDI
+TS 
+ECUE
+CECT 
+UE
+MASSE HORAIRE SEMESTRIELLE
+Mineur
+TOTAL SMESTRE 1
+Prof Dongui 
+Kouamé Bini
+Prof Brou 
+Etienne
+BASE DE LA BGIOLOGIE ET 
+DE LA PHYSIOLOGIE 
+VEGETALE
+3 Mineur Dr Koulibaly 
+Annick
+BIOLOGIE CELLULAIRE ET 
+MOLECULAIRE
+3
+--- PAGE 3 ---
+Semestre 2 
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 1
+SEMESTRE: 2
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+TPE2002.1 Thermodynamique Physique 15 15 0 0 30 45 75 3 Présentiel Francais 40 60 Obligatoire Dr Esmel
+TPE2002.2 Electricité 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Prof Kouadio YVES
+TCC2002.1 Thermodynamique Chimique 15 15 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Coulibaly 
+Souleymane
+TCC2002.2 Cinétique Chimique et Solutions 
+Aqueuses 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Yapi Yapo
+MET2002.1 Géodynamique Externe 10 10 0 0 20 30 50 2 Présentiel Francais 40 60 Obligatoire N'dri Brou Etienne
+MET2002.2 Pédologie 10 10 0 0 20 30 50 2 Présentiel Francais 40 60 Obligatoire Prof Bakayoko SIDIKY
+MET2002.3 Pétrologie 6 4 0 0 10 15 25 1 Présentiel Francais 40 60 Obligatoire Dr Kouassi Kouamé 
+Alfred
+BMS2002.1 Molécules Simples 15 15 0 0 30 45 75 3 Présentiel Francais 40 60 Obligatoire Dr Minoungou D 
+Yigerta
+BMS2002.2 Molécules de Taille Moyenne 10 10 0 0 20 30 50 2 Présentiel Francais 40 60 Obligatoire Dr Brou Konan
+EMB2002.1 Grandes Etapes du Développement 
+Embryonnaire 15 15 0 0 30 45 75 3 Présentiel Francais 40 60 Obligatoire Dr Guirieoulou Claver Dr Guirieoulou 
+Claver
+EMB2002.2 Développement Embryonnaires des 
+Invertébrés et des Vertébrés 10 10 0 0 20 30 50 2 Présentiel Francais 40 60 Obligatoire Dr Guirieoulou Claver Dr Guirieoulou 
+Claver
+INFO2002 INFORMATIQUE INFO2002.1 Informatique 0 10 10 0 20 30 50 2 2 Présentiel Francais Mineur 40 60 Obligatoire M.Bedje Akou 
+Simplice
+M.Bedje Akou 
+Simplice
+Droit de l'Eau 6 4 0 0 10 15 25 1 Présentiel Francais Mineur 40 60 Obligatoire
+Droit de l'Environnement 6 4 0 0 10 15 25 1 Présentiel Francais Mineur 40 60 Obligatoire Dr Kouakou Etienne
+Agroéconomie 6 4 0 0 10 15 25 1 1 Présentiel Francais Mineur 40 60 Obligatoire
+144 146 10 0 300 450 750 30 30
+UNIVERSITE EPHRATA
+SCIENCES ET TECHNOLOGIE
+AGROFORESTERIE -SVT
+MASSE HORAIRE SEMESTRIELLEIntitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+UE FONDAMENTALES
+TPE2002
+THERMODYNAMIQUE 
+PHYSIQUE ET 
+ELECTRICITE
+5 Prof Kouadio 
+Yves
+Mode 
+d'évaluatio
+n Fonctionnal
+ité
+Enseignant chargé de 
+l'ECUE
+Responsable 
+de l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+Mode 
+d'apprentissa
+ge
+Langue 
+d'apprentissa
+ge
+Importance
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Dr Coulibaly 
+SouleymaneMajeur
+Majeur
+TCC2002
+THERMODYNAMIQUE, 
+CINETIQUE CHIMIQUE 
+ET REACTIONS EN 
+SOLUTIONS AQUEUSES 
+5
+TOTAL SMESTRE 1
+BMS2002 BIOCHIMIE 
+STRUCTURALE 5 Dr Brou Konan
+EMBRYOLOGIEEMB2002 5
+UE DE CULTURE GENERALE
+Prof Bakayoko 
+Sidiky
+DROIT 2
+Majeur
+Majeur
+MET2002 MATERIAUX DE 
+L'ECORCE TERRESTRE 5 Majeur
+UE DE SPECIALITE
+--- PAGE 4 ---
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+LICENCE 2 SVT 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+--- PAGE 5 ---
+Semestre 3 
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 2
+SEMESTRE: 3
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+CHO2003.1 Chimie Organique Générale 6 6 8 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Camara Tchanga 
+Etienne
+CHO2003.2 Chimie Organique Structurale 6 8 6 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Camara Tchanga 
+Etienne
+PRS2003.1 Probabilités 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr N'dri Jean Marc
+PRS2003.2 Statistiques 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Okou
+PEG2003.1 Minéralogie 6 0 4 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr N'dri Brou Etienne
+PEG2003.2 Pétrographie 6 0 4 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Niangoran Kouadio 
+Charles
+BFG2003.1 Etudes Fondamentales en 
+Génétique 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Manizan Ama Lethicia
+BFG2003.2 Mutation Génétique 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Manizan Ama Lethicia
+BCH2003.1 Structure et Propriétés des 
+Macromolécules 10 5 5 0 20 30 50 2 Présentiel Français 40 60 Obligatoire
+Dr Djedje Bletro Patrick
+BCH2003.2 Enzymologie 10 5 5 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Gnahoua
+BCH2003.3 Bioénergétique 6 4 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Angaman
+PHA2003.1 Transport Transmembranaire et 
+Epithéliale 10 4 6 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr N'gou M'boh Epi Reine
+PHA2003.2 Tissus Nerveux 10 4 6 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr N'gou M'boh Epi Reine
+PHA2003.3 Tissus Musculaires et 
+Contraction 5 0 5 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Dali
+Technique d'expression écrite et 
+orale 2 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire
+Initiation à la Methodologie de 
+la Recherche 8 4 0 0 12 18 30 1 Présentiel Français 40 60 Obligatoire
+ASI2003.1 Anglais Scientifique 0 10 10 0 20 30 50 2 Présentiel Anglais 40 60 Obligatoire Dr Bogui N'drin Ezechiel
+ASI2003.2 Informatique 0 4 6 0 10 15 25 1 Présentiel Français 40 60 Obligatoire M.Traore Ismael
+133 104 65 0 302 453 755 30 30TOTAL SEMESTRE 3
+UE DE CULTURE GENERALE
+ASI2003
+ANGLAIS 
+SCIENTIFIQUE ET 
+INFORMATIQUE
+3 Mineur
+PEG2003 PETROGRAPHIE 
+GENERALE 2 Dr N'dri Brou 
+Etienne
+BFG2003
+PHA2003 PHYSIOLOGIE 
+ANIMALE 5
+BASES 
+FONDAMENTALES 
+DE LA GENETIQUE
+4
+BCH2003 BIOCHIMIE 5 Dr Gnahoua
+UE FONDAMENTALES
+CHO2003 CHIMIE 
+ORGANIQUE 4 Dr Camara 
+Tchanga Etienne
+Mode 
+d'évaluatio
+n Fonctionnali
+té
+Enseignant chargé de 
+l'ECUE
+Responsable de 
+l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+Mode 
+d'apprentis
+sage
+Langue 
+d'apprentiss
+age
+Importance
+UNIVERSITE EPHRATA
+SCIENCES ET TECHNOLOGIE
+AGROFORESTERIE -SVT
+MASSE HORAIRE SEMESTRIELLE Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+PRS2003 PROBABILITES ET 
+STATISTIQUES 4
+Majeur
+Majeur
+Dr N'dri Jean Marc
+Majeur
+Majeur
+Majeur
+Majeur Dr Manizan Ama 
+Lethicia
+Dr Dali
+Dr Bogui N'drin 
+Ezechiel
+UE DE SPECIALITE
+UE DE METHODOLOGIE
+3 Mineur
+--- PAGE 6 ---
+Semestre 4 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 2
+SEMESTRE: 4
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+PHY2004.1 Montage en Physique 0 0 10 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Prof Kouadio Yves
+PHY2004.2 Physique des Particules 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr kezo
+PHY2004.3 Transferts Thermiques 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr GbEHE
+ARV2004.1 Anatomie et reproduction des 
+Cormophytes 10 0 10 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Koulibaly Annick
+ARV2004.2 Anatomie et reproduction des 
+Thallophytes 10 0 10 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Koffi N'guessan 
+Achille
+PEG2004.1 Formation et Evolution du Sol 10 0 10 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Prof Bakayoko 
+Sidiky
+PEG2004.2 Géomorphologie-Cartographie 10 0 10 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr N'dri Brou 
+Etienne
+HYG2004.1 Hydrologie 10 0 10 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Brou Loukou 
+Alexis
+HYG2004.2 Hydrogéologie 10 0 10 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Zile Alex
+BIA2004.1 Protozoaires 10 0 10 0 20 30 50 2 Présentiel Français 40 60 Obligatoire
+Dr Djiereoulou 
+Kemomadjehi 
+Claver
+BIA2004.2 Métazoaires 5 0 5 0 10 15 25 1 Présentiel Français 40 60 Obligatoire
+Dr Djiereoulou 
+Kemomadjehi 
+Claver
+PAS2004.1 Paléontologie 10 0 10 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Kouassi kouame 
+Alfred
+PAS2004.2 Stratigraphie 5 0 5 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Niangoran 
+Kouadio Charles
+PHV2004.1 Nutrition Hydrique et Minérale 10 0 10 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Kouame Konan 
+Joel
+PHV2004.2 Nutrition Carbonée et Azotée 5 0 5 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Prof Boye Mambe
+DROIT Droit Foncier 8 12 0 0 20 30 50 2 2 Présentiel Français Mineur 40 60 Obligatoire
+Secourisme 0 0 10 0 10 15 25 1 Présentiel Français 40 60 Obligatoire
+Développement Durable 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire
+133 42 125 0 300 450 750 30 30
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+UNIVERSITE EPHRATA
+SCIENCES ET TECHNOLOGIE
+AGROFORESTERIE -SVT
+MASSE HORAIRE SEMESTRIELLE CREDI
+TS 
+ECUE
+CECT 
+UE
+Mode 
+d'apprentis
+sage
+Langue 
+d'apprentiss
+age
+Mode 
+d'évaluation Fonctionnalit
+é
+Enseignant chargé 
+de l'ECUE
+Responsable de 
+l'UEImportance
+Prof Boye 
+Mambe
+UE FONDAMENTALES
+PHY2004 PHYSIQUE 5 Prof Kouadio 
+YvesMajeur
+Majeur
+Majeur
+ARV2004
+ANATOMIE ET 
+REPRODUCTION DES 
+VEGETAUX
+4
+BIA2004 BIOLOGIE ANIMALE 3
+PEG2004 4
+Majeur
+TOTAL SEMESTRE 4
+HYG2004 HYDROLOGIE ET 
+HYDROGEOLOGIE 4
+PHV2004
+DEVELOPPEMENT 
+PERSONNEL 2 Mineur
+Dr Koulibaly 
+Annick
+Prof Bakayoko 
+Sidiky
+Dr Zile Alex
+Dr Djiereoulou 
+Kemomadjehi 
+Claver
+Dr Kouassi 
+kouame Alfred
+UE DE CULTURE GENERALE
+PHYSIOLOGIE 
+VEGETALE 3
+PAS2004 PALEONTOLOGIE ET 
+STRATIGRAPHIE 3
+Majeur
+Majeur
+Majeur
+PEDOLOGIE ET 
+GEOMORPHOLOGIE
+--- PAGE 7 ---
+ 
+ 
+ 
+ 
+ 
+LICENCE 3 SVT 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+--- PAGE 8 ---
+Semestre 5 
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 3
+SEMESTRE: 5
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+ECG2005.1 Ecologie Végétale 10 0 20 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Koulibaly 
+Annick
+ECG2005.2 Ecologie Animale 10 0 10 0 20 30 50 2 Présentiel Français 40 60 Obligatoire
+Dr Djiereoulou 
+Kemomadjehi 
+Claver
+VRN2005.1 Vie de relation 10 6 14 0 30 45 75 3 Présentiel Français 40 60 Obligatoire
+Dr Sika-Kadji 
+Andrée 
+Emmanuel
+VRN2005.2 Vie de Nutrition 6 4 10 0 20 30 50 2 Présentiel Français 40 60 Obligatoire
+Dr Sika-Kadji 
+Andrée 
+Emmanuel
+GBM2005.1 Fondements de la Biologie 
+Moléculaire 8 8 14 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Gore Bi Boh 
+Nestor
+GBM2005.2 Génétique Formelle 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Gore Bi Boh 
+Nestor
+AVN2005.1 Groupes Alimentaires 6 6 8 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Djedje Betro 
+Patrick
+AVN2005.2 Valeur Nutritionnelle 6 6 8 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Djedje Betro 
+Patrick
+AVN2005.3 Digestion 4 2 4 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Djedje Betro 
+Patrick
+INP2005.1 Psychopédagogie Générale 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire
+INP2005.2 Didactique Générale 10 0 10 0 20 30 50 2 Présentiel Français 40 60 Obligatoire
+INF2005 INFORMATIQUE INF2005.1 Informatique 10 0 14 0 24 36 60 2 2 Présentiel Français Mineur 40 60 Obligatoire M.Traore Ismael M.Traore Ismael
+ANG2005.1 Listening 4 6 0 0 10 15 25 1 Présentiel Anglais 40 60 Obligatoire Dr Bogui N'drin 
+Ezechiel
+ANG2005.2 Writing 4 6 0 0 10 15 25 1 Présentiel Anglais 40 60 Obligatoire Dr Bogui N'drin 
+Ezechiel
+UEL2005.1 EPS 0 0 10 0 10 15 25 1 Présentiel Français 40 60 Obligatoire M.Coulibaly 
+Kolotcholoma
+UEL2005.2 Vie Coopérative 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Koulibaly 
+Annick
+112 70 122 0 304 456 760 30 30
+INP2005 INITIATION A LA 
+PEDAGOGIE 4
+UE DE CULTURE GENERALE
+ANG2005 ANGLAIS TECHNIQUE 2
+e
+UE DE SPECIALITE
+TOTAL SEMESTRE 5
+GENETIQUE ET BIOLOGIE 
+MOLECULAIRE 5 Dr Gore Bi Boh 
+Nestor
+Mineur
+Mineur
+UE FONDAMENTALES
+Mode 
+d'évaluatio
+n Fonctionnalité Enseignant 
+chargé de l'ECUE
+Responsable de 
+l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+Mode 
+d'apprentissag
+e
+Langue 
+d'apprentiss
+age
+Importance
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+UNIVERSITE EPHRATA
+SCIENCES ET TECHNOLOGIE
+AGROFORESTERIE -SVT
+MASSE HORAIRE SEMESTRIELLEIntitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+Dr Koulibaly 
+Annick
+2
+UE DE METHODOLOGIE
+Dr Bogui N'drin 
+Ezechiel
+Dr Koulibaly 
+Annick
+ECG2005 ECOLOGIE GENERALE 5
+VRN2005 VIE DE RELATION ET DE 
+NUTRITION 5
+AVN2005 ALIMENTS ET VALEUR 
+NUTRITIONNELLE 5 Dr Djedje Betro 
+Patrick
+GBM2005
+Majeur
+Majeur
+Majeur
+Majeur
+Majeur
+--- PAGE 9 ---
+Semestre 6 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 3
+SEMESTRE: 6
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+GPC2006.1 Classification des Sols 
+de la Côte d'Ivoire 10 0 10 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Prof Bakayoko Sidiky
+GPC2006.2 Géologie de la Côte 
+d'Ivoire 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr N'dri Brou 
+Etienne
+MIM2006.1 Microbiologie Générale 10 0 10 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Dah Dossounon 
+Yigerta
+MIM2006.2 Immulogie 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr N'gou M'boh Epi 
+Reine
+PGF2006.1 Fonctions de Relation 6 0 4 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr N'gou M'boh Epi 
+Reine
+PGF2006.2 Fonctions Mentales 
+Supérieures 6 0 4 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr N'gou M'boh Epi 
+Reine
+PGF2006.2 Fonctions de Nutrition 6 0 4 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr N'gou M'boh Epi 
+Reine
+HDV2006.1 Hormologie Végétale 10 0 10 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Prof Boye Mambe 
+Auguste
+HDV2006.2
+Croissance et 
+Développement des 
+Végétaux
+10 0 10 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Prof Boye Mambe 
+Auguste
+HAS2006.1 Histologie et Anatomie 
+des Végétaux 10 0 10 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Koulibaly Annick
+HAS2006.2 Systématique et 
+Anatomie des Végétaux 10 0 10 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Koulibaly Annick
+SSF2006.1 Méthode de Rédaction 
+de Mémoire 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Koulibaly Annick
+SSF2006.2 Stage et Soutenance de 
+Mémoire (03 mois) 0 0 0 60 60 90 150 6 Présentiel Français 40 60 Obligatoire Dr Koulibaly Annick
+IDH2006.1 Connaissance du 
+Monde Rural 6 4 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Koulibaly Annick
+IDH2006.2 Droit de l'Homme 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Cemeti Antoine
+124 44 72 60 300 450 750 30 30
+UE DE CULTURE GENERALE
+TOTAL SEMESTRE 6
+IDH2006
+INITIATION AU DROIT DE 
+L'HOMME ET A LA 
+CITOYENNETE 
+3 Dr Koulibaly 
+AnnickMineur
+HISTOLOGIE, ANATOMIE 
+ET SYSTEMATIQUE DES 
+ANGIOSPERMES
+4
+PGF2006 PHYSIOLOGIE DES 
+GRANDES FONCTIONS 3
+HDV2006
+HORMONOLOGIE ET 
+DEVELOPPEMENT DES 
+VEGETAUX
+4
+UEDE SPECIALITE
+GPC2006 GEOLOGIE ET 
+PEDOLOGIE DE LA CI 4
+Prof 
+Bakayoko 
+Sidiky
+Mode 
+d'évaluatio
+n Fonctionnali
+té
+Enseignant chargé 
+de l'ECUE
+Responsable 
+de l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+UNIVERSITE EPHRATA
+SCIENCES ET TECHNOLOGIE
+AGROFORESTERIE -SVT
+MASSE HORAIRE SEMESTRIELLE Mode 
+d'apprentis
+sage
+Langue 
+d'apprentiss
+age
+Importance
+MIM2006 MICROBIOLOGIE ET 
+IMMULOGIE 4
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+SFF2006 STAGE DE FIN DE 
+FORMATION 8 Dr Koulibaly 
+Annick
+Majeur
+Majeur
+Majeur
+Majeur
+Majeur
+Majeur
+UE DE METHODOLGIE
+Prof Boye 
+Mambe 
+Auguste
+Dr N'gou 
+M'boh Epi 
+Reine
+Dr Dah 
+Dossounon 
+Yigerta
+Dr Koulibaly 
+AnnickHAS2006
+--- PAGE 10 ---
+ 

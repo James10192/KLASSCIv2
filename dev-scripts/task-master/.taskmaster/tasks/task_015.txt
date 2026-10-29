@@ -1,0 +1,68 @@
+# Task ID: 15
+# Title: Service Workflow Inscription vers Étudiant
+# Status: done
+# Dependencies: 14
+# Priority: high
+# Description: Développement service complet workflow inscription → étudiant avec validation paiement et gestion places classes
+# Details:
+1. Services principaux:
+   - `InscriptionWorkflowService.php`: validateInscription(), checkClassAvailability(), createStudent()
+   - `ClasseManagementService.php`: gestion places et attribution automatique avec alternatives
+   - Logic business rules: inscription complète → paiement → places → création étudiant
+
+2. Extensions contrôleurs:
+   - ESBTPEtudiantController: createFromInscription(), assignClasse()
+   - ESBTPInscriptionController: validateInscription() avec modal paiement
+   - API endpoints pour vérification places temps réel
+
+3. Events Laravel:
+   ```php
+   // Workflow events
+   event(new InscriptionValidated($inscription, $paiement));
+   event(new EtudiantCreated($etudiant, $inscription));
+   ```
+
+4. États workflow:
+   - prospect → documents_complets → en_validation → valide → etudiant_cree
+   - Transition rules avec permissions et validations
+   - Historique complet dans esbtp_inscription_workflow_history
+
+# Test Strategy:
+1. Tests unitaires services avec mocks
+2. Tests intégration workflow complet inscription→étudiant
+3. Tests gestion places classes (disponibles/alternatives)
+4. Tests events et listeners
+5. Tests API endpoints validation temps réel
+6. Tests cas limites (classe pleine, paiement échoué)
+
+# Subtasks:
+## 15.1. InscriptionWorkflowService création [done]
+### Dependencies: None
+### Description: Service principal gestion workflow avec validateInscription(), checkClassAvailability()
+### Details:
+
+
+## 15.2. ClasseManagementService création [done]
+### Dependencies: None
+### Description: Service gestion places classes avec attribution automatique et alternatives
+### Details:
+
+
+## 15.3. Extension ESBTPEtudiantController [done]
+### Dependencies: None
+### Description: Méthodes createFromInscription(), assignClasse() pour création automatique
+### Details:
+
+
+## 15.4. Events et Listeners Laravel [done]
+### Dependencies: None
+### Description: InscriptionValidated, EtudiantCreated avec listeners activation comptabilité
+### Details:
+
+
+## 15.5. Tests intégration workflow [done]
+### Dependencies: None
+### Description: Tests complets workflow inscription → étudiant avec tous scénarios
+### Details:
+
+

@@ -1,0 +1,124 @@
+name: Nanan Connect MCP
+
+on:
+  pull_request:
+    paths:
+      - 'integrations/nanan-mcp/**'
+      - 'app/Domain/Assistant/Mcp/**'
+      - 'app/Http/Controllers/API/McpBridgeController.php'
+      - 'database/migrations/*mcp*'
+      - 'config/mcp.php'
+      - 'routes/mcp-bridge.php'
+      - 'app/Providers/RouteServiceProvider.php'
+      - 'tests/Unit/Domain/Assistant/RequetePontSigneeTest.php'
+      - 'tests/Feature/Assistant/McpBridgeTest.php'
+      - 'tests/Feature/Assistant/McpConnectionControlTest.php'
+      - 'tests/Feature/Assistant/McpOneTimePairingTest.php'
+      - 'app/Console/Commands/PruneMcpLinkChallenges.php'
+      - 'app/Console/Kernel.php'
+      - 'resources/views/nanan/mcp/**'
+      - 'app/Http/Controllers/Nanan/McpConnectionsController.php'
+      - 'routes/nanan-mcp-accounts.php'
+      - 'routes/web.php'
+      - 'tests/Unit/Domain/Assistant/McpBridgeLogPrivacyTest.php'
+      - '.github/workflows/nanan-mcp.yml'
+  push:
+    branches: [presentation]
+    paths:
+      - 'integrations/nanan-mcp/**'
+      - 'app/Domain/Assistant/Mcp/**'
+      - 'app/Http/Controllers/API/McpBridgeController.php'
+      - 'database/migrations/*mcp*'
+      - 'config/mcp.php'
+      - 'routes/mcp-bridge.php'
+      - 'app/Providers/RouteServiceProvider.php'
+      - 'tests/Unit/Domain/Assistant/RequetePontSigneeTest.php'
+      - 'tests/Feature/Assistant/McpBridgeTest.php'
+      - 'tests/Feature/Assistant/McpConnectionControlTest.php'
+      - 'tests/Feature/Assistant/McpOneTimePairingTest.php'
+      - 'app/Console/Commands/PruneMcpLinkChallenges.php'
+      - 'app/Console/Kernel.php'
+      - 'resources/views/nanan/mcp/**'
+      - 'app/Http/Controllers/Nanan/McpConnectionsController.php'
+      - 'routes/nanan-mcp-accounts.php'
+      - 'routes/web.php'
+      - 'tests/Unit/Domain/Assistant/McpBridgeLogPrivacyTest.php'
+      - '.github/workflows/nanan-mcp.yml'
+
+jobs:
+  gateway:
+    name: Tests OAuth MCP et isolation des tenants (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: integrations/nanan-mcp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Installer les dépendances du pilote
+        run: npm install --no-audit --no-fund
+      - name: Syntaxe
+        run: npm run check
+      - name: Vérifications de sécurité
+        run: npm test
+
+  laravel-bridge:
+    name: Signature MCP, liaison locale et contrôle des comptes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: klassci_testing
+      DB_USERNAME: root
+      DB_PASSWORD: ''
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 'yes'
+          MARIADB_DATABASE: klassci_testing
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, json, tokenizer
+      - name: Installer Composer
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Préparer l'instance de test
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+          php artisan migrate --force --no-interaction
+      - name: Syntaxe des composants MCP
+        run: |
+          php -l app/Domain/Assistant/Mcp/RequetePontSignee.php
+          php -l app/Http/Controllers/API/McpBridgeController.php
+          php -l tests/Unit/Domain/Assistant/RequetePontSigneeTest.php
+          php -l tests/Feature/Assistant/McpBridgeTest.php
+          php -l app/Http/Controllers/Nanan/McpConnectionsController.php
+          php -l routes/nanan-mcp-accounts.php
+          php -l tests/Feature/Assistant/McpConnectionControlTest.php
+          php -l tests/Feature/Assistant/McpOneTimePairingTest.php
+          php -l app/Console/Commands/PruneMcpLinkChallenges.php
+          php -l tests/Unit/Domain/Assistant/McpBridgeLogPrivacyTest.php
+      - name: Tests de signature, de permissions et de liaison d'identité
+        run: |
+          php vendor/bin/phpunit tests/Unit/Domain/Assistant/RequetePontSigneeTest.php --no-coverage
+          php vendor/bin/phpunit tests/Feature/Assistant/McpBridgeTest.php --no-coverage
+          php vendor/bin/phpunit tests/Feature/Assistant/McpConnectionControlTest.php --no-coverage
+          php vendor/bin/phpunit tests/Feature/Assistant/McpOneTimePairingTest.php --no-coverage
+          php vendor/bin/phpunit tests/Unit/Domain/Assistant/McpBridgeLogPrivacyTest.php --no-coverage

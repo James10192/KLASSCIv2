@@ -1,0 +1,267 @@
+/* ============================================================
+   Contract Expiry Modal — KLASSCI
+   Design System ACASI 2025 — Isolation totale du CSS global
+   ============================================================ */
+
+/* ── Overlay ── */
+.ce-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: rgba(10, 15, 30, 0.82);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    animation: ce-overlay-in 0.35s ease both;
+}
+
+@keyframes ce-overlay-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* ── Card ── */
+.ce-card {
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow:
+        0 32px 80px rgba(0, 0, 0, 0.35),
+        0 0 0 1px rgba(255,255,255,0.06);
+    width: 100%;
+    max-width: 480px;
+    overflow: hidden;
+    animation: ce-card-in 0.40s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes ce-card-in {
+    from {
+        opacity: 0;
+        transform: translateY(40px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ── Header (bande de couleur) ── */
+.ce-header {
+    padding: 28px 32px 24px;
+    text-align: center;
+    position: relative;
+}
+
+.ce-header--green  { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); }
+.ce-header--orange { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); }
+.ce-header--red    { background: linear-gradient(135deg, #fee2e2 0%, #fca5a5 100%); }
+.ce-header--expired{ background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); }
+
+/* ── Icône urgence ── */
+.ce-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    margin-bottom: 12px;
+}
+
+.ce-icon--green  { background: #059669; color: #fff; }
+.ce-icon--orange { background: #d97706; color: #fff; }
+.ce-icon--red    { background: #dc2626; color: #fff; }
+.ce-icon--expired{ background: #64748b; color: #fff; }
+
+/* ── Titre header ── */
+.ce-header-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+    color: #1e293b;
+}
+
+.ce-header-sub {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin: 4px 0 0;
+}
+
+/* ── Corps ── */
+.ce-body {
+    padding: 28px 32px;
+    text-align: center;
+}
+
+/* ── Compte à rebours ── */
+.ce-countdown {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.ce-countdown svg {
+    transform: rotate(-90deg);
+}
+
+.ce-countdown-inner {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.ce-days-number {
+    font-size: 2.8rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -2px;
+}
+
+.ce-days-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+/* Couleurs du compte à rebours selon urgence */
+.ce-countdown--green .ce-days-number  { color: #059669; }
+.ce-countdown--green circle.ce-track  { stroke: #d1fae5; }
+.ce-countdown--green circle.ce-progress { stroke: #059669; }
+
+.ce-countdown--orange .ce-days-number { color: #d97706; }
+.ce-countdown--orange circle.ce-track { stroke: #fef3c7; }
+.ce-countdown--orange circle.ce-progress { stroke: #d97706; }
+
+.ce-countdown--red .ce-days-number    { color: #dc2626; }
+.ce-countdown--red circle.ce-track   { stroke: #fee2e2; }
+.ce-countdown--red circle.ce-progress { stroke: #dc2626; }
+.ce-countdown--red circle.ce-progress { animation: ce-pulse-ring 1.5s ease-in-out infinite; }
+
+.ce-countdown--expired .ce-days-number { color: #64748b; font-size: 1.8rem; letter-spacing: 0; }
+.ce-countdown--expired circle.ce-track { stroke: #e2e8f0; }
+.ce-countdown--expired circle.ce-progress { stroke: #94a3b8; }
+
+@keyframes ce-pulse-ring {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* ── Message ── */
+.ce-message {
+    font-size: 0.95rem;
+    color: #334155;
+    line-height: 1.6;
+    margin-bottom: 8px;
+}
+
+.ce-date {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-bottom: 20px;
+}
+
+.ce-date strong {
+    color: #1e293b;
+}
+
+/* ── Boutons ── */
+.ce-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ce-btn-primary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    width: 100%;
+}
+
+.ce-btn-primary--whatsapp {
+    background: #25D366;
+    color: #fff;
+}
+.ce-btn-primary--whatsapp:hover {
+    background: #20bd5a;
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(37, 211, 102, 0.35);
+}
+
+.ce-btn-secondary {
+    background: transparent;
+    border: 1.5px solid #e2e8f0;
+    color: #64748b;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+.ce-btn-secondary:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
+/* ── Footer ── */
+.ce-footer {
+    padding: 16px 32px 20px;
+    border-top: 1px solid #f1f5f9;
+    text-align: center;
+}
+
+.ce-footer-text {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin: 0;
+}
+
+/* ── Bande rouge pulsante (< 7 jours) ── */
+.ce-urgency-strip {
+    display: none;
+    background: #dc2626;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: center;
+    padding: 6px;
+    letter-spacing: 0.5px;
+    animation: ce-strip-blink 1.5s step-end infinite;
+}
+.ce-urgency-strip--visible { display: block; }
+
+@keyframes ce-strip-blink {
+    0%, 100% { background: #dc2626; }
+    50%  { background: #b91c1c; }
+}
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+    .ce-header { padding: 20px 20px 16px; }
+    .ce-body   { padding: 20px 20px; }
+    .ce-footer { padding: 12px 20px 16px; }
+    .ce-days-number { font-size: 2.2rem; }
+}

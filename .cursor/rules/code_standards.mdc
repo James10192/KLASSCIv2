@@ -1,0 +1,760 @@
+---
+description: 
+globs: **/*
+alwaysApply: true
+---
+# Standards de Code ESBTP
+
+Ce document définit les standards de code et les meilleures pratiques à suivre pour le développement de l'application ESBTP.
+
+## Principes Généraux
+
+- **Clarté** : Le code doit être facile à comprendre.
+- **Consistance** : Suivre les mêmes conventions partout.
+- **Maintenabilité** : Favoriser les solutions qui simplifient la maintenance future.
+- **Testabilité** : Concevoir le code pour qu'il soit facilement testable.
+- **Documentation** : Documenter le code complexe et les décisions importantes.
+
+## Standards PHP
+
+### Conventions de Nommage
+
+- **Classes** : PascalCase avec préfixe `ESBTP` pour les modèles et contrôleurs spécifiques à l'application
+  ```php
+  class ESBTPFiliere {}
+  class ESBTPFiliereController {}
+  ```
+
+- **Méthodes et Fonctions** : camelCase
+  ```php
+  public function getNomComplet() {}
+  public function calculerMoyenne() {}
+  ```
+
+- **Variables** : camelCase
+  ```php
+  $etudiant = new ESBTPEtudiant();
+  $listeEtudiants = ESBTPEtudiant::all();
+  ```
+
+- **Constantes** : SNAKE_CASE_MAJUSCULE
+  ```php
+  const STATUS_ACTIF = 'actif';
+  const DEFAULT_LIMIT = 10;
+  ```
+
+- **Tables de Base de Données** : snake_case avec préfixe `esbtp_`
+  ```
+  esbtp_filieres
+  esbtp_etudiants
+  ```
+
+- **Colonnes de Base de Données** : snake_case
+  ```
+  id
+  nom_complet
+  date_naissance
+  ```
+
+### Structure et Organisation du Code
+
+- **Namespaces** : Utiliser l'autoloading PSR-4
+  ```php
+  namespace App\Models\ESBTP;
+  namespace App\Http\Controllers\ESBTP;
+  ```
+
+- **Importations** : Organiser les imports par groupes (PHP natif, Laravel, App)
+  ```php
+  use DateTime;
+  use Illuminate\Http\Request;
+  use App\Models\ESBTP\ESBTPEtudiant;
+  ```
+
+- **Modèles** : Préférer les modèles légers, déplacer la logique métier dans des services
+  ```php
+  // Modèle léger
+  class ESBTPEtudiant extends Model {
+      protected $fillable = ['nom', 'prenom', 'date_naissance'];
+      
+      // Relations
+      public function classe() {
+          return $this->belongsTo(ESBTPClasse::class);
+      }
+  }
+  
+  // Service avec logique métier
+  class EtudiantService {
+      public function genererMatricule(ESBTPEtudiant $etudiant) {
+          // Logique complexe de génération de matricule
+      }
+  }
+  ```
+
+- **Contrôleurs** : Contrôleurs minces, déléguer aux services
+  ```php
+  class ESBTPEtudiantController extends Controller {
+      protected $etudiantService;
+      
+      public function __construct(EtudiantService $etudiantService) {
+          $this->etudiantService = $etudiantService;
+      }
+      
+      public function store(Request $request) {
+          $this->authorize('create', ESBTPEtudiant::class);
+          $validatedData = $request->validate([/* ... */]);
+          $etudiant = $this->etudiantService->creer($validatedData);
+          return redirect()->route('etudiants.show', $etudiant);
+      }
+  }
+  ```
+
+### Formatage du Code
+
+- **Indentation** : 4 espaces (pas de tabs)
+- **Accolades** : Style Allman (accolade sur la ligne suivante pour les classes et fonctions)
+  ```php
+  class MaClasse
+  {
+      public function maFonction()
+      {
+          // Code
+      }
+  }
+  ```
+- **Espaces** : Espaces autour des opérateurs, après les virgules, etc.
+  ```php
+  $result = $a + $b;
+  function foo($a, $b, $c) {}
+  ```
+- **Longueur des lignes** : Maximum 120 caractères
+
+### Bonnes Pratiques PHP
+
+- **Typage** : Utiliser les déclarations de type pour les paramètres et les retours
+  ```php
+  public function calculerMoyenne(array $notes): float
+  {
+      // Code
+  }
+  ```
+
+- **Immutabilité** : Préférer les propriétés et variables immuables quand c'est possible
+  ```php
+  private readonly string $matricule;
+  ```
+
+- **Visibilité** : Utiliser la visibilité la plus restrictive possible
+  ```php
+  private $proprieteInterne;
+  protected $proprieteHeritee;
+  public $proprietePublique;
+  ```
+
+- **Commentaires** : Documenter le code complexe et les décisions importantes
+  ```php
+  /**
+   * Calcule la moyenne pondérée de l'étudiant.
+   *
+   * @param array $notes Liste des notes avec leurs coefficients
+   * @return float La moyenne pondérée
+   */
+  public function calculerMoyennePonderee(array $notes): float
+  {
+      // Implémentation
+  }
+  ```
+
+## Standards JavaScript
+
+### Conventions de Nommage
+
+- **Variables et Fonctions** : camelCase
+  ```javascript
+  const nomEtudiant = 'John Doe';
+  function calculerMoyenne() {}
+  ```
+
+- **Classes** : PascalCase
+  ```javascript
+  class TableauEtudiants {}
+  ```
+
+- **Constantes** : MAJUSCULE_SNAKE_CASE
+  ```javascript
+  const API_URL = '/api/etudiants';
+  ```
+
+- **Sélecteurs d'ID/Class** : kebab-case pour HTML, camelCase pour JS
+  ```html
+  <div id="liste-etudiants" class="table-container"></div>
+  ```
+  ```javascript
+  const listeEtudiants = document.getElementById('liste-etudiants');
+  ```
+
+### Structure et Organisation
+
+- **Modules** : Organiser le code en modules avec des responsabilités claires
+  ```javascript
+  // modules/etudiant.js
+  export function calculerMoyenne() {}
+  ```
+
+- **Gestionnaires d'événements** : Séparer la logique des événements
+  ```javascript
+  document.getElementById('form-etudiant').addEventListener('submit', function(e) {
+      e.preventDefault();
+      sauvegarderEtudiant();
+  });
+  
+  function sauvegarderEtudiant() {
+      // Logique métier
+  }
+  ```
+
+### Bonnes Pratiques JavaScript
+
+- **ES6+** : Utiliser les fonctionnalités modernes (arrow functions, destructuring, etc.)
+  ```javascript
+  const etudiants = [...ancienneListeEtudiants];
+  const { nom, prenom } = etudiant;
+  etudiants.forEach(etudiant => console.log(etudiant.nom));
+  ```
+
+- **Asynchrone** : Utiliser les Promises et async/await
+  ```javascript
+  async function chargerEtudiants() {
+      try {
+          const response = await fetch('/api/etudiants');
+          const data = await response.json();
+          return data;
+      } catch (error) {
+          console.error('Erreur lors du chargement des étudiants', error);
+          throw error;
+      }
+  }
+  ```
+
+- **DOM** : Préférer les méthodes modernes et minimiser les manipulations directes
+  ```javascript
+  // Préférer
+  element.classList.add('active');
+  
+  // Éviter
+  element.className += ' active';
+  ```
+
+## Standards Blade/HTML
+
+### Structure des Vues
+
+- **Layouts** : Utiliser l'héritage de layouts
+  ```blade
+  @extends('layouts.app')
+  
+  @section('content')
+      <!-- Contenu spécifique -->
+  @endsection
+  ```
+
+- **Composants** : Utiliser des composants pour les éléments réutilisables
+  ```blade
+  <x-forms.input name="nom" label="Nom" :value="$etudiant->nom" />
+  ```
+
+- **Partials** : Extraire les éléments répétés en partials
+  ```blade
+  @include('partials.alert', ['message' => 'Succès!'])
+  ```
+
+### Conventions de Nommage
+
+- **Fichiers de Vue** : snake_case.blade.php
+  ```
+  index.blade.php
+  show_details.blade.php
+  ```
+
+- **Dossiers de Vue** : kebab-case
+  ```
+  resources/views/esbtp/niveaux-etudes/
+  ```
+
+### Bonnes Pratiques
+
+- **Logique Minimale** : Garder la logique dans les vues au minimum
+  ```blade
+  {{-- Préférer --}}
+  @if($etudiant->estActif())
+  
+  {{-- Éviter --}}
+  @if($etudiant->status === 'actif' && $etudiant->date_fin > now())
+  ```
+
+- **Échappement** : Utiliser {{ }} pour l'échappement automatique, {!! !!} uniquement quand nécessaire
+  ```blade
+  {{ $etudiant->nom }} {{-- Échappé automatiquement --}}
+  {!! $htmlSecurise !!} {{-- Non échappé, utiliser avec prudence --}}
+  ```
+
+## Standards CSS/SCSS
+
+### Organisation
+
+- **Structure** : Utiliser une architecture ITCSS ou similaire
+  ```
+  resources/
+  └── scss/
+      ├── settings/      # Variables, config
+      ├── tools/         # Mixins, fonctions
+      ├── generic/       # Reset, normalize
+      ├── elements/      # Éléments HTML
+      ├── components/    # Composants réutilisables
+      ├── utilities/     # Classes utilitaires
+      └── app.scss       # Fichier principal
+  ```
+
+- **BEM** : Suivre la méthodologie BEM pour les classes CSS
+  ```css
+  .card {} /* Bloc */
+  .card__title {} /* Élément */
+  .card--featured {} /* Modificateur */
+  ```
+
+### Bonnes Pratiques
+
+- **Variables** : Utiliser des variables pour les couleurs, typographie, etc.
+  ```scss
+  $color-primary: #007bff;
+  $font-family-sans: 'Helvetica Neue', sans-serif;
+  ```
+
+- **Media Queries** : Approche mobile-first
+  ```scss
+  .element {
+      // Styles mobiles par défaut
+      
+      @media (min-width: 768px) {
+          // Styles tablette
+      }
+      
+      @media (min-width: 1024px) {
+          // Styles desktop
+      }
+  }
+  ```
+
+## Standards de Base de Données
+
+### Conventions de Nommage
+
+- **Tables** : snake_case au pluriel avec préfixe `esbtp_`
+  ```
+  esbtp_filieres
+  esbtp_etudiants
+  ```
+
+- **Colonnes** : snake_case, id comme clé primaire
+  ```
+  id
+  nom_complet
+  date_naissance
+  ```
+
+- **Clés Étrangères** : singulier_id
+  ```
+  etudiant_id
+  classe_id
+  ```
+
+- **Indices** : idx_{table}_{colonne(s)}
+  ```
+  idx_esbtp_etudiants_classe_id
+  ```
+
+### Migrations
+
+- **Atomicité** : Chaque migration doit être atomique et indépendante
+  ```php
+  public function up()
+  {
+      Schema::create('esbtp_classes', function (Blueprint $table) {
+          $table->id();
+          $table->string('nom');
+          $table->foreignId('filiere_id')->constrained('esbtp_filieres');
+          $table->timestamps();
+      });
+  }
+  ```
+
+- **Méthodes up/down** : Toujours implémenter les deux méthodes
+  ```php
+  public function down()
+  {
+      Schema::dropIfExists('esbtp_classes');
+  }
+  ```
+
+## Standards Prisma
+
+### Schéma
+
+- **Modèles** : PascalCase avec préfixe ESBTP
+  ```prisma
+  model ESBTPFiliere {
+    id        Int      @id @default(autoincrement())
+    nom       String
+    // ...
+  }
+  ```
+
+- **Champs** : camelCase
+  ```prisma
+  model ESBTPEtudiant {
+    id            Int      @id @default(autoincrement())
+    nomComplet    String
+    dateNaissance DateTime
+    // ...
+  }
+  ```
+
+- **Relations** : Nommer explicitement les relations
+  ```prisma
+  model ESBTPEtudiant {
+    // ...
+    classeId      Int
+    classe        ESBTPClasse @relation(fields: [classeId], references: [id])
+  }
+  
+  model ESBTPClasse {
+    // ...
+    etudiants     ESBTPEtudiant[]
+  }
+  ```
+
+### Migrations
+
+- **Nommage Significatif** : Utiliser des noms descriptifs pour les migrations
+  ```bash
+  npx prisma migrate dev --name add_status_to_etudiants
+  ```
+
+## Standards de Tests
+
+### Organisation
+
+- **Structure** : Organiser les tests par fonctionnalité/domaine
+  ```
+  tests/
+  ├── Unit/
+  │   ├── ESBTP/
+  │   │   ├── EtudiantTest.php
+  │   │   └── ...
+  ├── Feature/
+  │   ├── ESBTP/
+  │   │   ├── GestionEtudiantsTest.php
+  │   │   └── ...
+  ```
+
+### Conventions de Nommage
+
+- **Classes de Test** : Suffixe `Test`
+  ```php
+  class EtudiantTest extends TestCase {}
+  ```
+
+- **Méthodes de Test** : Préfixe `test_` ou annotation `@test`
+  ```php
+  public function test_creation_etudiant_avec_donnees_valides() {}
+  
+  /** @test */
+  public function creation_etudiant_avec_donnees_valides() {}
+  ```
+
+### Bonnes Pratiques
+
+- **AAA** : Arrange, Act, Assert
+  ```php
+  public function test_calcul_moyenne() {
+      // Arrange
+      $etudiant = new ESBTPEtudiant();
+      $notes = [10, 12, 14];
+      
+      // Act
+      $moyenne = $etudiant->calculerMoyenne($notes);
+      
+      // Assert
+      $this->assertEquals(12, $moyenne);
+  }
+  ```
+
+- **Tests Isolés** : Les tests ne doivent pas dépendre les uns des autres
+  ```php
+  public function test_etudiant_peut_etre_inscrit_classe() {
+      // Test indépendant avec son propre setup
+  }
+  
+  public function test_etudiant_peut_changer_classe() {
+      // Autre test indépendant
+  }
+  ```
+
+## Directives de Validation
+
+### Requêtes
+
+- **Classes de Requête** : Utiliser des classes dédiées pour la validation
+  ```php
+  class ESBTPEtudiantRequest extends FormRequest
+  {
+      public function rules()
+      {
+          return [
+              'nom' => 'required|string|max:100',
+              'prenom' => 'required|string|max:100',
+              'email' => 'required|email|unique:esbtp_etudiants,email',
+              // ...
+          ];
+      }
+  }
+  ```
+
+- **Messages Personnalisés** : Définir des messages clairs et en français
+  ```php
+  public function messages()
+  {
+      return [
+          'nom.required' => 'Le nom est obligatoire.',
+          'email.email' => 'L\'adresse email n\'est pas valide.',
+          // ...
+      ];
+  }
+  ```
+
+### Validation Front-end
+
+- **Validation Côté Client** : Fournir un retour immédiat à l'utilisateur
+  ```javascript
+  $('#form-etudiant').validate({
+      rules: {
+          nom: {
+              required: true,
+              maxlength: 100
+          },
+          // ...
+      },
+      messages: {
+          nom: {
+              required: "Le nom est obligatoire",
+              maxlength: "Le nom ne peut pas dépasser 100 caractères"
+          },
+          // ...
+      }
+  });
+  ```
+
+## Gestion des Erreurs
+
+### Backend
+
+- **Exceptions Personnalisées** : Créer des exceptions spécifiques au domaine
+  ```php
+  class ESBTPEtudiantNotFoundException extends Exception {}
+  ```
+
+- **Handler Global** : Configurer un gestionnaire d'exceptions central
+  ```php
+  // app/Exceptions/Handler.php
+  public function render($request, Throwable $exception)
+  {
+      if ($exception instanceof ESBTPEtudiantNotFoundException) {
+          return response()->view('errors.etudiant_not_found', [], 404);
+      }
+      
+      return parent::render($request, $exception);
+  }
+  ```
+
+### Frontend
+
+- **Gestion Gracieuse** : Afficher des messages d'erreur clairs et utiles
+  ```javascript
+  try {
+      // Code qui peut échouer
+  } catch (error) {
+      afficherMessageErreur('Une erreur est survenue lors du chargement des données.');
+      // Log l'erreur pour le débogage
+      console.error(error);
+  }
+  ```
+
+## Sécurité
+
+### Protection des Données
+
+- **Validation** : Valider toutes les entrées utilisateur
+  ```php
+  $validated = $request->validate([
+      'email' => 'required|email',
+      'password' => 'required|min:8',
+  ]);
+  ```
+
+- **Échappement** : Échapper les sorties pour prévenir les XSS
+  ```php
+  {{ $donneeUtilisateur }} // Blade échappe automatiquement
+  ```
+
+- **Requêtes Préparées** : Utiliser des requêtes préparées pour prévenir les injections SQL
+  ```php
+  $etudiants = DB::select('SELECT * FROM esbtp_etudiants WHERE classe_id = ?', [$classeId]);
+  ```
+
+### Authentification et Autorisation
+
+- **Middleware** : Protéger les routes avec des middleware
+  ```php
+  Route::middleware(['auth', 'role:superAdmin'])->group(function () {
+      Route::resource('filieres', 'ESBTPFiliereController');
+  });
+  ```
+
+- **Policies** : Définir des règles d'autorisation claires
+  ```php
+  class ESBTPEtudiantPolicy
+  {
+      public function view(User $user, ESBTPEtudiant $etudiant)
+      {
+          return $user->hasRole('superAdmin') || 
+                 $user->hasRole('secretaire') || 
+                 ($user->hasRole('etudiant') && $user->etudiant->id === $etudiant->id);
+      }
+  }
+  ```
+
+## Documentation
+
+### PHPDoc
+
+- **Classes** : Documenter l'objectif et les responsabilités
+  ```php
+  /**
+   * Représente un étudiant dans le système ESBTP.
+   * 
+   * Cette classe gère les données et le comportement d'un étudiant,
+   * y compris ses informations personnelles et académiques.
+   */
+  class ESBTPEtudiant extends Model
+  {
+      // ...
+  }
+  ```
+
+- **Méthodes** : Documenter les paramètres, retours et exceptions
+  ```php
+  /**
+   * Calcule la moyenne des notes de l'étudiant.
+   *
+   * @param array $notes Liste des notes à inclure dans le calcul
+   * @param bool $avecCoefficients Indique si les coefficients doivent être pris en compte
+   * @return float La moyenne calculée
+   * @throws InvalidArgumentException Si le tableau de notes est vide
+   */
+  public function calculerMoyenne(array $notes, bool $avecCoefficients = true): float
+  {
+      // Implémentation
+  }
+  ```
+
+### Documentation API
+
+- **Routes API** : Documenter clairement chaque endpoint
+  ```php
+  /**
+   * @OA\Get(
+   *     path="/api/etudiants",
+   *     summary="Liste des étudiants",
+   *     description="Récupère la liste de tous les étudiants",
+   *     @OA\Response(
+   *         response=200,
+   *         description="Liste des étudiants"
+   *     )
+   * )
+   */
+  public function index()
+  {
+      // ...
+  }
+  ```
+
+## Gestion des Dépendances
+
+### Composer
+
+- **Versions Spécifiques** : Spécifier des versions précises dans composer.json
+  ```json
+  "require": {
+      "php": "^8.1",
+      "laravel/framework": "^9.0",
+      "spatie/laravel-permission": "^5.5"
+  }
+  ```
+
+### NPM/Yarn
+
+- **Verrouillage des Versions** : Utiliser package-lock.json / yarn.lock
+  ```bash
+  # Installer une version spécifique
+  npm install bootstrap@5.1.3 --save-exact
+  ```
+
+## Contrôle Qualité
+
+### Linting et Analyse Statique
+
+- **PHP_CodeSniffer** : Vérifier le style de code
+  ```bash
+  ./vendor/bin/phpcs app/ --standard=PSR12
+  ```
+
+- **PHPStan** : Analyse statique pour détecter les erreurs potentielles
+  ```bash
+  ./vendor/bin/phpstan analyse app/ --level=5
+  ```
+
+- **ESLint** : Linting JavaScript
+  ```bash
+  npx eslint resources/js/
+  ```
+
+### Revue de Code
+
+- **Listes de Contrôle** : Utiliser des listes de contrôle pour les revues
+  - Le code suit-il les standards?
+  - Les tests sont-ils présents et passent-ils?
+  - La documentation est-elle à jour?
+  - Y a-t-il des problèmes de sécurité potentiels?
+  - La performance est-elle acceptable?
+
+## Intégration Continue
+
+- **GitHub Actions / GitLab CI** : Automatiser les tests et vérifications
+  ```yaml
+  # .github/workflows/ci.yml
+  name: Laravel Tests
+  on: [push, pull_request]
+  jobs:
+    tests:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v2
+        - name: Setup PHP
+          uses: shivammathur/setup-php@v2
+          with:
+            php-version: '8.1'
+        - name: Install Dependencies
+          run: composer install
+        - name: Run Tests
+          run: php artisan test
+  

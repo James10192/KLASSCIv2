@@ -1,0 +1,700 @@
+
+--- PAGE 1 ---
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+LICENCE 1 LETTRES MODERNES 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+--- PAGE 2 ---
+Semestre 1 
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE: Lettres, Langues et 
+PARCOURS: Lettres Modernes
+CYCLE: Licence
+ANNEE: 1
+SEMESTRE: 1
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Eléments constitutifs 
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+UE 
+FONDAMENT
+HIL7001 HISTOIRE 
+LITTERAIRE HIL7001.1 Histoire Littéraire Française: des 
+origines au XVIè Siècle 14 16 0 0 30 45 75 3 6 Présentiel Français 40 60 Obligatoire Dr Kouadio 
+Gervais-Xavier
+Dr Kouadio 
+Gervais-
+Xavier
+HIL7001.2 Histoire Littéraire Africaine: des 
+origines à 1945 14 16 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Guei Loua 
+Fabrice
+ROM7001 ROMAN ROM7001.1 Roman Français: des origines à 
+la Renaissance 14 16 0 0 30 45 75 3 6 Présentiel Français 40 60 Obligatoire Dr Kofii Roméo Dr Koffi 
+Roméo
+ROM7001.2 Roman Africain des origines à 
+1945 14 16 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Kouadio 
+Gervais-Xavier
+POE7001 POESIE POE7001.1 Poésie Française: des origines à 
+la Renaissance 14 16 0 0 30 45 75 3 5 Présentiel Français 40 60 Obligatoire Dr Adou 
+Bouatenin
+Dr Adou 
+Bouatenin
+POE7001.2 Poésie Africaine des origines à 
+1945 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Adou 
+Bouatenin
+THE7001 THEATRE THE7001.1 Théâtre Français: des origines à 
+la Renaissance 14 16 0 0 30 45 75 3 5 Présentiel Français 40 60 Obligatoire Dr Coulibaly 
+Amadou
+Dr Coulibaly 
+Amadou
+THE7001.2 THéâtre Africain des origines  à 
+1945 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Coulibaly 
+Amadou
+UE DE 
+METHODOLO
+MAC7001 METHODES 
+D'ANALYSE MAC7001.1 Sémiotique 0 10 0 0 10 15 25 1 2 Présentiel Français 40 60 Obligatoire Dr Guei Loua 
+Fabrice
+Dr Kane 
+Metou
+MAC7001.2 Socioritique 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Guei Loua 
+Fabrice
+TEC7001 TECHNIQUES DE 
+COMPOSITION TEC7001.1 Explication de texte 0 10 0 0 10 15 25 1 3 Présentiel Français 40 60 Obligatoire Dre Gboko A 
+Diane
+TEC7001.2 Résumé de texte 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dre Yao Kre 
+Kouabena Arnaud
+MTU TEC7001.3 MTU 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Dongui Bini 
+KouaméUE DE 
+CULTURE 
+LVI7001 LANGUES 
+VIVANTES ET MTU LVI7001.1 Anglais 12 18 0 0 30 45 75 3 3 Présentiel Anglais Mineur 40 60 Obligatoire Dr Bogui N'drin 
+Ezechiel
+Dr Bogui 
+N'drin 
+TOTAL 
+SMESTRE - 1 116 184 0 0 300 450 750 30 30
+UNIVERSITE EPHRATA
+MASSE HORAIRE SEMESTRIELLE
+Majeur
+Mineur
+Mode 
+d'évaluation Fonctionnal
+ité
+Enseignant chargé 
+de l'ECUE
+Dre Gboko A 
+DIANE
+CREDITS 
+ECUE
+CECT 
+UE
+Mode 
+d'apprentissa
+ge
+Langue 
+d'apprentiss
+age
+Importance
+Majeur
+Majeur
+Majeur
+Mineur
+Responsable 
+de l'UE
+--- PAGE 3 ---
+Semestre 2 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 1
+SEMESTRE: 2
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+LIO7002.1 Initiation à la Littérature Orale 
+Occidentale et Orientale 12 18 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Yao Kre Kouabena 
+Arnaud
+LIO7002.2 Initiation à la Littérature Orale 
+Africaine 12 18 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Yao Kre Kouabena 
+Arnaud
+LGC7002.1 Introduction à la Littérature 
+Générale et Comparée 12 18 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Guei Loua Fabrice
+LGC7002.2 Francophonie et Littérature 12 18 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Guei Loua Fabrice
+GLI7002.1 Histoire de la Grammaire 12 18 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Bini Kouadio Seraphin
+GLI7002.2 Initiation à la Linguistique: 
+Phonétique/Phonologie 12 18 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Bini Kouadio Seraphin
+IST7002.1 Stylistique et Rhétorique 8 12 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dre Gboko Aman Diane
+IST7002.2 Stylistique et Linguistique 10 20 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dre Gboko Aman Diane
+TEC7001 COMMUNICATION TEC7001.1 Introduction à la Communication 12 18 0 0 30 45 75 3 3 Présentiel Français 40 60 Obligatoire Dr Koffi N'zoumana Dr Sanogo Mousa
+LAN7002.1 Latin 0 10 0 0 10 15 25 1 Présentiel Français 40 60 obligatoire Dr Yapo Ludovic Mousso
+LAN7002.2 Ancien Français 0 10 0 0 10 15 25 1 Présentiel Français 40 60 obligatoire Dr Yapo Ludovic Mousso
+INF7002.1 Initiation à l'Informatique 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire M.Traoré Ismael
+INF7002.2 Traitement de Texte 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire M.Traoré Ismael
+102 198 0 0 300 450 750 30 30
+UE DE METHODOLOGIE
+M.Traoré Ismael
+LGC7002 LITTÉRATURE GENERALE 
+ET COMPAREE 6
+GLI7002 GRAMMAIRE ET 
+LINGUISTIQUE 6
+Dr Guei Loua Fabrice
+UE DE SPECIALITE
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs Mode 
+d'apprentissage
+Langue 
+d'apprentissage Importance
+UNIVERSITE EPHRATA
+Lettres, Langues et Arts
+Lettres Modernes
+MASSE HORAIRE SEMESTRIELLE
+UE FONDAMENTALES
+LIO7002 LITTÉRATURE ORALE 6 Dr Yao Kre Kouabena 
+Arnaud
+Mode d'évaluation
+Fonctionnalité Enseignant chargé de 
+l'ECUE Responsable de l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+IST7002 INITIATION A LA 
+STYLISTIQUE 5
+Dr Bini Kouadio Seraphin
+Dre Gboko Aman Diane
+TOTAL SMESTRE - 2
+LAN7002 LANGUES ANCIENNES 2 Dr Yapo Ludovic Mousso
+INFORMATIQUEINF7002 2
+UE DE CULTURE GENERALE
+--- PAGE 4 ---
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+LICENCE 2 LETTRES MODERNES 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+--- PAGE 5 ---
+Semestre 3 
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 2
+SEMESTRE: 3
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+HIL7003.1 Histoire Littéraire Français: du 
+XVIIè et XIXè Siècle 8 12 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Guei Loua 
+Fabrice
+HIL7003.2 Histoire Littéraire Africain: de 
+1945 à nos jours 14 16 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Guei Loua 
+Fabrice
+ROM7003.1 Roman Français: de l'époque 
+classique au siècle des lumières 14 16 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Koffi Konan 
+Roméo
+ROM7003.2 Roman Africain: de 1945 à nos 
+jours 8 12 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Guei Loua 
+Fabrice
+POE7003.1 Poésie Française: de l'époque 
+classique au siècle des lumières 8 12 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Adou 
+Bouatenin
+POE7003.2 Poésie Africaine: de 1945 à nos 
+jours 14 16 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Adou 
+Bouatenin
+THE7003.1
+Théâtre Français (du XIXè Siècle 
+à nos jours) de l'époque 
+classique au siècle des Linéaires
+10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Coulibaly 
+Amadou
+THE7003.2 Théâtre Africain: de 1945 à nos 
+jours 14 16 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Coulibaly 
+Amadou
+MAC7003.1 Critique Thématique 0 20 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Koffi Konan 
+Roméo
+MAC7003.2 Narratologie 0 20 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire DrHoro Brigitte
+TCO7003.1 Dissertation 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dre Gboko 
+Aman Diane
+TCO7003.2 Commentaire Composé 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dre Gboko 
+Aman Diane
+ANGLAIS LVI7003.1 Anglais 10 10 10 0 30 45 75 3 3 Présentiel Anglais Mineur 40 60 Obligatoire M.Manlan 
+Narcisse
+M.Manlan 
+Narcisse
+LVI7003.2 Allemand 0 10 0 0 10 15 25 Présentiel Allemand
+LVI7003.3 Espagnol 0 10 0 0 10 15 25 Présentiel Espagnol
+LVI7003.4 Chinois 0 10 0 0 10 15 25 Présentiel Chinois M.Ori Rocher 
+Samuel
+100 210 10 0 320 480 800 30 30
+Majeur
+Mineur
+Majeur
+Majeur
+Majeur
+Majeur Dr Koffi Konan 
+Roméo
+TOTAL SEMESTRE - 3
+UE DE CULTURE GENERALE
+601 40
+TCO7003 TECHNIQUES DE 
+COMPOSITION 2 Dre Gboko 
+Aman Diane
+LANGUES VIVANTES     (au 
+choix)LIV7003 1 ObligatoireMineur
+THE7003 THEATRE 5 Dr Coulibaly 
+Amadou
+Dr Adou 
+Bouatenin
+UE DE METHODOLOGIE
+MAC7003 METODES D'ANALYSE 
+CRITIQUES 4 Dr Koffi Konan 
+Roméo
+ROM7003 ROMAN 5
+POE7003 POESIE 5
+UE FONDAMENTALES
+HIL7003 HISTOIRE LITTERAIRE 5 Dr Guei Loua 
+Fabrice
+Mode 
+d'évaluatio
+n Fonctionnali
+té
+Enseignant 
+chargé de l'ECUE
+Responsable 
+de l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+Mode 
+d'apprentissa
+ge
+Langue 
+d'apprentis
+sage
+Importance
+UNIVERSITE EPHRATA
+Lettres, Langues et Arts
+Lettres Modernes
+MASSE HORAIRE SEMESTRIELLE
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+--- PAGE 6 ---
+Semestre 4 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 2
+SEMESTRE: 4
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+LIO7004.1 Etude des genres: le conte, 
+l'épopée et le mythe 12 18 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire
+Dr Yao Kre 
+Kouabena 
+Arnaud
+LIO7004.2 Le conte: question de 
+théorisation 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire
+Dr Yao Kre 
+Kouabena 
+Arnaud
+LGC7004.1 Comparatisme et altérité 14 16 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Guei Loua 
+Fabrice
+LGC7004.2 Influence, créationartistique et 
+identité 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Guei Loua 
+Fabrice
+GLI7004.1 Classes grammaticales et 
+construction de la phrase 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Koffi Clément
+GLI7004.2 Temps verbaux et réécriture 
+syntagmatique de la phrase 12 18 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Koffi Clément
+PST7004.1 Le poste de la caractérisation 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dre Gboko 
+Aman Diane
+PST7004.2 Le poste stylistique du système 
+figuré 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dre Gboko 
+Aman Diane
+COD7004 COMMUNICATION COD7004.1 Système de communication 10 20 0 0 30 45 75 3 3 Présentiel Français Mineur 40 60 Obligatoire M.Traoré Ismael M.Traoré Ismael
+PHL7004.1 Philologie 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Djilé Dadié 
+Rodrigue
+PHL7004.2 Lexicologie 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Djilé Dadié 
+Rodrigue
+DROIT Droit 10 10 0 0 20 30 50 2 2 Présentiel Français Mineur 40 60 Obligatoire Dr Cemiti Dr Cemiti
+INF7004.1 Internet 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire M.Traoré Ismael
+INF7004.2 PowerPoint 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire M.Bedje Akou 
+Simplice
+128 172 0 0 300 450 750 30 30
+LGC7004 LITTÉRATURE GENERALE ET 
+COMPAREE 5
+UE DE METHODOLOGIE
+GLI7004 GRAMMAIRE ET 
+LINGUISTIQUE 5
+Dre Gboko Aman 
+Diane
+Majeur Dr Guei Loua 
+Fabrice
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+Majeur
+UNIVERSITE EPHRATA
+Lettres, Langues et Arts
+Lettres Modernes
+MASSE HORAIRE SEMESTRIELLE Mode 
+d'apprentissa
+ge
+Langue 
+d'apprentissa
+ge
+Importance
+LIO7004 LITTÉRATURE ORALE 5 Dr Yao Kre 
+Kouabena Arnaud
+Mode 
+d'évaluatio
+n Fonctionnali
+té
+Enseignant 
+chargé de 
+l'ECUE
+Responsable de 
+l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+UE DE SPECIALITE
+PST7004
+LES POSTES STYLISTIQUES 
+DE LA CARACTERISATION ET 
+DU SYSTÈME FIGURE
+4 Majeur
+Majeur Dr Koffi Clément
+TOTAL SEMESTRE - 4
+PHL7004 PHILOLOGIE/LEXICOLOGIE
+UE DE CULTURE GENERALE
+4
+INF7004 INFORMATIQUE 2
+Majeur Dr Djilé Dadié 
+Rodrigue
+M.Traoré IsmaelMineur
+--- PAGE 7 ---
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+LICENCE 3 LETTRES MODERNES 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+--- PAGE 8 ---
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 3
+SEMESTRE: 5
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+HLI7005.1 Histoire Littéraire Française du 
+XIXè Siècle à nos jours 14 16 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Loua Celestin
+HLI7005.2 Histoire Littéraire Ivoirienne 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Loua Celestin
+ROM7005.1 Roman Français du XIXè Siècle 
+à nos jours 14 16 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Ulrich 
+Kouassi
+ROM7005.2 Roman Ivoirien OS 12 0 0 12 18 30 1 Présentiel Français 40 60 Obligatoire Dr Ulrich 
+Kouassi
+POE7005.1 Poésie Française du XIXè Siècle 
+à nos jours 10 20 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Kouassi 
+Oswald 
+POE7005.2 Poésie Ivoirienne 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Kouassi 
+Oswald 
+THE7005.1 Théâtre Français du XIXè Siècle 
+à nos jours 12 18 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Blede
+THE7005.2 Théâtre Ivoirien 8 12 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Blede
+TCO7005.1 Notes de synthyèse 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire M Dji Charles
+TCO7005.2 Psychopédagogie 8 12 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire M Dji Charles
+MAC7005.1 Eco-critique 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Kouadio  
+Blaise
+MAC7005.2 Géo-critique 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Kouadio  
+Blaise
+ANGLAIS LVI7005.1 Anglais 10 10 10 0 30 45 75 3 3 Présentiel Anglais Mineur 40 60 Obligatoire Dr Kouadio 
+Blaise Dr Kouadio Blaise
+LVI7005.2 Allemand-optionnel 0 10 0 0 10 15 25 Présentiel Allemand
+LVI7005.3 Espagnol-optionnel 0 10 0 0 10 15 25 Présentiel Espagnol
+LVI7005.4 Chinois-optionnel 0 10 0 0 10 15 25 Présentiel Chinois M.Ori Rocher 
+Samuel
+106 196 10 0 312 468 780 29 30
+UE DE SPECIALITE
+Majeur
+Mineur
+Majeur
+Majeur
+Majeur
+Majeur
+UE DE METHODOLOGIE
+ROM7005 ROMAN 5 Dr Ulrich Kouassi
+Dr Kouassi Oswald 
+ Dr Blede
+TOTAL SEMESTRE- 5
+TCO7005
+MAC7005
+TECHNIQUE DE 
+COMPOSITION
+METHODES D'ANALYSE 
+CRITIQUES
+4
+2
+UE DE CULTURE GENERALE
+60 ObligatoireLIV7003 LANGUES VIVANTES     (au 
+choix) 1
+Dr Kouadio  Blaise
+Mineur1
+THE7005 THEATRE 5
+POE7005 POESIE 5
+M Dji Charles
+40
+HLI7005 HISTOIRE LITTERAIRE 5 Dr Loua Celestin
+Mode 
+d'évaluatio
+n Fonctionnali
+té
+Enseignant 
+chargé de 
+l'ECUE
+Responsable de 
+l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+Mode 
+d'apprentis
+sage
+Langue 
+d'apprentiss
+age
+Importance
+UNIVERSITE EPHRATA
+Lettres, Langues et Arts
+Lettres Modernes
+MASSE HORAIRE SEMESTRIELLE Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+--- PAGE 9 ---
+Semestre 6 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 3
+SEMESTRE: 6
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+LIO7006.1 La parémiologie: questions 
+théoriques 10 20 0 0 30 45 75 3 Presentiel Français Majeur 40 60 Obligatoire Dr Kounandy 
+Yao
+LIO7006.2 Etudes pratiques des proverbes 10 10 0 0 20 30 50 2 Presentiel Français Majeur 40 60 Obligatoire Dr Kounandy 
+Yao
+LGC7006.1 Introductionaux Culturals 
+Studies 8 12 0 0 20 30 50 2 Presentiel Français Majeur 40 60 Obligatoire Dr Djessy Zidago
+LGC7006.2 Art, Littérature et Etudes 
+postcoloniales 10 10 0 0 20 30 50 2 Presentiel Français Majeur 40 60 Obligatoire Dr Djessy Zidago
+GLI7006.1 Liaisons phrastiques et 
+cohérence textuelles 14 16 0 0 30 45 75 3 Presentiel Français Majeur 40 60 Obligatoire Dr Gadozi Egnifi
+GLI7006.2
+Sémantique struturale et 
+Introductionaux théories 
+enonciatives
+10 10 0 0 20 30 50 2 Presentiel Français Majeur 40 60 Obligatoire Dr Gadozi Egnifi
+CDR7006 COMMUNICATION CDR7006.1 Théories et Modèles de 
+Communication 16 24 0 0 40 60 100 4 4 Presentiel Français Majeur 40 60 Obligatoire M Koffi 
+Anzoumana
+M Koffi 
+Anzoumana
+MES7006.1 Méthodes d'analyse styllistique 10 10 0 0 20 30 50 2 presentiel Français Majeur 40 60 Obligatoire Dr Dao Sory
+MES7006.2 Méthodes du Commentaire 
+Styllistique 8 12 0 0 20 30 50 2 presentiel Français Majeur 40 60 Obligatoire Dr Dao Sory
+ALI7006.1 Littérature Magrhrébine 0 10 0 0 10 15 25 1 presentiel Français Majeur 40 60 Obligatoire Dr Loua Celestin
+ALI7006.2 Littérature de la Diaspora 0 10 0 0 10 15 25 1 presentiel Français Majeur 40 60 Obligatoire Dr Loua Celestin
+DROIT CDR7006.2 Droit du Travail 10 10 0 0 20 30 50 2 2 presentiel Français Majeur 40 60 Obligatoire M Zokolo M Zokolo
+INF7006.1 Access 0 0 10 0 10 15 25 1 presentiel Français Mineur 40 60 Obligatoire M Tago Ange 
+Landry
+INF7006.2 Excel 0 0 10 0 10 15 25 1 presentiel Français Mineur 40 60 Obligatoire M Tago Ange 
+Landry
+106 154 20 0 280 420 700 28 28
+INF7006 INFORMATIQUES 2
+ALI7006 AUTRES LITTERATURES
+UE DE CULTURE GENERALE
+2
+TOTAL SEMESTRE - 6
+Dr Loua Celestin
+M Tago Ange 
+Landry
+UE DE METHODOLOGIE
+4
+LGC7006 LITTÉRATURE GENERALE 
+ET COMPAREE 4
+GLI7006 GRAMMAIRE ET 
+LINGUISTIQUE 5
+MES7006
+LES METHODES 
+D'ENQUETE 
+STYLISTIQUE
+Dr Djessy Zidago
+Dr Gadozi Egnifi
+Dr Dao Sory
+UE DE SPECIALITE
+LIO7006 LITTÉRATURE ORALE 5 Dr Kounandy Yao
+Mode 
+d'évaluatio
+n Fonctionnali
+té
+Enseignant 
+chargé de 
+l'ECUE
+Responsable de 
+l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+Mode 
+d'apprentis
+sage
+Langue 
+d'apprentiss
+age
+Importance
+UNIVERSITE EPHRATA
+Lettres, Langues et Arts
+Lettres Modernes
+MASSE HORAIRE SEMESTRIELLE Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+--- PAGE 10 ---
+ 

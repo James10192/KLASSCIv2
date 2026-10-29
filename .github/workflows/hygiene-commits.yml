@@ -1,0 +1,654 @@
+name: Hygiène des commits
+
+# La barrière qui ne se contourne pas.
+#
+# Les hooks locaux (.githooks/) donnent un retour immédiat, mais `git commit
+# --no-verify` les saute — et un agent pressé le fera. Ce contrôle-ci rejoue
+# exactement les mêmes règles sur la pull request, là où personne ne peut
+# passer outre.
+#
+# Il ne lit que les messages : il est donc rapide et ne dépend d'aucune
+# installation.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+  # Les tests vivaient ici, et ce workflow ne se declenchait que sur pull
+  # request : une poussee DIRECTE sur `presentation` n'etait donc testee par
+  # rien. `laravel-ci.yml` ne joue que du lint, et lui aussi seulement sur
+  # pull request. Le filet existait, mais pas sur le chemin par lequel le
+  # code arrive vraiment en production.
+  #
+  # Les branches tenant sont incluses parce que ce sont elles que les six
+  # etablissements deploient. En regime normal elles ne recoivent que des
+  # avances rapides de `presentation`, deja testees — l'execution est alors
+  # redondante. Elle ne l'est plus le jour d'un correctif pousse en urgence
+  # directement sur une branche tenant, et c'est precisement ce jour-la que
+  # personne n'a le temps de lancer les tests a la main.
+  push:
+    branches:
+      - presentation
+      - esbtp-abidjan
+      - esbtp-yakro
+      - ephrata
+      - hetec
+      - rostan
+      - usat
+      - ucao-benin
+    # Un fichier de documentation ne peut pas casser un test. Sans ce filtre,
+    # une simple entree de journal declenchait la matrice MySQL + MariaDB.
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.claude/**'
+
+
+# Une execution annulee est une execution payee pour rien : quand une nouvelle
+# poussee arrive sur la meme reference, la precedente n'apprend plus rien.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Une branche d'etablissement ne recoit, en regime normal, qu'une avance rapide
+  # de `presentation` — un commit DEJA teste. Le rejouer six fois, une par ecole,
+  # n'apprend rien et consomme six fois les minutes. Ce garde-fou coute quelques
+  # secondes et supprime cette redondance, SANS retirer le filet : une poussee
+  # divergente sur une branche d'etablissement, elle, est bien testee.
+  garde:
+    name: Ce commit a-t-il deja ete teste ?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      rejouer: ${{ steps.decide.outputs.rejouer }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: decide
+        run: |
+          # Toute pull request, et toute poussee sur `presentation`, se rejouent.
+          if [ "${{ github.event_name }}" != 'push' ] || [ "${{ github.ref_name }}" = 'presentation' ]; then
+            echo 'rejouer=oui' >> "$GITHUB_OUTPUT"
+            echo 'Poussee sur presentation ou pull request : on rejoue.'
+            exit 0
+          fi
+          git fetch --quiet origin presentation
+          if git merge-base --is-ancestor "${{ github.sha }}" origin/presentation; then
+            echo 'rejouer=non' >> "$GITHUB_OUTPUT"
+            echo 'Commit deja present sur presentation, donc deja teste : on saute.'
+          else
+            echo 'rejouer=oui' >> "$GITHUB_OUTPUT"
+            echo 'Commit absent de presentation : cette branche a diverge, on teste.'
+          fi
+
+  messages:
+    name: Messages de commit
+    # `github.base_ref` n'existe que sur une pull request.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Relire chaque commit de la branche
+        run: |
+          base="origin/${{ github.base_ref }}"
+          echec=0
+
+          for sha in $(git rev-list "$base..HEAD"); do
+            message=$(git log -1 --format='%B' "$sha")
+            sujet=$(git log -1 --format='%s' "$sha")
+            court=$(git log -1 --format='%h' "$sha")
+
+            # Un commit de fusion porte un sujet impose par GitHub.
+            if [ "$(git rev-list --parents -n 1 "$sha" | wc -w)" -gt 2 ]; then
+              continue
+            fi
+
+            if printf '%s\n' "$message" | grep -qiE '^[[:space:]]*Co-Authored-By:'; then
+              echo "::error::$court — signature Co-Authored-By. L'auteur d'un commit est la personne qui en répond."
+              echec=1
+            fi
+
+            if printf '%s\n' "$message" | grep -qiE 'Generated with|🤖|noreply@anthropic\.com|Claude-Session:'; then
+              echo "::error::$court — mention d'outil de génération dans le message."
+              echec=1
+            fi
+
+            if ! printf '%s\n' "$sujet" | grep -qE '^(feat|fix|refactor|perf|docs|test|chore|build|ci|style|revert)(\([a-z0-9._/-]+\))?!?: .+'; then
+              echo "::error::$court — message non conventionnel : $sujet"
+              echec=1
+            fi
+          done
+
+          exit $echec
+
+      - name: Relire le corps de la pull request
+        env:
+          CORPS: ${{ github.event.pull_request.body }}
+        run: |
+          if printf '%s\n' "$CORPS" | grep -qiE 'Generated with \[Claude Code\]|🤖 Generated|Co-Authored-By:'; then
+            echo "::error::Le corps de la PR porte une mention d'outil de génération."
+            exit 1
+          fi
+          exit 0
+
+  changelog:
+    name: Trace d'un changement visible
+    # `github.base_ref` n'existe que sur une pull request.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Un feat ou un fix visible doit laisser une trace
+        run: |
+          base="origin/${{ github.base_ref }}"
+          fichiers=$(git diff --name-only "$base...HEAD")
+
+          touche_appli=$(printf '%s\n' "$fichiers" | grep -cE '^(app|resources|routes|database)/' || true)
+          changelog=$(printf '%s\n' "$fichiers" | grep -cE '^CHANGELOG\.md$' || true)
+
+          # Le type se lit sur les commits de la branche, pas sur le titre de la
+          # PR : le titre se corrige d'un clic, les commits font foi.
+          visible=0
+          for sha in $(git rev-list "$base..HEAD"); do
+            sujet=$(git log -1 --format='%s' "$sha")
+            case "$sujet" in
+              feat*|fix*) visible=1 ;;
+            esac
+          done
+
+          if [ "$visible" -eq 1 ] && [ "$touche_appli" -gt 0 ] && [ "$changelog" -eq 0 ]; then
+            if git log "$base..HEAD" --format='%B' | grep -q '\[sans-changelog\]'; then
+              echo "::notice::Changement visible sans CHANGELOG, mais [sans-changelog] est déclaré."
+              exit 0
+            fi
+            echo "::error::Cette branche change ce que voit une école mais ne touche pas CHANGELOG.md."
+            echo "::error::Ajoutez une entrée sous le mois courant, ou déclarez [sans-changelog] dans un message de commit."
+            exit 1
+          fi
+
+          exit 0
+
+  annonce:
+    name: Annonce aux écoles d'un changement visible
+    # `github.base_ref` n'existe que sur une pull request.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Même règle que le hook commit-msg, sur toute la branche : le hook se
+      # saute avec --no-verify, pas ce contrôle. Détail : bin/garde-nouveautes.sh.
+      - name: Vue ou style touchés → Nouveautés, registre, ou [sans-nouveaute]
+        run: |
+          base="origin/${{ github.base_ref }}"
+          echec=0
+          # Commit par commit, comme le hook : le type d'un commit ne doit pas
+          # se marier aux fichiers d'un autre. Les fusions sont sautées.
+          for sha in $(git rev-list --no-merges "$base..HEAD"); do
+            sujet=$(git log -1 --format='%s' "$sha")
+            type=$(printf '%s\n' "$sujet" | sed -E 's/^([a-z]+).*/\1/')
+            ajouts=$(git show -U0 --format= "$sha" -- docs/nouveautes-en-attente.md | sed -n 's/^+\(- \)/\1/p')
+            if ! sortie=$(git show --name-only --format= "$sha" \
+                | TYPE="$type" MESSAGE="$(git log -1 --format='%B' "$sha")" REGISTRE_AJOUTS="$ajouts" \
+                  sh bin/garde-nouveautes.sh trace); then
+              echo "::error::$(git log -1 --format='%h' "$sha") — $sujet"
+              printf '%s\n' "$sortie"
+              echec=1
+            fi
+          done
+          exit $echec
+
+  propagation:
+    name: Annonces dues avant propagation
+    # Une branche d'école ne doit pas recevoir un changement visible encore
+    # absent de la fenêtre Nouveautés. Le pre-push le refuse ; ce contrôle le
+    # rend visible quand le hook a été sauté.
+    if: github.event_name == 'push' && github.ref_name != 'presentation'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh bin/garde-nouveautes.sh registre HEAD || { echo "::error::Propagé vers une école avec des annonces dues."; exit 1; }
+
+  nouveautes:
+    name: Fraîcheur du modal Nouveautés
+    # `github.base_ref` n'existe que sur une pull request.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+
+      # Avertit, ne bloque pas : rafraîchir le modal est une décision de
+      # communication. Le bloquer serait vite contourné, et le contournement
+      # deviendrait la règle.
+      - name: Le modal a-t-il pris du retard sur le CHANGELOG ?
+        run: php bin/verifier-fraicheur-nouveautes.php
+
+  tests-unitaires:
+    name: Tests unitaires (sans base)
+    runs-on: ubuntu-latest
+    needs: garde
+    if: needs.garde.outputs.rejouer == 'oui'
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          # pdo_sqlite est demande explicitement, et non suppose : les tests
+          # d'exploitation montent leur base en memoire, et setup-php ne
+          # garantit pas ce que le build par defaut embarque. Absent, ils
+          # tomberaient ici en annoncant un bug qui n'existe pas.
+          extensions: mbstring, xml, ctype, iconv, intl, dom, filter, json, tokenizer, pdo_sqlite, sqlite3
+
+      - name: Répertoire de cache Composer
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      # Sans ce cache, chaque job retelecharge toutes les dependances. Ce
+       # workflow en compte cinq instances : c'est cinq fois le meme telechargement
+       # a chaque poussee.
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - run: composer install --no-interaction --prefer-dist --no-progress
+
+      # Ces tests ne touchent pas la base : ils tournent en quelques secondes,
+      # donc rien ne justifie de ne pas les lancer a chaque PR. Ils couvrent la
+      # regle qui dit ou va l'argent d'un versement, celle qui dit si une
+      # instance se declare correctement, et celle qui dit ce qu'un jeton CLI a
+      # le droit d'ecrire dans un .env.
+      #
+      # tests/Feature/Exploitation y figure malgre son nom : ces tests montent
+      # leur propre base sqlite en memoire, sans service MySQL, et executent le
+      # SQL des commandes d'exploitation. C'est la que se voient les colonnes
+      # qu'on croit exister — une clause `deleted_at` sur une table qui n'en a
+      # pas passe toutes les relectures et tombe au premier lancement chez le
+      # client.
+      #
+      # La liste est explicite parce que tests/Unit n'est pas entierement vert
+      # aujourd'hui. Elle a le defaut de sa vertu : un repertoire ajoute demain
+      # n'y sera pas, et ne tournera donc nulle part. A remplacer par
+      # « tests/Unit » des que l'ensemble passe.
+      - name: Regles de frais, d'identite et de deploiement
+        run: |
+          # Une boucle, et non une suite de chemins sur une meme ligne :
+          # PHPUnit 9 n'honore que le PREMIER chemin positionnel et ignore les
+          # suivants sans rien dire. La version precedente ne lancait donc que
+          # son premier repertoire, en affichant un vert complet.
+          echec=0
+          for chemin in \
+            tests/Unit/Services/Frais \
+            tests/Unit/Paiements \
+            tests/Unit/Models/SettingRepliSurDefautTest.php \
+            tests/Unit/Services/FraisAudienceTest.php \
+            tests/Unit/Services/ExtensionsDeRoleTest.php \
+            tests/Unit/Exploitation \
+            tests/Feature/Exploitation \
+            tests/Feature/Notes/NoteAjaxErrorHandlingTest.php \
+            tests/Unit/Deployment \
+            tests/Unit/Routes \
+            tests/Unit/Services/MailPulse/MailPulseMonitoringStatusTest.php \
+            tests/Unit/Exports/EnseignantsReportTest.php \
+            tests/Unit/Exports/AnnuaireEnseignantsBulletinsTest.php \
+            tests/Unit/Exports/EnseignantsExportRedirectRegressionTest.php \
+            tests/Unit/Exports/PresentationAnnuairePdfTest.php \
+            tests/Unit/Exports/EnseignantsPremiumSelectsTest.php \
+            tests/Unit/Security \
+            tests/Unit/Comptabilite \
+            tests/Unit/Photos \
+            tests/Unit/Services/Master \
+            tests/Unit/Services/BtsProvisionalTranscriptTest.php \
+            tests/Unit/Views/AcademicDocumentsNavigationTest.php
+          do
+            echo "::group::$chemin"
+            php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
+            echo "::endgroup::"
+          done
+          exit $echec
+
+  tests-integration-frais:
+    name: Tests d'intégration (frais)
+    runs-on: ubuntu-latest
+    needs: garde
+    if: needs.garde.outputs.rejouer == 'oui'
+    timeout-minutes: 20
+    # Une seule declaration : recopiee d'un pas a l'autre, elle finit par
+    # deriver — quelqu'un change le port d'un cote seulement.
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: klassci_testing
+      DB_USERNAME: root
+      DB_PASSWORD: ''
+    services:
+      # MariaDB : c'est ce que fait tourner la flotte, donc c'est sur ce
+      # moteur que les tests doivent dire la verite. La portabilite MySQL 8
+      # se verifie ailleurs, dans le job « schema ».
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 'yes'
+          MARIADB_DATABASE: klassci_testing
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized" --health-interval=10s
+          --health-timeout=5s --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, json, tokenizer
+
+      - name: Répertoire de cache Composer
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      # Sans ce cache, chaque job retelecharge toutes les dependances. Ce
+       # workflow en compte cinq instances : c'est cinq fois le meme telechargement
+       # a chaque poussee.
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Préparer l'environnement de test
+        run: |
+          # Sans `|| true` : si .env.example disparait, l'echec doit se
+          # produire ICI et se lire, pas trois pas plus loin sous une erreur
+          # de connexion qu'on interpretera de travers.
+          cp .env.example .env
+          php artisan key:generate --force
+
+      # Régression réelle SQLSTATE 22007 : la colonne semestre est VARCHAR,
+      # une note legacy 'semestre2' ne doit jamais être comparée à l'entier 2.
+      - name: Notes BTS - semestre legacy sur MariaDB strict
+        run: php vendor/bin/phpunit tests/Feature/Notes/NoteBulkSemesterSqlRegressionTest.php --no-coverage
+
+      # Restreint a CE fichier, pas au dossier : les neuf autres tests de
+      # tests/Feature/Frais ne sont pas verts en integration continue
+      # aujourd'hui, pour des raisons d'environnement anterieures a ce
+      # travail. Un job rouge en permanence ne se lit plus, et il faudrait
+      # alors le contourner — ce qui vide de son sens le fait de l'avoir pose.
+      - name: Montants nets par frais
+        run: php vendor/bin/phpunit tests/Feature/Frais/MontantsNetsParFraisTest.php --no-coverage
+
+      # Une dette reportée ne peut pas être encaissée une seconde fois sur
+      # l'inscription source : couvre le plafond et l'imputation par frais.
+      - name: Répartition des frais et reliquats transférés
+        run: php vendor/bin/phpunit tests/Feature/Frais/RepartitionDuVersementTest.php --no-coverage
+
+      - name: Date métier des encaissements et cohérence caisse
+        run: |
+          php vendor/bin/phpunit tests/Feature/Paiements/EncaisserMobileTest.php --no-coverage
+          php vendor/bin/phpunit tests/Feature/Caisse/CashSessionServiceTest.php --no-coverage
+
+      - name: Horodatage réel de la validation et du rejet
+        run: php vendor/bin/phpunit tests/Feature/Paiements/PaymentValidationRecordedAtTest.php --no-coverage
+
+      - name: Caisse - reliquats AJAX, idempotence et permissions
+        run: php vendor/bin/phpunit tests/Feature/Paiements/ReliquatCaisseAjaxTest.php --no-coverage
+
+      - name: "Portées de caisse - année de paiement, année de dette et inscrits"
+        run: php vendor/bin/phpunit tests/Feature/Paiements/PerimetreAnneeDettePaiementsTest.php --no-coverage
+
+      - name: "Rapport des effectifs - années, distincts, permissions, AJAX et PDF"
+        run: php vendor/bin/phpunit tests/Feature/Reports/ClasseEffectifsReportTest.php --no-coverage
+
+      - name: "Évaluations - activations idempotentes et permissions AJAX"
+        run: php vendor/bin/phpunit tests/Feature/Evaluations/EvaluationPublicationActionsTest.php --no-coverage
+
+      - name: "Planning LMD - pool enseignants, pivot historique, AJAX et permissions"
+        run: php vendor/bin/phpunit tests/Feature/LMD/EnseignantPlanificationEvaluationTest.php --no-coverage
+
+      # La moyenne S2 ne peut plus admettre un BTS1 si la règle choisie
+      # exige aussi la moyenne annuelle. Même règle au bulletin et à la réinscription.
+      - name: Conseil BTS - deux moyennes, configuration et réinscription
+        run: |
+          echec=0
+          for chemin in \
+            tests/Unit/Services/BtsBulletinPolicyTest.php \
+            tests/Feature/Bulletin/BtsBulletinConfigurationHttpTest.php \
+            tests/Feature/Reinscription/AnalyseDecisionsReinscriptionTest.php \
+            tests/Feature/Bts/StudentAcademicTroncCommunTest.php \
+            tests/Feature/Bulletin/RangAnnuelPariteTroncCommunTest.php \
+            tests/Feature/Settings/BtsRangAnnuelClasseEnregistrementTest.php
+          do
+            php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
+          done
+          exit $echec
+
+      - name: Validation inline depuis la fiche inscription
+        run: php vendor/bin/phpunit tests/Feature/Paiements/InscriptionShowPaiementsInlineTest.php --no-coverage
+
+      # Une classe LMD ne peut exister que si son parcours ou sa mention a une
+      # filiere sur laquelle s'ancrer. Ce controle a une raison d'etre precise :
+      # l'ancrage tenait par une coincidence d'identifiants, et USAT ne pouvait
+      # creer aucune classe pour trois de ses mentions.
+      - name: Ancrage des classes LMD sur une filiere reelle
+        run: php vendor/bin/phpunit tests/Feature/Classes/AncrageFiliereLmdTest.php --no-coverage
+
+      # Nanan doit pouvoir créer une classe et ses prérequis sur le même SQL
+      # que l'écran, sans écrire avant Valider et sans doubler un niveau.
+      - name: Nanan - creation guidee de classes et parcours LMD
+        run: php vendor/bin/phpunit tests/Feature/Assistant/ActionsDuJourTest.php --no-coverage
+
+      # L import d une maquette ne doit pas detruire celle d un autre parcours.
+      # Le code d une UE etant unique en base, importer le second parcours
+      # reecrivait le premier, en silence.
+      - name: L import LMD refuse d ecraser une maquette
+        run: php vendor/bin/phpunit tests/Feature/LMD/ImportRefuseEcrasementTest.php --no-coverage
+
+      # Parcours d'inscription configurable : caisse, pièces, activation,
+      # choix de classe et inscription, sur MariaDB. Les premiers tests de ce
+      # parcours n'avaient jamais tourné nulle part — ils référençaient des
+      # constantes et une colonne inexistantes — et cinq écritures vers des
+      # colonnes absentes ou NOT NULL étaient passées inaperçues.
+      - name: Parcours d'inscription configurable (bout en bout)
+        run: |
+          echec=0
+          for chemin in \
+            tests/Feature/Admissions/ManagedInscriptionEndToEndTest.php \
+            tests/Feature/Admissions/ManagedInscriptionSequenceTest.php \
+            tests/Unit/Admissions
+          do
+            echo "::group::$chemin"
+            php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
+            echo "::endgroup::"
+          done
+          exit $echec
+
+      - name: Compte financier et permissions de report multi-annees
+        run: |
+          php vendor/bin/phpunit tests/Feature/Finances/SituationFinanciereEtudiantTest.php --no-coverage
+          php vendor/bin/phpunit tests/Feature/Reinscription/FicheReinscriptionTest.php --no-coverage
+
+      - name: Fiche étudiant - confidentialité et priorité des finances
+        run: php vendor/bin/phpunit tests/Feature/Etudiants/FicheEtudiantFinancesMasqueesTest.php --no-coverage
+
+      - name: Fiche étudiant - cible de réinscription après échéance
+        run: php vendor/bin/phpunit tests/Feature/Etudiants/FicheEtudiantReinscriptionCibleTest.php --no-coverage
+
+      # KLASSCI Care : les demandes de support, leurs pieces jointes et la file
+      # d'envoi vers le Master vivent en base. Ces tests montent leurs tables
+      # par RefreshDatabase : poses dans le job « sans base », ils tomberaient
+      # tous sur un refus de connexion, qu'on lirait comme un defaut du code.
+      # Une boucle, pour la raison donnee plus haut : PHPUnit 9 n'honore que
+      # le premier chemin positionnel.
+      - name: Demandes de support (KLASSCI Care)
+        run: |
+          echec=0
+          for chemin in tests/Unit/Care tests/Feature/Care; do
+            echo "::group::$chemin"
+            php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
+            echo "::endgroup::"
+          done
+          exit $echec
+
+      # Exonération explicite : nécessite le vrai SQL et l'audit OwenIt,
+      # donc MariaDB, jamais le job de lint sans service de base.
+      - name: Validation 0 FCFA, audits et permissions de la CLI
+        run: |
+          echec=0
+          php vendor/bin/phpunit tests/Feature/Inscriptions/ValidationGratuiteTest.php --no-coverage || echec=1
+          php vendor/bin/phpunit tests/Feature/Inscriptions/AnnulationInscriptionHttpTest.php --no-coverage || echec=1
+          # Les écrans de configuration doivent également résoudre LMD et BTS.
+          php vendor/bin/phpunit tests/Feature/Frais/FraisConfigureLmdAjaxTest.php --no-coverage || echec=1
+          # Conserver la sérialisation réelle du navigateur pour Accepter et inscrire.
+          php vendor/bin/phpunit tests/Feature/Admissions/DemandesInscriptionTest.php --no-coverage || echec=1
+          # Vérifier tout le lot Nanan, y compris la clarification d'un
+          # montant absent avant de résoudre une filière inconnue.
+          php vendor/bin/phpunit tests/Feature/Assistant/NananLotATest.php --no-coverage || echec=1
+          exit $echec
+
+      # Ces tests lisent et ecrivent la base reelle. Ne pas les executer
+      # dans le job Laravel Lint, qui ne possede aucun service SQL.
+      - name: Accès individuels temporaires et définitifs (web, CLI, garde-fous)
+        run: |
+          echec=0
+          for chemin in \
+            tests/Feature/Permissions/AccesTemporairesTest.php \
+            tests/Feature/Permissions/AccesTemporairesNonAccordablesTest.php \
+            tests/Feature/API/CLI/AccesIndividuelsCliTest.php
+          do
+            php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
+          done
+          exit $echec
+
+      # Les droits des documents doivent être éprouvés contre les routes
+      # réelles et les modèles MySQL/MariaDB ; aucune simulation de permission
+      # côté Blade ne protège une URL directe PDF ou AJAX.
+      - name: Permissions ciblées des classes, notes et relevés BTS/LMD
+        run: |
+          echec=0
+          for chemin in \
+            tests/Feature/Security/DocumentPermissionsRoutesTest.php \
+            tests/Feature/Classes/PermissionsDocumentsClasseTest.php \
+            tests/Feature/Notes/NotesDocumentPermissionsTest.php \
+            tests/Feature/Permissions/BtsReleveAccesCiblesTest.php \
+            tests/Feature/Bts/BtsTranscriptProvisionalHttpTest.php \
+            tests/Feature/Resultat/StudentDocumentRouteAvailabilityTest.php \
+            tests/Feature/Notes/NotesExcelExportTest.php \
+            tests/Feature/LMD/SaisieGroupeeNotesLmdTest.php \
+            tests/Feature/Mobile/ScolariteBottomNavTest.php
+          do
+            php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
+          done
+          exit $echec
+
+  schema:
+    name: Le schéma se crée entièrement (${{ matrix.moteur.nom }})
+    runs-on: ubuntu-latest
+    needs: garde
+    if: needs.garde.outputs.rejouer == 'oui'
+    timeout-minutes: 20
+    # Son propre job, et pas un pas devant les tests : « le schéma ne se crée
+    # pas » et « les montants sont faux » ne se lisent pas pareil et ne se
+    # corrigent pas pareil. Confondus dans un seul voyant rouge, on perd
+    # l'information la plus utile — laquelle des deux a lâché.
+    #
+    # Ce contrôle n'existait pas, et c'est pour ça qu'une migration incréable
+    # a pu survivre sans que rien ne le signale : personne ne part de zéro.
+    #
+    # Les deux moteurs, parce qu'ils ne refusent pas les mêmes choses.
+    # MariaDB fait tourner la flotte, mais c'est MySQL 8 qui a révélé deux
+    # migrations incréables — une valeur par défaut sur colonne JSON, puis une
+    # clé étrangère ON DELETE CASCADE sous une colonne générée STORED. Sur le
+    # seul MariaDB, les deux seraient encore là.
+    strategy:
+      fail-fast: false
+      matrix:
+        moteur:
+          - { nom: 'MariaDB 10.11', image: 'mariadb:10.11' }
+          - { nom: 'MySQL 8.0', image: 'mysql:8.0' }
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: klassci_testing
+      DB_USERNAME: root
+      DB_PASSWORD: ''
+    services:
+      base:
+        image: ${{ matrix.moteur.image }}
+        # Les deux familles de variables sont fournies ensemble : chaque image
+        # lit les siennes et ignore les autres. Une seule déclaration vaut
+        # mieux qu'un aiguillage de plus dans la matrice.
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 'yes'
+          MARIADB_DATABASE: klassci_testing
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: klassci_testing
+        ports: ['3306:3306']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, json, tokenizer
+
+      - name: Répertoire de cache Composer
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      # Sans ce cache, chaque job retelecharge toutes les dependances. Ce
+       # workflow en compte cinq instances : c'est cinq fois le meme telechargement
+       # a chaque poussee.
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Préparer l'environnement
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+
+      # Attente côté PHP plutôt que par --health-cmd : la sonde n'a pas le même
+      # nom d'un moteur à l'autre, et « la base répond en PDO » est exactement
+      # ce dont le pas suivant a besoin.
+      - name: Attendre que la base réponde
+        run: |
+          for i in $(seq 1 60); do
+            if php -r 'new PDO("mysql:host=127.0.0.1;port=3306", "root", "");' 2>/dev/null; then
+              echo "Base prête après $i tentative(s)."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::La base n'a pas répondu en 120 s."
+          exit 1
+
+      - name: Créer le schéma du premier au dernier fichier
+        run: php artisan migrate:fresh --force

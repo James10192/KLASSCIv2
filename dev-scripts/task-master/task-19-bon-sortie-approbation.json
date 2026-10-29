@@ -1,0 +1,53 @@
+{
+  "title": "Infrastructure Bon de Sortie - Approbation Simplifiée",
+  "description": "Infrastructure approbation bon de sortie avec sélection approbateur et notifications automatiques (4 rôles existants)",
+  "type": "Backend Development", 
+  "priority": "high",
+  "status": "pending",
+  "version": "v2.0",
+  "dependencies": ["task-15-infrastructure"],
+  "technical_details": {
+    "approval_system": [
+      "Extension esbtp_bons_sortie : approbateur_id, notification_sent_at, approved_at",
+      "Table esbtp_bon_sortie_notifications pour suivi envois",
+      "Sélection approbateur parmi 4 rôles : superadmin, secretaire, enseignant, etudiant",
+      "Système notification email + app automatique",
+      "Workflow : créateur → sélection approbateur → notification → approbation"
+    ],
+    "deliverables": [
+      "Migrations extensions bon de sortie",
+      "NotificationService étendu",
+      "ESBTPBonSortieController amélioré",
+      "Templates email/app approbation",
+      "Tests workflow approbation complet"
+    ],
+    "estimation": "2-3 jours"
+  },
+  "subtasks": [
+    {
+      "title": "Migration extension esbtp_bons_sortie",
+      "description": "Ajouter approbateur_id, notification_sent_at, approved_at pour workflow",
+      "status": "pending"
+    },
+    {
+      "title": "Table notifications bon sortie",
+      "description": "esbtp_bon_sortie_notifications pour traçabilité envois/lectures",
+      "status": "pending"
+    },
+    {
+      "title": "Extension NotificationService",
+      "description": "Méthodes notifyBonApproval(), getUsersByRole() pour workflow",
+      "status": "pending"
+    },
+    {
+      "title": "ESBTPBonSortieController workflow",
+      "description": "Méthodes selectApprobateur(), sendNotification(), approve()",
+      "status": "pending"
+    },
+    {
+      "title": "Templates notifications",
+      "description": "Templates email et app pour demandes approbation bon sortie",
+      "status": "pending"
+    }
+  ]
+}

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>KLS-ADM-RAP-2026-03 · Notes TC S1 · Test E2E</title>
+<style>
+  :root {
+    --ink: #111827;
+    --muted: #64748b;
+    --line: #dbe3ef;
+    --soft: #f6f8fb;
+    --blue: #0453cb;
+    --green: #047857;
+    --white: #ffffff;
+    --mono: "Consolas", "JetBrains Mono", monospace;
+    --sans: "Segoe UI", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; font-family: var(--sans); color: var(--ink); background: var(--white); }
+  @page { size: A4; margin: 0; }
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    max-height: 297mm;
+    padding: 18mm 18mm 30mm;
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+    break-after: page;
+  }
+  .page:last-child { page-break-after: auto; break-after: auto; }
+  .page::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 22mm;
+    background: linear-gradient(to top, #fff 0%, #fff 70%, rgba(255,255,255,0) 100%);
+    z-index: 10;
+    pointer-events: none;
+  }
+  .footer, .page-no {
+    position: absolute;
+    bottom: 9mm;
+    z-index: 20;
+    font-size: 8pt;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .footer { left: 18mm; }
+  .page-no { right: 18mm; }
+  .cover {
+    background: var(--ink);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .cover::after { background: linear-gradient(to top, var(--ink) 0%, rgba(17,24,39,0) 100%); }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--blue); display: inline-block; }
+  h1 { font-size: 44pt; line-height: .98; margin: 24mm 0 7mm; max-width: 150mm; }
+  h2 { font-size: 27pt; line-height: 1.08; margin: 0 0 7mm; max-width: 160mm; }
+  h3 { font-size: 13pt; margin: 0 0 3mm; }
+  p { font-size: 10.5pt; line-height: 1.55; color: #334155; margin: 0 0 4mm; max-width: 160mm; }
+  .kicker { color: var(--blue); font-size: 9pt; text-transform: uppercase; letter-spacing: .16em; font-weight: 800; margin-bottom: 5mm; }
+  .cover .kicker { color: #bfdbfe; }
+  .meta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5mm; margin-top: 10mm; }
+  .box {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 5mm;
+    background: var(--soft);
+  }
+  .box strong { display: block; margin-bottom: 2mm; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; margin-top: 6mm; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; margin-top: 5mm; }
+  .metric {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 4mm;
+    background: #fff;
+  }
+  .metric b { display: block; font-size: 20pt; color: var(--blue); }
+  .ok { color: var(--green); font-weight: 800; }
+  .code {
+    font-family: var(--mono);
+    font-size: 8.5pt;
+    background: #eef4ff;
+    color: #123a82;
+    border-radius: 4px;
+    padding: 1mm 1.5mm;
+  }
+  .shot {
+    margin-top: 5mm;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+    background: white;
+  }
+  .shot img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 168mm;
+    object-fit: contain;
+    background: white;
+  }
+  .two-shots .shot { margin-top: 3mm; }
+  .two-shots .shot img { max-height: 78mm; }
+  .with-table .shot img { max-height: 124mm; }
+  .caption {
+    font-size: 8.5pt;
+    color: var(--muted);
+    padding: 2.5mm 3mm;
+    border-top: 1px solid var(--line);
+    background: var(--soft);
+  }
+  table { width: 100%; border-collapse: collapse; margin-top: 5mm; font-size: 9pt; }
+  th, td { border-bottom: 1px solid var(--line); padding: 2.2mm 1.8mm; text-align: left; vertical-align: top; }
+  th { color: var(--muted); text-transform: uppercase; font-size: 7.5pt; letter-spacing: .08em; }
+  .small { font-size: 8.5pt; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<section class="page cover">
+  <div>
+    <div class="brand"><span class="dot"></span> KLASSCI</div>
+    <div class="kicker" style="margin-top:18mm">Rapport interne · test E2E production</div>
+    <h1>Notes tronc commun S1, preuve navigateur et API.</h1>
+    <p style="color:#dbeafe">Validation du correctif livré sur <strong>presentation.klassci.com</strong>, avec un étudiant déjà orienté en spécialité mais encore rattaché à sa classe tronc commun pour le semestre 1.</p>
+  </div>
+  <div class="meta">
+    <div><strong>Référence</strong><br>KLS-ADM-RAP-2026-03</div>
+    <div><strong>Date</strong><br>26 juillet 2026</div>
+    <div><strong>Commit testé</strong><br><span class="code">b4cdc253</span></div>
+    <div><strong>Statut</strong><br>Document confidentiel interne</div>
+  </div>
+  <div class="footer">KLASSCI · Notes TC S1</div><div class="page-no">01</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Synthèse</div>
+  <h2>Le cas TC S1 est validé sur le tenant `presentation`.</h2>
+  <p>Le test cible la classe <strong>1BTS IG A</strong>, identifiant <span class="code">98</span>, et l’étudiant <strong>DIALLO HABIB</strong>, identifiant <span class="code">831</span>. Son parcours indique une phase <strong>Tronc commun</strong> au semestre 1 puis une phase <strong>Spécialisation</strong> au semestre 2.</p>
+  <div class="grid-3">
+    <div class="metric"><b>200</b><span>API cohorte S1</span></div>
+    <div class="metric"><b>30</b><span>étudiants TC S1 retournés</span></div>
+    <div class="metric"><b class="ok">OK</b><span>note S1 saisissable</span></div>
+  </div>
+  <table>
+    <tr><th>Contrôle</th><th>Résultat</th></tr>
+    <tr><td>Parcours BTS</td><td><span class="ok">OK</span>, `source_model = phase_based`, TC S1 classe 98, spécialité S2 classe 99.</td></tr>
+    <tr><td>API classe TC S1</td><td><span class="ok">OK</span>, étudiant 831 présent avec `eligible_semesters: [1]` et `phase_label: Tronc commun`.</td></tr>
+    <tr><td>API classe TC S2</td><td><span class="ok">OK</span>, étudiant 831 absent de la cohorte S2.</td></tr>
+    <tr><td>UI Notes</td><td><span class="ok">OK</span>, ligne DIALLO HABIB visible en S1, badge Tronc commun, champ de note actif.</td></tr>
+    <tr><td>Micro-saisie</td><td><span class="ok">OK</span>, passage temporaire de 11.00 à 11.25 accepté, puis restauration à 11.00.</td></tr>
+    <tr><td>Logs post-test</td><td><span class="ok">OK</span>, aucun nouvel item d’erreur notes dans l’extrait court après le scénario.</td></tr>
+  </table>
+  <div class="footer">KLASSCI · Notes TC S1</div><div class="page-no">02</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Preuve CLI</div>
+  <h2>Le parcours étudiant place bien DIALLO HABIB en TC au S1.</h2>
+  <div class="box">
+    <strong>Commande</strong>
+    <span class="code">klassci-cli.ps1 bts-tc:student-journey presentation 831 1</span>
+  </div>
+  <table>
+    <tr><th>Phase</th><th>Classe</th><th>Semestres</th><th>État</th></tr>
+    <tr><td>Tronc commun</td><td>1BTS IG A · classe 98</td><td>S1 à S1</td><td>clôturée le 31 mai 2026</td></tr>
+    <tr><td>Spécialisation</td><td>1BTS IG B · classe 99</td><td>S2 à fin</td><td>active</td></tr>
+  </table>
+  <p>Cette donnée est la base du test: l’étudiant ne doit plus dépendre uniquement de son inscription active actuelle pour apparaître dans la classe TC. Il doit être réintégré dans la cohorte TC quand l’évaluation porte sur le semestre 1.</p>
+  <div class="footer">KLASSCI · Notes TC S1</div><div class="page-no">03</div>
+</section>
+
+<section class="page two-shots">
+  <div class="kicker">Session authentifiée</div>
+  <h2>Connexion au compte superadmin de `presentation`.</h2>
+  <div class="shot"><img src="../e2e/2026-07-26-notes-tc-s1/notes-tc-01-login.png"><div class="caption">Étape 1, écran de connexion.</div></div>
+  <div class="shot"><img src="../e2e/2026-07-26-notes-tc-s1/notes-tc-02-dashboard.png"><div class="caption">Étape 2, tableau de bord authentifié.</div></div>
+  <div class="footer">KLASSCI · Notes TC S1</div><div class="page-no">04</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Écran Notes</div>
+  <h2>La classe TC `1BTS IG A` est visible dans Notes.</h2>
+  <div class="shot"><img src="../e2e/2026-07-26-notes-tc-s1/notes-tc-03-notes-index.png"><div class="caption">Étape 3, page Notes, classe 1BTS IG A présente.</div></div>
+  <div class="footer">KLASSCI · Notes TC S1</div><div class="page-no">05</div>
+</section>
+
+<section class="page two-shots">
+  <div class="kicker">Écran réel</div>
+  <h2>Le modal de nouveautés est capturé puis fermé.</h2>
+  <div class="shot"><img src="../e2e/2026-07-26-notes-tc-s1/notes-tc-04a-whatsnew-blocker.png"><div class="caption">Étape 4A, modal bloquant réellement rencontré pendant l’E2E.</div></div>
+  <div class="shot"><img src="../e2e/2026-07-26-notes-tc-s1/notes-tc-04b-notes-index-ready.png"><div class="caption">Étape 4B, page prête après fermeture du modal.</div></div>
+  <div class="footer">KLASSCI · Notes TC S1</div><div class="page-no">06</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Classe TC</div>
+  <h2>Ouverture de la gestion des notes de `1BTS IG A`.</h2>
+  <div class="shot"><img src="../e2e/2026-07-26-notes-tc-s1/notes-tc-05-class-tc-modal.png"><div class="caption">Étape 5, modal Notes ouvert, matières disponibles dont Culture générale TC.</div></div>
+  <div class="footer">KLASSCI · Notes TC S1</div><div class="page-no">07</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Chargement S1</div>
+  <h2>Chargement de `Culture générale TC`, semestre 1.</h2>
+  <div class="shot"><img src="../e2e/2026-07-26-notes-tc-s1/notes-tc-06-culture-generale-s1-grid.png"><div class="caption">Étape 6, requête en cours après sélection de la matière et du semestre 1.</div></div>
+  <div class="footer">KLASSCI · Notes TC S1</div><div class="page-no">08</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Validation UI</div>
+  <h2>DIALLO HABIB est présent en TC S1 avec un champ actif.</h2>
+  <div class="shot"><img src="../e2e/2026-07-26-notes-tc-s1/notes-tc-07-culture-generale-s1-stable.png"><div class="caption">Étape 7, ligne étudiant 831 visible, badge Tronc commun, note 11.00 saisissable.</div></div>
+  <p class="small">Observation structurée: `student831.inputs = 1`, `disabledInputs = 0`, `badges = ["Tronc commun"]`.</p>
+  <div class="footer">KLASSCI · Notes TC S1</div><div class="page-no">09</div>
+</section>
+
+<section class="page with-table">
+  <div class="kicker">Filtre semestre</div>
+  <h2>Le service exclut l’étudiant de la cohorte TC S2.</h2>
+  <div class="grid-2">
+    <div class="box"><strong>API S1</strong><p><span class="code">/esbtp/notes/api/classes/98/students?semesters[]=1</span></p><p><span class="ok">Présent</span>, étudiant 831, `eligible_semesters: [1]`.</p></div>
+    <div class="box"><strong>API S2</strong><p><span class="code">/esbtp/notes/api/classes/98/students?semesters[]=2</span></p><p><span class="ok">Absent</span>, l’étudiant est déjà en spécialité au S2.</p></div>
+  </div>
+  <div class="shot"><img src="../e2e/2026-07-26-notes-tc-s1/notes-tc-08-tc-s2-no-evaluation.png"><div class="caption">Étape 8, aucun champ de note S2 sur cette matière TC, et l’API S2 exclut l’étudiant 831.</div></div>
+  <div class="footer">KLASSCI · Notes TC S1</div><div class="page-no">10</div>
+</section>
+
+<section class="page two-shots">
+  <div class="kicker">Micro-saisie</div>
+  <h2>La note S1 peut être modifiée puis restaurée.</h2>
+  <div class="shot"><img src="../e2e/2026-07-26-notes-tc-s1/notes-tc-09-before-temp-edit.png"><div class="caption">Étape 9, état initial, note 11.00.</div></div>
+  <div class="shot"><img src="../e2e/2026-07-26-notes-tc-s1/notes-tc-10-temp-note-saved.png"><div class="caption">Étape 10, note temporaire 11.25 acceptée par `save-ajax`.</div></div>
+  <div class="footer">KLASSCI · Notes TC S1</div><div class="page-no">11</div>
+</section>
+
+<section class="page with-table">
+  <div class="kicker">Restauration</div>
+  <h2>La donnée de démo est remise à son état initial.</h2>
+  <div class="shot"><img src="../e2e/2026-07-26-notes-tc-s1/notes-tc-11-note-restored.png"><div class="caption">Étape 11, note restaurée à 11.00, même note id 13.</div></div>
+  <table>
+    <tr><th>Action</th><th>Résultat serveur</th></tr>
+    <tr><td>11.00 vers 11.25</td><td>HTTP 200, `success: true`, `note_id: 13`, `note: 11.25`.</td></tr>
+    <tr><td>11.25 vers 11.00</td><td>HTTP 200, `success: true`, `note_id: 13`, `note: 11`.</td></tr>
+  </table>
+  <div class="footer">KLASSCI · Notes TC S1</div><div class="page-no">12</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Conclusion</div>
+  <h2>Verdict: validé de bout en bout sur `presentation`.</h2>
+  <p>Le correctif répond au besoin: les étudiants passés en spécialité restent disponibles dans la classe tronc commun pour les notes du semestre où ils étaient effectivement dans cette classe. Le cas testé démontre aussi que le filtre ne les ramène pas pour le semestre 2 TC.</p>
+  <div class="box">
+    <strong>Position finale</strong>
+    <p><span class="ok">Validé</span>, parcours réel, API authentifiée, UI Notes et sauvegarde AJAX contrôlés. Donnée de démo restaurée à la valeur initiale.</p>
+  </div>
+  <div class="footer">KLASSCI · Notes TC S1</div><div class="page-no">13</div>
+</section>
+
+</body>
+</html>

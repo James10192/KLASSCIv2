@@ -1,0 +1,1527 @@
+<?php
+
+namespace App\Http\Controllers\ESBTP;
+
+use App\Http\Controllers\Controller;
+use App\Services\ReeinscriptionService;
+use App\Services\FuzzyNameMatcher;
+use App\Services\EnrollmentAmountVisibility;
+use App\Models\ESBTPRegleAcademique;
+use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPClasse;
+use App\Models\ESBTPNiveauEtude;
+use App\Models\ESBTPFiliere;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use App\Services\Inscriptions\NormalisationTypeInscription;
+
+class ESBTPReinscriptionController extends Controller
+{
+    protected $reinscriptionService;
+    protected FuzzyNameMatcher $matcher;
+
+    private bool $anneeAReSolderLue = false;
+
+    private ?\App\Models\ESBTPAnneeUniversitaire $anneeAReSolderMemo = null;
+
+    public function __construct(
+        ReeinscriptionService $reinscriptionService,
+        FuzzyNameMatcher $matcher,
+        private readonly \App\Services\Reinscription\ClassesDeReinscription $classes,
+    ) {
+        $this->reinscriptionService = $reinscriptionService;
+        $this->matcher = $matcher;
+    }
+
+    public function index(Request $request)
+    {
+        // Toujours utiliser l'année courante (is_current = true)
+        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneeAcademique = $anneeCourante ? $anneeCourante->name : date('Y') . '-' . (date('Y') + 1);
+        
+        // Données pour les filtres
+        $filieres = \App\Models\ESBTPFiliere::where('is_active', true)->get();
+        $niveaux = \App\Models\ESBTPNiveauEtude::where('is_active', true)->get();
+        
+        try {
+            // OPTIMISATION: Ne charger que les statistiques au départ
+            $statistiques = $this->reinscriptionService->getStatistiquesReinscription($anneeAcademique);
+
+            // Charge la liste des étudiants éligibles pour le modal Réinscription groupée
+            $bulkEligibleStudents = app(\App\Services\Reinscription\BulkReinscriptionService::class)
+                ->listEligibleStudents();
+
+            return view('esbtp.reinscription.index', compact('statistiques', 'anneeAcademique', 'filieres', 'niveaux', 'bulkEligibleStudents'))
+                ->withErrors(collect());
+        } catch (\Exception $e) {
+            // En cas d'erreur, retourner des statistiques vides
+            $statistiques = [
+                'passages' => 0,
+                'rattrapages' => 0, 
+                'redoublements' => 0,
+                'valides' => 0,
+                'abandons_annee' => 0,
+                'abandons_ecole' => 0,
+                'errors' => 0
+            ];
+            
+            $bulkEligibleStudents = collect();
+            return view('esbtp.reinscription.index', compact('statistiques', 'anneeAcademique', 'filieres', 'niveaux', 'bulkEligibleStudents'))
+                ->withErrors(['error' => 'Erreur lors de l\'analyse: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Calculer les soldes pour tous les étudiants
+     */
+    /**
+     * L'annee dont le solde conditionne la reinscription : celle qui precede
+     * l'annee courante. Meme derivation que BulkReinscriptionService, pour que
+     * les deux chemins de reinscription ne puissent pas diverger.
+     */
+    private function anneeAReSolder(): ?\App\Models\ESBTPAnneeUniversitaire
+    {
+        // Lue une fois par requete : la liste l'interrogeait pour chaque ligne
+        // affichee, deux requetes par etudiant pour une reponse identique.
+        if ($this->anneeAReSolderLue) {
+            return $this->anneeAReSolderMemo;
+        }
+        $this->anneeAReSolderLue = true;
+
+        $courante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (! $courante) {
+            return $this->anneeAReSolderMemo = null;
+        }
+
+        return $this->anneeAReSolderMemo = \App\Models\ESBTPAnneeUniversitaire::where('end_date', '<', $courante->start_date)
+            ->orderBy('end_date', 'desc')
+            ->first();
+    }
+
+    private function calculerSoldesEtudiants(&$resultats)
+    {
+        // On reinscrit VERS l'annee courante : le dossier a solder est donc celui
+        // de l'annee PRECEDENTE. Chercher `is_current` ne trouvait rien pendant
+        // toute la campagne, et chaque etudiant s'affichait a 0 attendu, 0 paye,
+        // 0 solde, puis « ne peut pas se reinscrire » — l'agent ne voyait ni la
+        // dette reelle, ni le feu vert de ceux qui etaient a jour.
+        //
+        // Meme derivation que le mode en masse (BulkReinscriptionService), qui
+        // visait juste : les deux chemins rendent desormais le meme verdict sur
+        // le meme etudiant. Calcule une fois, hors des boucles.
+        $anneePrecedente = $this->anneeAReSolder();
+
+        foreach (['passages', 'rattrapages', 'redoublements', 'abandons_annee', 'abandons_ecole', 'valides'] as $categorie) {
+            if (isset($resultats[$categorie])) {
+                foreach ($resultats[$categorie] as &$etudiantData) {
+                    // Récupérer l'étudiant selon le format des données
+                    $etudiant = null;
+                    if (is_array($etudiantData) && isset($etudiantData['etudiant'])) {
+                        $etudiant = $etudiantData['etudiant'];
+                    } else if (is_object($etudiantData)) {
+                        $etudiant = $etudiantData;
+                    }
+                    
+                    if ($etudiant) {
+                        // Récupérer l'inscription active de l'étudiant
+                        $inscription = $anneePrecedente
+                            ? $etudiant->inscriptions()
+                                ->where('annee_universitaire_id', $anneePrecedente->id)
+                                ->with(['paiements' => function($query) {
+                                    $query->where('status', 'validé');
+                                }])
+                                ->latest()
+                                ->first()
+                            : null;
+                        
+                        if ($inscription) {
+                            // Calculer le total attendu et payé comme sur la page inscription
+                            $totalAttendu = $this->calculerTotalAttendu($inscription);
+                            $totalPaye = $this->calculerTotalPaye($inscription);
+                            $soldeRestant = $totalAttendu - $totalPaye;
+                            
+                            $etudiant->montant_attendu = $totalAttendu;
+                            $etudiant->montant_paye = $totalPaye;
+                            $etudiant->solde_restant = $soldeRestant;
+                            
+                            // Déterminer si l'étudiant peut se réinscrire
+                            // (seulement si tout est soldé - solde restant = 0 ou négatif)
+                            // Le seuil de l'école, comme la fiche et la garde.
+                            $etudiant->peut_reinscrire = $soldeRestant <= \App\Services\Reinscription\EligibiliteReinscription::tolerance();
+                        } else {
+                            // Pas d'inscription active, utiliser les anciennes valeurs par défaut
+                            $etudiant->montant_attendu = 0;
+                            $etudiant->montant_paye = 0;
+                            $etudiant->solde_restant = 0;
+                            $etudiant->peut_reinscrire = false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Calculer le solde pour un seul étudiant (version optimisée pour lazy loading)
+     */
+    private function calculerSoldeEtudiant(&$etudiantData)
+    {
+        // Récupérer l'étudiant selon le format des données
+        $etudiant = null;
+        if (is_array($etudiantData) && isset($etudiantData['etudiant'])) {
+            $etudiant = $etudiantData['etudiant'];
+        } else if (is_object($etudiantData)) {
+            $etudiant = $etudiantData;
+        }
+        
+        if (!$etudiant) return;
+        
+        // Meme correction que dans `calculerSoldesEtudiants` : le dossier a
+        // solder est celui de l'annee PRECEDENTE, pas de l'annee vers laquelle
+        // on reinscrit. Les deux methodes repondaient la meme chose a tort ; il
+        // aurait suffi d'en corriger une pour que l'ecran se contredise selon
+        // qu'il charge la liste d'un coup ou au fil du defilement.
+        $anneePrecedente = $this->anneeAReSolder();
+        // Pas de paiements charges avec l'inscription : le solde se lit en
+        // agregats SQL (SoldeDeReinscription), la relation n'etait jamais lue.
+        $inscription = $anneePrecedente
+            ? $etudiant->inscriptions()
+                ->where('annee_universitaire_id', $anneePrecedente->id)
+                ->latest()
+                ->first()
+            : null;
+        
+        if ($inscription) {
+            // Calculer le total attendu et payé
+            $totalAttendu = $this->calculerTotalAttendu($inscription);
+            $totalPaye = $this->calculerTotalPaye($inscription);
+            $soldeRestant = $totalAttendu - $totalPaye;
+            
+            $etudiant->montant_attendu = $totalAttendu;
+            $etudiant->montant_paye = $totalPaye;
+            $etudiant->solde_restant = $soldeRestant;
+            // Le seuil de l'école, comme la fiche et la garde.
+            $etudiant->peut_reinscrire = $soldeRestant <= \App\Services\Reinscription\EligibiliteReinscription::tolerance();
+        } else {
+            // Pas d'inscription active
+            $etudiant->montant_attendu = 0;
+            $etudiant->montant_paye = 0;
+            $etudiant->solde_restant = 0;
+            $etudiant->peut_reinscrire = false;
+        }
+    }
+    
+    /**
+     * Calculer le total attendu pour une inscription.
+     *
+     * Utilise la même logique de priorité que ESBTPInscriptionController::show() :
+     * 1. Souscription individuelle (ESBTPFraisSubscription) → montant personnalisé
+     * 2. Règle filière/niveau (ESBTPFraisConfiguration) → getMontantByStatus()
+     * 3. Ni l'un ni l'autre → frais non compté (is_configured = false)
+     *
+     * Cela évite de gonfler le total en comptant des frais obligatoires configurés
+     * globalement mais auxquels l'étudiant n'est pas souscrit.
+     */
+    private function calculerTotalAttendu($inscription)
+    {
+        // Basé UNIQUEMENT sur les frais souscriptions actives.
+        // Pas de souscriptions → rien à payer → 0. La même règle que Nanan.
+        return \App\Services\Reinscription\SoldeDeReinscription::du((int) $inscription->id);
+    }
+    
+    /**
+     * Calculer le total payé pour une inscription
+     */
+    private function calculerTotalPaye($inscription)
+    {
+        return \App\Services\Reinscription\SoldeDeReinscription::paye((int) $inscription->id);
+    }
+
+    /**
+     * Marquer un étudiant comme ayant abandonné
+     */
+    public function marquerAbandon(Request $request, $etudiantId)
+    {
+        $request->validate([
+            'motif_abandon' => 'nullable|string|max:500',
+            'abandon_type' => 'required|in:annee_scolaire,ecole',
+        ]);
+
+        try {
+            $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
+            $etudiant->update([
+                'statut' => 'abandon',
+                'motif_abandon' => $request->motif_abandon,
+                'abandon_type' => $request->abandon_type,
+                'date_abandon' => now(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Étudiant marqué comme ayant abandonné'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Restaurer un étudiant depuis abandon vers actif
+     */
+    public function restaurerAbandon($etudiantId)
+    {
+        try {
+            $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
+            $etudiant->update([
+                'statut' => 'actif',
+                'motif_abandon' => null,
+                'abandon_type' => null,
+                'date_abandon' => null,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Étudiant restauré avec succès'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function show($etudiantId, Request $request)
+    {
+        $eligibilite = app(\App\Services\Reinscription\EligibiliteReinscription::class)->pour((int) $etudiantId, auth()->user());
+        $inscription = $eligibilite['inscription'];
+        if (!$inscription) {
+            return redirect()->route('esbtp.reinscription.index')
+                ->withErrors(['error' => "Cet étudiant n'a aucune inscription validée avec classe : rien à réinscrire."]);
+        }
+
+        // L'analyse académique porte sur l'année QUITTÉE, pas sur la cible.
+        $anneeAcademique = $request->get('annee_academique', $eligibilite['annee_cible']?->name ?? $inscription->anneeUniversitaire?->name);
+
+        try {
+            $analyse = $this->reinscriptionService->analyserSituationEtudiantParInscription($inscription, $anneeAcademique);
+        } catch (\Throwable $e) {
+            \Log::error('Analyse de réinscription impossible', ['etudiant_id' => $etudiantId, 'erreur' => $e->getMessage()]);
+
+            return redirect()->route('esbtp.reinscription.index')
+                ->withErrors(['error' => "L'analyse de ce dossier a échoué. Le détail est dans le journal du serveur."]);
+        }
+        $analyse['inscription'] = $inscription;
+
+        // Les mêmes propriétés que lisent les autres écrans (liste, finalisation).
+        $etudiant = $analyse['etudiant'];
+        $etudiant->montant_attendu = $eligibilite['du'];
+        $etudiant->montant_paye = $eligibilite['paye'];
+        $etudiant->solde_restant = $eligibilite['solde'];
+        $etudiant->peut_reinscrire = $eligibilite['peut_poursuivre'];
+
+        // Les reliquats d'années antérieures reportés SUR l'inscription quittée,
+        // et ceux reportés sur l'inscription de l'année cible si elle existe.
+        $reliquatsVers = fn (int $id) => (float) \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $id)->actifs()->get()->sum('solde_restant');
+        $reliquatEntrant = $reliquatsVers((int) $inscription->id);
+        $existante = $eligibilite['inscription_annee_cible'];
+        $reliquatAnneeCible = $existante && $existante->id !== $inscription->id ? $reliquatsVers((int) $existante->id) : 0.0;
+
+        // « Préparer N+1 » n'est offert que si N+1 se prépare vraiment : le même
+        // jugement que la finalisation (une année N non finalisée le bloque).
+        $preparerSuivante = $eligibilite['annee_suivante']
+            && app(\App\Services\Reinscription\EligibiliteReinscription::class)
+                ->pour((int) $etudiantId, auth()->user(), (int) $eligibilite['annee_suivante']->id)['etat']
+                !== \App\Services\Reinscription\EligibiliteReinscription::ANNEE_INTERMEDIAIRE;
+
+        $voirFinances = auth()->user()->can('finances.etudiants.voir');
+        $notesComptees = is_countable($analyse['notes'] ?? null) ? count($analyse['notes']) : 0;
+        $situationFinanciere = $voirFinances
+            ? app(\App\Services\Finances\SituationFinanciereEtudiant::class)->pour((int) $etudiantId, (int) $inscription->id)
+            : null;
+
+        return view('esbtp.reinscription.show', compact(
+            'analyse', 'eligibilite', 'anneeAcademique', 'voirFinances', 'reliquatEntrant', 'reliquatAnneeCible', 'notesComptees', 'preparerSuivante', 'situationFinanciere'
+        ));
+    }
+
+    /**
+     * Afficher la page de finalisation de réinscription
+     */
+    public function create($etudiantId, Request $request)
+    {
+        $anneeAcademique = $request->get('annee_academique', date('Y') . '-' . (date('Y') + 1));
+
+        try {
+            // La meme decision que la fiche : meme inscription quittee, meme
+            // annee visee. Un dossier qui ne peut pas avancer revient a la fiche,
+            // qui dit pourquoi, au lieu d'un formulaire inerte.
+            // L'année visée vient du lien de la fiche (« Préparer 2027-2028 »,
+            // « Corriger ») : sans elle, l'inscription quittée et les classes
+            // proposées seraient calculées pour une autre année.
+            $anneeCibleId = $request->integer('annee_cible_id') ?: null;
+            $eligibilite = app(\App\Services\Reinscription\EligibiliteReinscription::class)->pour((int) $etudiantId, auth()->user(), $anneeCibleId);
+            $inscription = $eligibilite['inscription'];
+
+            if (!$inscription) {
+                throw new \Exception("Aucune inscription avec classe trouvée pour cet étudiant");
+            }
+            // Un impayé sans dérogation ne mène qu'à un formulaire inerte : la
+            // fiche explique et propose quoi faire. « Déjà inscrit » ne bloque
+            // pas ici : le formulaire choisit l'année visée (l'année suivante,
+            // ou la même pour corriger), et la garde juge à l'envoi.
+            if ($eligibilite['etat'] === \App\Services\Reinscription\EligibiliteReinscription::IMPAYE && !$eligibilite['peut_deroger']) {
+                return redirect()->route('esbtp.reinscription.show', $etudiantId)
+                    ->withErrors(['error' => 'La réinscription est bloquée par un reste à payer : voir le détail ci-dessous.']);
+            }
+            if ($eligibilite['etat'] === \App\Services\Reinscription\EligibiliteReinscription::ANNEE_INTERMEDIAIRE) {
+                return redirect()->route('esbtp.reinscription.show', $etudiantId)
+                    ->withErrors(['error' => $eligibilite['message_intermediaire']]);
+            }
+
+            $analyse = $this->reinscriptionService->analyserSituationEtudiantParInscription($inscription, $anneeAcademique);
+            $classesParDecision = $this->classes->parDecision($inscription->classe);
+
+            // Calculer les informations financières
+            $etudiant = $analyse['etudiant'];
+            $totalAttendu = $this->calculerTotalAttendu($inscription);
+            $totalPaye = $this->calculerTotalPaye($inscription);
+            $soldeRestant = $totalAttendu - $totalPaye;
+            $situationDeReinscription = app(\App\Services\Finances\SituationFinanciereEtudiant::class)
+                ->pour((int) $etudiantId, (int) $inscription->id);
+            $arriérésAnterieurs = (float) $situationDeReinscription['arrieres'];
+            $hasDetteAReporter = $soldeRestant > 0 || $arriérésAnterieurs > 0;
+
+            // Ajouter les informations financières et de rôle
+            // La même décision que la fiche (tolérance de l'école comprise).
+            $isSuperAdmin = auth()->user() && auth()->user()->isSuperAdmin();
+            $peutReporterReliquat = (bool) auth()->user()?->can('reinscriptions.reliquats.report');
+            $etudiant->montant_attendu = $totalAttendu;
+            $etudiant->montant_paye = $totalPaye;
+            $etudiant->solde_restant = $soldeRestant;
+            $etudiant->peut_reinscrire = $eligibilite['etat'] !== \App\Services\Reinscription\EligibiliteReinscription::IMPAYE || $eligibilite['peut_deroger'];
+            $etudiant->reliquat_possible = ($peutReporterReliquat || $isSuperAdmin) && $soldeRestant > 0;
+            $etudiant->reliquat_montant = ($peutReporterReliquat || $isSuperAdmin) ? max(0, $soldeRestant) + $arriérésAnterieurs : 0;
+
+            // Récupérer les détails des frais non soldés pour le reliquat
+            $fraisNonSoldes = [];
+            if (($peutReporterReliquat || $isSuperAdmin) && $soldeRestant > 0) {
+                $fraisNonSoldes = $this->calculerFraisNonSoldes($inscription);
+            }
+
+            // Précharger tous les frais pour toutes les combinaisons classe/affectation
+            $fraisParClasse = $this->prechargerFraisPourToutesLesClasses($classesParDecision);
+
+            // Récupérer les années universitaires futures pour la sélection
+            $anneeUniversitairesFutures = $this->getAnneesUniversitairesFutures();
+
+            $analyse['inscription'] = $inscription;
+            // Le statut d'affectation suit l'etudiant : on le reprend de
+            // l'inscription quittee, sous la forme des options du formulaire.
+            $affectationActuelle = \App\Models\ESBTPEcheancierRule::normalizeStatus($inscription->affectation_status ?: \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS);
+            if ($affectationActuelle === \App\Models\ESBTPEcheancierRule::STATUS_ALL) {
+                $affectationActuelle = \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
+            }
+
+            // Déterminer les années pour l'affichage cohérent
+            $anneeEtudiantActuelle = $inscription->anneeUniversitaire->name ?? 'N/A'; // Année de l'inscription actuelle de l'étudiant
+            // Présélectionnée seulement quand la fiche l'a dit explicitement :
+            // sinon le sélecteur reste vide et obligatoire, comme avant.
+            $anneeDestination = $anneeCibleId ? $eligibilite['annee_cible'] : null;
+            $anneeAffichee = $eligibilite['annee_cible'] ?? \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            $anneeDestinationName = $anneeAffichee ? $anneeAffichee->name : $anneeAcademique;
+
+            return view('esbtp.reinscription.create', compact(
+                'analyse',
+                'classesParDecision',
+                'fraisParClasse',
+                'anneeAcademique',
+                'fraisNonSoldes',
+                'hasDetteAReporter',
+                'arriérésAnterieurs',
+                'isSuperAdmin',
+                'peutReporterReliquat',
+                'anneeUniversitairesFutures',
+                'anneeEtudiantActuelle',
+                'anneeDestinationName',
+                'anneeDestination',
+                'affectationActuelle'
+            ));
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Erreur lors de l\'analyse: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Précharger tous les frais pour toutes les classes et statuts d'affectation
+     */
+    private function prechargerFraisPourToutesLesClasses($classesParDecision)
+    {
+        $fraisParClasse = [];
+        $statutsAffectation = ['affecté', 'non-affecté', 'maintenant-affecté'];
+
+        // Pour chaque décision
+        foreach ($classesParDecision as $decision => $classes) {
+            if (!$classes || $classes->isEmpty()) {
+                continue;
+            }
+
+            // Pour chaque classe de cette décision
+            foreach ($classes as $classe) {
+                if (!$classe) continue;
+
+                // Pour chaque statut d'affectation
+                foreach ($statutsAffectation as $statut) {
+                    $classeKey = "{$classe->id}_{$statut}";
+
+                    try {
+                        // Utiliser la même logique que l'endpoint AJAX existant
+                        $frais = $this->getFraisForClasseEtAffectation($classe->id, $statut);
+                        $fraisParClasse[$classeKey] = $frais;
+                    } catch (\Exception $e) {
+                        // Si erreur, continuer avec les autres classes
+                        \Log::warning("Erreur préchargement frais classe {$classe->id} statut {$statut}: " . $e->getMessage());
+                        $fraisParClasse[$classeKey] = [];
+                    }
+                }
+            }
+        }
+
+        return $fraisParClasse;
+    }
+
+    /**
+     * Récupérer les frais pour une classe et un statut d'affectation donnés
+     */
+    private function getFraisForClasseEtAffectation($classeId, $statutAffectation = \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS)
+    {
+        // Logique basée sur l'endpoint existant dans ESBTPInscriptionController
+        $classe = \App\Models\ESBTPClasse::with(['niveau', 'filiere'])->findOrFail($classeId);
+
+        // Récupérer les frais configurés pour cette filiere/niveau
+        $fraisConfigs = \App\Models\ESBTPFraisConfiguration::active()
+            ->where('filiere_id', $classe->filiere_id)
+            ->where('niveau_id', $classe->niveau_etude_id)
+            ->with(['fraisCategory'])
+            ->get();
+
+        $fraisData = [];
+
+        foreach ($fraisConfigs as $config) {
+            if (!$config->fraisCategory) continue;
+
+            // Convertir le format de statut d'affectation
+            $statusForConfig = $this->normaliserStatutAffectation($statutAffectation);
+
+            // Utiliser la méthode du modèle pour obtenir le montant
+            $montantCalcule = $config->getMontantByStatus($statusForConfig);
+
+            // Si le montant est 0, on peut ignorer ce frais pour ce statut
+            if ($montantCalcule <= 0) {
+                continue;
+            }
+
+            $fraisData[] = [
+                'category' => [
+                    'id' => $config->fraisCategory->id,
+                    'name' => $config->fraisCategory->name,
+                    'libelle' => $config->fraisCategory->libelle ?? $config->fraisCategory->name,
+                ],
+                'is_mandatory' => $config->fraisCategory->is_mandatory ?? true,
+                'default_amount' => $montantCalcule,
+                'configured_amount' => $montantCalcule,
+                'amount' => $montantCalcule,
+            ];
+        }
+
+        return $fraisData;
+    }
+
+    /**
+     * Normaliser le statut d'affectation pour correspondre au format du modèle
+     */
+    private function normaliserStatutAffectation($statutAffectation)
+    {
+        return match($statutAffectation) {
+            'affecté', 'affecte' => \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
+            'non-affecté', 'non_affecte', 'non-affecte', 'non_affecté' => 'non_affecté',
+            'réaffecté', 'reaffecte', 'maintenant-affecté', 'maintenant_affecte' => 'réaffecté',
+            default => \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS
+        };
+    }
+
+    /**
+     * Calculer les frais non soldés pour le reliquat
+     */
+    private function calculerFraisNonSoldes($inscription)
+    {
+        // Récupérer toutes les souscriptions de frais de cette inscription
+        $subscriptions = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+            ->charged()
+            ->with(['fraisCategory'])
+            ->get();
+
+        $fraisNonSoldes = [];
+
+        // Ce que chaque frais a REELLEMENT recu, et non une repartition inventee.
+        //
+        // La boucle repartissait le total paye au prorata du montant attendu,
+        // en assumant l'approximation (« pour simplifier »). Elle avait deux
+        // defauts, et le premier est fatal :
+        //
+        // 1. Elle divisait par le total attendu, que `dueAmountForInscription()`
+        //    calcule en sommant `amount` sur le scope `charged()` — lequel ne
+        //    filtre QUE `is_active` et `satisfied_in_kind`, jamais le montant.
+        //    Des souscriptions sans montant donnent donc un total nul, la boucle
+        //    s'execute quand meme, et PHP 8 leve une DivisionByZeroError
+        //    FATALE. C'est l'etat d'un etablissement qui n'a pas encore
+        //    configure ses categories.
+        //
+        // 2. Elle produisait des reliquats faux. Un etudiant qui a paye toute sa
+        //    scolarite et rien de sa tenue se voyait reporter une dette
+        //    proportionnelle sur les deux, alors que la premiere etait soldee.
+        //
+        // `netPaidByCategory()` existe deja et repond exactement a la question :
+        // encaissements valides moins avoirs, par categorie. Le reliquat devient
+        // vrai, et la division disparait — donc le crash aussi, par
+        // construction plutot que par une garde qu'on pourrait oublier.
+        $payeParCategorie = \App\Models\ESBTPPaiement::netPaidByCategory((int) $inscription->id);
+
+        foreach ($subscriptions as $subscription) {
+            $montantAttendu = $subscription->chargedAmount();
+            $paiementPourCeFrais = (float) ($payeParCategorie[$subscription->frais_category_id] ?? 0);
+            $soldeRestant = $montantAttendu - $paiementPourCeFrais;
+
+            // Un frais sans montant attendu donne un solde nul ou negatif : il
+            // ne passe donc pas ce seuil. C'est voulu — on ignore ce qu'il
+            // reclame, donc on ne peut reporter aucune somme. Le solde GLOBAL,
+            // lui, reste calcule sur les totaux reels en amont, et c'est lui qui
+            // decide de l'eligibilite a la reinscription.
+            if ($soldeRestant > 0.01) { // Éviter les erreurs d'arrondi
+                $fraisNonSoldes[] = [
+                    'subscription' => $subscription,
+                    'category_name' => $subscription->fraisCategory->name ?? 'Frais inconnu',
+                    'montant_attendu' => $montantAttendu,
+                    'montant_paye' => $paiementPourCeFrais,
+                    'solde_restant' => $soldeRestant
+                ];
+            }
+        }
+
+        return $fraisNonSoldes;
+    }
+
+    /**
+     * Récupérer les classes disponibles selon la décision (AJAX)
+     */
+    public function getClassesByDecision($etudiantId, Request $request)
+    {
+        try {
+            $decision = $request->get('decision');
+
+            if (!$decision) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Décision manquante'
+                ]);
+            }
+
+            $quittee = $this->classes->inscriptionQuittee((int) $etudiantId)?->classe;
+
+            return response()->json([
+                'success' => true,
+                'classes' => $quittee ? $this->classes->pour($quittee, (string) $decision) : [],
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des classes: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Charger une catégorie d'étudiants via AJAX (optimisation lazy loading)
+     */
+    public function loadCategory(Request $request, $category)
+    {
+        $startMicrotime = microtime(true);
+        $startTimestamp = now()->toIso8601String();
+        Log::info('Reinscription loadCategory start', [
+            'timestamp' => $startTimestamp,
+            'category' => $category,
+            'page' => $request->get('page', 1),
+            'per_page' => $request->get('per_page', 50),
+            'filters' => $request->all(),
+        ]);
+
+        $page = $request->get('page', 1);
+        $perPage = $request->get('per_page', 50);
+        
+        // Déterminer l'année à utiliser (filtrée ou courante)
+        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneeAcademique = $anneeCourante ? $anneeCourante->name : date('Y') . '-' . (date('Y') + 1);
+        
+        
+        try {
+            switch ($category) {
+                case 'passages':
+                case 'rattrapages':
+                case 'redoublements':
+                    $resultats = $this->reinscriptionService->getEtudiantsParDecision($anneeAcademique);
+                    $analyses = collect($resultats[$category] ?? []);
+
+                    // CORRECTION: Garder les analyses complètes mais filtrer les étudiants null
+                    $etudiants = $analyses->filter(function($analyse) {
+                        return isset($analyse['etudiant']) && $analyse['etudiant'] !== null;
+                    });
+                    break;
+                    
+                case 'valides':
+                    $etudiants = $this->getEtudiantsValides($anneeCourante);
+                    break;
+                    
+                case 'abandons_annee':
+                    $etudiants = $this->getEtudiantsAbandons($anneeCourante, 'annee_scolaire');
+                    break;
+                    
+                case 'abandons_ecole':
+                    $etudiants = $this->getEtudiantsAbandons($anneeCourante, 'ecole');
+                    break;
+                    
+                case 'errors':
+                    $resultats = $this->reinscriptionService->getEtudiantsParDecision($anneeAcademique);
+                    $erreurs = collect($resultats['errors'] ?? []);
+
+                    // CORRECTION: Garder la structure erreur mais filtrer les étudiants null
+                    $etudiants = $erreurs->filter(function($erreur) {
+                        return isset($erreur['etudiant']) && $erreur['etudiant'] !== null;
+                    });
+                    break;
+                    
+                default:
+                    return response()->json(['error' => 'Catégorie inconnue'], 400);
+            }
+            
+            // Appliquer les filtres sur la collection d'étudiants
+            $initialCount = $etudiants instanceof Collection
+                ? $etudiants->count()
+                : (is_array($etudiants) ? count($etudiants) : 0);
+
+            $etudiants = $this->applyFiltersToEtudiants($etudiants, $request);
+
+            Log::info('Reinscription loadCategory after filters', [
+                'timestamp' => now()->toIso8601String(),
+                'category' => $category,
+                'initial_count' => $initialCount,
+                'filtered_count' => $etudiants->count(),
+                'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
+            ]);
+            
+            // Pagination manuelle
+            $total = $etudiants->count();
+            $offset = ($page - 1) * $perPage;
+            $etudiantsPagines = $etudiants->slice($offset, $perPage);
+            
+            // Calculer les soldes pour les étudiants de cette page
+            $etudiantsAvecSoldes = $etudiantsPagines->map(function($etudiant) {
+                if (is_array($etudiant) && isset($etudiant['etudiant'])) {
+                    $this->calculerSoldeEtudiant($etudiant);
+                }
+                return $etudiant;
+            });
+            
+            $voirFinances = auth()->user()->can('finances.etudiants.voir');
+
+            // CORRECTION: Utiliser different partial selon page 1 ou pages suivantes  
+            if ((int)$page === 1) {
+                // Première page : tableau complet avec header
+                $html = view('esbtp.reinscription.partials.liste-etudiants', [
+                    'etudiants' => $etudiantsAvecSoldes,
+                    'voirFinances' => $voirFinances,
+                    'type' => $category === 'passages' ? 'passage' : ($category === 'rattrapages' ? 'rattrapage' : 'redoublement')
+                ])->render();
+            } else {
+                // Pages suivantes : seulement les lignes TR
+                $html = view('esbtp.reinscription.partials.lignes-etudiants', [
+                    'etudiants' => $etudiantsAvecSoldes,
+                    'voirFinances' => $voirFinances,
+                    'type' => $category === 'passages' ? 'passage' : ($category === 'rattrapages' ? 'rattrapage' : 'redoublement')
+                ])->render();
+            }
+
+            Log::info('Reinscription loadCategory completed', [
+                'timestamp' => now()->toIso8601String(),
+                'category' => $category,
+                'total' => $total,
+                'page_count' => $etudiantsAvecSoldes->count(),
+                'has_more' => ($page * $perPage) < $total,
+                'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
+            ]);
+            
+            return response()->json([
+                'html' => $html,
+                'total' => $total,
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'has_more' => ($page * $perPage) < $total
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Reinscription loadCategory error', [
+                'timestamp' => now()->toIso8601String(),
+                'category' => $category,
+                'error' => $e->getMessage(),
+                'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
+            ]);
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+    
+    private function getEtudiantsValides($anneeUniversitaire)
+    {
+        // CORRECTION: Chercher les inscriptions de type 'réinscription' et status 'active'
+        // au lieu de 'reinscription_status' = 'validated' qui n'est pas utilisé
+        return \App\Models\ESBTPInscription::where('type_inscription', NormalisationTypeInscription::REINSCRIPTION)
+            ->where('status', 'active')
+            ->when($anneeUniversitaire, function($query) use ($anneeUniversitaire) {
+                return $query->where('annee_universitaire_id', $anneeUniversitaire->id);
+            })
+            ->with(['etudiant.paiements', 'classe.filiere', 'classe.niveau', 'anneeUniversitaire'])
+            ->get()
+            ->map(function($inscription) {
+                return [
+                    'etudiant' => $inscription->etudiant,
+                    'inscription' => $inscription,
+                    'classe' => $inscription->classe,
+                    'decision' => 'Réinscription validée',
+                    'moyenne_generale' => 0,
+                    'matieres_echouees' => [],
+                    'validated_at' => $inscription->created_at,
+                    'validated_by' => $inscription->created_by ?? null,
+                    'annee_universitaire' => $inscription->anneeUniversitaire->name,
+                ];
+            });
+    }
+    
+    private function getEtudiantsAbandons($anneeUniversitaire, $type)
+    {
+        return ESBTPEtudiant::where('statut', 'abandon')
+            ->where(function($query) use ($type) {
+                if ($type === 'annee_scolaire') {
+                    $query->where('abandon_type', 'annee_scolaire')
+                          ->orWhereNull('abandon_type');
+                } else {
+                    $query->where('abandon_type', $type);
+                }
+            })
+            ->whereHas('inscriptions', function($query) use ($anneeUniversitaire) {
+                if ($anneeUniversitaire) {
+                    $query->where('annee_universitaire_id', $anneeUniversitaire->id);
+                }
+            })
+            ->with(['paiements', 'inscriptions' => function($query) use ($anneeUniversitaire) {
+                if ($anneeUniversitaire) {
+                    $query->where('annee_universitaire_id', $anneeUniversitaire->id);
+                }
+                $query->with(['filiere', 'niveauEtude', 'classe']);
+            }])
+            ->get()
+            ->map(function($etudiant) {
+                return [
+                    'etudiant' => $etudiant,
+                    'inscription' => $etudiant->inscriptions->first(),
+                    'classe' => $etudiant->inscriptions->first()?->classe,
+                    'decision' => 'abandon',
+                    'moyenne_generale' => 0,
+                    'matieres_echouees' => [],
+                ];
+            });
+    }
+
+    public function update(Request $request, $etudiantId)
+    {
+        $request->validate([
+            'nouvelle_classe_id' => 'nullable|exists:esbtp_classes,id',
+            'autre_classe_id' => 'nullable|exists:esbtp_classes,id',
+            'decision' => 'required|in:passage,redoublement,rattrapage',
+            'observations' => 'nullable|string',
+            'selected_optionals' => 'nullable|string', // JSON des frais optionnels
+            'affectation_status' => 'nullable|string|in:affecté,réaffecté,non_affecté',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'action_reliquat' => 'nullable|string|in:reporter,abandonner', // Gestion des reliquats pour superAdmin
+            'redoublant' => 'nullable|in:0,1',
+            'redoublant_motif' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            // Déterminer quelle classe utiliser (selon le choix "Même filière" ou "Autre filière")
+            $classeId = $request->input('autre_classe_id') ?: $request->input('nouvelle_classe_id');
+
+            // Vérifier qu'au moins une classe est fournie
+            if (!$classeId) {
+                return $request->expectsJson()
+                    ? response()->json(['message' => 'Sélectionnez une classe.', 'errors' => ['nouvelle_classe_id' => ['Sélectionnez une classe.']]], 422)
+                    : back()->withErrors(['error' => 'Vous devez sélectionner une classe pour la réinscription.']);
+            }
+
+            // Décoder les frais optionnels sélectionnés
+            $selectedOptionals = [];
+            if ($request->selected_optionals) {
+                $selectedOptionals = json_decode($request->selected_optionals, true) ?: [];
+            }
+
+            // Statut d'affectation : ce que l'agent a saisi, sinon rien. Le service
+            // reprendra alors celui de l'inscription quittee. Poser « affecte » ici
+            // faisait passer un non affecte pour un etudiant place par le MESRS, et
+            // sa scolarite tombait a zero sans que personne ne l'ait decide.
+            $affectationStatus = $request->input('affectation_status')
+                ?: $request->input('affectation_status_final')
+                ?: null;
+
+            $nouvelleInscription = $this->reinscriptionService->effectuerReinscription(
+                $etudiantId,
+                $classeId,  // Utiliser la classe déterminée ci-dessus
+                $request->decision,
+                $request->observations,
+                $selectedOptionals,
+                $affectationStatus,
+                $request->annee_universitaire_id,
+                $request->action_reliquat, // Gestion des reliquats pour superAdmin
+                redoublant: $request->filled('redoublant') ? $request->boolean('redoublant') : null,
+                redoublantMotif: $request->input('redoublant_motif')
+            );
+
+            // Envoyer notification aux parents
+            try {
+                $notificationService = app(\App\Services\NotificationService::class);
+                $reliquatMontant = $request->action_reliquat === 'reporter' ? $request->reliquat_montant : 0;
+                $notificationService->notifyParentsReinscriptionCreated(
+                    $nouvelleInscription,
+                    $request->decision ?? 'passage',
+                    $reliquatMontant ?? 0
+                );
+            } catch (\Exception $e) {
+                \Log::error('Erreur envoi notification réinscription parent: ' . $e->getMessage());
+            }
+
+            if ($request->expectsJson()) {
+                // Le flux classique demande une photo après réinscription.
+                // Le JSON ne doit pas perdre cette étape au clic du lien suivant.
+                session()->flash('demander_photo', true);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Réinscription enregistrée. Vous pouvez ouvrir le dossier.',
+                    'inscription_id' => $nouvelleInscription->id,
+                    'url' => route('esbtp.inscriptions.show', $nouvelleInscription->id),
+                ]);
+            }
+
+            return redirect()->route('esbtp.inscriptions.show', $nouvelleInscription->id)
+                ->with('success', 'Réinscription effectuée avec succès ! Nouvelle inscription créée pour l\'année universitaire en cours.')
+                // Meme signal qu'a la premiere inscription. La difference se
+                // joue dans le dialogue lui-meme : si l'etudiant a deja une
+                // photo, il commence par demander s'il faut la remplacer.
+                ->with('demander_photo', true);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Le statut redoublant changé sans motif : rien n'est enregistré.
+            return $request->expectsJson()
+                ? response()->json(['message' => 'Vérifiez les informations.', 'errors' => $e->errors()], 422)
+                : back()->withInput()->withErrors($e->errors());
+        } catch (\App\Exceptions\ReinscriptionRefuseeException $e) {
+            // Refus métier : le message est écrit pour la personne.
+            return $request->expectsJson()
+                ? response()->json(['message' => $e->getMessage(), 'errors' => ['action_reliquat' => [$e->getMessage()]]], 422)
+                : back()->withInput()->withErrors(['error' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            // Le détail (SQL compris) reste au journal, jamais à l'écran.
+            \Log::error('Réinscription impossible', ['etudiant_id' => $etudiantId, 'erreur' => $e->getMessage()]);
+
+            $message = "La réinscription n'a pas pu être enregistrée. Le détail est dans le journal du serveur.";
+            return $request->expectsJson()
+                ? response()->json(['message' => $message], 500)
+                : back()->withInput()->withErrors(['error' => $message]);
+        }
+    }
+
+    public function regles()
+    {
+        $regles = ESBTPRegleAcademique::all();
+        $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
+        $filieres = ESBTPFiliere::where('is_active', true)->get();
+        
+        return view('esbtp.reinscription.regles', compact('regles', 'niveaux', 'filieres'));
+    }
+
+    public function storeRegle(Request $request)
+    {
+        // Capturer les données validées pour éviter la vulnérabilité mass assignment
+        $validated = $request->validate([
+            'niveau' => 'required|string',
+            'filiere' => 'required|string',
+            'moyenne_passage' => 'required|numeric|min:0|max:20',
+            'moyenne_rattrapage' => 'required|numeric|min:0|max:20',
+            'max_matieres_rattrapage' => 'required|integer|min:1',
+            'autoriser_redoublement' => 'boolean',
+            'max_redoublements' => 'required|integer|min:1',
+            'conditions_speciales' => 'nullable|string'
+        ]);
+
+        try {
+            // Utiliser uniquement les données validées
+            ESBTPRegleAcademique::updateOrCreate(
+                [
+                    'niveau' => $validated['niveau'],
+                    'filiere' => $validated['filiere']
+                ],
+                $validated
+            );
+
+            return back()->with('success', 'Règle académique enregistrée avec succès');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Erreur lors de l\'enregistrement: ' . $e->getMessage()]);
+        }
+    }
+
+    public function updateRegle(Request $request, $id)
+    {
+        // Capturer les données validées pour éviter la vulnérabilité mass assignment
+        $validated = $request->validate([
+            'moyenne_passage' => 'required|numeric|min:0|max:20',
+            'moyenne_rattrapage' => 'required|numeric|min:0|max:20',
+            'max_matieres_rattrapage' => 'required|integer|min:1',
+            'autoriser_redoublement' => 'boolean',
+            'max_redoublements' => 'required|integer|min:1',
+            'conditions_speciales' => 'nullable|string',
+            'actif' => 'boolean'
+        ]);
+
+        try {
+            $regle = ESBTPRegleAcademique::findOrFail($id);
+            // Utiliser uniquement les données validées
+            $regle->update($validated);
+
+            return back()->with('success', 'Règle académique mise à jour avec succès');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Erreur lors de la mise à jour: ' . $e->getMessage()]);
+        }
+    }
+
+    public function destroyRegle($id)
+    {
+        try {
+            $regle = ESBTPRegleAcademique::findOrFail($id);
+            $regle->delete();
+
+            return back()->with('success', 'Règle académique supprimée avec succès');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Erreur lors de la suppression: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Appliquer les filtres sur une collection d'étudiants
+     */
+    private function applyFiltersToEtudiants($etudiants, Request $request)
+    {
+        if (!$etudiants instanceof Collection) {
+            $etudiants = collect($etudiants);
+        } else {
+            $etudiants = $etudiants->values();
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+
+            $etudiants = $this->matcher->match($search, $etudiants, function ($item) {
+                $etudiant = null;
+
+                if (is_array($item)) {
+                    $etudiant = $item['etudiant'] ?? null;
+                } elseif (is_object($item) && property_exists($item, 'etudiant')) {
+                    $etudiant = $item->etudiant;
+                } elseif (is_object($item)) {
+                    $etudiant = $item;
+                }
+
+                if (!$etudiant || !is_object($etudiant)) {
+                    return [];
+                }
+
+                return [
+                    'matricule' => $etudiant->matricule ?? null,
+                    'nom' => $etudiant->nom ?? null,
+                    'prenoms' => $etudiant->prenoms ?? null,
+                    'full_name' => trim(($etudiant->prenoms ?? '') . ' ' . ($etudiant->nom ?? '')),
+                    'reverse_full_name' => trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? '')),
+                ];
+            }, [
+                'threshold' => 30,
+                'limit' => 400,
+                'boosts' => [
+                    'matricule' => 15,
+                    'full_name' => 6,
+                    'reverse_full_name' => 6,
+                ],
+            ]);
+
+            $etudiants = $etudiants->filter(function ($item) {
+                $score = is_array($item)
+                    ? ($item['fuzzy_score'] ?? null)
+                    : (isset($item->fuzzy_score) ? $item->fuzzy_score : null);
+                return $score !== null && $score >= 80;
+            })->values();
+        }
+        
+        if ($request->filled('filiere_id')) {
+            $etudiants = $etudiants->filter(function($item) use ($request) {
+                $inscription = null;
+                if (is_array($item) && isset($item['inscription'])) {
+                    $inscription = $item['inscription'];
+                } elseif (is_array($item) && isset($item['etudiant'])) {
+                    $etudiant = $item['etudiant'];
+                    $inscription = $etudiant->inscriptions()->with(['filiere'])->first();
+                }
+                
+                return $inscription && $inscription->filiere_id == $request->filiere_id;
+            });
+        }
+        
+        if ($request->filled('niveau_id')) {
+            $etudiants = $etudiants->filter(function($item) use ($request) {
+                $inscription = null;
+                if (is_array($item) && isset($item['inscription'])) {
+                    $inscription = $item['inscription'];
+                } elseif (is_array($item) && isset($item['etudiant'])) {
+                    $etudiant = $item['etudiant'];
+                    $inscription = $etudiant->inscriptions()->with(['niveau'])->first();
+                }
+                
+                return $inscription && $inscription->niveau_id == $request->niveau_id;
+            });
+        }
+        
+        // Trier par situation financiere revele qui doit : meme porte que les montants.
+        if ($request->filled('statut_paiement') && $request->user()->can('finances.etudiants.voir')) {
+            $etudiants = $etudiants->filter(function($item) use ($request) {
+                $etudiant = is_array($item) && isset($item['etudiant']) ? $item['etudiant'] : $item;
+                
+                if (!$etudiant || !is_object($etudiant)) return false;
+                
+                // Calculer le solde si pas déjà fait
+                if (!isset($etudiant->solde_restant)) {
+                    $this->calculerSoldeEtudiant($item);
+                }
+                
+                if ($request->statut_paiement === 'solde') {
+                    return $etudiant->solde_restant <= 0;
+                } elseif ($request->statut_paiement === 'impaye') {
+                return $etudiant->solde_restant > 0;
+                }
+                
+                return true;
+            });
+        }
+        
+        return $etudiants->values();
+    }
+
+    public function exportResults(Request $request)
+    {
+        $anneeAcademique = $request->get('annee_academique', date('Y') . '-' . (date('Y') + 1));
+        
+        try {
+            $resultats = $this->reinscriptionService->getEtudiantsParDecision($anneeAcademique);
+            
+            // Générer un fichier Excel ou PDF avec les résultats
+            return response()->json([
+                'message' => 'Export en cours de développement',
+                'data' => $resultats
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Récupérer les années universitaires disponibles pour réinscription (courante et futures)
+     */
+    private function getAnneesUniversitairesFutures()
+    {
+        // Récupérer l'année universitaire courante
+        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        if (!$anneeCourante) {
+            return collect(); // Retourner une collection vide si pas d'année courante
+        }
+
+        // Récupérer l'année courante ET les années futures
+        // Cela permet de réinscrire les étudiants N-1 vers l'année courante N
+        return \App\Models\ESBTPAnneeUniversitaire::where('is_active', true)
+            ->where('start_date', '>=', $anneeCourante->start_date)
+            ->orderBy('start_date')
+            ->get();
+    }
+
+    /**
+     * Enrichir les informations financières d'un étudiant
+     */
+    private function enrichirInformationsFinancieres($etudiant)
+    {
+        // Récupérer l'inscription la plus récente de l'étudiant avec classe
+        $inscription = \App\Models\ESBTPInscription::whereNotNull('classe_id')
+            ->where('etudiant_id', $etudiant->id)
+            ->with(['classe', 'anneeUniversitaire'])
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if ($inscription) {
+            // Calculer le total attendu et payé
+            $totalAttendu = $this->calculerTotalAttendu($inscription);
+            $totalPaye = $this->calculerTotalPaye($inscription);
+            $soldeRestant = $totalAttendu - $totalPaye;
+
+            $etudiant->montant_attendu = $totalAttendu;
+            $etudiant->montant_paye = $totalPaye;
+            $etudiant->solde_restant = $soldeRestant;
+            // Le seuil de l'école, comme la fiche et la garde.
+            $etudiant->peut_reinscrire = $soldeRestant <= \App\Services\Reinscription\EligibiliteReinscription::tolerance();
+        } else {
+            // Pas d'inscription active
+            $etudiant->montant_attendu = 0;
+            $etudiant->montant_paye = 0;
+            $etudiant->solde_restant = 0;
+            $etudiant->peut_reinscrire = false;
+        }
+    }
+
+    /**
+     * API : Récupérer les niveaux d'étude pour une filière donnée
+     * Utilisé par le select en cascade dans reinscription/create.blade.php
+     *
+     * @param  int  $filiereId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getNiveauxByFiliere($filiereId)
+    {
+        try {
+            $niveaux = \App\Models\ESBTPClasse::where('filiere_id', $filiereId)
+                ->where('is_active', 1)
+                ->with('niveau')
+                ->get()
+                ->pluck('niveau')
+                ->filter()
+                ->unique('id')
+                ->sortBy('year')
+                ->values()
+                ->map(function($niveau) {
+                    return [
+                        'id' => $niveau->id,
+                        'name' => $this->formatNiveauLabel($niveau)
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'niveaux' => $niveaux
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erreur getNiveauxByFiliere: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du chargement des niveaux',
+                'niveaux' => []
+            ], 500);
+        }
+    }
+
+    /**
+     * Formate le label d'un niveau : "1ère année — BTS", etc.
+     *
+     * Un niveau LMD garde son nom : son annee est comptee en continu, et un
+     * Master 1 affiche en « 4ème année — Master » ne se reconnaitrait pas.
+     */
+    private function formatNiveauLabel(\App\Models\ESBTPNiveauEtude $niveau): string
+    {
+        if ($niveau->estUnCycleLmd()) {
+            return $niveau->name;
+        }
+
+        $suffix = (int) $niveau->year === 1 ? 'ère' : 'ème';
+
+        return "{$niveau->year}{$suffix} année — {$niveau->type}";
+    }
+
+    /**
+     * API : Récupérer les classes pour une filière et un niveau donnés
+     * Utilisé par le searchable select en cascade dans reinscription/create.blade.php
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getClassesByFiliereNiveau(Request $request)
+    {
+        try {
+            $filiereId = $request->input('filiere_id');
+            $niveauId = $request->input('niveau_id');
+
+            if (!$filiereId || !$niveauId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Filière et niveau requis',
+                    'classes' => []
+                ], 400);
+            }
+
+            // Récupérer les classes actives pour cette combinaison filière + niveau
+            $classes = \App\Models\ESBTPClasse::with(['filiere', 'niveau'])
+                ->where('filiere_id', $filiereId)
+                ->where('niveau_etude_id', $niveauId)
+                ->where('is_active', 1)
+                ->orderBy('name')
+                ->get()
+                ->map(function($classe) {
+                    return [
+                        'id' => $classe->id,
+                        'name' => $classe->name,
+                        'filiere' => [
+                            'id' => $classe->filiere->id ?? null,
+                            'name' => $classe->filiere->name ?? 'N/A'
+                        ],
+                        'niveau' => [
+                            'id' => $classe->niveau->id ?? null,
+                            'name' => $classe->niveau->name ?? 'N/A'
+                        ]
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'classes' => $classes
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erreur getClassesByFiliereNiveau: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du chargement des classes',
+                'classes' => []
+            ], 500);
+        }
+    }
+
+    /**
+     * Endpoint AJAX bulk-summary : pour une liste d'IDs étudiants, retourne
+     * par étudiant {moyenne, decision, frais_soldes, solde_restant, peut_reinscrire}.
+     * Utilisé par le modal de réinscription groupée (etudiants.index +
+     * reinscription.index). Limité à 100 étudiants par appel pour éviter
+     * les timeouts (analyserSituationEtudiantParInscription est lourd).
+     */
+    public function bulkSummary(Request $request)
+    {
+        $validated = $request->validate([
+            'etudiants_ids'   => 'required|array|min:1|max:100',
+            'etudiants_ids.*' => 'integer|exists:esbtp_etudiants,id',
+            'annee_academique' => 'sometimes|nullable|string',
+        ]);
+
+        $anneeAcademique = $validated['annee_academique'] ?? null;
+        if (! $anneeAcademique) {
+            $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            $anneeAcademique = $anneeCourante?->name ?? (date('Y') . '-' . (date('Y') + 1));
+        }
+
+        $isSuperAdmin = auth()->user()?->isSuperAdmin() ?? false;
+        $results = [];
+
+        foreach ($validated['etudiants_ids'] as $etudiantId) {
+            try {
+                $inscription = \App\Models\ESBTPInscription::whereNotNull('classe_id')
+                    ->where('etudiant_id', $etudiantId)
+                    ->with(['etudiant', 'classe.niveau', 'classe.filiere'])
+                    ->orderByDesc('id')
+                    ->first();
+
+                if (! $inscription) {
+                    $results[] = [
+                        'etudiant_id' => $etudiantId,
+                        'status'      => 'skipped',
+                        'message'     => 'Aucune inscription avec classe trouvée.',
+                    ];
+                    continue;
+                }
+
+                $analyse = $this->reinscriptionService->analyserSituationEtudiantParInscription(
+                    $inscription, $anneeAcademique
+                );
+
+                $totalAttendu = $this->calculerTotalAttendu($inscription);
+                $totalPaye    = $this->calculerTotalPaye($inscription);
+                $soldeRestant = $totalAttendu - $totalPaye;
+                $fraisSoldes  = $soldeRestant <= 0;
+                $peutReinscrire = $soldeRestant <= \App\Services\Reinscription\EligibiliteReinscription::tolerance() || $isSuperAdmin;
+
+                $etudiant = $analyse['etudiant'] ?? $inscription->etudiant;
+
+                $hideAmounts = app(EnrollmentAmountVisibility::class)->hideAmounts(auth()->user());
+                $row = [
+                    'etudiant_id'    => (int) $etudiantId,
+                    'matricule'      => $etudiant?->matricule,
+                    'nom_complet'    => $etudiant?->nom_complet,
+                    'classe'         => $inscription->classe?->name,
+                    'filiere'        => $inscription->classe?->filiere?->name,
+                    'moyenne'        => isset($analyse['moyenne']) ? round((float) $analyse['moyenne'], 2) : null,
+                    'decision'       => $analyse['decision'] ?? null,
+                    'decision_label' => $this->decisionLabel($analyse['decision'] ?? null),
+                    'frais_soldes'    => $fraisSoldes,
+                    'peut_reinscrire' => $peutReinscrire,
+                    'status'          => 'ok',
+                ];
+                if (! $hideAmounts) {
+                    $row['montant_attendu'] = (float) $totalAttendu;
+                    $row['montant_paye'] = (float) $totalPaye;
+                    $row['solde_restant'] = (float) $soldeRestant;
+                }
+                $results[] = $row;
+            } catch (\Exception $e) {
+                \Log::warning('bulkSummary échec sur étudiant ' . $etudiantId . ' : ' . $e->getMessage());
+                $results[] = [
+                    'etudiant_id' => (int) $etudiantId,
+                    'status'      => 'error',
+                    'message'     => $e->getMessage(),
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'count'   => count($results),
+            'annee'   => $anneeAcademique,
+            'results' => $results,
+        ]);
+    }
+
+    private function decisionLabel(?string $decision): string
+    {
+        return match (true) {
+            $decision === 'passage'      => 'Passage en classe supérieure',
+            $decision === 'rattrapage'   => 'Rattrapage',
+            $decision === 'redoublement' => 'Redoublement',
+            $decision === 'abandon'      => 'Abandon',
+            $decision === 'admis'        => 'Admis',
+            $decision === 'ajourne'      => 'Ajourné',
+            (bool) $decision             => ucfirst($decision),
+            default                      => '—',
+        };
+    }
+
+    /**
+     * GET /esbtp/reinscription/api/classes-list
+     * Liste toutes les classes actives pour le dropdown override du bulk modal.
+     */
+    public function classesList()
+    {
+        $classes = \App\Models\ESBTPClasse::where('is_active', true)
+            ->with(['filiere:id,name', 'niveau:id,name'])
+            ->orderBy('name')
+            ->get(['id', 'name', 'filiere_id', 'niveau_etude_id'])
+            ->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name . ' — ' . (optional($c->filiere)->name ?? '—') . ' · ' . (optional($c->niveau)->name ?? '—'),
+                'filiere_id' => $c->filiere_id,
+                'niveau_id' => $c->niveau_etude_id,
+            ]);
+        return response()->json([
+            'success' => true,
+            'data' => ['classes' => $classes],
+        ]);
+    }
+
+    /**
+     * POST /esbtp/reinscription/api/bulk-preview
+     * Pré-calcul de N étudiants pour le composant <x-reinscription-bulk-modal>.
+     */
+    public function bulkPreview(Request $request, \App\Services\Reinscription\BulkReinscriptionService $bulkService)
+    {
+        $request->validate([
+            'etudiants_ids' => 'required|array|min:1|max:100',
+            'etudiants_ids.*' => 'integer|exists:esbtp_etudiants,id',
+        ]);
+        $preview = $bulkService->preview($request->input('etudiants_ids'));
+
+        // Le blocage « solde non regle » reste visible : il decide de l'action.
+        // Le montant, lui, ne part pas vers qui n'a pas la porte financiere.
+        if (! $request->user()->can('finances.etudiants.voir')) {
+            $preview['rows'] = array_map(
+                static fn (array $row) => array_merge($row, ['solde_restant' => null]),
+                $preview['rows'] ?? []
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $preview,
+        ]);
+    }
+
+    /**
+     * POST /esbtp/reinscription/api/bulk-execute
+     * Exécute la batch de réinscriptions en transaction atomique.
+     */
+    public function bulkExecute(Request $request, \App\Services\Reinscription\BulkReinscriptionService $bulkService)
+    {
+        $request->validate([
+            'items' => 'required|array|min:1|max:100',
+            'items.*.etudiant_id' => 'required|integer|exists:esbtp_etudiants,id',
+            'items.*.decision' => 'required|in:passage,rattrapage,redoublement',
+            'items.*.classe_id' => 'nullable|integer|exists:esbtp_classes,id',
+            'items.*.observations' => 'nullable|string|max:1000',
+            'decision_context' => 'nullable|in:passage,rattrapage,redoublement',
+        ]);
+
+        // Si classe_id manquante côté front, on dérive automatiquement depuis la classe d'origine
+        // + la décision (passage → niveau+1, redoublement/rattrapage → même classe).
+        $sansChoix = [];
+        $items = collect($request->input('items'))->map(function ($item) use (&$sansChoix) {
+            if (empty($item['classe_id'])) {
+                $quittee = $this->classes->inscriptionQuittee((int) $item['etudiant_id'])?->classe;
+                $proposees = $quittee ? $this->classes->pour($quittee, $item['decision']) : collect();
+                if ($proposees->count() === 1) {
+                    $item['classe_id'] = $proposees->first()->id;
+                } elseif ($proposees->count() > 1) {
+                    $sansChoix[] = (int) $item['etudiant_id'];
+                    $item['classe_id'] = null;
+                }
+            }
+            return $item;
+        })->filter(fn ($item) => !empty($item['classe_id']))->values()->all();
+
+        if ($sansChoix !== []) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Plusieurs classes sont possibles l’an prochain (parcours ou sections) : choisissez la classe pour chaque étudiant, le lot ne prend pas la première au hasard.',
+                'etudiants_sans_choix' => $sansChoix,
+            ], 422);
+        }
+
+        if (empty($items)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucune classe cible déterminable pour les étudiants. Vérifie la configuration des classes/filières.',
+            ], 422);
+        }
+
+        $result = $bulkService->executeBulk($items);
+
+        // HTTP 200 dès qu'on a au moins 1 succès — le frontend lit success_count +
+        // error_count pour afficher les toasts détaillés par étudiant (rule
+        // ajax-no-reload-premium). HTTP 422 uniquement si TOUT a échoué.
+        $hasAnySuccess = ($result['success_count'] ?? 0) > 0;
+        return response()->json($result, $hasAnySuccess ? 200 : 422);
+    }
+}

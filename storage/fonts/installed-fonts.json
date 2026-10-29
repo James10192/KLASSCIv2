@@ -1,0 +1,26 @@
+{
+    "inter": {
+        "300": "C:\\xampp\\htdocs\\ESBTP-yAKROv2Pascal\\storage\\fonts\/inter_300_07dabb19b170e3852ebdf10a85924e18",
+        "normal": "C:\\xampp\\htdocs\\ESBTP-yAKROv2Pascal\\storage\\fonts\/inter_normal_5a66f8ceb794f00a7f54c797a21283b3",
+        "500": "C:\\xampp\\htdocs\\ESBTP-yAKROv2Pascal\\storage\\fonts\/inter_500_efef4d9d61ac26570557ad601dea222a",
+        "600": "C:\\xampp\\htdocs\\ESBTP-yAKROv2Pascal\\storage\\fonts\/inter_600_3604d9d49b61fc3b7c29c4259c86ff89",
+        "bold": "inter_bold_02384cdf43e3d24b76c57c66dfd114bf"
+    },
+    "font awesome 6 brands": {
+        "normal": "font_awesome_6_brands_normal_36faa0e194d3288643f7144dedd8e1b1"
+    },
+    "font awesome 6 free": {
+        "normal": "C:\\xampp\\htdocs\\ESBTP-yAKROv2Pascal\\storage\\fonts\/font_awesome_6_free_normal_cf2d7daaeabedac0226ae26fc7e4f075",
+        "900": "font_awesome_6_free_900_665c8d2ea728525da852b5cd3a1d51a5"
+    },
+    "font awesome 5 brands": {
+        "normal": "font_awesome_5_brands_normal_36faa0e194d3288643f7144dedd8e1b1"
+    },
+    "font awesome 5 free": {
+        "900": "C:\\xampp\\htdocs\\ESBTP-yAKROv2Pascal\\storage\\fonts\/font_awesome_5_free_900_665c8d2ea728525da852b5cd3a1d51a5",
+        "normal": "font_awesome_5_free_normal_cf2d7daaeabedac0226ae26fc7e4f075"
+    },
+    "fontawesome": {
+        "normal": "fontawesome_normal_6aa5cc0b95be2651581a2d7ad4a9d038"
+    }
+}

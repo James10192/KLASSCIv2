@@ -1,0 +1,706 @@
+<?php
+
+namespace App\Services;
+
+use App\Enums\ModePaiement;
+use App\Models\ESBTPPaiement;
+use App\Models\ESBTPAnneeUniversitaire;
+use App\Services\Frais\MontantsParFrais;
+use App\Services\FuzzyNameMatcher;
+use Carbon\Carbon;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
+
+class PaymentFilterService
+{
+    /**
+     * Le socle commun a la liste et a ses exports.
+     *
+     * Ces filtres etaient ecrits DEUX fois — une fois pour l'ecran, une fois
+     * pour l'export — et rien ne garantissait qu'ils restent identiques. Un
+     * filtre ajoute d'un cote seulement produit un document qui ne montre pas
+     * ce que l'utilisateur avait sous les yeux, ce qui est pire qu'un document
+     * absent : il a l'air juste. Une seule definition, donc.
+     *
+     * La recherche reste en dehors : l'ecran la traite en approche floue et
+     * l'export en LIKE simple, et c'est voulu.
+     */
+    public function baseFilteredQuery(Request $request)
+    {
+        $query = ESBTPPaiement::with([
+            'etudiant.user',
+            'inscription.classe',
+            'inscription.anneeUniversitaire',
+            'inscription.filiere',
+            'inscription.niveauEtude',
+            'validatedBy',
+            'creator:id,name',
+            'fraisCategory',
+            // La ligne annonce sur quels frais le versement s'est reparti : sans
+            // ce chargement, chaque ligne repartait interroger la base.
+            'allocations.fraisCategory:id,name,category_type',
+            'categorie',
+        ])->orderByDesc('created_at')
+            // Departage stable : la liste se charge par tranches, deux versements
+            // de la meme seconde ne doivent pas changer de place entre deux.
+            ->orderByDesc('esbtp_paiements.id');
+
+        // Lot 13 — Ownership : si l'utilisateur n'a PAS `paiements.view` mais a
+        // `paiements.view_own`, il ne voit que ce qu'il a encaisse. Applique en
+        // PREMIER : aucun filtre ajoute ensuite ne doit pouvoir elargir ca.
+        $authUser = $request->user();
+        if ($authUser
+            && ! $authUser->can('paiements.view')
+            && $authUser->can('paiements.view_own')
+        ) {
+            $query->ownedBy($authUser);
+        }
+
+        if ($status = $request->input('status')) {
+            $query->where('status', $status);
+        }
+
+        if ($dateDebut = $request->input('date_debut')) {
+            $query->whereDate('date_paiement', '>=', $dateDebut);
+        }
+
+        if ($dateFin = $request->input('date_fin')) {
+            $query->whereDate('date_paiement', '<=', $dateFin);
+        }
+
+        // Un versement reparti concerne plusieurs frais : le scope lit les
+        // allocations quand il y en a, la categorie propre sinon.
+        if ($categoryId = $request->input('frais_category_id')) {
+            $query->pourCategorie((int) $categoryId);
+        }
+
+        // Valeur exacte, telle que stockee : les valeurs legacy (« espèces »)
+        // se filtrent comme les canoniques, sans reecriture de la donnee.
+        if ($mode = $request->input('mode_paiement')) {
+            $query->whereIn('mode_paiement', self::variantesDuMode((string) $mode));
+        }
+
+        // Une seule règle métier pour liste, exports simplifiés et export détaillé.
+        self::appliquerPortee($query, (string) $request->input('portee', 'tous'));
+
+        return $query;
+    }
+
+    /**
+     * Périmètre selon l'ANNÉE DE LA DETTE, jamais selon la date de paiement.
+     * Valable pour l'index et les deux familles d'exports afin qu'ils convergent.
+     */
+    public static function appliquerPortee(\Illuminate\Database\Eloquent\Builder $query, string $portee): void
+    {
+        if (in_array($portee, ['annee', 'arrieres'], true)) {
+            $anneeId = ESBTPAnneeUniversitaire::query()->where('is_current', true)->value('id');
+            if ($portee === 'annee') {
+                if ($anneeId) {
+                    $query->whereHas('inscription', fn ($q) => $q->where('annee_universitaire_id', $anneeId));
+                    $query->where(fn ($q) => $q->whereNull('type_paiement')->orWhere('type_paiement', '!=', 'reliquat'));
+                } else {
+                    $query->whereRaw('1 = 0');
+                }
+            } else {
+                $query->where(function ($q) use ($anneeId) {
+                    $q->where('type_paiement', 'reliquat');
+                    if ($anneeId) {
+                        $q->orWhereHas('inscription', fn ($insc) => $insc->where('annee_universitaire_id', '!=', $anneeId));
+                    } else {
+                        $q->orWhereHas('inscription');
+                    }
+                });
+            }
+        }
+
+    }
+
+    /**
+     * Prépare les données de listing des paiements (liste, statistiques, timestamp).
+     */
+    /**
+     * @param  bool  $avecStats  false pour la suite d'une liste au defilement :
+     *                           les lignes seules, sans la dizaine d'agregats
+     *                           des compteurs, que la page a deja
+     */
+    public function preparePaiementListing(Request $request, FuzzyNameMatcher $matcher, array $baseLogContext, float $startMicrotime, string $logPrefix, bool $avecStats = true): array
+    {
+        $search = trim((string) $request->input('search'));
+        $status = $request->input('status');
+        $dateDebut = $request->input('date_debut');
+        $dateFin = $request->input('date_fin');
+
+        $baseQuery = $this->baseFilteredQuery($request);
+
+        $perPage = 15;
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+
+        $escapeLike = static function (string $value): string {
+            return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
+        };
+
+        $searchTokens = collect(preg_split('/[\s,]+/u', $search, -1, PREG_SPLIT_NO_EMPTY))
+            ->map(fn ($token) => trim($token))
+            ->filter();
+
+        Log::info("{$logPrefix} processing", array_merge($baseLogContext, [
+            'has_search' => $search !== '',
+            'filters' => [
+                'status' => $status,
+                'date_debut' => $dateDebut,
+                'date_fin' => $dateFin,
+                'frais_category_id' => $request->input('frais_category_id'),
+            ],
+        ]));
+
+        $applyQuickSearch = function ($builder) use ($search, $searchTokens, $escapeLike) {
+            $escapedSearch = $escapeLike($search);
+            $likeSearch = "%{$escapedSearch}%";
+
+            $builder->where(function ($q) use ($likeSearch, $searchTokens, $escapeLike) {
+                $q->whereHas('etudiant', function ($etudiantQuery) use ($likeSearch, $searchTokens, $escapeLike) {
+                    $etudiantQuery->where('matricule', 'like', $likeSearch)
+                        ->orWhere('nom', 'like', $likeSearch)
+                        ->orWhere('prenoms', 'like', $likeSearch)
+                        ->orWhereHas('user', function ($userQuery) use ($likeSearch) {
+                            $userQuery->where('name', 'like', $likeSearch)
+                                ->orWhere('email', 'like', $likeSearch);
+                        })
+                        ->orWhereRaw("CONCAT_WS(' ', prenoms, nom) LIKE ?", [$likeSearch])
+                        ->orWhereRaw("CONCAT_WS(' ', nom, prenoms) LIKE ?", [$likeSearch]);
+
+                    if ($searchTokens->isNotEmpty()) {
+                        $etudiantQuery->orWhere(function ($subQuery) use ($searchTokens, $escapeLike) {
+                            foreach ($searchTokens as $token) {
+                                $escapedToken = $escapeLike($token);
+                                $likeToken = "%{$escapedToken}%";
+                                $subQuery->orWhere('nom', 'like', $likeToken)
+                                         ->orWhere('prenoms', 'like', $likeToken)
+                                         ->orWhere('matricule', 'like', $likeToken);
+                            }
+                        });
+                    }
+                })
+                ->orWhere('numero_recu', 'like', $likeSearch)
+                ->orWhere('reference_paiement', 'like', $likeSearch);
+
+                if ($searchTokens->isNotEmpty()) {
+                    $q->orWhere(function ($subQuery) use ($searchTokens, $escapeLike) {
+                        foreach ($searchTokens as $token) {
+                            $escapedToken = $escapeLike($token);
+                            $likeToken = "%{$escapedToken}%";
+                            $subQuery->orWhere('numero_recu', 'like', $likeToken)
+                                     ->orWhere('reference_paiement', 'like', $likeToken);
+                        }
+                    });
+                }
+            });
+        };
+
+        $applyFallbackQuickSearch = function ($builder) use ($search, $escapeLike) {
+            $escapedSearch = $escapeLike($search);
+            $likeSearch = "%{$escapedSearch}%";
+
+            $builder->where(function ($q) use ($likeSearch) {
+                $q->whereHas('etudiant', function ($etudiantQuery) use ($likeSearch) {
+                    $etudiantQuery->where('matricule', 'like', $likeSearch)
+                        ->orWhere('nom', 'like', $likeSearch)
+                        ->orWhere('prenoms', 'like', $likeSearch);
+                })
+                ->orWhere('numero_recu', 'like', $likeSearch)
+                ->orWhere('reference_paiement', 'like', $likeSearch);
+            });
+        };
+
+        $scored = collect();
+
+        if ($search !== '') {
+            $candidatesQuery = clone $baseQuery;
+            $applyQuickSearch($candidatesQuery);
+
+            try {
+                $candidates = $candidatesQuery->limit(250)->get();
+            } catch (QueryException $exception) {
+                Log::warning("{$logPrefix} fallback search triggered", array_merge($baseLogContext, [
+                    'message' => $exception->getMessage(),
+                ]));
+
+                $fallbackQuery = clone $baseQuery;
+                $applyFallbackQuickSearch($fallbackQuery);
+
+                $candidates = $fallbackQuery->limit(250)->get();
+            }
+
+            $scored = $matcher->match($search, $candidates, function ($paiement) {
+                $etudiant = $paiement->etudiant;
+
+                return [
+                    'matricule' => $etudiant?->matricule,
+                    'nom' => $etudiant?->nom,
+                    'prenoms' => $etudiant?->prenoms,
+                    'full_name' => $etudiant ? trim($etudiant->nom . ' ' . $etudiant->prenoms) : null,
+                    'numero_recu' => $paiement->numero_recu,
+                    'reference' => $paiement->reference_paiement,
+                ];
+            }, [
+                'threshold' => 35,
+                'limit' => 200,
+                'boosts' => [
+                    'numero_recu' => 20,
+                    'reference' => 15,
+                    'matricule' => 10,
+                ],
+            ]);
+
+            $total = $scored->count();
+            $items = $scored->forPage($currentPage, $perPage)->values();
+
+            $paiements = new LengthAwarePaginator(
+                $items,
+                $total,
+                $perPage,
+                $currentPage,
+                [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                ]
+            );
+        } else {
+            $paiements = (clone $baseQuery)->paginate($perPage, ['*'], 'page', $currentPage);
+        }
+
+        $paiements->appends($request->query());
+
+        if (! $avecStats) {
+            return [
+                'paiements' => $paiements,
+                'stats' => [],
+                'last_updated_at' => null,
+                'summary' => [
+                    'total' => $paiements->total(),
+                    'page' => $paiements->currentPage(),
+                    'per_page' => $paiements->perPage(),
+                ],
+            ];
+        }
+
+        $statsQueryBase = clone $baseQuery;
+        if ($search !== '') {
+            try {
+                $applyQuickSearch($statsQueryBase);
+            } catch (QueryException $exception) {
+                Log::warning("{$logPrefix} stats fallback triggered", array_merge($baseLogContext, [
+                    'message' => $exception->getMessage(),
+                ]));
+                $applyFallbackQuickSearch($statsQueryBase);
+            }
+        }
+
+        // ===================================================================
+        // IMPORTANT: Calculer les stats UNIQUEMENT sur les paiements filtrés
+        // ===================================================================
+
+        // Compter les paiements filtrés
+        $stats = [
+            'total' => (clone $statsQueryBase)->count(),
+            'valides' => (clone $statsQueryBase)->where('status', 'validé')->count(),
+            'en_attente' => (clone $statsQueryBase)->where('status', 'en_attente')->count(),
+            'rejetes' => (clone $statsQueryBase)->where('status', 'rejeté')->count(),
+        ];
+
+        // Calculer les montants sur les paiements filtrés
+        //
+        // Filtre par frais actif : on somme la PART allee sur ce frais, pas le
+        // versement entier. Sans ca, un versement de 255 000 F reparti sur
+        // trois frais gonflerait de 255 000 le total de chacun des trois.
+        $fraisFiltre = $request->input('frais_category_id');
+
+        // Un avoir « credit sur compte » creuse un ecart assume entre cet ecran
+        // et l'etat financier : l'argent reste a l'ecole, donc il ne bouge pas ce
+        // total de caisse, mais il annule bien le versement sur le frais, donc
+        // l'etat financier le deduit. On l'expose pour que la difference se lise
+        // sous le KPI au lieu de se deviner d'un ecran a l'autre.
+        $avoirsCredit = fn () => (clone $statsQueryBase)
+            ->where('status', 'validé')->avoires()->where('avoir_kind', 'credit');
+
+        if ($fraisFiltre) {
+            $categorieId = (int) $fraisFiltre;
+            $montants = app(MontantsParFrais::class);
+            $surCeFrais = fn ($query) => (float) ($montants->parFrais($query)[$categorieId] ?? 0);
+
+            $montantValide = max(0.0,
+                $surCeFrais((clone $statsQueryBase)->where('status', 'validé')->encaissements())
+                - $surCeFrais((clone $statsQueryBase)->where('status', 'validé')->avoires()->where('avoir_kind', 'refund'))
+            );
+            $montantEnAttente = $surCeFrais((clone $statsQueryBase)->where('status', 'en_attente')->encaissements());
+            $montantRejete = $surCeFrais((clone $statsQueryBase)->where('status', 'rejeté')->encaissements());
+            $creditsSurCompte = $surCeFrais($avoirsCredit());
+        } else {
+            $montantValide = ESBTPPaiement::netCashSum((clone $statsQueryBase)->where('status', 'validé'));
+            $montantEnAttente = (clone $statsQueryBase)->where('status', 'en_attente')->encaissements()->sum('montant') ?? 0;
+            $montantRejete = (clone $statsQueryBase)->where('status', 'rejeté')->encaissements()->sum('montant') ?? 0;
+            $creditsSurCompte = (float) ($avoirsCredit()->sum('montant') ?? 0);
+        }
+        $montantTotal = $montantValide + $montantEnAttente + $montantRejete;
+
+        $stats['montant_total'] = $montantTotal;
+        $stats['montant_valide'] = $montantValide;
+        $stats['montant_en_attente'] = $montantEnAttente;
+        $stats['montant_rejete'] = $montantRejete;
+        $stats['montant_credit_avoir'] = $creditsSurCompte;
+
+        // Calculer le taux de recouvrement sur les paiements filtrés
+        $stats['recovery_rate'] = $montantTotal > 0
+            ? round(($montantValide / $montantTotal) * 100, 1)
+            : 0;
+
+        // Calculer les stats par catégorie sur les paiements filtrés
+        $statsParCategorie = $this->calculateFilteredCategoryStats(clone $statsQueryBase);
+        $stats = array_merge($stats, $statsParCategorie);
+
+        $lastUpdatedAt = null;
+
+        if ($search !== '') {
+            $lastUpdatedAt = $scored->map(function ($paiement) {
+                return $paiement->updated_at ?? $paiement->created_at;
+            })->filter()->max();
+        } else {
+            $latestUpdated = (clone $baseQuery)->max('updated_at');
+            if ($latestUpdated) {
+                $lastUpdatedAt = Carbon::parse($latestUpdated);
+            } else {
+                $latestCreated = (clone $baseQuery)->max('created_at');
+                $lastUpdatedAt = $latestCreated ? Carbon::parse($latestCreated) : null;
+            }
+        }
+
+        if ($lastUpdatedAt && ! $lastUpdatedAt instanceof Carbon) {
+            $lastUpdatedAt = Carbon::parse($lastUpdatedAt);
+        }
+
+        return [
+            'paiements' => $paiements,
+            'stats' => $stats,
+            'last_updated_at' => $lastUpdatedAt,
+            'summary' => [
+                'total' => $paiements->total(),
+                'page' => $paiements->currentPage(),
+                'per_page' => $paiements->perPage(),
+            ],
+        ];
+    }
+
+    /**
+     * Cle canonique d'une valeur stockee : le code du mode reconnu (« especes »
+     * pour « Espèces »), sinon la valeur telle quelle. Source unique du
+     * regroupement : options, filtre et recapitulatif passent tous par elle.
+     */
+    public static function cleDuMode(string $valeur): string
+    {
+        return ModePaiement::fromLegacy($valeur)?->value ?? $valeur;
+    }
+
+    /** Libelle affiche pour une cle : celui du mode, sinon la valeur en majuscule initiale. */
+    public static function libelleDuMode(string $cle): string
+    {
+        return ModePaiement::tryFrom($cle)?->label()
+            ?? mb_strtoupper(mb_substr($cle, 0, 1, 'UTF-8'), 'UTF-8').mb_substr($cle, 1, null, 'UTF-8');
+    }
+
+    /**
+     * Options du filtre « Mode de règlement » : cle = code canonique, libelle
+     * affiche. Une option par mode, meme si la base l'a ecrit en code et en libelle.
+     *
+     * @return array<string, string>
+     */
+    public static function optionsDesModes(): array
+    {
+        $options = [];
+        foreach (self::valeursStockeesDesModes() as $valeur) {
+            $cle = self::cleDuMode($valeur);
+            $options[$cle] ??= self::libelleDuMode($cle);
+        }
+
+        asort($options);
+
+        return $options;
+    }
+
+    /**
+     * Valeurs distinctes non vides de mode_paiement telles qu'elles sont en base.
+     * Lue a chaque appel : pas de memoire statique, qui survivrait aux ecritures
+     * d'un test et donnerait un resultat dependant de l'ordre d'execution.
+     *
+     * @return list<string>
+     */
+    public static function valeursStockeesDesModes(): array
+    {
+        return ESBTPPaiement::query()
+            ->whereNotNull('mode_paiement')
+            ->where('mode_paiement', '!=', '')
+            ->distinct()
+            ->pluck('mode_paiement')
+            ->map(fn ($valeur) => (string) $valeur)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Toutes les formes stockees d'un mode canonique (code ou libelle) : un
+     * filtre sur « especes » doit aussi prendre les lignes ecrites « Espèces ».
+     *
+     * @return list<string>
+     */
+    public static function variantesDuMode(string $cle): array
+    {
+        return self::variantesDesModes([$cle]);
+    }
+
+    /**
+     * Les formes stockees de plusieurs modes, en une seule lecture de la table.
+     *
+     * @param  array<int, string>  $cles
+     * @return list<string>
+     */
+    public static function variantesDesModes(array $cles): array
+    {
+        // Une valeur ancienne (« mobile ») est ramenee a sa cle canonique.
+        $cles = array_map(fn ($cle) => self::cleDuMode((string) $cle), $cles);
+        $variantes = collect(self::valeursStockeesDesModes())
+            ->filter(fn (string $valeur) => in_array(self::cleDuMode($valeur), $cles, true))
+            ->values()
+            ->all();
+
+        // Un mode choisi sans aucune ligne stockee reste dans le filtre : il ne
+        // ramene rien, plutot que d'elargir le filtre a tous les modes.
+        return array_values(array_unique(array_merge($variantes, $cles)));
+    }
+
+    /**
+     * Les filtres tels qu'ils s'impriment dans le recapitulatif d'un document.
+     * Le libelle du frais, pas son id ; une categorie archivee garde son nom,
+     * sinon le filtre serait applique sans etre imprime.
+     *
+     * @return array<string, mixed>
+     */
+    public function filtresDocument(Request $request): array
+    {
+        $categorieId = $request->input('frais_category_id');
+
+        $libelleFrais = null;
+        if ($categorieId) {
+            $libelleFrais = \App\Models\ESBTPFraisCategory::withTrashed()
+                ->whereKey($categorieId)
+                ->value('name') ?? "Frais supprimé (n° {$categorieId})";
+        }
+
+        return [
+            'search' => $request->input('search'),
+            'status' => $request->input('status'),
+            'date_debut' => $request->input('date_debut'),
+            'date_fin' => $request->input('date_fin'),
+            'frais_category_id' => $categorieId,
+            'frais_category' => $libelleFrais,
+            'mode_paiement' => ($mode = (string) $request->input('mode_paiement')) !== ''
+                ? self::libelleDuMode(self::cleDuMode($mode))
+                : null,
+            'portee' => $request->input('portee', 'tous'),
+        ];
+    }
+
+    /**
+     * Empreinte légère de la liste (nombre + dernière modification) pour le
+     * polling. Même périmètre et mêmes filtres que la liste, sauf la recherche
+     * texte (floue, non reproductible en SQL) : sans cela, une recherche active
+     * ferait croire à un changement toutes les 30 s et remettrait la liste à zéro.
+     *
+     * @return array{count: int, last_updated_at: ?string}
+     */
+    public function pointDeControle(Request $request): array
+    {
+        $requete = $this->baseFilteredQuery($request)->reorder();
+
+        return [
+            'count' => (clone $requete)->count(),
+            'last_updated_at' => optional(
+                Carbon::make((clone $requete)->max('updated_at'))
+            )->toIso8601String(),
+        ];
+    }
+
+    /**
+     * Calcule les statistiques par catégorie UNIQUEMENT sur les paiements filtrés
+     */
+    public function calculateFilteredCategoryStats($filteredQuery)
+    {
+        // Initialiser les stats
+        $stats = [
+            'academic_total' => 0,
+            'academic_paid' => 0,
+            'academic_pending' => 0,
+            'service_total' => 0,
+            'service_paid' => 0,
+            'service_pending' => 0,
+            'administrative_total' => 0,
+            'administrative_paid' => 0,
+            'administrative_pending' => 0,
+        ];
+
+        // Récupérer les catégories de frais
+        $categories = \App\Models\ESBTPFraisCategory::all()->keyBy('id');
+
+        // Calculer les montants par catégorie sur les paiements filtrés
+        $paiementsParCategorie = (clone $filteredQuery)
+            ->selectRaw('frais_category_id, status, SUM('.ESBTPPaiement::sqlCashCase().') as total_montant')
+            ->whereNotNull('frais_category_id')
+            ->groupBy('frais_category_id', 'status')
+            ->get();
+
+        foreach ($paiementsParCategorie as $stat) {
+            $category = $categories->get($stat->frais_category_id);
+            if (!$category) continue;
+
+            $montant = (float) $stat->total_montant;
+            $type = strtolower($category->type); // academic, service, administrative
+
+            // Ajouter au total de la catégorie
+            if (isset($stats["{$type}_total"])) {
+                $stats["{$type}_total"] += $montant;
+            }
+
+            // Répartir selon le statut
+            if ($stat->status === 'validé' && isset($stats["{$type}_paid"])) {
+                $stats["{$type}_paid"] += $montant;
+            } elseif ($stat->status === 'en_attente' && isset($stats["{$type}_pending"])) {
+                $stats["{$type}_pending"] += $montant;
+            }
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Calcule les vraies statistiques basées sur les inscriptions et leurs frais attendus.
+     */
+    public function calculateCategoryStats($baseQuery = null)
+    {
+        // Obtenir l'année en cours pour les calculs
+        $anneeEnCours = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        // Si aucune année courante, prendre la plus récente
+        if (!$anneeEnCours) {
+            $anneeEnCours = \App\Models\ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->first();
+        }
+
+        if (!$anneeEnCours) {
+            return $this->getEmptyStats();
+        }
+
+        // Récupérer toutes les inscriptions de l'année en cours (même filtrage que suivi-categories)
+        $inscriptions = \App\Models\ESBTPInscription::with(['filiere', 'niveauEtude'])
+            ->where('annee_universitaire_id', $anneeEnCours->id)
+            ->whereIn('status', ['active', 'en_attente', 'validée'])
+            ->get();
+
+        $statsService = app(PaymentStatsService::class);
+
+        $stats = [
+            'academic_paid' => 0,
+            'service_paid' => 0,
+            'administrative_paid' => 0,
+            'academic_pending' => 0,
+            'service_pending' => 0,
+            'administrative_pending' => 0,
+            'academic_total' => 0,
+            'service_total' => 0,
+            'administrative_total' => 0,
+        ];
+
+        // Pour chaque inscription, calculer les montants attendus et payés
+        foreach ($inscriptions as $inscription) {
+            $fraisStats = $statsService->calculateFraisForInscription($inscription);
+
+            foreach (['academic', 'service', 'administrative'] as $type) {
+                $stats[$type . '_total'] += $fraisStats[$type]['expected'];
+                $stats[$type . '_paid'] += $fraisStats[$type]['paid'];
+                $stats[$type . '_pending'] += $fraisStats[$type]['expected'] - $fraisStats[$type]['paid'];
+            }
+        }
+
+        // S'assurer que les pending ne sont jamais négatifs
+        foreach (['academic', 'service', 'administrative'] as $type) {
+            $stats[$type . '_pending'] = max(0, $stats[$type . '_pending']);
+        }
+
+        // Ajouter les reliquats aux montants en attente
+        $reliquatsStats = $statsService->calculateReliquatsStats($inscriptions);
+        foreach (['academic', 'service', 'administrative'] as $type) {
+            $stats[$type . '_pending'] += $reliquatsStats[$type . '_pending'];
+            $stats[$type . '_total'] += $reliquatsStats[$type . '_total'];
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Retourne des stats vides en cas de problème.
+     */
+    private function getEmptyStats()
+    {
+        return [
+            'academic_paid' => 0,
+            'service_paid' => 0,
+            'administrative_paid' => 0,
+            'academic_pending' => 0,
+            'service_pending' => 0,
+            'administrative_pending' => 0,
+            'academic_total' => 0,
+            'service_total' => 0,
+            'administrative_total' => 0,
+        ];
+    }
+
+    /**
+     * Récupère TOUS les paiements filtrés (sans pagination) pour les exports
+     */
+    public function getAllFilteredPaiements(Request $request, FuzzyNameMatcher $matcher)
+    {
+        $search = trim((string) $request->input('search'));
+
+        // Exactement les memes filtres que l'ecran : c'est la raison d'etre du
+        // socle. Un export qui ne montre pas ce que l'utilisateur avait sous
+        // les yeux est un document faux.
+        $query = $this->baseFilteredQuery($request);
+
+        // Appliquer le filtre de recherche si présent
+        if ($search !== '') {
+            $escapeLike = static function (string $value): string {
+                return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
+            };
+
+            $escapedSearch = $escapeLike($search);
+            $likeSearch = "%{$escapedSearch}%";
+
+            $query->where(function ($q) use ($likeSearch) {
+                $q->whereHas('etudiant', function ($etudiantQuery) use ($likeSearch) {
+                    $etudiantQuery->where('matricule', 'like', $likeSearch)
+                        ->orWhere('nom', 'like', $likeSearch)
+                        ->orWhere('prenoms', 'like', $likeSearch)
+                        ->orWhereHas('user', function ($userQuery) use ($likeSearch) {
+                            $userQuery->where('name', 'like', $likeSearch)
+                                ->orWhere('email', 'like', $likeSearch);
+                        })
+                        ->orWhereRaw("CONCAT_WS(' ', prenoms, nom) LIKE ?", [$likeSearch])
+                        ->orWhereRaw("CONCAT_WS(' ', nom, prenoms) LIKE ?", [$likeSearch]);
+                })
+                ->orWhere('numero_recu', 'like', $likeSearch)
+                ->orWhere('reference_paiement', 'like', $likeSearch);
+            });
+        }
+
+        // Récupérer TOUS les résultats (pas de pagination)
+        return $query->get();
+    }
+}

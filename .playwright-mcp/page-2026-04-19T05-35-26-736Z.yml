@@ -1,0 +1,416 @@
+- generic [active] [ref=e1]:
+  - text:      
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e5]:
+        - img "Logo KLASSCI" [ref=e7]
+        - generic [ref=e8]: KLASSCI
+      - generic [ref=e9]:
+        - generic [ref=e10]: Tableau de bord
+        - link " Accueil" [ref=e12] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/dashboard
+          - generic [ref=e14]: 
+          - generic [ref=e15]: Accueil
+        - generic [ref=e16]: Gestion académique
+        - generic [ref=e17]:
+          - button " Filières & Classes " [ref=e18] [cursor=pointer]:
+            - generic [ref=e20]: 
+            - generic [ref=e21]: Filières & Classes
+            - generic [ref=e23]: 
+          - generic:
+            - link "Filières" [ref=e24] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/filieres
+              - generic [ref=e25]: Filières
+            - link "Classes" [ref=e26] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/classes
+              - generic [ref=e27]: Classes
+            - link "Niveaux d'études" [ref=e28] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/niveaux-etudes
+              - generic [ref=e29]: Niveaux d'études
+            - link "Années universitaires" [ref=e30] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/annees-universitaires
+              - generic [ref=e31]: Années universitaires
+        - generic [ref=e32]: Étudiants
+        - generic [ref=e33]:
+          - button " Étudiants " [ref=e34] [cursor=pointer]:
+            - generic [ref=e36]: 
+            - generic [ref=e37]: Étudiants
+            - generic [ref=e39]: 
+          - generic:
+            - link " Liste des Étudiants" [ref=e40] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/etudiants
+              - generic [ref=e42]: 
+              - generic [ref=e43]: Liste des Étudiants
+            - link " Inscriptions" [ref=e44] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/inscriptions
+              - generic [ref=e46]: 
+              - generic [ref=e47]: Inscriptions
+            - link " Nouvelle Inscription" [ref=e48] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/inscriptions/create
+              - generic [ref=e50]: 
+              - generic [ref=e51]: Nouvelle Inscription
+            - link " Réinscriptions" [ref=e52] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/reinscription
+              - generic [ref=e54]: 
+              - generic [ref=e55]: Réinscriptions
+            - link " Sous réserve" [ref=e56] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/inscriptions/sous-reserve
+              - generic [ref=e58]: 
+              - generic [ref=e59]: Sous réserve
+        - generic [ref=e60]: Enseignement
+        - link " Emplois du temps" [ref=e62] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/emploi-temps
+          - generic [ref=e64]: 
+          - generic [ref=e65]: Emplois du temps
+        - link " Matières" [ref=e67] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/matieres
+          - generic [ref=e69]: 
+          - generic [ref=e70]: Matières
+        - link " Planning Général" [ref=e72] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/planning-general
+          - generic [ref=e74]: 
+          - generic [ref=e75]: Planning Général
+        - generic [ref=e76]: Notes & Rapports
+        - generic [ref=e77]:
+          - button " Notes & Bulletins " [ref=e78] [cursor=pointer]:
+            - generic [ref=e80]: 
+            - generic [ref=e81]: Notes & Bulletins
+            - generic [ref=e83]: 
+          - generic:
+            - link "Gestion des notes" [ref=e84] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/notes
+              - generic [ref=e85]: Gestion des notes
+            - link "Résultats & Classements" [ref=e86] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/resultats
+              - generic [ref=e87]: Résultats & Classements
+        - link " Examens & Évaluations" [ref=e89] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/evaluations
+          - generic [ref=e91]: 
+          - generic [ref=e92]: Examens & Évaluations
+        - generic [ref=e93]: Système LMD
+        - generic [ref=e94]:
+          - button " LMD " [ref=e95] [cursor=pointer]:
+            - generic [ref=e97]: 
+            - generic [ref=e98]: LMD
+            - generic [ref=e100]: 
+          - generic:
+            - link "Domaines & Parcours" [ref=e101] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/lmd/parcours-domain
+              - generic [ref=e102]: Domaines & Parcours
+            - link "Unités d'Enseignement" [ref=e103] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/lmd/ue
+              - generic [ref=e104]: Unités d'Enseignement
+            - link "Notes LMD" [ref=e105] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/lmd/notes
+              - generic [ref=e106]: Notes LMD
+            - link "Résultats LMD" [ref=e107] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/lmd/resultats
+              - generic [ref=e108]: Résultats LMD
+            - link "Bulletins LMD" [ref=e109] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/lmd/bulletins
+              - generic [ref=e110]: Bulletins LMD
+        - generic [ref=e111]: Administration
+        - generic [ref=e112]:
+          - button " Personnel " [ref=e113] [cursor=pointer]:
+            - generic [ref=e115]: 
+            - generic [ref=e116]: Personnel
+            - generic [ref=e118]: 
+          - generic:
+            - link "Gestion du personnel" [ref=e119] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/personnel/unified
+              - generic [ref=e120]: Gestion du personnel
+            - link "Départements" [ref=e121] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/departments
+              - generic [ref=e122]: Départements
+        - generic [ref=e123]: Présence & Absences
+        - generic [ref=e124]:
+          - button " Gestion des présences " [ref=e125] [cursor=pointer]:
+            - generic [ref=e127]: 
+            - generic [ref=e128]: Gestion des présences
+            - generic [ref=e130]: 
+          - generic:
+            - link "Présences étudiants" [ref=e131] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/attendances
+              - generic [ref=e132]: Présences étudiants
+            - link "Rapports de présence" [ref=e133] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/attendances/rapport-form
+              - generic [ref=e134]: Rapports de présence
+            - link "Codes d'émargement" [ref=e135] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/attendance-codes
+              - generic [ref=e136]: Codes d'émargement
+            - link "Tableau de Bord Présences" [ref=e137] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/coordinateur/attendance-dashboard
+              - generic [ref=e138]: Tableau de Bord Présences
+        - generic [ref=e139]: Caisse
+        - link " Pré-inscription" [ref=e141] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/inscriptions/pre-inscription
+          - generic [ref=e143]: 
+          - generic [ref=e144]: Pré-inscription
+        - generic [ref=e145]: Communication
+        - link " Messages" [ref=e147] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/mes-messages
+          - generic [ref=e149]: 
+          - generic [ref=e150]: Messages
+        - link " Mes notifications" [ref=e152] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/mes-notifications
+          - generic [ref=e154]: 
+          - generic [ref=e155]: Mes notifications
+        - generic [ref=e156]: Gestion financière
+        - link " Dashboard Comptable" [ref=e158] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/comptabilite/dashboard
+          - generic [ref=e160]: 
+          - generic [ref=e161]: Dashboard Comptable
+        - generic [ref=e162]:
+          - button " Comptabilité " [ref=e163] [cursor=pointer]:
+            - generic [ref=e165]: 
+            - generic [ref=e166]: Comptabilité
+            - generic [ref=e168]: 
+          - generic:
+            - link "Gestion des Frais" [ref=e169] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/frais
+              - generic [ref=e170]: Gestion des Frais
+            - link "Configuration Frais" [ref=e171] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/frais/configure
+              - generic [ref=e172]: Configuration Frais
+            - link "Liste des Paiements" [ref=e173] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/paiements
+              - generic [ref=e174]: Liste des Paiements
+            - link "Suivi par Catégorie" [ref=e175] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/paiements/suivi-categories
+              - generic [ref=e176]: Suivi par Catégorie
+            - link "Relances" [ref=e177] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/comptabilite/relances
+              - generic [ref=e178]: Relances
+        - generic [ref=e179]: Communication
+        - link " Annonces" [ref=e181] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/annonces
+          - generic [ref=e183]: 
+          - generic [ref=e184]: Annonces
+        - link " Créer une annonce" [ref=e186] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/annonces/create
+          - generic [ref=e188]: 
+          - generic [ref=e189]: Créer une annonce
+        - generic [ref=e190]: Système
+        - generic [ref=e191]:
+          - button " Paramètres " [ref=e192] [cursor=pointer]:
+            - generic [ref=e194]: 
+            - generic [ref=e195]: Paramètres
+            - generic [ref=e197]: 
+          - link "Configuration" [ref=e198] [cursor=pointer]:
+            - /url: http://127.0.0.1:8000/esbtp/settings
+            - generic [ref=e199]: Configuration
+        - generic [ref=e200]: Mon compte
+        - link " Profil" [ref=e202] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/teacher/profile
+          - generic [ref=e204]: 
+          - generic [ref=e205]: Profil
+    - main [ref=e206]:
+      - navigation [ref=e207]:
+        - generic [ref=e208]:
+          - generic: 
+          - searchbox "Rechercher dans l'application..." [ref=e211]
+          - generic [ref=e212]:
+            - button "" [ref=e214] [cursor=pointer]:
+              - generic [ref=e215]: 
+            - generic [ref=e216]:
+              - button "" [ref=e217] [cursor=pointer]:
+                - generic [ref=e218]: 
+              - text: 
+            - generic [ref=e219]:
+              - button "" [ref=e220] [cursor=pointer]:
+                - generic [ref=e221]: 
+              - text:    
+            - generic [ref=e222]:
+              - button " N’GUESSAN Marcel Jacques Patrick" [ref=e223] [cursor=pointer]:
+                - generic [ref=e226]: 
+                - generic [ref=e228]: N’GUESSAN Marcel Jacques Patrick
+              - text:    
+      - generic [ref=e229]:
+        - text:   
+        - generic [ref=e231]:
+          - generic [ref=e233]:
+            - generic [ref=e234]:
+              - generic [ref=e236]: 
+              - generic [ref=e237]:
+                - heading "Suivi des Paiements" [level=1] [ref=e238]
+                - paragraph [ref=e239]: Monitoring des paiements étudiants et relances automatiques
+                - generic [ref=e240]:
+                  - generic [ref=e241]:
+                    - generic [ref=e242]: 
+                    - text: 2025-2026
+                    - button "Information changement d'année" [ref=e243] [cursor=pointer]:
+                      - generic [ref=e244]: 
+                  - status [ref=e245]:
+                    - generic [ref=e246]: 
+                    - text: "Statut : En attente"
+                    - link "Retirer le filtre statut" [ref=e247] [cursor=pointer]:
+                      - /url: http://127.0.0.1:8000/esbtp/paiements?
+                      - generic [ref=e248]: 
+            - generic [ref=e249]:
+              - button " Rafraîchir" [ref=e250] [cursor=pointer]:
+                - generic [ref=e251]: 
+                - generic [ref=e252]: Rafraîchir
+              - generic [ref=e253]:
+                - button " Exporter" [ref=e254] [cursor=pointer]:
+                  - generic [ref=e255]: 
+                  - generic [ref=e256]: Exporter
+                - text:   
+              - link " Suivi par Catégorie" [ref=e257] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/paiements/suivi-categories
+                - generic [ref=e258]: 
+                - generic [ref=e259]: Suivi par Catégorie
+          - generic [ref=e260]:
+            - generic [ref=e261]:
+              - link "Filtrer les paiements validés" [ref=e262] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/paiements?status=valid%C3%A9
+                - generic [ref=e263]:
+                  - generic [ref=e264]: Paiements Validés
+                  - generic [ref=e265]: 0 FCFA
+                  - generic [ref=e266]:
+                    - generic [ref=e267]: 
+                    - text: 0 paiement(s)
+              - link "Filtrer les paiements en attente" [ref=e268] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/paiements?status=en_attente
+                - generic [ref=e269]:
+                  - generic [ref=e270]: En Attente de Validation
+                  - generic [ref=e271]: 0 FCFA
+                  - generic [ref=e272]:
+                    - generic [ref=e273]: 
+                    - text: 0 paiement(s)
+              - link "Filtrer les paiements rejetés" [ref=e274] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/paiements?status=rejet%C3%A9
+                - generic [ref=e275]:
+                  - generic [ref=e276]: Paiements Rejetés
+                  - generic [ref=e277]: 0 FCFA
+                  - generic [ref=e278]:
+                    - generic [ref=e279]: 
+                    - text: 0 paiement(s)
+              - link "Afficher tous les paiements" [ref=e280] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/paiements
+                - generic [ref=e281]:
+                  - generic [ref=e282]: Total Paiements
+                  - generic [ref=e283]: 0 FCFA
+                  - generic [ref=e284]:
+                    - generic [ref=e285]: 
+                    - text: 0 paiement(s)
+            - generic [ref=e286]:
+              - generic [ref=e287]: 
+              - strong [ref=e288]: "Note :"
+              - text: Ces chiffres représentent les paiements enregistrés dans le système selon leur statut de validation. Pour voir les montants attendus vs payés par catégorie de frais, consultez le
+              - link "Suivi par Catégorie" [ref=e289] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/paiements/suivi-categories
+              - text: .
+          - generic [ref=e290]:
+            - generic [ref=e291]:
+              - generic [ref=e292]:
+                - generic [ref=e293]: 
+                - generic [ref=e294]: Filtres
+              - generic [ref=e295]:
+                - generic [ref=e296]:
+                  - generic [ref=e297]: 
+                  - generic [ref=e298]: "1"
+                  - text: filtre actif
+                - button " Effacer tout" [ref=e299] [cursor=pointer]:
+                  - generic [ref=e300]: 
+                  - text: Effacer tout
+            - generic [ref=e302]:
+              - generic [ref=e303]:
+                - generic [ref=e304]: Recherche
+                - textbox "Recherche" [ref=e305]:
+                  - /placeholder: Matricule, nom, n° reçu...
+              - generic [ref=e306]:
+                - generic [ref=e307]: Statut
+                - combobox "Statut" [ref=e308] [cursor=pointer]:
+                  - option "Tous"
+                  - option "En attente" [selected]
+                  - option "Validé"
+                  - option "Rejeté"
+              - generic [ref=e309]:
+                - generic [ref=e310]: Date début
+                - textbox "Date début" [ref=e311]
+              - generic [ref=e312]:
+                - generic [ref=e313]: Date fin
+                - textbox "Date fin" [ref=e314]
+              - button " Rechercher" [ref=e315] [cursor=pointer]:
+                - generic [ref=e316]: 
+                - text: Rechercher
+          - toolbar "Actions groupées sur paiements sélectionnés":
+            - generic:
+              - generic: 
+              - strong: "0"
+              - generic: paiement(s) sélectionné(s)
+            - generic:
+              - button " Valider" [ref=e317] [cursor=pointer]:
+                - generic [ref=e318]: 
+                - generic [ref=e319]: Valider
+              - button " Rejeter" [ref=e320] [cursor=pointer]:
+                - generic [ref=e321]: 
+                - generic [ref=e322]: Rejeter
+              - button " Annuler" [ref=e323] [cursor=pointer]:
+                - generic [ref=e324]: 
+                - generic [ref=e325]: Annuler
+          - generic [ref=e328]:
+            - generic [ref=e329]:
+              - generic [ref=e330]:
+                - generic [ref=e331]: 
+                - text: Liste des Paiements
+              - generic [ref=e332]: 0 résultat(s)
+            - table [ref=e334]:
+              - rowgroup [ref=e335]:
+                - row "Tout sélectionner N° Reçu Étudiant Catégorie Date Montant Mode Statut Actions" [ref=e336]:
+                  - columnheader "Tout sélectionner" [ref=e337]:
+                    - checkbox "Tout sélectionner" [ref=e338] [cursor=pointer]
+                  - columnheader "N° Reçu" [ref=e339]
+                  - columnheader "Étudiant" [ref=e340]
+                  - columnheader "Catégorie" [ref=e341]
+                  - columnheader "Date" [ref=e342]
+                  - columnheader "Montant" [ref=e343]
+                  - columnheader "Mode" [ref=e344]
+                  - columnheader "Statut" [ref=e345]
+                  - columnheader "Actions" [ref=e346]
+              - rowgroup [ref=e347]:
+                - row " Aucun paiement trouvé" [ref=e348]:
+                  - cell " Aucun paiement trouvé" [ref=e349]:
+                    - generic [ref=e350]: 
+                    - text: Aucun paiement trouvé
+  - generic [ref=e351]:
+    - button "Ouvrir l'assistant KLASSCI" [ref=e352] [cursor=pointer]:
+      - generic [ref=e353]: 
+    - dialog:
+      - generic:
+        - generic:
+          - generic: Assistant KLASSCI
+          - generic: Vos données, vos permissions, en temps réel.
+        - generic:
+          - button:
+            - generic: +
+          - button:
+            - generic: 
+          - button:
+            - generic: 
+          - button [disabled]:
+            - generic: 
+          - button:
+            - generic: 
+      - generic:
+        - complementary:
+          - generic: Conversations
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic: 
+              - heading [level=5]: Assistant KLASSCI
+              - paragraph: Posez une question sur vos paiements, étudiants, classes ou inscriptions.
+              - generic:
+                - button: Mes paiements
+                - button: Liste étudiants
+                - button: Classes disponibles
+          - generic:
+            - textbox:
+              - /placeholder: Écrivez votre question…
+            - button:
+              - generic: 
+      - generic:
+        - generic: 
+    - status

@@ -1,0 +1,88 @@
+{{--
+    Indicateur d'établissement, à la manière du sélecteur d'organisation des
+    applications SaaS. Sur bureau la marque KLASSCI reste dans la barre latérale :
+    ce badge répond à une autre question, « chez qui suis-je ? », qui compte dès
+    qu'on administre plusieurs écoles.
+
+    Sous le shell mobile la barre latérale est un tiroir fermé : la marque n'a
+    plus d'autre endroit où vivre. Le badge porte alors KLASSCI en premier
+    (logo + nom de l'application) et l'établissement en seconde ligne. Les deux
+    éléments .etb-marque / .etb-app sont masqués sur bureau (nextadmin.css) et
+    révélés par mobile-shell.css.
+
+    Statique et non cliquable : une instance ne dessert qu'un établissement, un
+    menu déroulant n'aurait rien à proposer. La navbar porte par ailleurs un
+    backdrop-filter, qui casserait le positionnement d'un menu.
+--}}
+@php
+    // Déjà lu par le gabarit (bloc PWA de l'en-tête) : on le reprend.
+    $etb = $pwaSchool ?? \App\Helpers\SettingsHelper::getSchoolInfo();
+
+    $etbNom = trim((string) ($etb['name'] ?? ''));
+    $etbSigle = trim((string) ($etb['acronym'] ?? ''));
+    $etbVille = trim((string) ($etb['city'] ?? ''));
+    $etbLogo = trim((string) ($etb['logo'] ?? ''));
+
+    // On affiche le NOM, pas le sigle : deux campus d'un même groupe
+    // partagent le sigle et deviendraient indiscernables. Un nom trop long
+    // est coupé par le CSS, l'infobulle porte la version entière.
+    $etbCourt = $etbNom !== '' ? $etbNom : $etbSigle;
+
+    // is_file et non file_exists : un chemin de dossier passerait le test et
+    // afficherait une image cassée.
+    $etbLogoUrl = null;
+    if ($etbLogo !== '' && is_file(storage_path('app/public/' . $etbLogo))) {
+        $etbLogoUrl = asset('storage/' . $etbLogo);
+    }
+
+    // Sans logo configuré, deux lettres valent mieux qu'un cadre vide.
+    $etbInitiales = $etbCourt !== ''
+        ? mb_strtoupper(mb_substr($etbCourt, 0, 2, 'UTF-8'), 'UTF-8')
+        : '';
+
+    // L'annee courante, pour que chacun sache sur quelle annee il travaille.
+    // Terminee (date de fin passee) : signalee, l'ecole doit en ouvrir une autre.
+    $etbAnnee = \App\Models\ESBTPAnneeUniversitaire::getCurrent();
+    $etbAnneeEchue = (bool) $etbAnnee?->estTerminee();
+    $etbAnneeTitre = $etbAnnee === null ? null : 'Année universitaire courante : ' . $etbAnnee->name
+        . ($etbAnneeEchue ? ' — terminée le ' . $etbAnnee->end_date->translatedFormat('j F Y') : '');
+
+    $etbInfobulle = $etbNom !== '' ? $etbNom : $etbCourt;
+    if ($etbVille !== '') {
+        $etbInfobulle .= ' — ' . $etbVille;
+    }
+@endphp
+
+@if($etbCourt !== '')
+<div class="etb-badge" title="KLASSCI — {{ $etbInfobulle }}">
+    <span class="etb-marque" aria-hidden="true">
+        <img src="{{ asset('images/LOGO-KLASSCI-PNG.png') }}" alt="">
+    </span>
+    <span class="etb-media">
+        @if($etbLogoUrl)
+            <img src="{{ $etbLogoUrl }}" alt="{{ $etbCourt }}" loading="lazy">
+        @else
+            <span class="etb-initiales" aria-hidden="true">{{ $etbInitiales }}</span>
+        @endif
+    </span>
+    <span class="etb-texte">
+        <span class="etb-app">KLASSCI</span>
+        <span class="etb-sous">
+            <span class="etb-nom">{{ $etbCourt }}</span>
+            @if($etbAnnee)
+                {{-- Sous le shell mobile, l'annee suit le nom sur la seconde ligne. --}}
+                <span class="etb-annee-ligne {{ $etbAnneeEchue ? 'is-echue' : '' }}">{{ $etbAnnee->name }}</span>
+            @endif
+        </span>
+        @if($etbVille !== '')
+            <span class="etb-ville">{{ $etbVille }}</span>
+        @endif
+    </span>
+    @if($etbAnnee)
+        <span class="etb-annee {{ $etbAnneeEchue ? 'is-echue' : '' }}" title="{{ $etbAnneeTitre }}">
+            <i class="fas {{ $etbAnneeEchue ? 'fa-triangle-exclamation' : 'fa-calendar-days' }}" aria-hidden="true"></i>
+            <span class="visually-hidden">Année universitaire courante :</span>{{ $etbAnnee->name }}
+        </span>
+    @endif
+</div>
+@endif

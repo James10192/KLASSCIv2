@@ -1,0 +1,96 @@
+<?php
+
+namespace Tests\Feature\Frais;
+
+use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPFiliere;
+use App\Models\ESBTPFraisCategory;
+use App\Models\ESBTPFraisConfiguration;
+use App\Models\ESBTPLMDDomaine;
+use App\Models\ESBTPLMDMention;
+use App\Models\ESBTPLMDParcours;
+use App\Models\ESBTPNiveauEtude;
+use App\Models\User;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Tests\TestCase;
+
+class FraisConfigureLmdAjaxTest extends TestCase
+{
+    use DatabaseTransactions;
+
+    public function test_lmd_ajax_categories_endpoint_accepts_parcours_scope_without_explicit_systeme(): void
+    {
+        $this->withoutMiddleware();
+
+        $user = User::factory()->create();
+        $annee = ESBTPAnneeUniversitaire::factory()->create();
+        $niveau = ESBTPNiveauEtude::factory()->create(['code' => 'L1', 'type' => 'Licence', 'year' => 1]);
+        $filiere = ESBTPFiliere::factory()->create();
+        $domaine = ESBTPLMDDomaine::create(['name' => 'Sciences', 'code' => 'SCI', 'is_active' => true]);
+        $mention = ESBTPLMDMention::create(['name' => 'Physique', 'code' => 'PHY', 'domaine_id' => $domaine->id, 'is_active' => true]);
+        $parcours = ESBTPLMDParcours::create(['name' => 'Tronc commun', 'code' => 'TCP', 'mention_id' => $mention->id, 'filiere_id' => $filiere->id, 'is_active' => true]);
+        $category = ESBTPFraisCategory::create([
+            'name' => 'Scolarite',
+            'code' => 'SCOLARITE',
+            'is_mandatory' => true,
+            'is_active' => true,
+            'category_type' => 'academic',
+            'sort_order' => 1,
+            'default_amount' => 1000,
+            'payment_deadline_days' => 30,
+        ]);
+
+        ESBTPFraisConfiguration::create([
+            'frais_category_id' => $category->id,
+            'systeme_academique' => 'LMD',
+            'filiere_id' => $filiere->id,
+            'parcours_id' => $parcours->id,
+            'niveau_id' => $niveau->id,
+            'amount' => 18000,
+            'payment_deadline_days' => 30,
+            'effective_date' => now()->toDateString(),
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        $response = $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])->get(route('esbtp.frais.get-categories', [
+            'parcours_id' => $parcours->id,
+            'niveau_id' => $niveau->id,
+            'type' => 'mandatory',
+        ]));
+
+        $response->assertOk();
+        $response->assertJson(['success' => true, 'systeme' => 'LMD']);
+        $response->assertSee('Scolarite', false);
+    }
+
+    public function test_bts_ajax_categories_endpoint_resolves_filiere_niveau_and_displays_zero_amount(): void
+    {
+        $this->withoutMiddleware();
+        $user = User::factory()->create();
+        $niveau = ESBTPNiveauEtude::factory()->create();
+        $filiere = ESBTPFiliere::factory()->create();
+        $category = ESBTPFraisCategory::create([
+            'name' => 'Frais BTS gratuits', 'code' => 'BTS-GRATUIT',
+            'is_mandatory' => true, 'is_active' => true, 'category_type' => 'academic',
+            'sort_order' => 1, 'default_amount' => 12000, 'payment_deadline_days' => 30,
+        ]);
+        ESBTPFraisConfiguration::create([
+            'frais_category_id' => $category->id, 'systeme_academique' => 'BTS',
+            'filiere_id' => $filiere->id, 'parcours_id' => null,
+            'niveau_id' => $niveau->id, 'amount' => 12000,
+            'amount_affecte' => 0, 'amount_reaffecte' => 0, 'amount_non_affecte' => 12000,
+            'payment_deadline_days' => 30, 'effective_date' => now()->toDateString(),
+            'is_active' => true, 'created_by' => $user->id,
+        ]);
+        $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->get(route('esbtp.frais.get-categories', [
+                'systeme' => 'BTS',
+                'filiere_id' => $filiere->id,
+                'niveau_id' => $niveau->id,
+                'type' => 'mandatory',
+            ]))
+            ->assertOk()->assertJson(['success' => true, 'systeme' => 'BTS'])
+            ->assertSee('Frais BTS gratuits', false);
+    }
+}

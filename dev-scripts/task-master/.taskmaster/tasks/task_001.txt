@@ -1,0 +1,33 @@
+# Task ID: 1
+# Title: Mise en place des migrations et modèles de données
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Créer les nouvelles tables et étendre les tables existantes selon les spécifications du PRD pour supporter les fonctionnalités avancées de comptabilité.
+# Details:
+Créer les migrations Laravel pour:
+1. Nouvelles tables:
+   - `esbtp_types_frais` (nom, periodicite, conditions_json, montant_fixe, est_obligatoire)
+   - `esbtp_relances` (etudiant_id, niveau, type, template_id, statut, response_data_json)
+   - `esbtp_kpis` (nom, valeur, periode, date_calcul, metadata_json)
+   - `esbtp_workflow_steps` (bon_id, etape, statut, user_id, commentaires, timestamp)
+
+2. Extensions des tables existantes:
+   - `esbtp_depenses`: ajouter numero_bon (UNIQUE), statut_workflow, workflow_data_json, approved_by, date_approbation
+   - `esbtp_paiements`: ajouter reference_externe, metadata_json, relance_id, canal_paiement
+   - `esbtp_configurations`: ajouter seuils_alertes_json, templates_relances_json, config_workflow_json
+
+3. Créer ou étendre les modèles Eloquent correspondants avec:
+   - Relations appropriées (belongsTo, hasMany, etc.)
+   - Mutators/Accessors pour les champs JSON
+   - Scopes pour les requêtes fréquentes
+   - Règles de validation
+
+4. Créer des seeders pour les données de test initiales
+
+# Test Strategy:
+1. Tests unitaires pour valider les relations entre modèles
+2. Tests de migration pour vérifier la création correcte des tables
+3. Tests de rollback pour vérifier la réversibilité des migrations
+4. Tests d'intégrité pour valider les contraintes (clés étrangères, unicité)
+5. Vérifier que les seeders fonctionnent correctement

@@ -1,0 +1,38 @@
+diff --git a/tests/Feature/Paiements/AvoirPaiementTest.php b/tests/Feature/Paiements/AvoirPaiementTest.php
+index 2326bb2ee..2edd7c8f4 100644
+--- a/tests/Feature/Paiements/AvoirPaiementTest.php
++++ b/tests/Feature/Paiements/AvoirPaiementTest.php
+@@ -11,6 +11,7 @@
+ use App\Services\AvoirService;
+ use Illuminate\Foundation\Testing\DatabaseTransactions;
+ use Illuminate\Support\Facades\Gate;
++use Spatie\Permission\Models\Role;
+ use Tests\TestCase;
+ 
+ class AvoirPaiementTest extends TestCase
+@@ -27,6 +28,13 @@ protected function setUp(): void
+         parent::setUp();
+ 
+         $this->user = User::factory()->create();
++
++        // Le test HTTP traverse la vraie chaine de middlewares. EnsureInstalled et
++        // CheckInstalled considerent l'application non installee tant qu'aucun
++        // superAdmin n'existe reellement en base, et redirigent alors vers
++        // /install : sans ce role, la requete n'atteindrait jamais le controleur.
++        $this->user->assignRole(Role::findOrCreate('superAdmin', 'web'));
++
+         $this->actingAs($this->user);
+         Gate::before(fn () => true);
+ 
+@@ -105,7 +113,10 @@ public function test_cannot_avoir_on_avoir(): void
+ 
+     public function test_refund_http_store(): void
+     {
+-        $this->withoutMiddleware();
++        // Aucun withoutMiddleware() ici : c'est tout l'interet de ce test. Le
++        // desactiver couperait aussi SubstituteBindings, le controleur recevrait
++        // un paiement vide et l'avoir serait refuse pour une raison inventee par
++        // le test lui-meme.
+         $parent = $this->paiement(8000);
+ 
+         $response = $this->post(route('esbtp.paiements.avoir.store', $parent), [

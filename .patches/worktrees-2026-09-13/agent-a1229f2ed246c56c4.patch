@@ -1,0 +1,43 @@
+diff --git a/app/Services/Trash/TrashDependencyAnalyzer.php b/app/Services/Trash/TrashDependencyAnalyzer.php
+index aff1ef398..308271c6e 100644
+--- a/app/Services/Trash/TrashDependencyAnalyzer.php
++++ b/app/Services/Trash/TrashDependencyAnalyzer.php
+@@ -38,8 +38,8 @@ public function forEtudiant(int $id): array
+         }
+ 
+         // Pour restaurer : pas de blocking automatique (l'étudiant est isolé).
+-        // Cascade restaurée : les inscriptions/paiements liés NE sont PAS auto-restaurés
+-        // car ils peuvent être indépendamment vivants ou supprimés. On informe juste.
++        // Cascade restaurée : on liste les inscriptions/paiements soft-deleted
++        // attachés qui seront ressuscités par le hook ESBTPEtudiant::booted::restoring.
+         $blockingRestore = [];
+         $cascadingRestore = [];
+ 
+@@ -66,6 +66,27 @@ public function forEtudiant(int $id): array
+             ->where('etudiant_id', $id)
+             ->whereNotNull('deleted_at')
+             ->count();
++
++        // Cascade restore : informer l'utilisateur des entités soft-deletées
++        // qui seront ressuscitées en cascade par le hook ESBTPEtudiant::booted::restoring.
++        // On compte les paiements directement attachés à l'étudiant ET via les
++        // inscriptions (cascade transitive : étudiant -> inscriptions -> paiements).
++        if ($inscriptionsTrashedCount > 0) {
++            $cascadingRestore[] = [
++                'type' => 'inscriptions',
++                'count' => $inscriptionsTrashedCount,
++                'label' => $inscriptionsTrashedCount.' inscription(s) seront restaurée(s) en cascade',
++                'icon' => 'fa-file-signature',
++            ];
++        }
++        if ($paiementsTrashedCount > 0) {
++            $cascadingRestore[] = [
++                'type' => 'paiements',
++                'count' => $paiementsTrashedCount,
++                'label' => $paiementsTrashedCount.' paiement(s) seront restauré(s) en cascade',
++                'icon' => 'fa-money-bill-wave',
++            ];
++        }
+         $notesCount = Schema::hasTable('esbtp_notes')
+             ? DB::table('esbtp_notes')->where('etudiant_id', $id)->count()
+             : 0;

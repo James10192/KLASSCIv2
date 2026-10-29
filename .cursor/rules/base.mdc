@@ -1,0 +1,53 @@
+---
+description: BASE DEVELOPMENT STANDARDS
+globs: 
+alwaysApply: false
+---
+
+# BASE DEVELOPMENT STANDARDS
+
+## ARCHITECTURAL PRINCIPLES
+- Maintain clear separation between business logic, data access, and presentation
+- Follow SOLID principles in all object-oriented code
+- Use dependency injection for loose coupling
+- Implement appropriate design patterns without overengineering
+- Prefer composition over inheritance
+
+## CODE QUALITY STANDARDS
+- Keep functions focused on a single responsibility (max 25-30 lines)
+- Limit parameter count to 3-4 per function
+- Write self-documenting code with clear naming
+- Add explanatory comments only for non-obvious logic
+- Validate all inputs at system boundaries
+- Handle all errors explicitly and appropriately
+- Include unit tests for all business logic
+- Maintain minimum 80% test coverage for critical functionality
+
+## NAMING CONVENTIONS
+- Use descriptive, intention-revealing names for all identifiers
+- Follow language-specific conventions consistently:
+  - JavaScript/TypeScript: camelCase for variables/functions, PascalCase for classes
+  - Python: snake_case for variables/functions, PascalCase for classes
+  - Ruby: snake_case for variables/methods, PascalCase for classes
+  - CSS: kebab-case for classes
+- Use domain-specific terminology consistently
+- Avoid abbreviations except for universally understood ones
+- Prefix interface names with "I" (e.g., IUserService)
+- Prefix abstract classes with "Abstract" (e.g., AbstractRepository)
+
+## DATABASE BEST PRACTICES
+- Use consistent naming for database objects
+- Implement proper indexing for frequently queried columns
+- Normalize database schema appropriately (aim for 3NF)
+- Use migrations for all schema changes
+- Never create tables or columns that duplicate existing functionality
+- Use meaningful foreign key names (e.g., user_id not just id)
+- Include proper constraints (NOT NULL, UNIQUE, etc.)
+
+## SECURITY PRACTICES
+- Validate and sanitize all user inputs
+- Use parameterized queries for database access
+- Implement proper authentication and authorization
+- Follow the principle of least privilege
+- Avoid exposing sensitive information in logs or errors
+- Keep dependencies updated to avoid vulnerabilities

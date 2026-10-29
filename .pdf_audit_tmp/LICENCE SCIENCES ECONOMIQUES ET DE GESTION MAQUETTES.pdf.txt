@@ -1,0 +1,1322 @@
+
+--- PAGE 1 ---
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+LICENCE 1 SCIENCES 
+ECONOMIQUES ET DE 
+GESTION 
+ 
+ 
+ 
+ 
+ 
+--- PAGE 2 ---
+ 
+Semestre 1 
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 1
+SEMESTRE: 1
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+IAE4001.1 Initiation à la Macroéconomie 20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Abogni kouadio 
+Augustin
+IAE4001.2 Initiation à la Microéconomie 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Gbamé Hervé
+BMA4001.1 Algèbre 20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Tapé Jean 
+Georges
+BMA4001.2 Statistique Descriptive I 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Dongui Kouamé 
+Bini
+IGE4001.1 Initiation à la Comptabilité Générale 16 14 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Koffi Kouadio 
+Bini Pacôme
+IGE4001.2 Initiation à la Gestion 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Soro 
+Pehouolossin
+HEC4001.1 Histoire des Faits Economique 20 0 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Abogni kouadio 
+Augustin
+HEC4001.2 Histoire Economique et Sociale de la 
+Côte d'Ivoire 20 0 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Nogbou 
+M'domou Eric
+IMA4001 INITIATION AU 
+MARKETING IMA4001.1 Initiation au Markéting 18 12 0 0 30 45 75 3 3 Présentiel Français Mineur 40 60 Obligatoire Dr Dagri Arthur Dr Dagri Arthur
+MTU 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Dagri Arthur Dr Dagri Arthur
+Techniques de Communication 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Kouadio Dossa 
+Jean
+LVI4001 ANGLAIS LVI7001.1 Anglais 14 16 0 0 30 45 75 3 3 Présentiel Anglais Mineur 40 60 Obligatoire Dr Bogui N'drin EzechielDr Bogui N'drin Ezechiel
+AAG4001.1 Activités Pratiques 0 0 10 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Sangaré Moustapha
+AAG4001.2 Notions d'Agriculture pour 
+l'Economie et la Gestion 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Dibi Ahou  Flore
+182 108 10 0 300 450 750 30 30
+UE FONDAMENTALES
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+UNIVERSITE EPHRATA
+SCIENCES ECONOMIQUE ET DE GESTION
+ECONOMIE ET GESTION
+TRONC COMMUN
+MASSE HORAIRE SEMESTRIELLE
+Eléments constitutifs Fonctionnalité Enseignant chargé 
+de l'ECUE
+Langue 
+d'apprentiss
+age
+Majeur
+Majeur
+Dr Nogbou 
+M'domou Eric
+CREDI
+TS 
+ECUE
+CECT 
+UE
+Mode 
+d'apprentiss
+age
+Importance
+2
+5
+5
+4
+Dr Tapé Jean 
+Georges
+Majeur
+IAE4001 INTRODUCTION A 
+L'ANALYSE ECONOMIQUE
+Responsable de l'UE
+BMA4001 BASES MATHEMATIQUES
+INTRODUCTION A LA 
+GESTION DES 
+ENTREPRISES
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+5 Dr Gbamé Hervé
+Mode 
+d'évaluation
+Dr Soro 
+Pehouolossin
+Mineur
+TOTAL SMESTRE 1-TRONC COMMUN
+UE DE CULTURE GENERALE
+IGE4001
+HEC4001 HISTOIRE ECONOMIQUE
+AAG4001 ACTIVITES AGRICOLES
+3
+UE DE METHODOLOGIE
+Dr Sangaré MoustaphaMineur
+UE DE SPECIALITE
+Majeur
+--- PAGE 3 ---
+Semestre 2 
+ 
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 1
+SEMESTRE: 1
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+AEI4002.1 Macréconomie Intermédiaire 20 10 0 0 30 45 75 3
+Présentiel
+Français 40 60 Obligatoire
+Dr Abogni 
+Kouadio 
+Augustin
+AEI4002.2 Microéconomie Intermédiaire 14 8 0 0 22 33 55 2 Présentiel Français 40 60 Obligatoire Dr Abogni 
+Kouadio 
+MEQ4002.1 Analyses Mathématiques 18 12 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Tapé Jean 
+Georges
+LGC7002.2 Statistiques Descriptives II 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr N'dri Jean 
+Marc
+MEC4002.1 Introduction aux Finances 
+Publiques 18 12 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Dibi Ahou 
+Flore
+MEC4002.2 Comptabilité Nationale 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Dibi Ahou 
+Flore
+DGE4002.1 Géographie Economique 12 8 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Kouassi Yao 
+Martial
+DGE4002.2 Démographie 20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Koffi Binette 
+Laurène
+Migration et Développement 12 8 0 0 20 30 50 2 2 Présentiel Français Mineur 40 60 Obligatoire
+SOD4002 SOCIOLOGIE ET DROIT SOD4002.1 Sociologie des Organisations 18 12 0 0 30 45 75 3 3 Présentiel Français Mineur 40 60 Obligatoire Dr Kouassi Yao 
+Martial
+INF4002 INFORMATIQUE INF4002.1 Informatique 0 10 10 0 20 30 50 2 2 Présentiel Français Mineur 40 60 Obligatoire M.Traoré Ismael M.Traoré Ismael
+SOD4002.2 Droit Administratif 10 10 0 0 20 30 50 2 2 Présentiel Français Mineur 40 60 Obligatoire Dr Sanogo 
+Mousso Dr Sanogo Mousso
+Biodiversité 10 0 0 0 10 15 25 1 1 Présentiel Français Mineur 40 60 Obligatoire
+172 120 10 0 302 453 755 30 30
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+Mode 
+d'apprentiss
+age
+Langue 
+d'apprentiss
+age
+Importance
+UNIVERSITE EPHRATA
+SCIENCES ECONOMIQUE ET DE GESTION
+ECONOMIE ET GESTION
+TRONC COMMUN
+MASSE HORAIRE SEMESTRIELLE
+UE FONDAMENTALES
+AEI4002 ANALYSE ECONOMIQUE 
+INTERMEDIAIRE 5 Dr Abogni Kouadio 
+Augustin
+Mode 
+d'évaluatio
+n Fonctionnali
+té
+Enseignant 
+chargé de 
+l'ECUE
+Responsable de 
+l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+TOTAL SMESTRE 2 - TRONC COMMUN
+DROIT
+UE DE METHODOLOGIE
+UE DE CULTURE GENERALE
+MEQ4002 METHODES 
+QUANTITATIVES 5
+MEC4002
+MATHEMATIQUES POUR 
+ECONOMISTE ET 
+COMPTABILITE 
+NATIONALE
+5
+Majeur
+Majeur
+Majeur
+Majeur
+UE DE SPECIALITE
+DGE4002
+DEMOGRAPHIE ET 
+GEOGRAPHIE 
+ECONOMIQUE
+5 Dr Kouassi Yao 
+Martial
+Dr Tapé Jean 
+Georges
+Dr Dibi Ahou Flore
+--- PAGE 4 ---
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+LICENCE 2 SCIENCES 
+ECONOMIQUES ET DE 
+GESTION 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+--- PAGE 5 ---
+ 
+Semestre 3 
+ 
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 2
+SEMESTRE: 3
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+AMI4003.1 Equilibres Concurentiels 20 10 0 0 30 45 75 3 Présidentiel Français 40 60 Obligatoire Dr Dano Kouame 
+Ange  Richards
+AMI4003.2 Externalités et Biens 
+Publiques 14 6 0 0 20 30 50 2 Présidentiel Français 40 60 Obligatoire Dr Gbamé Hervé 
+David
+AMA4003.1 Politiques 
+Macroéconomiques 14 6 0 0 20 30 50 2 Présidentiel Français 40 60 Obligatoire Dr Dibi Ahou 
+Flore
+AMA4003.2 Macroéconomie Monétaire 12 8 0 0 20 30 50 2 Présidentiel Français 40 60 Obligatoire Dr Dibi Ahou 
+Flore
+MAP4003.1 Eléments d'Optimisation 20 10 0 0 30 45 75 3 Présidentiel Français 40 60 Obligatoire Dr Tapé Jean 
+Georges
+MAP4003.2 Probabilité et Statistique 
+Mathématique 14 6 0 0 20 30 50 2 Présidentiel Français 40 60 Obligatoire Dr Diawara 
+Ibrahim
+IED4003.1 Economie du 
+Développement 20 10 0 0 30 45 75 3 Présidentiel Français 40 60 Obligatoire Dr Koffi Binette 
+Laurene
+IED4003.2 Economie Internationale 12 8 0 0 20 30 50 2 Présidentiel Français 40 60 Obligatoire Dr Dibi Ahou 
+Flore
+CGA4003.1  Travaux de fin d'Exercices 14 6 0 0 20 30 50 2 Présidentiel Français 40 60 Obligatoire
+Dr Koffi Kouadio 
+Bini Pacome-
+Alex
+CGA4003.2 Etats de Synthèse 20 10 0 0 30 45 75 3 Présidentiel Français 40 60 Obligatoire
+Dr Koffi Kouadio 
+Bini Pacome-
+Alex
+INF7006.1 Access 0 0 10 0 10 15 25 1 Présidentiel Français Mineur 40 60 Obligatoire M.Traoré Ismael
+INF7006.2 Excel 0 0 10 0 10 15 25 1 Présidentiel Français Mineur 40 60 Obligatoire M.Traoré Ismael
+ANGLAIS Anglais 10 10 0 0 20 30 50 2 2 Présidentiel Anglais Mineur 40 60 Obligatoire M.Manlan 
+Narcisse
+M.Manlan 
+Narcisse
+Droit des Affaires 10 0 0 0 10 15 25 1 Présidentiel Français 40 60 Obligatoire Mlle.Yapi Marie 
+Noelle Raelle
+Droit Rural 10 0 0 0 10 15 25 1 Présidentiel Français 40 60 Obligatoire Dr Cemiti
+190 90 20 0 300 450 750 30 30
+UNIVERSITE EPHRATA
+SCIENCES ECONOMIQUE ET DE GESTION
+ECONOMIE ET GESTION
+TRONC COMMUN
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+MASSE HORAIRE SEMESTRIELLE CREDI
+TS 
+ECUE
+CECT 
+UE
+Mode 
+d'apprentis
+sage
+Langue 
+d'apprentiss
+age
+Importance
+UE FONDAMENTALES
+AMI4003 ANALYSE 
+MICROECONOMIQUE 5 Dr Dano Kouame 
+Ange  Richards
+Mode 
+d'évaluatio
+n Fonctionnali
+té
+Enseignant 
+chargé de 
+l'ECUE
+Responsable de 
+l'UE
+MAP4003 MATHEMATIQUES ET 
+PROBABILITE
+TOTAL SMESTRE 3 - TRONC COMMUN
+UE DE CULTURE GENERALE
+Dr Cemeti AntoineMineur
+INF7006 INFORMATIQUES 2
+5
+DROIT 2
+IED4003
+INTRODUCTION A 
+L'ECONOMIE DU 
+DEVELOPPEMENT
+CGA4003 COMPTABILITE 
+GENERALE AVANCEE 5
+UE DE METHODOLOGIE
+Majeur
+Majeur
+Majeur
+Majeur
+Majeur
+UE DE SPECIALITE
+Dr Dibi Ahou Flore
+Dr Koffi Kouadio 
+Bini Pacome-Alex
+5
+Dr Dibi Ahou Flore
+Dr Tapé Jean 
+Georges
+AMA4003
+ANALYSE   
+MACROECONOMIQU
+E
+4
+--- PAGE 6 ---
+Semestre 4 
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 2
+SEMESTRE: 4
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+MAA4004.1 Equations Différentielles et 
+Intégrales 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Tapé Jean 
+Georges
+MAA4004.2 Optimisation Statique 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Gbamé Hervé 
+David
+STA4004.1 Statistiques Différentielles 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr N'dri Jean 
+Marc
+STA4004.2
+Probabilité et Statistique 
+Mathématique 
+Approfondies
+14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Diawara 
+Ibrahim
+AEA4004.1 Microéconomie 
+Approfondie 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Gbamé Hervé 
+David
+AEA4004.2 Politiques Monétaires 12 8 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire DrEtien Amani 
+Elysée
+ING4004.1 Initiation à la Gestion des 
+Ressources Humaines 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Niaba Landry
+ING4004.2 Initiation au Management 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire
+M.Koicou 
+Hangban 
+Atissony
+ICA4004.1 Comptabilité Analytique 20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Dagnogo 
+Pissio
+ICA4004.2 Analyse et Gestion 
+Financière 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Kouadio 
+Dossa Jean
+IMF4004.1 Banques et Marchés 
+Financiers 12 8 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr AMANY Etien
+IMF4004.2
+Initiation aux 
+Mathématiques 
+Financières
+12 8 0 0 20 30 50 2 Présentiel Français 40 60 Dr Kouassi Yao 
+Martial
+HPE4004 HISTOIRE DE LA PENSEE 
+ECONOMIQUE HPE4004.1 Pensée Economique 
+Contemporaine 20 0 0 0 20 30 50 2 2 Présentiel Français Mineur 40 60 Obligatoire Dr Dibi Ahou 
+Flore
+Techniques de 
+Communication 10 10 0 0 20 30 50 2 2 Présentiel Français Mineur 40 60 Obligatoire Dr Dagnogo 
+Pissio
+Dr Kouadio Dossa 
+Jean
+ORS4004 ORGANISATION 
+SOCIOECONOMIQUE ORS4004.1 Organisation Sociale 10 0 0 0 10 15 25 1 1 Présentiel Français Mineur 40 60 Obligatoire Dr Sangaré 
+Moustapha
+200 100 0 0 300 450 750 30 30
+Dr Tapé Jean 
+Georges
+Dr Diawara 
+Ibrahim
+UE DE SPECIALITE
+AEA4004 ANALYSE ECONOMIQUE 
+AVANCEE 4 Dr Gbamé Hervé 
+David
+Majeur
+Majeur
+Majeur
+Majeur
+Majeur
+TOTAL SMESTRE 4 - TRONC COMMUN
+UE DE CULTURE GENERALE
+UE DE METHODOLOGIE
+5 Dr Kouadio Dossa 
+Jean
+Dr Kouassi Yao 
+MartialMajeur
+ICA4004
+INTRODUCTION A LA 
+COMPTABILITE 
+ANALYTIQUE ET A 
+L'ANALYSE FINANCIERE
+ING4004 INITIATION A LA GESTION 4 Dr Niaba Landry
+IMF4004 INTRODUCTION AUX 
+MARCHES FINANCIERS 4
+MAA4004 MATHEMATIQUES 
+APPROFONDIES 4
+STA4004 STATISTIQUES 
+APPROFONDIES 4
+UE FONDAMENTALES
+Mode 
+d'évaluatio
+n Fonctionnalité
+Enseignant 
+chargé de 
+l'ECUE
+Responsable de 
+l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+Mode 
+d'apprentis
+sage
+Langue 
+d'apprentiss
+age
+Importance
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+UNIVERSITE EPHRATA
+SCIENCES ECONOMIQUE ET DE GESTION
+ECONOMIE ET GESTION
+TRONC COMMUN
+MASSE HORAIRE SEMESTRIELLEIntitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+--- PAGE 7 ---
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+LICENCE 3 DE 
+GESTION 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+--- PAGE 8 ---
+Semestre 5 : Gestion 
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 3
+SEMESTRE: 5
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+ERO4005.1 Recherche Opérationnelle 12 8 0 0 20 30 50 2 c Français 40 60 Obligatoire Dr Koui Alain 
+Michel
+ERO4005.2 Econométrie 12 8 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire
+Dr Dano 
+Kouamé Ange 
+Richards
+SAC4005 STATISTIQUE APPLIQUEE SAC4005.1 Statistiques Appliquéesà la 
+Gestion 8 12 0 0 20 30 50 2 2 Présentiel Français Mineur 40 60 Obligatoire Dr Koui Alain 
+Michel
+Dr Koui Alain 
+Michel
+COF4005.1 Comptabilité des Sociétés 18 12 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Koffi Kouadio 
+Bini Pacome
+COF4005.2 Fiscalité des Entreprises 12 8 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Silué Tenema
+MAQ4005.1 Marketing Fondamental 20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Ouattara 
+Brice
+MAQ4005.2 Introduction au Management de 
+la Qualité 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Kouassi 
+Konan Charles  
+COA4005.1 Marketing des Matières 
+Premières 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Kouassi 
+Konan Charles  
+COA4005.2 Commerce International 
+Appliqué 20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Koui Alain 
+Michel
+IEM4005.1 Méthodologie de Rédaction de 
+rapport 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Yeboua
+IEM4005.2 Introduction à l'Intelligence 
+Economique 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Koui Alain 
+Michel
+INF4005 INFORMATIQUE INF4005.1 Intiation au Traitement de 
+Données 6 6 8 0 20 30 50 2 2 Présentiel Français Mineur 40 60 Obligatoire M.Traoré Ismael M.Traoré Ismael
+Leadership 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Coulibaly 
+Amadou
+Dr Coulibaly 
+Amadou
+Anglais Economique Appliqué 10 10 0 0 20 30 50 2 Présentiel Anglais 40 60 Obligatoire Dr Nahounou 
+Amede
+Dr Nahounou 
+Amede
+Droit des Affaires 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire M Bogbé N'Toh  
+Aristide
+Droit du Travail 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Kouakou 
+Ettienne
+182 110 8 0 300 450 750 30 30
+MAQ4005 MARKETING ET QUALITE 5 Dr Kouassi Konan 
+Charles  
+Majeur
+UE DE SPECIALITE
+COF4005 COMPTABILITE ET 
+FISCALITE 5 Dr Koffi Kouadio 
+Bini Pacome
+3
+Mineur
+Majeur
+Majeur
+Majeur
+COA4005 COMMERCE APPLIQUE 5 Dr Koui Alain 
+Michel
+Dr Yeboua
+UE DE METHODOLOGIE
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+Mode 
+d'apprentis
+sage
+Langue 
+d'apprentiss
+age
+Importance
+UNIVERSITE EPHRATA
+SCIENCES ECONOMIQUE ET DE GESTION
+ECONOMIE ET GESTION
+GESTION
+MASSE HORAIRE SEMESTRIELLE
+UE FONDAMENTALES
+ERO4005
+ECONOMIE ET 
+RECHERCHE 
+OPERATIONNELLE
+4 Dr Dano Kouamé 
+Ange Richards
+Mode 
+d'évaluatio
+n Fonctionnali
+té
+Enseignant 
+chargé de 
+l'ECUE
+Responsable de 
+l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+IEM4005
+INTELLIGENCE 
+ECONOMIQUE ET 
+METHODOLOGIE DE 
+REDACTION
+2
+UE DE CULTURE GENERALE
+TOTAL SMESTRE 5 - GESTION
+DROIT 2 Mineur Dr Kouakou 
+Ettienne
+Mineur
+COMMUNICATION ET 
+DEVELOPPEMENT 
+PERSONNEL
+--- PAGE 9 ---
+Semestre 6 : Gestion 
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 3
+SEMESTRE: 6
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+AFA4006.1
+Analyse Financière: les 
+Retraitements du Bilan et 
+Diagnostic Financier
+18 12 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Silué Temena
+AFA4006.2 Equilibre Financier et Tableau de 
+Financement 12 8 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Silué Temena
+COA4006 COMPTABILITE 
+ANALYTIQUE COA4006.1 Comptabilité Analytique - les Coût 
+partiels 24 18 0 8 50 75 125 5 5 Présentiel Français Majeur 40 60 Obligatoire Dr Dagnogo 
+Pissio Dr Dagnogo Pissio
+ACG4006.1 Introduction à l'Audit 20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Dagnogo 
+Pissio
+ACG4006.2 Introduction au Contrôle de Gestion 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Dagnogo 
+Pissio
+BGP4006.1 Initiation au Management des 
+Projets 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Silué Temena
+BGP4006.2 Banques et Assurance 20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Kouassi Yao 
+Martial
+MFP4006.1 Introduction aux Marchés 
+Financiers 20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Kouassi Yao 
+Martial
+MFP4006.2 Elaboration de Projet 0 10 0 10 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Silué Temena
+ENA4006 ENTREPRENEURIAT ENA4006.1 Entrepreneuriat - Création 
+d'Entreprises 14 26 0 10 50 75 125 5 5 Présentiel Français Majeur 40 60 Obligatoire
+Dr Koicou 
+Hangban 
+Atissony
+Dr Koicou 
+Hangban Atissony
+156 116 0 28 300 450 750 30 30
+MFP4006 MARCHE FINANCIER ET 
+PROJET 5 Dr Silué Temena
+Majeur
+Majeur
+Majeur
+Majeur
+Dr Dagnogo Pissio
+Dr Kouassi Yao 
+Martial
+ACG4006 AUDIT ET CONTRÔLE DE 
+GESTION 5
+BGP4006 BANQUE ET GESTION DE 
+PROJET 5
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs Importance
+UNIVERSITE EPHRATA
+SCIENCES ECONOMIQUE ET DE GESTION
+ECONOMIE ET GESTION
+GESTION
+MASSE HORAIRE SEMESTRIELLE CREDI
+TS 
+ECUE
+CECT 
+UE
+Mode 
+d'apprentis
+sage
+Langue 
+d'apprentiss
+age
+UE DE METHODOLOGIE
+TOTAL SMESTRE 6 - GESTION
+UE DE SPECIALITE
+AFA4006 ANALYSE FINANCIERE 
+AVANCEE 5 Dr Silué Temena
+Mode 
+d'évaluatio
+n Fonctionnali
+té
+Enseignant 
+chargé de 
+l'ECUE
+Responsable de 
+l'UE
+--- PAGE 10 ---
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+LICENCE 3 
+D’ECONOMIE 
+ 
+ 
+ 
+ 
+--- PAGE 11 ---
+ 
+Semestre 5 : économie 
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 3
+SEMESTRE: 5
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+TEQ4005.1 Econométrie Générale 20 10 0 0 30 45 75 3 Présidentiel Français 40 60 Obligatoire Dr Ouattara 
+Pierre
+TEQ4005.2 Introduction à l'Optimisation 
+dynamique 14 6 0 0 20 30 50 2 Présidentiel Français 40 60 Obligatoire Dr Ouattara 
+Pierre
+CDL4005.1 Croissance 18 12 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr N'da 
+Christian
+CDL4005.2 Economie du Développement 
+Local 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Dago Joseph
+ERI4005.1 Introduction à l'Economie 
+Rurale 17 7 0 6 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Ouattara 
+Yaya
+ERI4005.2 Economie Industrielle 10 6 0 4 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Gbame Herve
+ERH4005.1 Introduction à l'Economie de 
+l'Education 16 4 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Ahoukan 
+Wiliams
+ERH4005.2 Economie de la Santé 16 4 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Abou Pokou
+MPL4005.1 Introduction au Management de 
+Projets 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire
+Dr Yapo 
+Genevier 
+N'guessan
+MPL4005.2 Logiciels de Gestion de Projets 
+(Ms Projet) 0 2 0 8 10 15 25 1 Présentiel Français 40 60 Obligatoire
+Dr Yapo 
+Genevier 
+N'guessan
+OTD4005.1 Initiation au Traitement de 
+Données / Programme Python 0 10 0 10 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Assi Enin
+OTD4005.2 Logiciel Econométrique 0 10 0 10 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Kokola Eric
+ANGLAIS Anglais Economique Appliqué 10 10 0 0 20 30 50 2 2 Présentiel Anglais Mineur 40 60 Obligatoire Dr Nahounou 
+Amede
+Dr Nahounou 
+Amede
+Droit des Affaires 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire M Bogbé N'Toh  
+Aristide
+Droit du Travail 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Kouakou 
+Ettienne
+161 101 0 38 300 450 750 30 30
+Dr Yapo Genevier N'guessan
+Dr Kokola Eric
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+Dr Dago Joseph 
+Mode 
+d'apprentis
+sage
+Langue 
+d'apprentiss
+age
+Importance
+CDL4005
+Majeur
+Majeur
+Majeur
+MPL4005
+UNIVERSITE EPHRATA
+SCIENCES ECONOMIQUE ET DE GESTION
+ECONOMIE ET GESTION
+ECONOMIE
+MASSE HORAIRE SEMESTRIELLE
+UE FONDAMENTALES
+TEQ4005 TECHNIQUES 
+QUANTITATIVES 5 Dr Ouattara Pierre
+Mode 
+d'évaluatio
+n Fonctionnali
+té
+Enseignant 
+chargé de 
+l'ECUE
+Responsable de 
+l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+Majeur
+OTD4005 OUTILS DE TRAITEMENT 
+DE DONNEES 4
+UE DE METHODOLOGIE
+TOTAL SMESTRE 5 - ECO
+Majeur
+Mineur
+UE DE CULTURE GENERALE
+DROIT 2 Mineur Dr Kouakou 
+Ettienne
+MANAGEMENT DES 
+PROJETS ET LOGICIELS 3
+ERH4005 ECONOMIE DES 
+RESSOURCES HUMAINES 4
+UE DE SPECIALITE
+Dr Ouattara Yaya
+Dr Ahoukan 
+Wiliams
+CROISSANCE ET 
+DEVELOPPEMENT LOCAL 5
+ERI4005 ECONOMIE RURALE ET 
+INDUSTRIELLE 5
+--- PAGE 12 ---
+Semestre 6 : économie 
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 3
+SEMESTRE: 6
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+ERO4006.1 Recherche Opérationnelle 14 16 0 0 30 45 75 3 Presentiel Français 40 60 Obligatoire Dr  Diabate 
+Nabongo
+ERO4006.2 Econométrie des Séries 
+Temporelles 8 12 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Diomande 
+Lancine
+EDD4006.1 Economie de l'Environnement 
+et Développement Durable 20 10 0 30 45 75 3 Presentiel Français 40 60 Obligatoire Dr Zokou 
+Clement
+EDD4006.2 Economie des Ressources 
+Naturelles 12 8 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Soro 
+Nibontenin
+TEF4006.1 Théorie des Contrats 20 10 0 0 30 45 75 3 Presentiel Français 40 60 Obligatoire Dr Diarrassouba 
+Salini
+TEF4006.2 Introduction à la Théorie des 
+Jeux 14 6 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Ouattara 
+Kifory
+CIA4006.1 Marchés Internationaux des 
+Produits Agricoles 18 12 0 0 30 45 75 3 Presentiel Français 40 60 Obligatoire Dr Gniza Daniel
+CIA4006.2 Commerce International 14 6 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Kore Adele
+FIS4006.1 Financement du 
+Développement 18 12 0 0 30 45 75 3 Presentiel Français 40 60 Obligatoire Dr Bamba 
+Vadoua
+FIS4006.2 Introduction à la Théorie des 
+Jeux 14 6 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire
+ENTREPRENEURIAT ENA4006.1 Entrepreneuriat - Création 
+d'Entreprises 14 26 0 10 50 75 125 5 5 Presentiel Français Majeur 40 60 Obligatoire Dr Kokola 
+Kouadio Dr Kokola Kouadio
+166 124 0 10 300 450 750 30 30
+Dr Ouattara Kifory
+Dr Gniza Daniel
+Dr Bamba Vadoua
+Majeur
+Majeur
+Majeur
+Majeur
+Majeur
+TOTAL SMESTRE 6 - ECO
+ECONOMIE DU 
+DEVELOPPEMENT 
+DURABLE
+EDD4006 5
+UE DE METHODOLOGIE
+5
+5
+5
+FINANCEMENT ET 
+STRATEGIESFIS4006
+TEF4006 THEORIES ECONOMIQUES 
+DE LA FIRME
+CIA4006 COMMERCE 
+INTERNATIONAL AVANCE
+Dr Zokou Clement
+UE DE SPECIALITE
+ERO4006.1
+ECONOMIE DES SERIES 
+TEMPORELLES ET 
+RECHERCHE 
+OPERATIONNELLE
+5 Dr Diabate 
+Nabongo
+Mode 
+d'évaluatio
+n Fonctionnali
+té
+Enseignant 
+chargé de 
+l'ECUE
+Responsable de 
+l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+Importance
+UNIVERSITE EPHRATA
+SCIENCES ECONOMIQUE ET DE GESTION
+ECONOMIE ET GESTION
+ECONOMIE
+MASSE HORAIRE SEMESTRIELLE Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+Mode 
+d'apprentis
+sage
+Langue 
+d'apprentiss
+age
+--- PAGE 13 ---
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+. 
+ 
+ 
+LICENCE 3 
+AGROECONOMIE 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+--- PAGE 14 ---
+ 
+Semestre 5 : Agroéconomie 
+ 
+ERTABLISSEMENT: UNIVERSITE EPHRATA
+UFR/ INSTITUT: SCIENCES ECONOMIQUE 
+DOMAINE: ECONOMIE ET GESTION
+PARCOURS: AGROECONOMIE
+CYCLE: Licence
+ANNEE: 3
+SEMESTRE: 5
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Eléments constitutifs 
+MASSE 
+HORAI
+RE 
+CREDI
+TS 
+ECUE
+CECT 
+UE
+Mode 
+d'apprentissa
+ge
+Langue 
+d'apprentiss
+age
+Importance
+Mod
+e 
+d'éva
+Fonctionnali
+té
+Enseignant 
+chargé de 
+l'ECUE
+Responsable de 
+l'UE
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+UE 
+FONDAMENT
+MQA4005
+METHODES 
+QUANTITATIVES 
+APPLIQUEES EN 
+MQA4005.1 Econométrie et Applications 20 10 0 0 30 45 75 3 5 Présentiel Français Majeur 40 60 Obligatoire Dr Silue 
+Gnougenho
+Dr Diomandé 
+Lanciné
+MQA4005.2 Analyse des Données 20 0 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Diomandé 
+Lanciné
+UE DE 
+SPECIALITE
+CDL4005 CROISSANCE ET 
+DEVELOPPEMENT LOCAL CDL4005.1 Croissance Economique 20 10 0 30 45 75 3 5 Présentiel Français Majeur 40 60 Obligatoire Dr N'da Koffi 
+Christian
+Dr N'da Koffi 
+Christian
+CDL4005.2 Economie du développement 
+Local 20 0 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Bamba 
+Vadoua
+EPA4005 ECONOMIE ET POLITIQUE 
+AGRICOLE EPA4005.1 Introduction à l'Economie Agricole 14 6 0 0 20 30 50 2 4 Présentiel Français Majeur 40 60 Obligatoire Dr Yaya 
+Ouattara Dr Yaya Ouattara
+EPA4005.2 Politique Agricola Ivoirienne 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Yaya 
+Ouattara
+EIM4005
+ECONOMIE INDUSTRIELLE 
+ET DES MARCHES 
+AGRICOLES
+EIM4005.1 Introduction à l'Economie 
+Industrielle 20 0 0 0 20 30 50 2 4 Présentiel Français Majeur 40 60 Obligatoire Dr Gbame Herve Dr Gbame Herve
+EIM4005.2 Economie des Marchés Agricoles 20 0 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Gniza Daniel
+ENA4005 ECONOMIE NUMERIQUE 
+ET AGROBUSINESS ENA4005.1 Economie Numérique 14 6 0 0 20 30 50 2 4 Présentiel Français Majeur 40 60 Obligatoire Dr Agbogni 
+Augustin
+Dr Agbogni 
+Augustin
+ENA4005.2 Agrobusiness Management 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Kouidi 
+Frederic 
+UE DE 
+METHODOLO
+EEM4005 ENTREPRENEURIAT ET 
+METHODOLOGIE EEM4005.1 Méthodologie de la Rédaction de 
+Rapport 6 0 0 4 10 15 25 1 3 Présentiel Français Mineur 40 60 Obligatoire Dr Coulibaly 
+Nieneyebi 
+Dr Coulibaly 
+Nieneyebi 
+EEM4005.2 Entrepreneuriat Agricole 10 0 0 10 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Kokola Eric
+UE DE 
+CULTURE COMMUNICATION ET 
+DEVELOPPEMENT 
+PERSONNEL
+Leadership 0 10 0 0 10 15 25 1 3 Présentiel Français Mineur 40 60 Obligatoire Dr Yeboua Alexi Dr Yeboua Alexi
+Anglais Economique Appliqué 10 10 0 0 20 30 50 2 Présentiel Anglais 40 60 Obligatoire Dr Nahounou 
+Amede
+DROIT Droit des Affaires 10 0 0 0 10 15 25 1 2 Présentiel Français Mineur 40 60 Obligatoire M Bogbé N'Toh  
+Aristide
+Dr Kouakou 
+Ettienne
+Droit du Travail 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Kouakou 
+Ettienne
+TOTAL 
+SMESTRE -5 - 222 64 0 14 300 450 750 30 30
+--- PAGE 15 ---
+Semestre 6 : Agroéconomie 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 3
+SEMESTRE: 6
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+ROE4006.1 Recherche Opérationnelle 20 0 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Diabate 
+Nabongo
+ROE4006.2 Analyse Coût-Bénéfice 20 0 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Diallo 
+Mamadou
+DDA4006.1 Economie de l'Environnement 
+et Développement Durable 20 10 0 0 30 45 75 3 Presentiel Français 40 60 Obligatoire Dr Bodou Julie
+DDA4006.2 Principes de l'Agroforesterie 10 0 0 0 10 15 25 1 Presentiel Français 40 60 Obligatoire Dr Adou Kabran 
+Georges
+FAC4006.1 Analyse des Filières Agricoles 20 0 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Yaya 
+Ouattara
+FAC4006.2 Théorie des Contrats 20 0 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Ouattara 
+Kifory
+COM4006.1 Marketing des Produits 
+Agricoles 20 0 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Kouassi 
+Serges
+COM4006.2
+Nouveaux Modèles 
+Economiques Appliqués à 
+l'Agriculture
+20 0 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Silue HoloH
+FVR4006.1 Financement Agricole 20 0 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Gniza Daniel
+FVR4006.2
+Introduction à la Valorisation 
+Economique des Ressources 
+Locales
+20 0 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Angoibi
+DFA4006.1 Economie de l'Agroforesterie 20 0 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Silue Holoh
+DFA4006.2 Droit Foncier 20 10 0 0 30 45 75 3 Presentiel Français 40 60 Obligatoire Dr Tra Bi Zae
+PAE4006 PRODUCTION PAE4006.2 Principes de Production 
+Animale et Halieutique 10 10 0 0 20 30 50 2 2 Presentiel Français Mineur 40 60 Obligatoire Dr Kone 
+Mamadou Dr Kone Mamadou
+PRP4006 PRATIQUES 
+PROFESSIONNELLES PRP4006.1 Pratiques Professionnelles 0 0 0 30 30 45 75 3 3 Presentiel Français Mineur Obligatoire Dr Kouadio 
+Adou Georges
+Dr Kouadio Adou 
+Georges
+240 30 0 30 300 450 750 30 30
+Dr Yaya Ouattara
+Dr Bodou Julie
+Majeur
+Majeur Dr Silue Holoh
+Dr Gniza Daniel
+Dr Kouassi Serges
+Majeur
+Majeur
+Majeur
+Majeur
+DDA4006
+DEVELOPPEMENT 
+DURABLE ET 
+AGROFORESTERIE
+4
+FAC4006 4
+COM4006 COMMERCIALISATION 4
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+FILIERES AGRICOLES ET 
+CONTRAT
+UNIVERSITE EPHRATA
+SCIENCES ECONOMIQUE ET DE GESTION
+ECONOMIE ET GESTION
+AGROECONOMIE
+MASSE HORAIRE SEMESTRIELLE Mode 
+d'apprentis
+sage
+Langue 
+d'apprentiss
+age
+Importance
+UE DE SPECIALITE
+ROE4006
+ RECHERCHE 
+OPERATIONNELLE ET 
+EVALUATION
+4 Dr Diabate 
+Nabongo
+Mode 
+d'évaluatio
+n Fonctionnali
+té
+Enseignant 
+chargé de 
+l'ECUE
+Responsable de 
+l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+UE DE METHODOLOGIE
+TOTAL SMESTRE - 6 - AGROECO
+FVR4006
+FINANCEMENT ET 
+VALORISATION DES 
+RESSOURCES
+4
+DFA4006 DROIT FONCIER ET 
+AGROFORESTERIE 5
+--- PAGE 16 ---
+ 

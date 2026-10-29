@@ -1,0 +1,31 @@
+# Task ID: 2
+# Title: Implement Code Generation Logic
+# Status: done
+# Dependencies: 1
+# Priority: high
+# Description: Develop the backend logic for generating unique 6-character alphanumeric codes
+# Details:
+Create ESBTPAttendanceCodeController with methods for code generation. Implement algorithm to generate random 6-character alphanumeric codes with uniqueness check. Set 24-hour expiration time. Store generated codes in esbtp_attendance_codes table with proper expiration timestamp and initial status.
+
+# Test Strategy:
+Unit test code generation for uniqueness, correct length, and proper storage. Test expiration logic and ensure no collisions occur.
+
+# Subtasks:
+## 1. Create ESBTPAttendanceCodeController and database table [done]
+### Dependencies: None
+### Description: Set up the controller class structure and create the database table for storing attendance codes
+### Details:
+Create a new controller class named ESBTPAttendanceCodeController with basic method signatures for code generation, validation, and management. Create the esbtp_attendance_codes database table with columns for: id (primary key), code (varchar, 6 chars), created_at (timestamp), expires_at (timestamp), status (varchar, for tracking if code is active/used/expired), and any other necessary fields like user_id or session_id if needed for tracking usage.
+
+## 2. Implement code generation algorithm with uniqueness check [done]
+### Dependencies: 2.1
+### Description: Develop the algorithm to generate random 6-character alphanumeric codes and ensure their uniqueness
+### Details:
+Implement a method in ESBTPAttendanceCodeController to generate random 6-character alphanumeric codes (using A-Z, a-z, 0-9 character set). Add logic to check if generated codes already exist in the database to ensure uniqueness. If a collision occurs, regenerate the code. Include a mechanism to prevent infinite loops in rare cases of multiple collisions. The method should return a valid, unique code ready for storage.
+
+## 3. Implement code storage with expiration logic [done]
+### Dependencies: 2.1, 2.2
+### Description: Create methods to store generated codes with proper expiration timestamps and status management
+### Details:
+Implement a method to store the generated codes in the esbtp_attendance_codes table. Set the expiration timestamp to 24 hours after creation. Add methods to check code validity based on expiration time and status. Include functionality to update code status when used. Create a scheduled task or mechanism to clean up expired codes or mark them as expired. Add any necessary error handling and logging for the code generation and storage process.
+

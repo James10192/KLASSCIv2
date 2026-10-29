@@ -1,0 +1,54 @@
+# Task ID: 10
+# Title: Sécurité et audit trail
+# Status: done
+# Dependencies: 1, 2
+# Priority: high
+# Description: Implémenter les fonctionnalités de sécurité avancées et l'audit trail complet pour toutes les actions sensibles du module comptabilité.
+# Details:
+1. Étendre le système de permissions Spatie:
+   - Définir les permissions granulaires pour le module comptabilité
+   - Configurer les rôles (Comptable, Directeur Financier, etc.)
+   - Middleware pour protection des routes
+
+2. Implémenter l'audit trail avec Laravel Auditing:
+   - Installation et configuration du package
+   - Définir les modèles auditables
+   ```php
+   // Exemple de modèle auditable
+   class Paiement extends Model implements Auditable {
+       use \OwenIt\Auditing\Auditable;
+       
+       protected $auditInclude = [
+           'montant', 'date_paiement', 'mode_paiement', 'statut'
+       ];
+       
+       protected $auditTimestamps = true;
+   }
+   ```
+
+3. Développer l'interface d'audit:
+   - Historique des modifications
+   - Filtres par utilisateur, action, date
+   - Export des logs d'audit
+
+4. Implémenter le chiffrement des données sensibles:
+   - Utilisation des cast encrypted de Laravel
+   - Protection des montants et coordonnées bancaires
+
+5. Configurer la protection contre les attaques:
+   - CSRF protection
+   - Rate limiting sur les API
+   - Validation stricte des entrées
+
+6. Mettre en place les backups sécurisés:
+   - Sauvegarde chiffrée des données
+   - Rotation des backups
+   - Vérification d'intégrité
+
+# Test Strategy:
+1. Tests de pénétration basiques
+2. Tests des permissions pour différents rôles
+3. Vérification de l'audit trail pour toutes les actions
+4. Tests de chiffrement/déchiffrement
+5. Tests de rate limiting
+6. Validation de la restauration des backups

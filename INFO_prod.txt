@@ -1,0 +1,4 @@
+La commande teacher:mark-absences s'exécutera automatiquement toutes les 15 minutes via le scheduler Laravel. En production, assure-toi que le cron est configuré :
+* * * * * cd /path-to-project && php artisan schedule:run >> /dev/null 2>&1
+En développement, lance :
+php artisan schedule:work

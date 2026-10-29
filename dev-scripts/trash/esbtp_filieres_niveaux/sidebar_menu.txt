@@ -1,0 +1,24 @@
+<li class="nav-item">
+    <a href="{{ route('esbtp.filieres.index') }}" class="nav-link {{ request()->routeIs('esbtp.filieres.*') ? 'active' : '' }}">
+        <i class="fas fa-graduation-cap nav-icon"></i>
+        <span>Filières</span>
+    </a>
+</li>
+<li class="nav-item">
+    <a href="{{ route('esbtp.niveaux-etudes.index') }}" class="nav-link {{ request()->routeIs('esbtp.niveaux-etudes.*') ? 'active' : '' }}">
+        <i class="fas fa-layer-group nav-icon"></i>
+        <span>Niveaux d'études</span>
+    </a>
+</li>
+<li class="nav-item">
+    <a href="{{ route('esbtp.annees-universitaires.index') }}" class="nav-link {{ request()->routeIs('esbtp.annees-universitaires.*') ? 'active' : '' }}">
+        <i class="fas fa-calendar-alt nav-icon"></i>
+        <span>Années universitaires</span>
+    </a>
+</li>
+<li class="nav-item">
+    <a href="{{ route('esbtp.inscriptions.index') }}" class="nav-link {{ request()->routeIs('esbtp.inscriptions.*') ? 'active' : '' }}">
+        <i class="fas fa-user-graduate nav-icon"></i>
+        <span>Inscriptions</span>
+    </a>
+</li> 

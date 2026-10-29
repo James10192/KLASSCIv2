@@ -1,0 +1,93 @@
+{
+  "domaine": {"name": "Sciences de l'Homme et de la Société", "code": "SHS"},
+  "mention": {"name": "Sciences de l'Information et de la Communication", "code": "SIC"},
+  "parcours": {"name": "Communication", "code": "COM", "credits_licence": 180, "credits_master": 120},
+  "filiere": {"name": "Communication", "code": "COM"},
+  "niveaux": [
+    {"name": "Licence 1", "year": 1, "type": "Licence"},
+    {"name": "Licence 2", "year": 2, "type": "Licence"},
+    {"name": "Licence 3", "year": 3, "type": "Licence"}
+  ],
+  "ues": [
+    {"code":"FDS2101","name":"Fondements des SIC","type_ue":"fondamentale","credit":5,"niveau_year":1,"semestre":1,"ordre":1,"ecues":[
+      {"code":"FDS21011","name":"Introduction à la communication des organisations","credit_ecue":3,"cm":20,"td":15,"tp":0,"projet":0,"tpe":40},
+      {"code":"FDS21012","name":"Initiation à la communication pour le développement","credit_ecue":2,"cm":13,"td":10,"tp":0,"projet":0,"tpe":27}
+    ]},
+    {"code":"FDC2101","name":"Fondements de la communication","type_ue":"fondamentale","credit":5,"niveau_year":1,"semestre":1,"ordre":2,"ecues":[
+      {"code":"FDC21011","name":"Introduction aux systèmes de communication","credit_ecue":3,"cm":20,"td":15,"tp":0,"projet":0,"tpe":40},
+      {"code":"FDC21012","name":"Histoire et théories de la communication","credit_ecue":2,"cm":13,"td":10,"tp":0,"projet":0,"tpe":27}
+    ]},
+    {"code":"PUM2101","name":"Publicité et marketing","type_ue":"fondamentale","credit":4,"niveau_year":1,"semestre":1,"ordre":3,"ecues":[
+      {"code":"PUM21011","name":"Introduction à la publicité","credit_ecue":2,"cm":13,"td":10,"tp":0,"projet":0,"tpe":27},
+      {"code":"PUM21012","name":"Introduction au marketing","credit_ecue":2,"cm":13,"td":12,"tp":0,"projet":0,"tpe":25}
+    ]},
+    {"code":"MES2101","name":"Médias et sociétés","type_ue":"fondamentale","credit":4,"niveau_year":1,"semestre":1,"ordre":4,"ecues":[
+      {"code":"MES21011","name":"Typologie des médias","credit_ecue":2,"cm":14,"td":12,"tp":0,"projet":0,"tpe":24},
+      {"code":"MES21012","name":"Médias sociaux numériques","credit_ecue":2,"cm":14,"td":12,"tp":0,"projet":0,"tpe":24}
+    ]},
+    {"code":"COE2101","name":"Communication et économie","type_ue":"fondamentale","credit":4,"niveau_year":1,"semestre":1,"ordre":5,"ecues":[
+      {"code":"COE21011","name":"Droit civil et de la communication","credit_ecue":2,"cm":14,"td":12,"tp":0,"projet":0,"tpe":24},
+      {"code":"COE21012","name":"Économie des médias","credit_ecue":2,"cm":13,"td":12,"tp":0,"projet":0,"tpe":25}
+    ]},
+    {"code":"INM2101","name":"Informatique et méthodologie","type_ue":"methodologique","credit":4,"niveau_year":1,"semestre":1,"ordre":6,"ecues":[
+      {"code":"INM21011","name":"Initiation à l'informatique","credit_ecue":2,"cm":13,"td":10,"tp":0,"projet":0,"tpe":27},
+      {"code":"INM21012","name":"Recherche documentaire","credit_ecue":2,"cm":13,"td":10,"tp":0,"projet":0,"tpe":27}
+    ]},
+    {"code":"LAV2101","name":"Langues vivantes","type_ue":"culture_generale","credit":4,"niveau_year":1,"semestre":1,"ordre":7,"ecues":[
+      {"code":"LAV21011","name":"Anglais général","credit_ecue":2,"cm":12,"td":10,"tp":0,"projet":0,"tpe":28},
+      {"code":"LAV21012","name":"Techniques d'expression écrite","credit_ecue":2,"cm":12,"td":10,"tp":0,"projet":0,"tpe":28}
+    ]},
+    {"code":"HTM2102","name":"Histoire et théories des médias","type_ue":"fondamentale","credit":4,"niveau_year":1,"semestre":2,"ordre":1,"ecues":[
+      {"code":"HTM21021","name":"Histoire des médias","credit_ecue":2,"cm":13,"td":10,"tp":0,"projet":0,"tpe":27},
+      {"code":"HTM21022","name":"Théorie des médias","credit_ecue":2,"cm":13,"td":10,"tp":0,"projet":0,"tpe":27}
+    ]},
+    {"code":"INJ2102","name":"Introduction au journalisme","type_ue":"fondamentale","credit":4,"niveau_year":1,"semestre":2,"ordre":2,"ecues":[
+      {"code":"INJ21021","name":"Introduction à la presse écrite","credit_ecue":2,"cm":13,"td":10,"tp":0,"projet":0,"tpe":27},
+      {"code":"INJ21022","name":"Journalisme radio et TV","credit_ecue":2,"cm":13,"td":10,"tp":0,"projet":0,"tpe":27}
+    ]},
+    {"code":"PSS2102","name":"Psychologie et sociologie","type_ue":"fondamentale","credit":5,"niveau_year":1,"semestre":2,"ordre":3,"ecues":[
+      {"code":"PSS21021","name":"Psychologie de la communication","credit_ecue":3,"cm":20,"td":15,"tp":0,"projet":0,"tpe":40},
+      {"code":"PSS21022","name":"Sociologie de la communication","credit_ecue":2,"cm":14,"td":10,"tp":0,"projet":0,"tpe":26}
+    ]},
+    {"code":"SAD2102","name":"Sémiologie et analyse des discours","type_ue":"fondamentale","credit":5,"niveau_year":1,"semestre":2,"ordre":4,"ecues":[
+      {"code":"SAD21021","name":"Sémiologie de la communication","credit_ecue":3,"cm":20,"td":15,"tp":0,"projet":0,"tpe":40},
+      {"code":"SAD21022","name":"Analyse des discours médiatiques","credit_ecue":2,"cm":14,"td":10,"tp":0,"projet":0,"tpe":26}
+    ]},
+    {"code":"COD2102","name":"Communication digitale","type_ue":"specialite","credit":4,"niveau_year":1,"semestre":2,"ordre":5,"ecues":[
+      {"code":"COD21021","name":"Communication digitale","credit_ecue":2,"cm":14,"td":10,"tp":0,"projet":0,"tpe":26},
+      {"code":"COD21022","name":"Marketing digital","credit_ecue":2,"cm":14,"td":10,"tp":0,"projet":0,"tpe":26}
+    ]},
+    {"code":"PTN2102","name":"Production et techniques numériques","type_ue":"methodologique","credit":4,"niveau_year":1,"semestre":2,"ordre":6,"ecues":[
+      {"code":"PTN21021","name":"Infographie","credit_ecue":2,"cm":12,"td":12,"tp":0,"projet":0,"tpe":26},
+      {"code":"PTN21022","name":"Techniques de montage vidéo","credit_ecue":2,"cm":12,"td":12,"tp":0,"projet":0,"tpe":26}
+    ]},
+    {"code":"LAV2102","name":"Langues vivantes S2","type_ue":"culture_generale","credit":4,"niveau_year":1,"semestre":2,"ordre":7,"ecues":[
+      {"code":"LAV21021","name":"Anglais technique","credit_ecue":2,"cm":12,"td":12,"tp":0,"projet":0,"tpe":26},
+      {"code":"LAV21022","name":"Techniques d'expression orale","credit_ecue":2,"cm":12,"td":12,"tp":0,"projet":0,"tpe":26}
+    ]},
+    {"code":"TPA2103","name":"Théories et pratiques avancées","type_ue":"fondamentale","credit":4,"niveau_year":2,"semestre":3,"ordre":1,"ecues":[
+      {"code":"TPA21031","name":"Théories de la réception","credit_ecue":2,"cm":12,"td":11,"tp":0,"projet":0,"tpe":27},
+      {"code":"TPA21032","name":"Pratiques de communication des organisations","credit_ecue":2,"cm":12,"td":11,"tp":0,"projet":0,"tpe":27}
+    ]},
+    {"code":"MAM2103","name":"Marketing et management","type_ue":"fondamentale","credit":5,"niveau_year":2,"semestre":3,"ordre":2,"ecues":[
+      {"code":"MAM21031","name":"Techniques publicitaires","credit_ecue":3,"cm":17,"td":16,"tp":0,"projet":0,"tpe":42},
+      {"code":"MAM21032","name":"Management de la communication","credit_ecue":2,"cm":12,"td":11,"tp":0,"projet":0,"tpe":27}
+    ]},
+    {"code":"SOA2103","name":"Sociologie et anthropologie","type_ue":"specialite","credit":6,"niveau_year":2,"semestre":3,"ordre":3,"ecues":[
+      {"code":"SOA21031","name":"Sociologie des médias","credit_ecue":3,"cm":18,"td":16,"tp":0,"projet":0,"tpe":41},
+      {"code":"SOA21032","name":"Anthropologie de la communication","credit_ecue":3,"cm":18,"td":16,"tp":0,"projet":0,"tpe":41}
+    ]},
+    {"code":"JOS2103","name":"Journalisme spécialisé","type_ue":"specialite","credit":6,"niveau_year":2,"semestre":3,"ordre":4,"ecues":[
+      {"code":"JOS21031","name":"Journalisme d'investigation","credit_ecue":3,"cm":18,"td":16,"tp":0,"projet":0,"tpe":41},
+      {"code":"JOS21032","name":"Journalisme économique et politique","credit_ecue":3,"cm":18,"td":16,"tp":0,"projet":0,"tpe":41}
+    ]},
+    {"code":"INF2103","name":"Informatique","type_ue":"methodologique","credit":5,"niveau_year":2,"semestre":3,"ordre":5,"ecues":[
+      {"code":"INF21031","name":"Techniques rédactionnelles","credit_ecue":3,"cm":17,"td":17,"tp":0,"projet":0,"tpe":41},
+      {"code":"INF21032","name":"Infographie avancée","credit_ecue":2,"cm":13,"td":10,"tp":0,"projet":0,"tpe":27}
+    ]},
+    {"code":"LAV2103","name":"Langues vivantes S3","type_ue":"culture_generale","credit":4,"niveau_year":2,"semestre":3,"ordre":6,"ecues":[
+      {"code":"LAV21031","name":"Anglais pour la communication","credit_ecue":2,"cm":14,"td":10,"tp":0,"projet":0,"tpe":26},
+      {"code":"LAV21032","name":"Techniques d'expression française","credit_ecue":2,"cm":14,"td":10,"tp":0,"projet":0,"tpe":26}
+    ]}
+  ]
+}

@@ -1,0 +1,31 @@
+Résumé des Vues Créées pour l'Application ESBTP-YAKRO
+
+1. Gestion des Cycles de Formation
+   - Index: smart_school_new/resources/views/esbtp/cycles/index.blade.php
+   - Création: smart_school_new/resources/views/esbtp/cycles/create.blade.php
+   - Affichage: smart_school_new/resources/views/esbtp/cycles/show.blade.php
+   - Modification: smart_school_new/resources/views/esbtp/cycles/edit.blade.php
+
+2. Gestion des Spécialités
+   - Index: smart_school_new/resources/views/esbtp/specialties/index.blade.php
+   - Création: smart_school_new/resources/views/esbtp/specialties/create.blade.php
+   - Affichage: smart_school_new/resources/views/esbtp/specialties/show.blade.php
+   - Modification: smart_school_new/resources/views/esbtp/specialties/edit.blade.php
+
+3. Gestion des Partenariats
+   - Index: smart_school_new/resources/views/esbtp/partnerships/index.blade.php
+   - Création: smart_school_new/resources/views/esbtp/partnerships/create.blade.php
+   - Affichage: smart_school_new/resources/views/esbtp/partnerships/show.blade.php
+   - Modification: smart_school_new/resources/views/esbtp/partnerships/edit.blade.php
+
+4. Gestion de la Formation Continue (à implémenter)
+   - Index: smart_school_new/resources/views/esbtp/continuing-education/index.blade.php
+   - Création: smart_school_new/resources/views/esbtp/continuing-education/create.blade.php
+   - Affichage: smart_school_new/resources/views/esbtp/continuing-education/show.blade.php
+   - Modification: smart_school_new/resources/views/esbtp/continuing-education/edit.blade.php
+
+Toutes ces vues sont accessibles via la barre latérale (sidebar) de l'application, dans la section "ESBTP-YAKRO".
+
+Pour accéder à ces fonctionnalités, utilisez les identifiants du superadmin:
+Email: admin@esbtp.ci
+Mot de passe: admin123 
