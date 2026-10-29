@@ -4,7 +4,7 @@ namespace App\Jobs\Annonces;
 
 use App\Mail\Transport\CadenceMailPulse;
 use App\Models\ESBTPAnnonce;
-use App\Models\Setting;
+use App\Services\Annonces\CourrielAnnonce;
 use App\Services\MailPulse\MailPulseClient;
 use App\Services\MailPulse\RefusMailPulse;
 use Illuminate\Bus\Queueable;
@@ -67,16 +67,16 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
                 return;
             }
 
-            $ecole = (string) Setting::get('school_name', config('app.name'));
-            $contenu = trim(html_entity_decode(strip_tags((string) $annonce->contenu), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-            $texte = $annonce->titre."\n\n".$contenu."\n\nConsultez l'annonce dans votre espace étudiant : "
-                .route('esbtp.mes-annonces.index')."\n\n".$ecole;
+            $courriel = app(CourrielAnnonce::class);
+            $texte = $courriel->texte($annonce);
+            $html = $courriel->html($annonce);
 
             $metadata = array_filter([
                 'source' => 'klassci',
                 'workflow_event' => 'announcement_email',
                 'external_tenant_id' => (string) config('app.tenant_code', ''),
-                'subject' => 'Annonce - '.$annonce->titre,
+                'subject' => $courriel->sujet($annonce),
+                'email_html' => $html,
                 'sender_email' => $client->getSetting('mailpulse_sender_email', 'sender_email', ''),
                 'sender_name' => $client->getSetting('mailpulse_sender_name', 'sender_name', 'KLASSCI'),
                 'external_reference' => $reference,

@@ -18,6 +18,9 @@ use App\Mail\Transport\CadenceMailPulse;
 use App\Services\MailPulse\MailPulseClient;
 use App\Services\MailPulse\MailPulseStatutsMessages;
 use App\Services\Annonces\SynchroniserCourrielsAnnonce;
+use App\Services\Annonces\RelancerCourrielsAnnonce;
+use App\Jobs\Annonces\RelancerCampagneCourriels;
+use App\Services\Annonces\CourrielAnnonce;
 use App\Services\MailPulse\MailPulseResult;
 use Illuminate\Support\Facades\Mail;
 use Mockery;
@@ -119,6 +122,8 @@ class AnnonceMailPulseTest extends TestCase
                 $this->assertStringContainsString('Annonce test', $charge['content']['text']);
                 $this->assertSame("klassci-annonce-{$annonce->id}-courriel-{$id}", $cle);
                 $this->assertSame($cle, $charge['metadata']['external_reference']);
+                $this->assertStringContainsString('<!DOCTYPE html>', $charge['metadata']['email_html']);
+                $this->assertStringContainsString('Annonce test', $charge['metadata']['email_html']);
                 return true;
             })->andReturn(new MailPulseResult(
                 true, 'accepted', 201, 'r-test', 'mp-test', null, null, null, 'accepted'
@@ -284,6 +289,120 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertSame(1, $result['lues']);
         $this->assertSame(0, $result['delivrees']);
         $this->assertSame(2, DB::table('esbtp_annonce_email_deliveries')->where('status', 'submitted')->count());
+    }
+
+
+    public function test_la_reprise_ne_reexpedie_jamais_un_courriel_deja_soumis_retarde_livre_ou_inconnu(): void
+    {
+        Bus::fake([RelancerCampagneCourriels::class, EnvoyerAnnonceCourriel::class]);
+        $annonce = $this->annonce();
+        $ids = [];
+        foreach (['pending', 'retrying', 'processing', 'submitted', 'awaiting_dispatch',
+            'delayed', 'delivered', 'failed'] as $etat) {
+            $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+                'annonce_id' => $annonce->id,
+                'email' => "{$etat}@etudiants.test",
+                'status' => $etat,
+                'submitted_at' => in_array($etat, ['submitted', 'delayed', 'delivered']) ? now() : null,
+                'mailpulse_message_id' => $etat === 'pending' || $etat === 'retrying' ? null : "mp-{$etat}",
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $ids[$etat] = $id;
+        }
+
+        $resultat = (new RelancerCourrielsAnnonce())->reprendre($annonce);
+        $this->assertSame(2, $resultat['enfile']);
+        Bus::assertDispatchedTimes(RelancerCampagneCourriels::class, 1);
+        // L'ordonnanceur ne remet pas les courriels dejà soumis.
+        (new RelancerCampagneCourriels($annonce->id))->handle();
+        Bus::assertDispatchedTimes(EnvoyerAnnonceCourriel::class, 2);
+        Bus::assertDispatched(EnvoyerAnnonceCourriel::class, fn ($job) => $job->deliveryId === $ids['pending']);
+        Bus::assertDispatched(EnvoyerAnnonceCourriel::class, fn ($job) => $job->deliveryId === $ids['retrying']);
+
+        // La reprise ne modifie jamais les etats soumis et n'ouvre pas un
+        // nouveau public via le fanout initial.
+        $this->assertSame(8, DB::table('esbtp_annonce_email_deliveries')->count());
+        foreach (['processing','submitted','awaiting_dispatch','delayed','delivered','failed'] as $etat) {
+            $this->assertSame($etat, DB::table('esbtp_annonce_email_deliveries')
+                ->where('id', $ids[$etat])->value('status'));
+        }
+    }
+
+    public function test_reprise_impossible_si_tous_livres_ou_annonce_expiree(): void
+    {
+        Bus::fake([RelancerCampagneCourriels::class, EnvoyerAnnonceCourriel::class]);
+        $annonce = $this->annonce();
+        DB::table('esbtp_annonce_email_deliveries')->insert([
+            'annonce_id' => $annonce->id, 'email' => 'livre@etudiants.test',
+            'status' => 'delivered', 'submitted_at' => now(),
+            'provider_delivered_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->assertSame(0, (new RelancerCourrielsAnnonce())->reprendre($annonce)['enfile']);
+        $annonce->update(['date_expiration' => now()->subMinute()]);
+        $this->assertSame(0, (new RelancerCourrielsAnnonce())->reprendre($annonce->fresh())['enfile']);
+        Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
+    }
+
+    public function test_contenu_annonce_echappe_dans_le_html_du_gabarit_et_version_texte_preservee(): void
+    {
+        $annonce = $this->annonce();
+        $annonce->contenu = "Reprise le lundi\n<script>alert('danger')</script> Nouvelle session.";
+        $courriel = new CourrielAnnonce();
+        $html = $courriel->html($annonce);
+        $this->assertStringContainsString('<!DOCTYPE html>', $html);
+        $this->assertStringContainsString('Reprise le lundi', $html);
+        $this->assertStringNotContainsString('<script>', $html);
+        $this->assertStringContainsString('Consulter l', $html);
+        $this->assertStringContainsString('Reprise le lundi', $courriel->texte($annonce));
+    }
+
+    public function test_reprise_par_tranches_continue_apres_le_plafond_sans_doubler_les_adresses(): void
+    {
+        Bus::fake([RelancerCampagneCourriels::class, EnvoyerAnnonceCourriel::class]);
+        config(['services.mailpulse.announcement_resume_max' => 2]);
+        $annonce = $this->annonce();
+        for ($i = 1; $i <= 5; $i++) {
+            DB::table('esbtp_annonce_email_deliveries')->insert([
+                'annonce_id' => $annonce->id,
+                'email' => "tranche-{$i}@etudiants.test",
+                'status' => 'pending',
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        $this->assertSame(5, (new RelancerCourrielsAnnonce())->reprendre($annonce)['enfile']);
+        Bus::assertDispatchedTimes(RelancerCampagneCourriels::class, 1);
+
+        $ids = DB::table('esbtp_annonce_email_deliveries')->where('annonce_id', $annonce->id)
+            ->orderBy('id')->pluck('id')->all();
+
+        (new RelancerCampagneCourriels($annonce->id))->handle();
+        Bus::assertDispatchedTimes(EnvoyerAnnonceCourriel::class, 2);
+        Bus::assertDispatched(RelancerCampagneCourriels::class, fn ($job) =>
+            $job->apresId === $ids[1] && $job->programmes === 2);
+
+        (new RelancerCampagneCourriels($annonce->id, $ids[1], 2))->handle();
+        Bus::assertDispatchedTimes(EnvoyerAnnonceCourriel::class, 4);
+        Bus::assertDispatched(RelancerCampagneCourriels::class, fn ($job) =>
+            $job->apresId === $ids[3] && $job->programmes === 4);
+
+        (new RelancerCampagneCourriels($annonce->id, $ids[3], 4))->handle();
+        Bus::assertDispatchedTimes(EnvoyerAnnonceCourriel::class, 5);
+        $this->assertSame(5, DB::table('esbtp_annonce_email_deliveries')->count());
+    }
+
+    public function test_deux_clics_sur_reprendre_ne_programment_pas_deux_campagnes(): void
+    {
+        Bus::fake([RelancerCampagneCourriels::class]);
+        $annonce = $this->annonce();
+        DB::table('esbtp_annonce_email_deliveries')->insert([
+            'annonce_id' => $annonce->id, 'email' => 'a-reprendre@etudiants.test',
+            'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $service = new RelancerCourrielsAnnonce();
+        $this->assertSame(1, $service->reprendre($annonce)['enfile']);
+        $this->assertSame(0, $service->reprendre($annonce)['enfile']);
+        Bus::assertDispatchedTimes(RelancerCampagneCourriels::class, 1);
     }
 
 }
