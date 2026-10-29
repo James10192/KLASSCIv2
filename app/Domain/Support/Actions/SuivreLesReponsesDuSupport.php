@@ -13,8 +13,8 @@ use Throwable;
 
 /**
  * Lit au Master les demandes de l'ecole modifiees depuis le dernier passage,
- * et avertit le rapporteur quand le support a repondu ou que la demande est
- * resolue / fermee.
+ * et avertit le rapporteur quand le support a repondu, prend sa demande
+ * en charge, attend une action de sa part ou l'a resolue / fermee.
  *
  * Idempotent : la decision se prend en comparant au dernier etat vu
  * (DemandeSuivie), jamais a l'heure du passage. Relire une demande deja vue
@@ -118,9 +118,15 @@ class SuivreLesReponsesDuSupport
             && ($suivie->derniere_reponse_support_le === null || $reponseLe->gt($suivie->derniere_reponse_support_le));
         $cloturee = in_array($statut, self::STATUTS_CLOTURES, true)
             && ! in_array($suivie->statut_code, self::STATUTS_CLOTURES, true);
+        // Une assignation seule ou une qualification reste interne. Quand le
+        // support demarre le traitement, ou demande une action a l'ecole, le
+        // rapporteur doit recevoir une alerte comme pour une reponse publique.
+        // Un changement RESOLU -> FERME n'envoie pas deux alertes de cloture.
+        $statutSignificatif = in_array($statut, ['EN_RESOLUTION', 'ACTION_REQUISE'], true)
+            && $statut !== $suivie->statut_code;
 
         $rapporteur = User::find((int) ($resume['rapporteur']['id'] ?? 0));
-        $averti = $avertir && $rapporteur !== null && ($aRepondu || $cloturee);
+        $averti = $avertir && $rapporteur !== null && ($aRepondu || $cloturee || $statutSignificatif);
 
         // L'etat vu s'enregistre AVANT d'avertir : si l'avertissement leve,
         // le passage suivant ne renvoie pas une notification deja partie.

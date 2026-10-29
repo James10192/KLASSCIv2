@@ -115,6 +115,26 @@ class SuiviDemandesSupportTest extends TestCase
         Mail::assertNothingSent();
     }
 
+    public function test_la_prise_en_charge_et_la_demande_d_action_alertent_le_rapporteur_une_fois(): void
+    {
+        $user = $this->utilisateur(true);
+        $avant = $this->resume($user);
+        $enCours = $this->resume($user, 'EN_RESOLUTION', null, '2026-10-01T09:10:00+00:00');
+        $actionRequise = $this->resume($user, 'ACTION_REQUISE', null, '2026-10-01T09:20:00+00:00');
+        $actionRequise['statut']['libelle'] = 'Action requise de votre part';
+
+        $this->master([$avant], [$enCours], [$enCours], [$actionRequise]);
+        $this->artisan('support:suivre-demandes')->assertSuccessful();
+        $this->artisan('support:suivre-demandes')->assertSuccessful();
+        $this->artisan('support:suivre-demandes')->assertSuccessful();
+        $this->assertSame(1, Notification::count());
+
+        $this->artisan('support:suivre-demandes')->assertSuccessful();
+        $this->assertSame(2, Notification::count());
+        $this->assertStringContainsString('attend une action de votre part', Notification::latest('id')->first()->title);
+        Mail::assertSent(ReponseDuSupportMail::class, 2);
+    }
+
     public function test_master_injoignable_le_curseur_ne_bouge_pas(): void
     {
         Http::fake([

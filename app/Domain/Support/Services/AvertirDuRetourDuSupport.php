@@ -12,7 +12,7 @@ use Throwable;
 
 /**
  * Avertit le rapporteur d'une demande d'aide : le support a repondu, ou
- * la demande est resolue / fermee.
+ * la demande passe en resolution, attend l'ecole ou est resolue / fermee.
  *
  * Toujours dans l'application (cloche). Par e-mail en plus, seulement vers une
  * adresse confirmee (AdresseJoignable) : le contenu d'une demande ne part pas
@@ -75,7 +75,7 @@ class AvertirDuRetourDuSupport
         $titre = self::titre($resume, $aRepondu);
         $message = $corps !== '' && $aRepondu
             ? mb_strimwidth($corps, 0, self::EXTRAIT_CLOCHE, '…')
-            : 'Votre demande a été mise à jour.';
+            : ($statut ? "Nouveau statut : {$statut}. Consultez le suivi de votre demande." : 'Votre demande a été mise à jour.');
         if ($cloturee && $aRepondu && $statut) {
             $message .= "\nStatut : {$statut}.";
         }
