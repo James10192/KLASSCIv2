@@ -462,6 +462,12 @@
     .aps-card-body { padding: 1rem; }
     .aps-stats { grid-template-columns: 1fr 1fr; }
 }
+.aps-mail-control{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;border:1px solid #cfe1f5;background:#f5f9ff;border-radius:14px;padding:1rem;margin-bottom:1rem}
+.aps-mail-control strong{color:#12458c}
+.aps-mail-control p{max-width:530px}
+.aps-mail-preview{margin-bottom:1rem;border:1px solid #dce7f5;border-radius:14px;padding:1rem;background:#fff}
+.aps-mail-frame{width:100%;min-height:510px;border:1px solid #e2e8f0;border-radius:12px;background:#fff}
+@media(max-width:600px){.aps-mail-frame{min-height:500px}.aps-mail-control .btn{width:100%}}
 </style>
 @endsection
 
@@ -638,13 +644,13 @@
                         </div>
                         <div class="aps-card-body">
                             <div class="aps-stats" style="grid-template-columns:repeat(auto-fit,minmax(125px,1fr));">
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $totalMail }}</div><div class="aps-stat-label">Adresses retenues</div></div>
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $enAttente }}</div><div class="aps-stat-label">En file / tentatives</div></div>
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $soumis }}</div><div class="aps-stat-label">Acceptés, non confirmés</div></div>
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $enConfirmation }}</div><div class="aps-stat-label">MailPulse à confirmer</div></div>
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $livres }}</div><div class="aps-stat-label">Livraisons confirmées</div></div>
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $retardes }}</div><div class="aps-stat-label">Livraisons retardées</div></div>
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $echoues }}</div><div class="aps-stat-label">Échecs connus</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-courriels-compteur="total">{{ $totalMail }}</div><div class="aps-stat-label">Adresses retenues</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-courriels-compteur="pending">{{ $enAttente }}</div><div class="aps-stat-label">En file / tentatives</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-courriels-compteur="submitted">{{ $soumis }}</div><div class="aps-stat-label">Acceptés, non confirmés</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-courriels-compteur="unconfirmed">{{ $enConfirmation }}</div><div class="aps-stat-label">MailPulse à confirmer</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-courriels-compteur="delivered">{{ $livres }}</div><div class="aps-stat-label">Livraisons confirmées</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-courriels-compteur="delayed">{{ $retardes }}</div><div class="aps-stat-label">Livraisons retardées</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-courriels-compteur="failed">{{ $echoues }}</div><div class="aps-stat-label">Échecs connus</div></div>
                             </div>
                             <div class="alert alert-info mt-3 mb-0" role="note">
                                 <strong>Un courriel soumis n'est pas nécessairement délivré.</strong>
@@ -665,23 +671,52 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="aps-card-body" id="aps-mail-actions" style="border-top:1px solid var(--bs-border-color,#dbe3f0)">
+                            @php
+                                $reprenables = (int) ($courriels['pending'] ?? 0) + (int) ($courriels['retrying'] ?? 0);
+                                $campagneTerminee = $totalMail > 0 && $livres === $totalMail;
+                                $peutReprendre = auth()->user()?->canAny(['annonces.create', 'annonces.edit', 'create_annonces', 'edit_annonces']) ?? false;
+                            @endphp
+                            <div class="aps-mail-control">
+                                <div>
+                                    <strong id="aps-mail-state">{{ $campagneTerminee ? 'Tous les courriels ont été délivrés' : 'Campagne en cours de suivi' }}</strong>
+                                    <p class="mb-0 text-muted small">La reprise ne réexpédie jamais un e-mail déjà soumis, différé ou délivré. Les retards sont gérés par le fournisseur.</p>
+                                </div>
+                                @if($peutReprendre)
+                                    <button id="aps-mail-resume" type="button" class="btn btn-primary"
+                                        data-url="{{ route('esbtp.annonces.courriels.reprendre', $annonce) }}"
+                                        {{ ! $annonce->isActive() || $reprenables === 0 || $campagneTerminee ? 'disabled' : '' }}>
+                                        <i class="fas fa-play"></i> Reprendre les envois non soumis <span id="aps-mail-retry-count">({{ $reprenables }})</span>
+                                    </button>
+                                @endif
+                                <span id="aps-mail-feedback" role="status" aria-live="polite" class="small"></span>
+                            </div>
+                            <div class="aps-mail-preview">
+                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                                    <strong><i class="fas fa-envelope-open-text"></i> Aperçu du courriel institutionnel</strong>
+                                    <small class="text-muted">Même HTML que celui transmis à MailPulse pour les futurs envois</small>
+                                </div>
+                                <iframe title="Aperçu sécurisé du courriel d'annonce"
+                                    src="{{ route('esbtp.annonces.courriels.apercu', $annonce) }}"
+                                    loading="lazy" sandbox="" referrerpolicy="no-referrer"
+                                    class="aps-mail-frame"></iframe>
+                            </div>
+                        </div>
                         <div class="aps-card-body" style="border-top:1px solid var(--bs-border-color,#dbe3f0)">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                                 <div>
                                     <strong>Destinataires et état individuel</strong>
                                     <div class="text-muted small">Une ligne par adresse unique ; les statuts sont ceux de MailPulse.</div>
                                 </div>
-                                <form method="GET" action="{{ route('esbtp.annonces.show', $annonce) }}" class="d-flex gap-2 flex-wrap">
-                                    <label for="courriels-statut" class="visually-hidden">Filtrer les états des e-mails</label>
-                                    <select id="courriels-statut" class="form-select form-select-sm" name="courriels_statut" style="max-width:220px">
-                                        <option value="">Tous les états</option>
-                                        @foreach(['pending'=>'En attente', 'processing'=>'Traitement', 'retrying'=>'Nouvel essai',
-                                            'awaiting_dispatch'=>'À confirmer', 'submitted'=>'Soumis',
-                                            'delayed'=>'Retardé', 'delivered'=>'Délivré', 'failed'=>'Échec'] as $code => $libelle)
-                                            <option value="{{ $code }}" {{ $filtre === $code ? 'selected' : '' }}>{{ $libelle }}</option>
-                                        @endforeach
-                                    </select>
-                                    <button class="btn btn-sm btn-outline-primary" type="submit">Filtrer</button>
+                                <form id="aps-courriels-filtres" class="d-flex align-items-center gap-2 flex-wrap">
+                                    <x-au-select name="courriels_statut" :value="$filtre ?? ''"
+                                        placeholder="Tous les états"
+                                        :searchable="false"
+                                        :options="['' => 'Tous les états'] + \App\Http\Controllers\ESBTPAnnonceCourrielController::STATUTS" />
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Filtrer</button>
+                                    <button type="button" id="aps-courriels-refresh" class="btn btn-sm btn-outline-secondary" aria-label="Actualiser les états">
+                                        <i class="fas fa-sync-alt"></i> Actualiser
+                                    </button>
                                 </form>
                             </div>
                             <div class="table-responsive">
@@ -693,36 +728,18 @@
                                         <th scope="col">Dernière mise à jour</th>
                                         <th scope="col">Code fournisseur</th>
                                     </tr></thead>
-                                    <tbody>
+                                    <tbody id="aps-courriels-rows">
                                     @forelse($destinataires as $livraison)
-                                        @php
-                                            $etatTexte = match($livraison->status) {
-                                                'delivered' => 'Délivré', 'delayed' => 'Retardé',
-                                                'submitted' => 'Soumis', 'failed' => 'Échec',
-                                                'retrying' => 'Nouvelle tentative', 'processing' => 'En cours',
-                                                'awaiting_dispatch' => 'À confirmer', default => 'En attente'
-                                            };
-                                            $couleur = match($livraison->status) {
-                                                'delivered' => 'success', 'failed' => 'danger',
-                                                'delayed', 'retrying' => 'warning', default => 'secondary'
-                                            };
-                                        @endphp
-                                        <tr>
-                                            <td class="text-break">{{ $livraison->email }}</td>
-                                            <td><span class="badge bg-{{ $couleur }}">{{ $etatTexte }}</span></td>
-                                            <td>{{ (int) $livraison->attempts }}</td>
-                                            <td class="text-nowrap">{{ \Illuminate\Support\Carbon::parse($livraison->updated_at)->format('d/m/Y H:i') }}</td>
-                                            <td class="text-break"><small>{{ $livraison->error_code ?: '—' }}</small></td>
-                                        </tr>
+                                        @include('esbtp.annonces._courriel-ligne', ['ligne' => $livraison])
                                     @empty
-                                        <tr><td colspan="5" class="text-muted py-3 text-center">
-                                            Aucune adresse pour ce filtre. Vérifiez le traitement de la file.
-                                        </td></tr>
+                                        <tr data-li-cle="aucun"><td colspan="5" class="text-center py-3 text-muted">Aucune adresse avec ce filtre.</td></tr>
                                     @endforelse
                                     </tbody>
                                 </table>
                             </div>
-                            <div class="mt-2">{{ $destinataires->links() }}</div>
+                            <x-liste-infinie id="aps-courriels-infinite" :paginateur="$destinataires"
+                                cible="#aps-courriels-rows" libelle="courriels"
+                                :url="route('esbtp.annonces.courriels.liste', $annonce)" />
                         </div>
                     </section>
                 @endif
@@ -1022,6 +1039,94 @@
         openBtn?.addEventListener('click', function () {
             if (modalEl && window.bootstrap) {
                 bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            }
+        });
+
+        // Interactions AJAX : conservation du contexte sans rechargement.
+        const filter = document.getElementById('aps-courriels-filtres');
+        const resume = document.getElementById('aps-mail-resume');
+        const refresh = document.getElementById('aps-courriels-refresh');
+        const rows = document.getElementById('aps-courriels-rows');
+        const feedback = document.getElementById('aps-mail-feedback');
+        const listUrl = @json(route('esbtp.annonces.courriels.liste', $annonce));
+        let seq = 0;
+
+        function toastMessage(message, level = 'info') {
+            if (typeof window.showToast === 'function') window.showToast(message, level);
+            else if (feedback) feedback.textContent = message;
+        }
+
+        async function loadCourriels() {
+            if (!rows) return;
+            const num = ++seq;
+            const select = filter?.querySelector('[name="courriels_statut"]');
+            const chosen = select?.value || '';
+            const url = new URL(listUrl, window.location.origin);
+            if (chosen) url.searchParams.set('courriels_statut', chosen);
+            url.searchParams.set('mode', 'rows');
+            url.searchParams.set('page', '1');
+            if (refresh) refresh.disabled = true;
+            try {
+                const response = await fetch(url.toString(), {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin'
+                });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const data = await response.json();
+                if (num !== seq) return;
+                rows.innerHTML = data.rows_html || '<tr><td colspan="5">Aucune adresse.</td></tr>';
+                const current = document.getElementById('aps-courriels-infinite');
+                if (current && data.pagination) {
+                    const replacement = current.cloneNode(true);
+                    replacement.dataset.query = chosen ? 'courriels_statut=' + encodeURIComponent(chosen) : '';
+                    replacement.dataset.pageSuivante = data.pagination.next_page || '';
+                    replacement.dataset.total = data.pagination.total ?? '';
+                    replacement.dataset.affiches = data.pagination.affiches ?? 0;
+                    replacement.dataset.parPage = data.pagination.par_page ?? 25;
+                    replacement.removeAttribute('data-etat');
+                    current.replaceWith(replacement);
+                    window.ListeInfinie?.init?.(document);
+                }
+                if (data.resume) {
+                    document.querySelectorAll('[data-courriels-compteur]').forEach(el => {
+                        const key = el.dataset.courrielsCompteur;
+                        if (data.resume[key] !== undefined) el.textContent = Number(data.resume[key]).toLocaleString('fr-FR');
+                    });
+                    const eligible = data.resume.pending || 0;
+                    if (resume) {
+                        resume.disabled = eligible === 0;
+                        const label = document.getElementById('aps-mail-retry-count');
+                        if (label) label.textContent = '(' + eligible.toLocaleString('fr-FR') + ')';
+                    }
+                    const done = data.resume.total > 0 && data.resume.total === data.resume.delivered;
+                    const state = document.getElementById('aps-mail-state');
+                    if (state) state.textContent = done ? 'Tous les courriels ont été délivrés' : 'Campagne en cours de suivi';
+                }
+            } catch (_) {
+                toastMessage('Impossible d’actualiser le suivi. Réessayez.', 'warning');
+            } finally {
+                if (refresh) refresh.disabled = false;
+            }
+        }
+        filter?.addEventListener('submit', e => { e.preventDefault(); loadCourriels(); });
+        refresh?.addEventListener('click', loadCourriels);
+        resume?.addEventListener('click', async () => {
+            if (!confirm('Reprendre uniquement les courriels non soumis ? Les messages retardés ou déjà remis ne seront pas renvoyés.')) return;
+            resume.disabled = true;
+            try {
+                const response = await fetch(resume.dataset.url, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+                    credentials: 'same-origin'
+                });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const data = await response.json();
+                toastMessage(data.raison || 'Reprise demandée.', 'success');
+                await loadCourriels();
+            } catch (_) {
+                toastMessage('La reprise a échoué. Aucun envoi supplémentaire ne doit être supposé.', 'error');
+                await loadCourriels();
             }
         });
 
