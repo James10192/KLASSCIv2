@@ -70,3 +70,9 @@ Pour les nouveaux envois, le service `App\\Services\\Annonces\\CourrielAnnonce` 
 La fiche annonce affiche `complete_delivered` uniquement si toutes les lignes ont une confirmation de livraison, `complete_with_failures` si aucune ligne n'est en cours mais que des échecs subsistent, et `pending` dès qu'une adresse attend une preuve. Zéro adresse ne constitue jamais une diffusion délivrée. L'épuisement local des tentatives de queue n'est plus assimilé à un échec du fournisseur : `awaiting_dispatch` + `queue_outcome_unknown` sont bloquants jusqu'à réconciliation manuelle, afin de ne pas créer de doublon après timeout.
 
 **Relance effective NON activée** : la nouvelle migration d'essais immuables doit être produite avec `php artisan make:migration` conformément aux règles ; aucun contrôle UI ne doit exposer une relance tant que les garde-fous d'idempotence, preuves fournisseur et autorisations ne sont pas disponibles et testés. Ne pas relancer les 2 391 courriels historiques en attente.
+
+## Précision anti-doublon sur les réponses HTTP incertaines
+
+Un timeout, une perte de connexion, une réponse 5xx ou un HTTP 2xx dépourvu de contrat de dispatch utilisable ne prouve pas que MailPulse a refusé l'envoi. Le job conserve `awaiting_dispatch` avec `submission_outcome_unknown` et l'identifiant de requête lorsqu'il est disponible ; il ne relance pas automatiquement. Une exception après le début du transport HTTP est traitée de la même façon. Un `accepted` sans identifiant de message ne permet pas le rapprochement par API et reste lui aussi bloqué.
+
+Les `rate_limited` (429 explicitement refusés) gardent la reprise différée. La résolution des résultats incertains doit confronter le journal MailPulse, l'identifiant d'idempotence et les événements du fournisseur, puis être auditée manuellement ; le simple temps écoulé ne constitue pas une preuve de non-envoi. Aucun lancement de relances historiques n'est autorisé par ce correctif.

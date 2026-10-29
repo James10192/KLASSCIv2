@@ -60,6 +60,8 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
         }
 
         $reference = 'klassci-annonce-'.$annonce->id.'-courriel-'.$ligne->id;
+        // After crossing the HTTP boundary, a lost response cannot prove non-delivery.
+        $soumissionCommencee = false;
         try {
             $attente = $cadence->attenteAvantEnvoi();
             if ($attente !== null) {
@@ -89,6 +91,7 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
                 $metadata['email_html'] = $html;
             }
 
+            $soumissionCommencee = true;
             $resultat = $client->sendEmailMessage([
                 'channel' => 'email',
                 'recipient' => ['type' => 'email', 'value' => $ligne->email],
@@ -97,6 +100,20 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
             ], $reference);
 
             if (! $resultat->ok) {
+                // Timeout/5xx or an unusable successful response may have accepted
+                // the message. Do not blindly retry; reconcile the stable key first.
+                if (in_array($resultat->status, ['connection_failed', 'request_timeout', 'provider_unavailable', 'invalid_dispatch_contract'], true)) {
+                    $this->statut('awaiting_dispatch', [
+                        'error_code' => 'submission_outcome_unknown',
+                        'mailpulse_request_id' => $resultat->requestId ?? $reference,
+                        'mailpulse_message_id' => $resultat->id,
+                    ]);
+                    Log::warning('Annonce : soumission MailPulse indeterminee, relance bloquee', [
+                        'annonce_id' => $annonce->id, 'livraison_id' => $ligne->id,
+                        'statut' => $resultat->status,
+                    ]);
+                    return;
+                }
                 if (in_array($resultat->status, RefusMailPulse::PASSAGERS, true)) {
                     $this->reporter($resultat->retryAfter ?? 60, $resultat->status);
                     return;
@@ -113,17 +130,32 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
                 return;
             }
 
-            // pending_reconciliation n'est NI soumis avec certitude NI delivre.
-            $etat = $resultat->isDispatchAccepted() ? 'submitted' : 'awaiting_dispatch';
+            // Even an accepted response needs a durable message ID for tracking.
+            $accepteAvecId = $resultat->isDispatchAccepted() && is_string($resultat->id)
+                && trim($resultat->id) !== '';
+            $etat = $accepteAvecId ? 'submitted' : 'awaiting_dispatch';
             $this->statut($etat, [
+                'error_code' => $accepteAvecId ? null : 'submission_outcome_unknown',
                 'mailpulse_message_id' => $resultat->id,
                 'mailpulse_request_id' => $resultat->requestId,
                 'dispatch_state' => $resultat->dispatchState,
-                'submitted_at' => $resultat->isDispatchAccepted() ? now() : null,
+                'submitted_at' => $accepteAvecId ? now() : null,
             ]);
         } catch (Throwable $e) {
-            $this->statut('retrying', ['error_code' => 'transport_exception']);
-            throw $e; // la queue applique son backoff et garde la cle stable
+            if ($soumissionCommencee) {
+                // Includes unexpected HTTP-client exceptions and failures while
+                // recording a successful response: do not send again on next job.
+                $this->statut('awaiting_dispatch', [
+                    'error_code' => 'submission_outcome_unknown',
+                    'mailpulse_request_id' => $reference,
+                ]);
+                Log::warning('Annonce : resultat HTTP indetermine, reemission interdite', [
+                    'livraison_id' => $this->deliveryId,
+                ]);
+                return;
+            }
+            $this->statut('retrying', ['error_code' => 'pre_submission_exception']);
+            throw $e; // no HTTP submission has started; queue backoff applies
         }
     }
 

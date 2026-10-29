@@ -286,6 +286,68 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertSame(2, DB::table('esbtp_annonce_email_deliveries')->where('status', 'submitted')->count());
     }
 
+    public function test_une_reponse_reseau_incertaine_met_en_quarantaine_sans_renvoi(): void
+    {
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'incertain@etudiants.test',
+            'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $client = Mockery::mock(MailPulseClient::class);
+        $client->shouldReceive('getSetting')->twice()->andReturn('');
+        $client->shouldReceive('sendEmailMessage')->once()
+            ->andReturn(new MailPulseResult(false, 'connection_failed', null, 'reference-incertaine'));
+        $job = new EnvoyerAnnonceCourriel($id);
+        $job->handle($client, new CadenceMailPulse);
+        $job->handle($client, new CadenceMailPulse);
+
+        $ligne = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
+        $this->assertSame('awaiting_dispatch', $ligne->status);
+        $this->assertSame('submission_outcome_unknown', $ligne->error_code);
+        $this->assertSame('reference-incertaine', $ligne->mailpulse_request_id);
+        $this->assertNull($ligne->provider_failed_at);
+        $this->assertNull($ligne->submitted_at);
+        $this->assertSame(1, (int) $ligne->attempts);
+    }
+
+    public function test_exception_pendant_le_transport_ne_reexpedie_pas_un_email_incertain(): void
+    {
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'exception@etudiants.test',
+            'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $client = Mockery::mock(MailPulseClient::class);
+        $client->shouldReceive('getSetting')->twice()->andReturn('');
+        $client->shouldReceive('sendEmailMessage')->once()
+            ->andThrow(new \\RuntimeException('remote response lost'));
+        $job = new EnvoyerAnnonceCourriel($id);
+        $job->handle($client, new CadenceMailPulse);
+        $job->handle($client, new CadenceMailPulse);
+        $this->assertSame('awaiting_dispatch',
+            DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
+        $this->assertSame('submission_outcome_unknown',
+            DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('error_code'));
+    }
+
+    public function test_acceptation_sans_identifiant_message_ne_devient_pas_faussement_soumise(): void
+    {
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'sans-id@etudiants.test',
+            'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $client = Mockery::mock(MailPulseClient::class);
+        $client->shouldReceive('getSetting')->twice()->andReturn('');
+        $client->shouldReceive('sendEmailMessage')->once()
+            ->andReturn(new MailPulseResult(true, 'accepted', 201, 'r-sans-id', null, null, null, null, 'accepted'));
+        (new EnvoyerAnnonceCourriel($id))->handle($client, new CadenceMailPulse);
+        $ligne = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
+        $this->assertSame('awaiting_dispatch', $ligne->status);
+        $this->assertNull($ligne->submitted_at);
+        $this->assertSame('submission_outcome_unknown', $ligne->error_code);
+    }
+
     public function test_epuisement_queue_ne_devient_pas_faussement_un_echec_fournisseur(): void
     {
         $annonce = $this->annonce();

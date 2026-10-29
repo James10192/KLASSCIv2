@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-29 · Annonces : protection des destinataires contre les doublons après réponse MailPulse ambiguë (timeout, panne réseau, 5xx) ; statut en attente de rapprochement plutôt que relance silencieuse.
 - 2026-10-29 · Annonces : filtre des destinataires avec composant Choices.js déjà partagé et pagination AJAX légère (la page entière et le HTML du mail ne sont plus rechargés à chaque tranche) ; version HTML sans JavaScript préservée.
 - 2026-10-29 · Suivi des annonces MailPulse : progression des livraisons confirmées, état final avec ou sans échecs, aucune relance automatique des adresses en situation ambiguë ; aperçu HTML des nouveaux e-mails et filtres AJAX progressifs.
 - 2026-10-29 · Annonces : gabarit HTML unique et aperçu de l'e-mail sur la fiche ; relance sécurisée réservée à un lot indépendant avec journal d'essais, états définitifs et contrôle des doublons ; aucune relance massive avant la validation du workflow.
