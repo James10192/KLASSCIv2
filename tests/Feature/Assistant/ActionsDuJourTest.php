@@ -3,6 +3,7 @@
 namespace Tests\Feature\Assistant;
 
 use App\Domain\Assistant\Actions\Classes\AjouterClasses;
+use App\Domain\Assistant\Actions\Classes\AjouterClassesLmd;
 use App\Domain\Assistant\Actions\Classes\ModifierClasses;
 use App\Domain\Assistant\Actions\ContexteDEchange;
 use App\Domain\Assistant\Actions\Lmd\LierUeAuxParcours;
@@ -55,7 +56,7 @@ class ActionsDuJourTest extends TestCase
         parent::setUp();
         $this->withoutMiddleware([PaywallMiddleware::class, EnsureInstalled::class, CheckInstalled::class]);
         Role::findOrCreate('superAdmin', 'web');
-        foreach (['classes.create', 'classes.edit', 'lmd.structure.manage', 'lmd.structure.view', 'inscriptions.view'] as $p) {
+        foreach (['classes.create', 'classes.edit', 'lmd.structure.manage', 'lmd.structure.view', 'niveaux.create', 'inscriptions.view'] as $p) {
             Permission::findOrCreate($p, 'web');
         }
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -286,6 +287,218 @@ class ActionsDuJourTest extends TestCase
         $trop = app(AjouterClasses::class)->executeAuthorized(['places' => 40, 'filieres' => ['IDAT'], 'niveaux' => ['BTS1I'], 'nombre' => 30], $this->admin);
         $this->assertArrayNotHasKey('widget', $trop);
         $this->assertStringContainsString('26', implode(' ', $trop['manques']));
+    }
+
+    /**
+     * Nanan doit créer trois classes LMD, pas tenter l'outil BTS. Chaque
+     * proposition est non mutante avant le clic « Valider ».
+     */
+    public function test_creation_ggt_licences_par_nanan_avec_30_places(): void
+    {
+        app(LMDImportService::class)->import([
+            'domaine' => ['name' => 'Sciences GGT', 'code' => 'D-GGT-26'],
+            'mention' => ['name' => 'Géomètre-Topographe', 'code' => 'MENT-GGT-26'],
+            'parcours' => ['name' => 'Géomètre-Topographe', 'code' => 'PAR-GGT-26'],
+            'filiere' => ['name' => 'Géomètre-Topographe', 'code' => 'GGT'],
+            'niveaux' => [
+                ['name' => 'Licence 1', 'year' => 1],
+                ['name' => 'Licence 2', 'year' => 2],
+                ['name' => 'Licence 3', 'year' => 3],
+            ],
+        ], $this->admin->id);
+
+        $parcours = ESBTPLMDParcours::where('code', 'PAR-GGT-26')->sole();
+        $action = app(AjouterClassesLmd::class);
+        $r = $action->executeAuthorized(['cible' => 'GGT', 'niveaux' => ['L1', 'L2', 'L3'], 'places' => 30], $this->admin);
+        $this->assertSame('approbation', $r['widget']['kind'] ?? null, json_encode($r, JSON_UNESCAPED_UNICODE));
+        $this->assertSame(0, ESBTPClasse::where('parcours_id', $parcours->id)->count(), 'aucune écriture pendant la proposition');
+
+        $this->valider($r);
+
+        $classes = ESBTPClasse::where('parcours_id', $parcours->id)->orderBy('name')->get();
+        $this->assertCount(3, $classes);
+        $this->assertSame(['GGT L1A', 'GGT L2A', 'GGT L3A'], $classes->pluck('name')->all());
+        $this->assertSame([30, 30, 30], $classes->pluck('places_totales')->all());
+        $this->assertSame(['LMD'], $classes->pluck('systeme_academique')->unique()->values()->all());
+        $this->assertSame([(int) $parcours->filiere_id], $classes->pluck('filiere_id')->unique()->values()->all());
+    }
+
+    public function test_creation_lmd_n_invente_pas_un_parcours_et_demande_les_places(): void
+    {
+        $action = app(AjouterClassesLmd::class);
+        $r = $action->executeAuthorized(['cible' => 'GGT', 'niveaux' => ['L1', 'L2', 'L3']], $this->admin);
+        $this->assertArrayNotHasKey('widget', $r);
+        $this->assertStringContainsString('places', implode(' ', $r['manques']));
+
+        $r = $action->executeAuthorized(['cible' => 'CODE-INCONNU', 'niveaux' => ['L1'], 'places' => 30], $this->admin);
+        $this->assertArrayNotHasKey('widget', $r);
+        $this->assertStringContainsString('CODE du domaine', implode(' ', $r['manques']));
+    }
+
+    public function test_nanan_demande_la_structure_manquante_et_cree_parcours_et_classes_apres_validation(): void
+    {
+        $filiere = ESBTPFiliere::factory()->create(['code' => 'GGT-WIZ-26', 'name' => 'Géomètre Topographe']);
+        $outil = app(AjouterClassesLmd::class);
+
+        $incomplet = $outil->executeAuthorized([
+            'cible' => 'GGT-WIZ-26', 'niveaux' => ['L1', 'L2', 'L3'], 'places' => 30,
+        ], $this->admin);
+        $this->assertArrayNotHasKey('widget', $incomplet);
+        $this->assertStringContainsString('CODE du domaine', implode(' ', $incomplet['manques']));
+        $this->assertNull(ESBTPLMDParcours::where('code', 'GGT-PAR-WIZ-26')->first());
+
+        $args = [
+            'cible' => 'GGT-WIZ-26', 'type_cible' => 'parcours', 'niveaux' => ['L1', 'L2', 'L3'], 'places' => 30,
+            'structure' => [
+                'domaine' => ['code' => 'D-GGT-WIZ-26', 'name' => 'Sciences et technologies'],
+                'mention' => ['code' => 'M-GGT-WIZ-26', 'name' => 'Topographie'],
+                'parcours' => ['code' => 'GGT-PAR-WIZ-26', 'name' => 'Géomètre Topographe'],
+                // L'établissement possède déjà la filière : ne jamais la recréer.
+                'filiere' => ['code' => 'GGT-WIZ-26', 'name' => 'Géomètre Topographe'],
+            ],
+        ];
+        $proposition = $outil->executeAuthorized($args, $this->admin);
+        $this->assertSame('approbation', $proposition['widget']['kind'] ?? null,
+            json_encode($proposition, JSON_UNESCAPED_UNICODE));
+        $this->assertNull(ESBTPLMDParcours::where('code', 'GGT-PAR-WIZ-26')->first(), 'pas de création avant Valider');
+        $this->assertSame(0, ESBTPClasse::where('filiere_id', $filiere->id)->count());
+
+        $this->valider($proposition);
+
+        $parcours = ESBTPLMDParcours::where('code', 'GGT-PAR-WIZ-26')->sole();
+        $this->assertSame((int) $filiere->id, (int) $parcours->filiere_id);
+        $classes = ESBTPClasse::where('parcours_id', $parcours->id)->orderBy('code')->get();
+        $this->assertSame(['GGT-WIZ-26 L1A', 'GGT-WIZ-26 L2A', 'GGT-WIZ-26 L3A'], $classes->pluck('name')->all());
+        $this->assertSame([30, 30, 30], $classes->pluck('places_totales')->all());
+        $this->assertSame('LMD', $classes[0]->systeme_academique);
+        $this->assertSame([(int) $filiere->id], $classes->pluck('filiere_id')->unique()->values()->all());
+    }
+
+    public function test_nanan_refuse_de_renommer_une_mention_existante_pendant_une_creation_de_classe(): void
+    {
+        $domaine = \App\Models\ESBTPLMDDomaine::create([
+            'code' => 'D-GGT-CONF-26', 'name' => 'Sciences', 'is_active' => true,
+        ]);
+        $mention = \App\Models\ESBTPLMDMention::create([
+            'code' => 'M-GGT-CONF-26', 'name' => 'Géomètre', 'domaine_id' => $domaine->id, 'is_active' => true,
+        ]);
+        $r = app(AjouterClassesLmd::class)->executeAuthorized([
+            'cible' => 'P-GGT-CONF-26', 'niveaux' => ['L1'], 'places' => 30,
+            'structure' => [
+                'domaine' => ['code' => $domaine->code],
+                'mention' => ['code' => $mention->code, 'name' => 'Autre filière'],
+                'parcours' => ['code' => 'P-GGT-CONF-26', 'name' => 'Parcours'],
+            ],
+        ], $this->admin);
+        $this->assertArrayNotHasKey('widget', $r);
+        $this->assertStringContainsString('sans la renommer', implode(' ', $r['manques']));
+        $this->assertSame('Géomètre', $mention->fresh()->name);
+    }
+
+    public function test_nanan_refuse_un_mauvais_rattachement_de_filiere_au_parcours(): void
+    {
+        $r = app(AjouterClassesLmd::class)->executeAuthorized([
+            'cible' => 'GGT-CIBLE-26', 'niveaux' => ['L1'], 'places' => 30,
+            'structure' => [
+                'domaine' => ['code' => 'D-MIS-26', 'name' => 'Domaine'],
+                'mention' => ['code' => 'M-MIS-26', 'name' => 'Mention'],
+                'parcours' => ['code' => 'P-MIS-26', 'name' => 'Parcours'],
+                'filiere' => ['code' => 'AUTRE-CODE-26', 'name' => 'Filière autre'],
+            ],
+        ], $this->admin);
+        $this->assertArrayNotHasKey('widget', $r);
+        $this->assertStringContainsString('ne correspond ni au parcours', implode(' ', $r['manques']));
+    }
+
+    public function test_si_une_classe_existe_nanan_propose_seulement_les_niveaux_manquants(): void
+    {
+        app(LMDImportService::class)->import([
+            'domaine' => ['name' => 'Sciences partial', 'code' => 'D-PARTIAL-26'],
+            'mention' => ['name' => 'Topographie', 'code' => 'M-PARTIAL-26'],
+            'parcours' => ['name' => 'Topographie', 'code' => 'P-PARTIAL-26'],
+            'filiere' => ['name' => 'Géomètre Topographe', 'code' => 'GGT-PARTIAL-26'],
+            'niveaux' => [
+                ['name' => 'Licence 1', 'year' => 1],
+                ['name' => 'Licence 2', 'year' => 2],
+                ['name' => 'Licence 3', 'year' => 3],
+            ],
+        ], $this->admin->id);
+        $parcours = ESBTPLMDParcours::where('code', 'P-PARTIAL-26')->sole();
+        $l1 = ESBTPNiveauEtude::where('type', 'Licence')->where('year', 1)->firstOrFail();
+        $ancienne = ESBTPClasse::factory()->create([
+            'name' => 'GGT-PARTIAL-26 L1A', 'code' => 'GGT_PARTIAL_26_L1A',
+            'systeme_academique' => 'LMD', 'filiere_id' => $parcours->filiere_id,
+            'parcours_id' => $parcours->id, 'niveau_etude_id' => $l1->id,
+            'places_totales' => 30,
+        ]);
+        $r = app(AjouterClassesLmd::class)->executeAuthorized([
+            'cible' => 'GGT-PARTIAL-26', 'niveaux' => ['L1', 'L2', 'L3'], 'places' => 30,
+        ], $this->admin);
+        $this->assertSame('approbation', $r['widget']['kind'] ?? null);
+        $this->assertCount(2, $r['widget']['lignes'] ?? []);
+        $this->valider($r);
+        $this->assertCount(3, ESBTPClasse::where('parcours_id', $parcours->id)->get());
+        $this->assertSame((int) $ancienne->id, (int) ESBTPClasse::where('code', 'GGT_PARTIAL_26_L1A')->sole()->id);
+    }
+
+    public function test_creation_d_un_niveau_lmd_manquant_est_proposee_sans_ecriture_anticipee(): void
+    {
+        app(LMDImportService::class)->import([
+            'domaine' => ['name' => 'Sciences doctorales', 'code' => 'D-DOC-26'],
+            'mention' => ['name' => 'Recherche', 'code' => 'M-DOC-26'],
+            'parcours' => ['name' => 'Recherche', 'code' => 'P-DOC-26'],
+            'niveaux' => [],
+        ], $this->admin->id);
+        $avant = ESBTPNiveauEtude::where('type', 'Doctorat')->where('year', 8)->count();
+        $r = app(AjouterClassesLmd::class)->executeAuthorized([
+            'cible' => 'P-DOC-26', 'niveaux' => ['D3'], 'places' => 12,
+        ], $this->admin);
+        $this->assertSame('approbation', $r['widget']['kind'] ?? null, json_encode($r, JSON_UNESCAPED_UNICODE));
+        $this->assertSame($avant, ESBTPNiveauEtude::where('type', 'Doctorat')->where('year', 8)->count());
+        $this->valider($r);
+        $n = ESBTPNiveauEtude::where('type', 'Doctorat')->where('year', 8)->sole();
+        $this->assertSame(12, (int) ESBTPClasse::where('niveau_etude_id', $n->id)->where('code', 'P_DOC_26_D3A')->sole()->places_totales);
+    }
+
+    public function test_sigle_ggt_et_code_filiere_different_exigent_confirmation_explicite(): void
+    {
+        $filiere = ESBTPFiliere::factory()->create([
+            'code' => 'GEOMETRE_TOPOGRAPHE_26', 'name' => 'Géomètre Topographe',
+        ]);
+        $args = [
+            'cible' => 'GGT', 'type_cible' => 'parcours', 'niveaux' => ['L1'], 'places' => 30,
+            'structure' => [
+                'domaine' => ['code' => 'DOM-GGT-ALIAS-26', 'name' => 'Sciences et technologie'],
+                'mention' => ['code' => 'MEN-GGT-ALIAS-26', 'name' => 'Géomètre Topographe'],
+                'parcours' => ['code' => 'PAR-GGT-ALIAS-26', 'name' => 'Géomètre Topographe'],
+                'filiere' => ['code' => $filiere->code, 'name' => $filiere->name],
+            ],
+        ];
+        $refus = app(AjouterClassesLmd::class)->executeAuthorized($args, $this->admin);
+        $this->assertArrayNotHasKey('widget', $refus);
+        $this->assertStringContainsString('confirme explicitement', implode(' ', $refus['manques']));
+
+        $args['liaison_filiere_confirmee'] = true;
+        $proposition = app(AjouterClassesLmd::class)->executeAuthorized($args, $this->admin);
+        $this->assertSame('approbation', $proposition['widget']['kind'] ?? null,
+            json_encode($proposition, JSON_UNESCAPED_UNICODE));
+        $this->assertSame(0, ESBTPClasse::where('filiere_id', $filiere->id)->count());
+        $this->valider($proposition);
+        $classe = ESBTPClasse::where('code', 'GGT_L1A')->sole();
+        $this->assertSame((int) $filiere->id, (int) $classe->filiere_id);
+        $this->assertSame('GGT L1A', $classe->name);
+    }
+
+    public function test_creation_lmd_et_bts_sont_des_outils_distincts_avec_la_meme_permission(): void
+    {
+        $schemas = app(CatalogueOutils::class)->schemas($this->admin);
+        $noms = array_column($schemas, 'nom');
+        $this->assertContains('proposer_creation_classes', $noms);
+        $this->assertContains('proposer_creation_classes_lmd', $noms);
+
+        $systeme = app(ConstructeurDePrompt::class)->systeme($this->admin, null, null);
+        $this->assertStringContainsString('proposer_creation_classes_lmd', $systeme);
+        $this->assertStringContainsString('GGT', $systeme);
     }
 
     public function test_modifier_les_places_d_une_filiere_et_niveau(): void

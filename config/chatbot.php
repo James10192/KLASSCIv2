@@ -119,6 +119,12 @@ return [
             'libelle' => 'Préparation des nouvelles classes…',
             'suggestion' => 'Ajoute une classe de plus à chaque filière et niveau',
         ],
+        'proposer_creation_classes_lmd' => [
+            'enabled' => true,
+            'all_permissions' => ['classes.create'],
+            'libelle' => 'Préparation des classes LMD…',
+            'suggestion' => 'Crée les classes GGT de Licence 1, 2 et 3, 30 places chacune',
+        ],
         'proposer_modification_classes' => [
             'enabled' => true,
             'all_permissions' => ['classes.edit'],

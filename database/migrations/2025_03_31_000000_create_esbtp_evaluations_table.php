@@ -101,10 +101,7 @@ class CreateEsbtpEvaluationsTable extends Migration
      */
     private function hasIndex($table, $index)
     {
-        $conn = Schema::getConnection();
-        $dbSchemaManager = $conn->getDoctrineSchemaManager();
-        $doctrineTable = $dbSchemaManager->listTableDetails($table);
-
-        return $doctrineTable->hasIndex($index);
+        // Depuis Laravel 11, le schema natif remplace Doctrine pour les index.
+        return Schema::hasIndex($table, $index);
     }
 }
