@@ -52,6 +52,7 @@ class AjouterClassesLmd extends ActionAgent
                 'type_cible' => ['type' => 'string', 'enum' => ['parcours', 'mention'], 'description' => 'Préciser si le code est ambigu.'],
                 'niveaux' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Niveaux LMD demandés, ex. ["L1","L2","L3"].'],
                 'places' => ['type' => 'integer', 'description' => 'Nombre de places par nouvelle classe.'],
+                'liaison_filiere_confirmee' => ['type' => 'boolean', 'description' => 'Vrai seulement si la personne a confirmé que le sigle cible (ex. GGT) correspond au code filière différent (ex. GEOMETRE_TOPOGRAPHE). Jamais supposer.'],
                 'structure' => ['type' => 'object', 'description' => 'À renseigner si les parcours/mentions n’existent pas : noms/codes EXACTS fournis par l’école.', 'properties' => [
                     'domaine' => ['type' => 'object', 'properties' => ['code' => ['type' => 'string'], 'name' => ['type' => 'string']]],
                     'mention' => ['type' => 'object', 'properties' => ['code' => ['type' => 'string'], 'name' => ['type' => 'string']]],
@@ -113,7 +114,8 @@ class AjouterClassesLmd extends ActionAgent
         $avertissementsStructure = [];
         if ($candidats->isEmpty()) {
             $preparation = app(PreparationParcoursClassesLmd::class)->preparer(
-                $cible, (array) ($args['structure'] ?? []), $typeDemande, $user
+                $cible, (array) ($args['structure'] ?? []), $typeDemande, $user,
+                ($args['liaison_filiere_confirmee'] ?? false) === true
             );
             if ($preparation['manques'] !== []) {
                 return new Proposition(titre: $titre, resume: '', manques: $preparation['manques'],
