@@ -95,6 +95,10 @@ class SuivreLesReponsesDuSupport
             }
         }
 
+        // Les actions restées sans destinataire ne doivent pas être perdues
+        // après la fenêtre mis_a_jour_depuis : on les vérifie séparément.
+        $averties += $this->reprendreActionsAdministrationEnAttente();
+
         CurseurSupport::poser(CurseurSupport::SUIVI_DEMANDES, $plusRecente ?? now());
 
         return ['initialisation' => $initialisation, 'lues' => $lues, 'averties' => $averties];
