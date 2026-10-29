@@ -145,8 +145,9 @@ class DemandeSupportController extends Controller
         }
 
         try {
-            // Toujours `mine` : lire les demandes de l'ecole n'autorise pas a ecrire
-            // sur celles des collegues. Le Master repond 404 hors de ce perimetre.
+            // Une écriture en `school` n'est autorisée que pour l'action
+            // de l'administration, avec deux permissions effectives.
+            // Toutes les réponses individuelles restent en `mine`.
             $demande = $this->master->repondre(
                 $reference,
                 $auteur,
