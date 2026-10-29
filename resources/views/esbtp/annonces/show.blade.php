@@ -646,6 +646,31 @@
                                 <div class="aps-stat"><div class="aps-stat-value">{{ $retardes }}</div><div class="aps-stat-label">Livraisons retardées</div></div>
                                 <div class="aps-stat"><div class="aps-stat-value">{{ $echoues }}</div><div class="aps-stat-label">Échecs connus</div></div>
                             </div>
+                            <div class="mt-3" role="status" aria-live="polite">
+                                @php
+                                    $campagneLibelle = match($etatCampagneCourriels['status']) {
+                                        'complete_delivered' => 'Diffusion terminée : toutes les adresses ont été délivrées.',
+                                        'complete_with_failures' => 'Diffusion terminée avec des échecs à analyser.',
+                                        'no_recipients' => 'Aucune adresse enregistrée pour cette annonce.',
+                                        default => 'Diffusion en cours : aucune relance des messages soumis ou retardés.',
+                                    };
+                                @endphp
+                                <div class="d-flex justify-content-between gap-2 flex-wrap align-items-center">
+                                    <strong>{{ $campagneLibelle }}</strong>
+                                    <span class="text-muted small">{{ $etatCampagneCourriels['delivered'] }} / {{ $etatCampagneCourriels['total'] }} délivrés</span>
+                                </div>
+                                @if($etatCampagneCourriels['total'] > 0)
+                                    <progress class="w-100 mt-2" max="{{ $etatCampagneCourriels['total'] }}" value="{{ $etatCampagneCourriels['delivered'] }}"
+                                        aria-label="Courriels délivrés sur les adresses enregistrées">
+                                        {{ $etatCampagneCourriels['percent'] }} %
+                                    </progress>
+                                @endif
+                                @if($etatCampagneCourriels['status'] === 'complete_delivered')
+                                    <p class="small text-muted mb-0">Toutes les adresses sont confirmées. Aucun nouveau traitement de cette diffusion n'est nécessaire.</p>
+                                @elseif($etatCampagneCourriels['status'] === 'complete_with_failures')
+                                    <p class="small text-muted mb-0">Ne relancez pas les adresses rejetées sans analyser le code et rapprocher les événements MailPulse.</p>
+                                @endif
+                            </div>
                             <div class="alert alert-info mt-3 mb-0" role="note">
                                 <strong>Un courriel soumis n'est pas nécessairement délivré.</strong>
                                 Les confirmations et retards du fournisseur nécessitent le rapprochement sécurisé MailPulse.
@@ -671,7 +696,7 @@
                                     <strong>Destinataires et état individuel</strong>
                                     <div class="text-muted small">Une ligne par adresse unique ; les statuts sont ceux de MailPulse.</div>
                                 </div>
-                                <form method="GET" action="{{ route('esbtp.annonces.show', $annonce) }}" class="d-flex gap-2 flex-wrap">
+                                <form id="aps-email-filter" method="GET" action="{{ route('esbtp.annonces.show', $annonce) }}" class="d-flex gap-2 flex-wrap">
                                     <label for="courriels-statut" class="visually-hidden">Filtrer les états des e-mails</label>
                                     <select id="courriels-statut" class="form-select form-select-sm" name="courriels_statut" style="max-width:220px">
                                         <option value="">Tous les états</option>
@@ -685,7 +710,7 @@
                                 </form>
                             </div>
                             <div class="table-responsive">
-                                <table class="table table-sm table-hover align-middle">
+                                <table id="aps-email-table" class="table table-sm table-hover align-middle">
                                     <thead><tr>
                                         <th scope="col">Destinataire</th>
                                         <th scope="col">État</th>
@@ -722,7 +747,36 @@
                                     </tbody>
                                 </table>
                             </div>
-                            <div class="mt-2">{{ $destinataires->links() }}</div>
+                            <div id="aps-email-pages" class="mt-2">{{ $destinataires->links() }}</div>
+                            <div class="d-flex justify-content-center mt-2">
+                                <button type="button" id="aps-email-more" class="btn btn-outline-primary btn-sm" hidden>Charger plus de destinataires</button>
+                            </div>
+                            <p id="aps-email-ajax-status" class="small text-muted mt-2" role="status" aria-live="polite"></p>
+                        </div>
+                    </section>
+                @endif
+
+                @if($apercuCourriel)
+                    <section class="aps-card" aria-label="Prévisualisation du courriel">
+                        <div class="aps-card-head">
+                            <span class="aps-card-icon"><i class="fas fa-at"></i></span>
+                            <div>
+                                <div class="aps-card-title">Aperçu du courriel envoyé aux étudiants</div>
+                                <div class="aps-card-sub">Même modèle d'établissement que les autres notifications KLASSCI.</div>
+                            </div>
+                        </div>
+                        <div class="aps-card-body">
+                            <iframe
+                                title="Aperçu du courriel de cette annonce"
+                                sandbox=""
+                                loading="lazy"
+                                referrerpolicy="no-referrer"
+                                style="display:block;width:100%;min-height:580px;border:1px solid #dbe3f0;border-radius:12px;background:white;"
+                                srcdoc="{{ $apercuCourriel }}">
+                            </iframe>
+                            <p class="text-muted small mt-2 mb-0">
+                                Aperçu du modèle courant. Les courriels déjà expédiés ne changent pas rétroactivement.
+                            </p>
                         </div>
                     </section>
                 @endif
@@ -1014,6 +1068,91 @@
     'use strict';
 
     document.addEventListener('DOMContentLoaded', function () {
+        // Filtrage et pagination incrémentale sans recharger la fiche.
+        // Le formulaire GET et les liens Laravel restent utilisables sans JS.
+        const emailFilter = document.getElementById('aps-email-filter');
+        const emailTable = document.getElementById('aps-email-table');
+        const emailPages = document.getElementById('aps-email-pages');
+        const emailMore = document.getElementById('aps-email-more');
+        const emailStatus = document.getElementById('aps-email-ajax-status');
+        let nextEmailUrl = null;
+        let emailRequest = null;
+        let emailBusy = false;
+
+        function updateNextLink() {
+            nextEmailUrl = emailPages?.querySelector('a[rel="next"]')?.href ?? null;
+            if (emailMore) {
+                emailMore.hidden = !nextEmailUrl;
+                emailMore.disabled = emailBusy;
+            }
+        }
+
+        async function loadEmailPage(url, append) {
+            if (!emailTable || !emailPages || !url) return;
+            if (emailBusy && append) return;
+            if (emailRequest) emailRequest.abort();
+            emailRequest = new AbortController();
+            const signal = emailRequest.signal;
+            emailBusy = true;
+            if (emailMore) emailMore.disabled = true;
+            if (emailStatus) emailStatus.textContent = 'Chargement des destinataires…';
+            try {
+                const response = await fetch(url, {
+                    headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html'},
+                    credentials: 'same-origin',
+                    signal
+                });
+                if (!response.ok) throw new Error('Impossible de récupérer les destinataires.');
+                const fragment = new DOMParser().parseFromString(await response.text(), 'text/html');
+                const incomingRows = fragment.querySelector('#aps-email-table tbody');
+                const incomingPages = fragment.querySelector('#aps-email-pages');
+                if (!incomingRows || !incomingPages) throw new Error('Réponse de pagination incomplète.');
+                if (append) {
+                    emailTable.querySelector('tbody')?.append(...Array.from(incomingRows.children));
+                } else {
+                    emailTable.querySelector('tbody')?.replaceChildren(...Array.from(incomingRows.children));
+                }
+                emailPages.innerHTML = incomingPages.innerHTML;
+                updateNextLink();
+                if (emailStatus) emailStatus.textContent = nextEmailUrl ? 'D’autres résultats sont disponibles.' : 'Fin des résultats.';
+                if (!append) history.replaceState(null, '', url);
+            } catch (error) {
+                if (error.name !== 'AbortError' && emailStatus) {
+                    emailStatus.textContent = 'Chargement impossible. Utilisez les liens de pagination ci-dessus ou réessayez.';
+                }
+            } finally {
+                if (emailRequest?.signal === signal) {
+                    emailBusy = false;
+                    emailRequest = null;
+                    if (emailMore) emailMore.disabled = false;
+                }
+            }
+        }
+
+        if (emailFilter && emailTable && emailPages && emailMore) {
+            updateNextLink();
+            emailFilter.addEventListener('submit', function (event) {
+                event.preventDefault();
+                const url = new URL(emailFilter.action);
+                const selected = new FormData(emailFilter).get('courriels_statut');
+                if (selected) url.searchParams.set('courriels_statut', String(selected));
+                loadEmailPage(url.toString(), false);
+            });
+            emailMore.addEventListener('click', function () {
+                if (nextEmailUrl) loadEmailPage(nextEmailUrl, true);
+            });
+            const observer = 'IntersectionObserver' in window ? new IntersectionObserver(entries => {
+                if (entries.some(entry => entry.isIntersecting) && nextEmailUrl && !emailBusy) {
+                    loadEmailPage(nextEmailUrl, true);
+                }
+            }, {rootMargin: '120px'}) : null;
+            observer?.observe(emailMore);
+            window.addEventListener('pagehide', () => {
+                emailRequest?.abort();
+                observer?.disconnect();
+            }, {once: true});
+        }
+
         const openBtn = document.getElementById('aps-open-delete');
         const modalEl = document.getElementById('apsDeleteModal');
         const confirmBtn = document.getElementById('aps-confirm-delete');

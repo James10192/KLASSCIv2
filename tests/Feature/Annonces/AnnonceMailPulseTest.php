@@ -286,4 +286,18 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertSame(2, DB::table('esbtp_annonce_email_deliveries')->where('status', 'submitted')->count());
     }
 
+    public function test_epuisement_queue_ne_devient_pas_faussement_un_echec_fournisseur(): void
+    {
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'reconciliation@etudiants.test',
+            'status' => 'retrying', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        (new EnvoyerAnnonceCourriel($id))->failed(new \RuntimeException('worker timeout'));
+        $ligne = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
+        $this->assertSame('awaiting_dispatch', $ligne->status);
+        $this->assertSame('queue_outcome_unknown', $ligne->error_code);
+        $this->assertNull($ligne->provider_failed_at);
+    }
+
 }

@@ -82,6 +82,13 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
                 'external_reference' => $reference,
             ], fn ($v) => $v !== '');
 
+            // Même HTML que l'aperçu KLASSCI ; le texte reste un fallback.
+            $html = app(\App\Services\Annonces\CourrielAnnonce::class)
+                ->htmlPourMailPulse($annonce, $metadata);
+            if ($html !== null) {
+                $metadata['email_html'] = $html;
+            }
+
             $resultat = $client->sendEmailMessage([
                 'channel' => 'email',
                 'recipient' => ['type' => 'email', 'value' => $ligne->email],
@@ -141,10 +148,12 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
         DB::table('esbtp_annonce_email_deliveries')->where('id', $this->deliveryId)
             ->whereIn('status', ['processing', 'retrying'])
             ->update([
-                'status' => 'failed',
-                'error_code' => 'queue_exhausted',
+                // A local timeout / exhausted worker cannot prove that the
+                // upstream provider did not accept the email. Quarantine it
+                // until reconciliation, never offer it for blind resending.
+                'status' => 'awaiting_dispatch',
+                'error_code' => 'queue_outcome_unknown',
                 'processing_at' => null,
-                'provider_failed_at' => now(),
                 'updated_at' => now(),
             ]);
     }

@@ -58,3 +58,15 @@ Sans `MAILPULSE_ANNOUNCEMENT_WEBHOOK_SECRET`, le serveur refuse toute mise à jo
 L'annonce « Reprise des cours » est publiée ; sa remise a eu lieu avec l'ancien transport. La capture MailPulse « Envoyé » montre l'acceptation en amont tandis que Resend affiche plusieurs `Delivery Delayed`. Certaines ont été délivrées, d'autres ont rebondi. **Ne pas relancer cette campagne** avant d'avoir rapproché les preuves, vérifié les inscriptions de l'année et confirmé un lot de test sous le nouveau contrat. Contrôler le domaine expéditeur (SPF/DKIM/DMARC), les retours SMTP détaillés et la réputation du domaine auprès des serveurs destinataires.
 
 La première reprise est à diagnostiquer et n'est pas un échec de toutes les adresses. Voir la documentation Resend sur `email.delivery_delayed` et les webhooks de livraison.
+
+## Prévisualisation des courriels HTML
+
+Pour les nouveaux envois, le service `App\\Services\\Annonces\\CourrielAnnonce` rend la vue `esbtp.emails.annonce`, qui étend le gabarit KLASSCI `esbtp.emails.layout` déjà utilisé par les autres courriels. Le HTML est placé dans `metadata.email_html` seulement si le payload complet reste sous la limite MailPulse ; la version texte reste toujours disponible. La fiche d'annonce reproduit le rendu dans une iframe sans scripts ni privilèges d'origine. Côté MailPulse, `EmailHtmlPreview` affiche déjà `metadata.email_html` dans le détail du message. Les anciens messages texte ne peuvent pas obtenir rétroactivement cet HTML.
+
+**Ne pas réexpédier les campagnes historiques pour leur appliquer le nouveau design.**
+
+## États de fin et workers interrompus
+
+La fiche annonce affiche `complete_delivered` uniquement si toutes les lignes ont une confirmation de livraison, `complete_with_failures` si aucune ligne n'est en cours mais que des échecs subsistent, et `pending` dès qu'une adresse attend une preuve. Zéro adresse ne constitue jamais une diffusion délivrée. L'épuisement local des tentatives de queue n'est plus assimilé à un échec du fournisseur : `awaiting_dispatch` + `queue_outcome_unknown` sont bloquants jusqu'à réconciliation manuelle, afin de ne pas créer de doublon après timeout.
+
+**Relance effective NON activée** : la nouvelle migration d'essais immuables doit être produite avec `php artisan make:migration` conformément aux règles ; aucun contrôle UI ne doit exposer une relance tant que les garde-fous d'idempotence, preuves fournisseur et autorisations ne sont pas disponibles et testés. Ne pas relancer les 2 391 courriels historiques en attente.

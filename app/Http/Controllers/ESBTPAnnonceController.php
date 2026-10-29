@@ -243,6 +243,8 @@ class ESBTPAnnonceController extends Controller
             ->where('annonce_id', $annonce->id)
             ->select('status', DB::raw('COUNT(*) AS total'))
             ->groupBy('status')->pluck('total', 'status');
+        $etatCampagneCourriels = app(\App\Services\Annonces\EtatCampagneCourrielsAnnonce::class)
+            ->calculer($courriels->all());
         $filtre = request()->query('courriels_statut');
         $statuts = ['pending', 'processing', 'retrying', 'awaiting_dispatch',
             'submitted', 'delayed', 'delivered', 'failed'];
@@ -259,8 +261,11 @@ class ESBTPAnnonceController extends Controller
             ? app(CiblageCourrielsAnnonce::class)->etudiants($annonce)->count() : 0;
         $anneeCourriels = $annonce->email_target_year_id
             ? ESBTPAnneeUniversitaire::find($annonce->email_target_year_id) : null;
+        $apercuCourriel = $annonce->email_notification_enabled
+            ? app(\App\Services\Annonces\CourrielAnnonce::class)->html($annonce)
+            : null;
         return view('esbtp.annonces.show', compact('annonce', 'courriels',
-            'destinataires', 'nombreEligibles', 'filtre', 'anneeCourriels'));
+            'destinataires', 'nombreEligibles', 'filtre', 'anneeCourriels', 'apercuCourriel', 'etatCampagneCourriels'));
     }
 
     /**
