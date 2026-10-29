@@ -28,10 +28,12 @@ final class RelancerCourrielsAnnonce
             ->whereNull('mailpulse_message_id')
             ->orderBy('id')->limit($limite)->pluck('id');
         $total = 0;
+        $cadence = max(1, (int) config('services.mailpulse.mail_per_minute', 30));
         foreach ($lignes as $id) {
             // Les jobs en doublon ne soumettent pas deux fois : compare-and-set
             // status pending/retrying -> processing dans EnvoyerAnnonceCourriel.
-            EnvoyerAnnonceCourriel::dispatch((int) $id);
+            EnvoyerAnnonceCourriel::dispatch((int) $id)
+                ->delay(now()->addSeconds(intdiv($total, $cadence) * 60));
             $total++;
         }
 

@@ -67,7 +67,10 @@ final class ESBTPAnnonceCourrielController extends Controller
             ->groupBy('status')->pluck('total', 'status');
         return [
             'total' => (int) $compteurs->sum(),
-            'pending' => (int) ($compteurs['pending'] ?? 0) + (int) ($compteurs['retrying'] ?? 0),
+            'pending' => (int) ($compteurs['pending'] ?? 0)
+                + (int) ($compteurs['processing'] ?? 0) + (int) ($compteurs['retrying'] ?? 0),
+            'replayable' => (int) ($compteurs['pending'] ?? 0) + (int) ($compteurs['retrying'] ?? 0),
+            'can_resume' => $annonce->isActive() && $annonce->email_notification_enabled,
             'submitted' => (int) ($compteurs['submitted'] ?? 0),
             'delayed' => (int) ($compteurs['delayed'] ?? 0),
             'delivered' => (int) ($compteurs['delivered'] ?? 0),

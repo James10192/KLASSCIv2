@@ -1092,9 +1092,9 @@
                         const key = el.dataset.courrielsCompteur;
                         if (data.resume[key] !== undefined) el.textContent = Number(data.resume[key]).toLocaleString('fr-FR');
                     });
-                    const eligible = data.resume.pending || 0;
+                    const eligible = data.resume.replayable || 0;
                     if (resume) {
-                        resume.disabled = eligible === 0;
+                        resume.disabled = eligible === 0 || !data.resume.can_resume;
                         const label = document.getElementById('aps-mail-retry-count');
                         if (label) label.textContent = '(' + eligible.toLocaleString('fr-FR') + ')';
                     }
