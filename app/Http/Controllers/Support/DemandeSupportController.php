@@ -164,6 +164,13 @@ class DemandeSupportController extends Controller
             // 404 et non 403 au Master : une reference hors de portee n'existe pas.
             abort_if($e->statut === 404, 404);
 
+            if ($pourAdministration && $e->codeErreur === 'school_action_closed') {
+                return response()->json([
+                    'message' => "Cette action administrative n'est plus attendue. Rechargez la demande.",
+                    'peut_repondre' => false,
+                    'peut_joindre' => false,
+                ], 409);
+            }
             return $e->codeErreur === 'ticket_closed'
                 ? $this->demandeFermee($reference, $auteur)
                 : $this->refusInattendu($e);
