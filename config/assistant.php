@@ -71,6 +71,7 @@ return [
             \App\Domain\Assistant\Actions\Lmd\ModifierMaquetteLmd::class,
             \App\Domain\Assistant\Actions\Lmd\RetirerEcueLmd::class,
             \App\Domain\Assistant\Actions\Classes\AjouterClasses::class,
+            \App\Domain\Assistant\Actions\Classes\AjouterClassesLmd::class,
             \App\Domain\Assistant\Actions\Classes\ModifierClasses::class,
             \App\Domain\Assistant\Actions\Inscriptions\ValiderInscriptions::class,
             \App\Domain\Assistant\Actions\Inscriptions\DeplacerEtudiants::class,
