@@ -71,12 +71,6 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
 
             $texte = $corps->texte($annonce);
             $html = $corps->html($annonce);
-            // Never silently downgrade to an ugly plaintext message.
-            if (CorpsPourMailPulse::octetsJson(['email_html' => $html]) > 12000) {
-                $this->statut('failed', ['error_code' => 'html_too_large', 'provider_failed_at' => now()]);
-                return;
-            }
-
             $metadata = array_filter([
                 'source' => 'klassci',
                 'workflow_event' => 'announcement_email',
@@ -87,6 +81,11 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
                 'external_reference' => $reference,
                 'email_html' => $html,
             ], fn ($v) => $v !== '');
+
+            if (CorpsPourMailPulse::octetsJson($metadata) > \App\Mail\Transport\MailPulseTransport::PLAFOND_METADATA - 512) {
+                $this->statut('failed', ['error_code' => 'html_too_large', 'provider_failed_at' => now()]);
+                return;
+            }
 
             $resultat = $client->sendEmailMessage([
                 'channel' => 'email',

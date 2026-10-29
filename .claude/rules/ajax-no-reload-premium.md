@@ -247,3 +247,8 @@ window.dispatchEvent(new CustomEvent('toast', {
 - Rule projet : `blade-alpine-pitfalls.md`
 - Rule projet : `feature-delivery-methodology.md` (phase 11 visual-check)
 - Master plan : `docs/MASTER-PLAN-emploi-temps-lmd-unification.md`
+
+
+## Liste longue : défilement infini avec secours accessible
+
+Pour toute liste paginée dans une interface premium, préférer un chargement AJAX par pages bornées (25–100 entrées) et `IntersectionObserver`, sans rechargement de l'écran. Conserver un bouton « Charger plus » accessible quand l'observateur n'est pas disponible, un statut `aria-live`, un indicateur de chargement, un curseur ou une page serveur, et le filtrage sans perte du contexte. Jamais de `get()` non borné en vue ni de chargement de milliers de lignes initiales.

@@ -686,18 +686,15 @@
                                     <strong>Destinataires et état individuel</strong>
                                     <div class="text-muted small">Une ligne par adresse unique ; les statuts sont ceux de MailPulse.</div>
                                 </div>
-                                <form method="GET" action="{{ route('esbtp.annonces.show', $annonce) }}" class="d-flex gap-2 flex-wrap">
-                                    <label for="courriels-statut" class="visually-hidden">Filtrer les états des e-mails</label>
-                                    <select id="courriels-statut" class="form-select form-select-sm" name="courriels_statut" style="max-width:220px">
-                                        <option value="">Tous les états</option>
-                                        @foreach(['pending'=>'En attente', 'processing'=>'Traitement', 'retrying'=>'Nouvel essai',
+                                <div id="annonce-courriels-filtre" class="d-flex gap-2 flex-wrap align-items-center">
+                                    <x-au-select name="courriels_statut" :value="$filtre"
+                                        placeholder="Tous les états" icon="fa-filter"
+                                        :options="[
+                                            'pending'=>'En attente', 'processing'=>'En traitement', 'retrying'=>'Nouvel essai',
                                             'awaiting_dispatch'=>'À confirmer', 'submitted'=>'Soumis',
-                                            'delayed'=>'Retardé', 'delivered'=>'Délivré', 'failed'=>'Échec'] as $code => $libelle)
-                                            <option value="{{ $code }}" {{ $filtre === $code ? 'selected' : '' }}>{{ $libelle }}</option>
-                                        @endforeach
-                                    </select>
-                                    <button class="btn btn-sm btn-outline-primary" type="submit">Filtrer</button>
-                                </form>
+                                            'delayed'=>'Retardé', 'delivered'=>'Délivré', 'failed'=>'Échec'
+                                        ]" />
+                                </div>
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-sm table-hover align-middle">
@@ -708,36 +705,19 @@
                                         <th scope="col">Dernière mise à jour</th>
                                         <th scope="col">Code fournisseur</th>
                                     </tr></thead>
-                                    <tbody>
-                                    @forelse($destinataires as $livraison)
-                                        @php
-                                            $etatTexte = match($livraison->status) {
-                                                'delivered' => 'Délivré', 'delayed' => 'Retardé',
-                                                'submitted' => 'Soumis', 'failed' => 'Échec',
-                                                'retrying' => 'Nouvelle tentative', 'processing' => 'En cours',
-                                                'awaiting_dispatch' => 'À confirmer', default => 'En attente'
-                                            };
-                                            $couleur = match($livraison->status) {
-                                                'delivered' => 'success', 'failed' => 'danger',
-                                                'delayed', 'retrying' => 'warning', default => 'secondary'
-                                            };
-                                        @endphp
-                                        <tr>
-                                            <td class="text-break">{{ $livraison->email }}</td>
-                                            <td><span class="badge bg-{{ $couleur }}">{{ $etatTexte }}</span></td>
-                                            <td>{{ (int) $livraison->attempts }}</td>
-                                            <td class="text-nowrap">{{ \Illuminate\Support\Carbon::parse($livraison->updated_at)->format('d/m/Y H:i') }}</td>
-                                            <td class="text-break"><small>{{ $livraison->error_code ?: '—' }}</small></td>
-                                        </tr>
-                                    @empty
-                                        <tr><td colspan="5" class="text-muted py-3 text-center">
-                                            Aucune adresse pour ce filtre. Vérifiez le traitement de la file.
-                                        </td></tr>
-                                    @endforelse
+                                    <tbody id="annonce-courriels-lignes">
+                                    @include('esbtp.annonces.partials.courriels-lignes')
                                     </tbody>
                                 </table>
                             </div>
-                            <div class="mt-2">{{ $destinataires->links() }}</div>
+                            <div class="mt-2 text-center">
+                                <button id="annonce-courriels-plus" type="button" class="btn btn-sm btn-outline-primary"
+                                    data-next="{{ $destinataires->nextPageUrl() }}" {{ !$destinataires->hasMorePages() ? 'hidden' : '' }}>
+                                    Charger d'autres destinataires
+                                </button>
+                                <div id="annonce-courriels-sentinel" style="height:1px" aria-hidden="true"></div>
+                                <div id="annonce-courriels-chargement" class="small text-muted" role="status" aria-live="polite"></div>
+                            </div>
                         </div>
                     </section>
                 @endif
@@ -1050,6 +1030,49 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const body = document.getElementById('annonce-courriels-lignes');
+    const loadBtn = document.getElementById('annonce-courriels-plus');
+    const sentinel = document.getElementById('annonce-courriels-sentinel');
+    const loadingText = document.getElementById('annonce-courriels-chargement');
+    const filter = document.querySelector('#annonce-courriels-filtre select[name="courriels_statut"]');
+    let loading = false;
+    let nonce = 0;
+    async function loadMore(replace = false) {
+        if (!loadBtn || loading || (!loadBtn.dataset.next && !replace)) return;
+        loading = true;
+        const current = ++nonce;
+        loadBtn.disabled = true;
+        loadingText.textContent = 'Chargement des destinataires…';
+        try {
+            const url = replace ? new URL(window.location.href) : new URL(loadBtn.dataset.next, window.location.href);
+            if (replace) {
+                url.searchParams.delete('courriels_page');
+                if (filter?.value) url.searchParams.set('courriels_statut', filter.value);
+                else url.searchParams.delete('courriels_statut');
+            }
+            url.searchParams.set('courriels_fragment', '1');
+            const response = await fetch(url, { headers: { 'Accept':'application/json', 'X-Requested-With':'XMLHttpRequest' } });
+            if (!response.ok) throw new Error('Chargement impossible.');
+            const data = await response.json();
+            if (current !== nonce) return;
+            if (replace) body.innerHTML = data.html;
+            else body.insertAdjacentHTML('beforeend', data.html);
+            loadBtn.dataset.next = data.next || '';
+            loadBtn.hidden = !data.next;
+            loadingText.textContent = data.next ? '' : 'Fin des destinataires.';
+        } catch (error) {
+            loadingText.textContent = error.message;
+        } finally { loading = false; loadBtn.disabled = false; }
+    }
+    loadBtn?.addEventListener('click', () => loadMore());
+    filter?.addEventListener('change', () => { loadBtn.dataset.next = ''; loadMore(true); });
+    if (sentinel && 'IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && loadBtn && !loadBtn.hidden && !loading) loadMore();
+        }, { rootMargin: '240px' });
+        observer.observe(sentinel);
+    }
+
     const btn = document.getElementById('annonce-resume-mails');
     if (!btn) return;
     btn.addEventListener('click', async function () {
