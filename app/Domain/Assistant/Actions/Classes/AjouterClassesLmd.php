@@ -111,6 +111,12 @@ class AjouterClassesLmd extends ActionAgent
                 $candidats->push(['type' => 'mention', 'id' => (int) $m->id, 'code' => $m->code, 'nom' => $m->name]);
             }
         }
+        if ($typeDemande === '' && $candidats->count() === 1 && $candidats->first()['type'] === 'mention') {
+            return new Proposition(titre: $titre, resume: '', manques: [
+                'La mention '.$candidats->first()['code'].' existe, mais la demande ne précise pas si les classes sont communes à cette mention ou rattachées à un parcours spécifique. '
+                    .'Précise « mention » ou « parcours » ; pour un parcours absent, Nanan préparera sa création.',
+            ]);
+        }
         $structure = null;
         $avertissementsStructure = [];
         if ($candidats->isEmpty()) {
