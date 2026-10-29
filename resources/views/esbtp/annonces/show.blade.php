@@ -1047,6 +1047,7 @@
 })();
 </script>
 @endpush
+@push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const btn = document.getElementById('annonce-resume-mails');
@@ -1067,3 +1068,5 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
+
+@endpush
