@@ -357,4 +357,52 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertStringContainsString('Reprise le lundi', $courriel->texte($annonce));
     }
 
+    public function test_reprise_par_tranches_continue_apres_le_plafond_sans_doubler_les_adresses(): void
+    {
+        Bus::fake([RelancerCampagneCourriels::class, EnvoyerAnnonceCourriel::class]);
+        config(['services.mailpulse.announcement_resume_max' => 2]);
+        $annonce = $this->annonce();
+        for ($i = 1; $i <= 5; $i++) {
+            DB::table('esbtp_annonce_email_deliveries')->insert([
+                'annonce_id' => $annonce->id,
+                'email' => "tranche-{$i}@etudiants.test",
+                'status' => 'pending',
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        $this->assertSame(5, (new RelancerCourrielsAnnonce())->reprendre($annonce)['enfile']);
+        Bus::assertDispatchedTimes(RelancerCampagneCourriels::class, 1);
+
+        $ids = DB::table('esbtp_annonce_email_deliveries')->where('annonce_id', $annonce->id)
+            ->orderBy('id')->pluck('id')->all();
+
+        (new RelancerCampagneCourriels($annonce->id))->handle();
+        Bus::assertDispatchedTimes(EnvoyerAnnonceCourriel::class, 2);
+        Bus::assertDispatched(RelancerCampagneCourriels::class, fn ($job) =>
+            $job->apresId === $ids[1] && $job->programmes === 2);
+
+        (new RelancerCampagneCourriels($annonce->id, $ids[1], 2))->handle();
+        Bus::assertDispatchedTimes(EnvoyerAnnonceCourriel::class, 4);
+        Bus::assertDispatched(RelancerCampagneCourriels::class, fn ($job) =>
+            $job->apresId === $ids[3] && $job->programmes === 4);
+
+        (new RelancerCampagneCourriels($annonce->id, $ids[3], 4))->handle();
+        Bus::assertDispatchedTimes(EnvoyerAnnonceCourriel::class, 5);
+        $this->assertSame(5, DB::table('esbtp_annonce_email_deliveries')->count());
+    }
+
+    public function test_deux_clics_sur_reprendre_ne_programment_pas_deux_campagnes(): void
+    {
+        Bus::fake([RelancerCampagneCourriels::class]);
+        $annonce = $this->annonce();
+        DB::table('esbtp_annonce_email_deliveries')->insert([
+            'annonce_id' => $annonce->id, 'email' => 'a-reprendre@etudiants.test',
+            'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $service = new RelancerCourrielsAnnonce();
+        $this->assertSame(1, $service->reprendre($annonce)['enfile']);
+        $this->assertSame(0, $service->reprendre($annonce)['enfile']);
+        Bus::assertDispatchedTimes(RelancerCampagneCourriels::class, 1);
+    }
+
 }
