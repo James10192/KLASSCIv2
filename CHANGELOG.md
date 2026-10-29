@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Nanan — création des classes Licence/Master/Doctorat :** l'assistant distingue le LMD du BTS, retrouve le parcours ou la mention à partir de son code ou de sa filière associée, puis propose les classes demandées avec leur capacité (par exemple GGT L1, L2 et L3 à 30 places chacune). Aucun enregistrement sans validation ; mêmes règles d'ancrage LMD et d'écriture que le formulaire, sans création implicite de parcours.
 - **Reçus de paiement — espace pour la signature et le cachet (#1677) :** zone manuscrite de 15 mm sur les deux exemplaires, sans changer le design ni dépasser une page A4.
 - **Validation des réinscriptions depuis la fiche inscription :** le bouton « Valider définitivement » réutilise le moteur de validation de la fiche étudiant pour une réinscription en « Documents complets ». Observations, auteur et historique conservés ; aucun paiement ni exonération artificiels.
 - **Reçus de paiement — deux exemplaires sur un A4 (#1675) :** les espaces verticaux du reçu PDF sont resserrés pour garder l’exemplaire élève/parent et l’exemplaire caisse sur une seule feuille, sans changement de design, de données ni de montants.
