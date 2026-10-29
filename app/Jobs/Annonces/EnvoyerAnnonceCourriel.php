@@ -35,8 +35,9 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
     {
     }
 
-    public function handle(MailPulseClient $client, CadenceMailPulse $cadence, CorpsCourrielAnnonce $corps): void
+    public function handle(MailPulseClient $client, CadenceMailPulse $cadence, ?CorpsCourrielAnnonce $corps = null): void
     {
+        $corps ??= app(CorpsCourrielAnnonce::class);
         $ligne = DB::table('esbtp_annonce_email_deliveries')->where('id', $this->deliveryId)->first();
         if (! $ligne || $ligne->submitted_at !== null || in_array($ligne->status, ['submitted', 'awaiting_dispatch', 'failed'], true)) {
             return;
