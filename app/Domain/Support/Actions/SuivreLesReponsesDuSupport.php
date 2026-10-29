@@ -155,6 +155,9 @@ class SuivreLesReponsesDuSupport
             'derniere_reponse_support_le' => $aRepondu ? $reponseLe : $suivie->derniere_reponse_support_le,
             'derniere_action_administration_le' => $actionAdminNouvelle && (! $avertir || $administrationNotifiee)
                 ? $derniereAdmin : $suivie->derniere_action_administration_le,
+            'action_administration_en_attente_le' => $actionAdminNouvelle
+                ? ($avertir && ! $administrationNotifiee ? $derniereAdmin : null)
+                : $suivie->action_administration_en_attente_le,
             'mis_a_jour_le' => self::date($resume['mis_a_jour_le'] ?? null),
             'averti_le' => $averti ? now() : $suivie->averti_le,
         ])->save();
