@@ -315,6 +315,15 @@ class AnnonceMailPulseTest extends TestCase
                 'created_at' => now(), 'updated_at' => now(),
             ]);
         }
+        $this->withoutMiddleware();
+        DB::table('esbtp_annonce_email_deliveries')->where('annonce_id', $annonce->id)
+            ->whereIn('status', ['pending','retrying'])
+            ->update(['updated_at' => now()->subHours(4)]);
+
+        $response = $this->postJson(route('esbtp.annonces.relancer-courriels', $annonce));
+        $response->assertSuccessful()->assertJsonPath('queued', 2);
+        Bus::assertDispatchedTimes(EnvoyerAnnonceCourriel::class, 2);
+
         // Test de la condition SQL effective sans contourner les permissions des routes.
         $cibles = DB::table('esbtp_annonce_email_deliveries')->where('annonce_id', $annonce->id)
             ->whereIn('status', ['pending','retrying'])->whereNull('submitted_at')

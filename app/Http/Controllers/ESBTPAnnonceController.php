@@ -279,10 +279,15 @@ class ESBTPAnnonceController extends Controller
     public function relancerCourriels(ESBTPAnnonce $annonce)
     {
         abort_unless($annonce->is_published && $annonce->email_notification_enabled && ! $annonce->isExpired(), 409);
+        // Les jobs initiaux peuvent deja etre en file, retardes par la cadence.
+        // Une reprogrammation trop precoce creerait des centaines de jobs inutiles.
+        $anciennete = max(60, (int) config('services.mailpulse.announcement_retry_min_age_minutes', 180));
+        $limite = max(1, min(500, (int) config('services.mailpulse.announcement_retry_batch_size', 100)));
         $ids = DB::table('esbtp_annonce_email_deliveries')
             ->where('annonce_id', $annonce->id)->whereIn('status', ['pending', 'retrying'])
             ->whereNull('submitted_at')->whereNull('mailpulse_message_id')
-            ->orderBy('id')->limit(100)->pluck('id');
+            ->where('updated_at', '<=', now()->subMinutes($anciennete))
+            ->orderBy('id')->limit($limite)->pluck('id');
 
         $cadence = max(1, (int) config('services.mailpulse.mail_per_minute', 30));
         foreach ($ids as $index => $id) {
@@ -293,7 +298,7 @@ class ESBTPAnnonceController extends Controller
         return response()->json([
             'success' => true, 'queued' => $ids->count(),
             'message' => $ids->count() === 0
-                ? 'Aucun courriel non soumis à relancer.'
+                ? 'Aucun courriel admissible à relancer : le délai de sécurité ou les tentatives en cours sont encore actifs.'
                 : $ids->count().' courriels jamais soumis ont été reprogrammés.',
         ]);
     }
