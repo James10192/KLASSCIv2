@@ -187,6 +187,18 @@ class ClientMasterSupport
      * Master mais ignore en `scope=school` : c'est l'instance, pas une personne,
      * qui interroge ici.
      */
+    /**
+     * Projection de routage volontairement minimale. Le Master ne remet ici
+     * ni corps de ticket ni instructions ; un utilisateur n'a pas encore droit
+     * à une intervention tant que la permission métier n'a pas été vérifiée.
+     *
+     * @return array{data?: array, meta?: array}
+     */
+    public function interventionsAOrienter(int $page = 1): array
+    {
+        return $this->requete('GET', 'interventions', ['page' => max(1, $page)]);
+    }
+
     public function demandesModifiees(?string $depuis, int $page = 1): array
     {
         return $this->requete('GET', 'tickets', array_filter([
