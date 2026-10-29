@@ -2204,6 +2204,12 @@ return [
             'group' => 'Support',
             'icon' => 'fa-life-ring',
         ],
+        'support.tickets.respond_school' => [
+            'label' => "Répondre aux actions KLASSCI Care destinées à l'administration",
+            'description' => "À accorder explicitement aux responsables habilités, en plus de support.tickets.view_school. Aucun rôle n'obtient automatiquement ce droit.",
+            'group' => 'Support',
+            'icon' => 'fa-user-check',
+        ],
         'module.technical_support.access' => [
             'label' => 'Module : Support technique',
             'group' => 'Modules',
