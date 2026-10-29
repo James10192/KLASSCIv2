@@ -4,6 +4,12 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ESBTPClasseController;
 use App\Http\Controllers\ESBTPEtudiantController;
 
+// Retour de livraison provenant de MailPulse seulement, signe HMAC.
+Route::post('/v1/mailpulse/announcement-events',
+    [\App\Http\Controllers\API\MailPulseAnnonceEvenementController::class, 'store'])
+    ->middleware('throttle:120,1')
+    ->name('api.mailpulse.annonces.events');
+
 /*
 |--------------------------------------------------------------------------
 | API Routes

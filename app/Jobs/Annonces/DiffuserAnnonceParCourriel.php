@@ -54,11 +54,17 @@ class DiffuserAnnonceParCourriel implements ShouldQueue
             }
         });
 
+        // Echelonner une campagne au lieu de saturer Resend en quelques secondes.
+        // Le garde MailPulse reste actif contre les autres flux du tenant.
+        $cadence = max(1, (int) config('services.mailpulse.mail_per_minute', 30));
+        $numero = 0;
         DB::table('esbtp_annonce_email_deliveries')
             ->where('annonce_id', $annonce->id)->where('status', 'pending')
-            ->orderBy('id')->chunkById(200, function ($lot): void {
+            ->orderBy('id')->chunkById(200, function ($lot) use ($cadence, &$numero): void {
                 foreach ($lot as $livraison) {
-                    EnvoyerAnnonceCourriel::dispatch((int) $livraison->id);
+                    $delai = intdiv($numero, $cadence) * 60;
+                    EnvoyerAnnonceCourriel::dispatch((int) $livraison->id)->delay(now()->addSeconds($delai));
+                    $numero++;
                 }
             });
     }
