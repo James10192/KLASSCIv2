@@ -713,6 +713,22 @@
                         sandbox="" referrerpolicy="no-referrer" loading="lazy" style="width:100%;height:65vh;border:0"></iframe></div>
                     </div></div>
                 </div>
+                <div class="modal fade" id="apsMailRetryModal" tabindex="-1" aria-labelledby="apsMailRetryModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="apsMailRetryModalLabel">Relancer les courriels non soumis</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Seuls les messages jamais acceptés par MailPulse et suffisamment anciens peuvent être reprogrammés.</p>
+                            <div class="alert alert-info mb-0">Les messages déjà acceptés, retardés, délivrés ou rejetés par le fournisseur ne seront jamais renvoyés par cette action.</div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Annuler</button>
+                            <button class="btn btn-primary" type="button" id="apsMailRetryConfirm">Programmer la relance</button>
+                        </div>
+                    </div></div>
+                </div>
                 <div id="apsMailRetryFeedback" role="status" aria-live="polite" class="small my-2"></div>
                 {{-- ===== Carte 2 : Pièce jointe ===== --}}
                 @if($piece)
@@ -1135,8 +1151,11 @@
             frame.src = @json(route('esbtp.annonces.apercu-courriel', $annonce));
             bootstrap.Modal.getOrCreateInstance(modal).show();
         });
-        document.getElementById('aps-retry-unsent')?.addEventListener('click', async function () {
-            if (!window.confirm('Relancer uniquement les messages jamais soumis à MailPulse ?')) return;
+        document.getElementById('aps-retry-unsent')?.addEventListener('click', function () {
+            const modal = document.getElementById('apsMailRetryModal');
+            if (modal && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modal).show();
+        });
+        document.getElementById('apsMailRetryConfirm')?.addEventListener('click', async function () {
             const button = this, feedback = document.getElementById('apsMailRetryFeedback');
             button.disabled = true;
             try {
@@ -1147,6 +1166,11 @@
                 const json = await response.json();
                 if (!response.ok || !json.success) throw new Error('Relance refusée.');
                 if (feedback) feedback.textContent = json.message;
+                if (window.bootstrap) {
+                    const modal = document.getElementById('apsMailRetryModal');
+                    if (modal) bootstrap.Modal.getInstance(modal)?.hide();
+                }
+                actualiserStatuts().catch(() => {});
             } catch (_) {
                 if (feedback) feedback.textContent = 'Échec de programmation. Contactez le support.';
             } finally { button.disabled = false; }
