@@ -185,7 +185,7 @@ class AnnonceMailPulseTest extends TestCase
         $autre = ESBTPClasse::factory()->create(['annee_universitaire_id' => $annee->id]);
         $etudiant = ESBTPEtudiant::factory()->create(['email' => 'invalide@etudiants.test']);
         ESBTPInscription::factory()->create(['etudiant_id' => $etudiant->id,
-            'annee_universitaire_id' => $annee->id, 'classe_id' => $cible->id, 'status' => 'cancelled']);
+            'annee_universitaire_id' => $annee->id, 'classe_id' => $cible->id, 'status' => 'annulée']);
         ESBTPInscription::factory()->create(['etudiant_id' => $etudiant->id,
             'annee_universitaire_id' => $annee->id, 'classe_id' => $autre->id, 'status' => 'active']);
 
