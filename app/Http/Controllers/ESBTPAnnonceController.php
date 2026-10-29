@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
+use App\Models\ESBTPAnneeUniversitaire;
+use App\Services\Annonces\CiblageCourrielsAnnonce;
+use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 use App\Notifications\ESBTPNotification;
 use App\Services\NotificationService;
@@ -55,6 +58,7 @@ class ESBTPAnnonceController extends Controller
             'etudiants.*' => 'integer|exists:esbtp_etudiants,id',
             'piece_jointe' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:5120',
             'send_email' => 'sometimes|boolean',
+            'email_audience_scope' => 'sometimes|in:all,active_current_year',
         ];
     }
 
@@ -170,6 +174,7 @@ class ESBTPAnnonceController extends Controller
     public function store(Request $request)
     {
         $request->validate($this->annonceValidationRules(), $this->annonceValidationMessages());
+        $this->verifierAnneeDesCourriels($request, $request->get('action') === 'publish');
 
         DB::beginTransaction();
         try {
@@ -188,6 +193,10 @@ class ESBTPAnnonceController extends Controller
             $annonce->priorite = $request->priorite;
             $annonce->is_published = $is_published;
             $annonce->email_notification_enabled = $request->boolean('send_email');
+            $annonce->email_audience_scope = $request->input('email_audience_scope', CiblageCourrielsAnnonce::ACTIVES_ANNEE);
+            $annonce->email_target_year_id = $is_published && $annonce->email_notification_enabled
+                && $annonce->email_audience_scope === CiblageCourrielsAnnonce::ACTIVES_ANNEE
+                ? ESBTPAnneeUniversitaire::getCurrent()?->id : null;
             $annonce->created_by = Auth::id();
 
             $this->handlePieceJointeUpload($request, $annonce);
@@ -230,7 +239,28 @@ class ESBTPAnnonceController extends Controller
     public function show(ESBTPAnnonce $annonce)
     {
         $annonce->load(['classes', 'etudiants', 'user']);
-        return view('esbtp.annonces.show', compact('annonce'));
+        $courriels = DB::table('esbtp_annonce_email_deliveries')
+            ->where('annonce_id', $annonce->id)
+            ->select('status', DB::raw('COUNT(*) AS total'))
+            ->groupBy('status')->pluck('total', 'status');
+        $filtre = request()->query('courriels_statut');
+        $statuts = ['pending', 'processing', 'retrying', 'awaiting_dispatch',
+            'submitted', 'delayed', 'delivered', 'failed'];
+        $filtre = is_string($filtre) && in_array($filtre, $statuts, true) ? $filtre : null;
+        $destinataires = DB::table('esbtp_annonce_email_deliveries')
+            ->where('annonce_id', $annonce->id)
+            ->when($filtre, fn ($q) => $q->where('status', $filtre))
+            ->select(['email', 'status', 'attempts', 'submitted_at',
+                'provider_delivered_at', 'provider_delayed_at',
+                'provider_failed_at', 'error_code', 'updated_at'])
+            ->orderByDesc('updated_at')->paginate(25, ['*'], 'courriels_page')
+            ->withQueryString();
+        $nombreEligibles = $annonce->email_notification_enabled
+            ? app(CiblageCourrielsAnnonce::class)->etudiants($annonce)->count() : 0;
+        $anneeCourriels = $annonce->email_target_year_id
+            ? ESBTPAnneeUniversitaire::find($annonce->email_target_year_id) : null;
+        return view('esbtp.annonces.show', compact('annonce', 'courriels',
+            'destinataires', 'nombreEligibles', 'filtre', 'anneeCourriels'));
     }
 
     /**
@@ -316,6 +346,7 @@ class ESBTPAnnonceController extends Controller
         }
 
         $request->validate($this->annonceValidationRules(), $this->annonceValidationMessages());
+        $this->verifierAnneeDesCourriels($request, ! $annonce->is_published && $request->get('action') === 'publish');
 
         DB::beginTransaction();
         try {
@@ -340,6 +371,10 @@ class ESBTPAnnonceController extends Controller
             $annonce->is_published = $is_published;
             if (!$wasPublished) {
                 $annonce->email_notification_enabled = $request->boolean('send_email');
+                $annonce->email_audience_scope = $request->input('email_audience_scope', CiblageCourrielsAnnonce::ACTIVES_ANNEE);
+                $annonce->email_target_year_id = $is_published && $annonce->email_notification_enabled
+                    && $annonce->email_audience_scope === CiblageCourrielsAnnonce::ACTIVES_ANNEE
+                    ? ESBTPAnneeUniversitaire::getCurrent()?->id : null;
             }
             $annonce->updated_by = Auth::id();
 
@@ -727,6 +762,21 @@ class ESBTPAnnonceController extends Controller
      * @param ESBTPAnnonce $annonce
      * @return void
      */
+    /**
+     * L'option des inscrits actifs n'est pas un synonyme de "tous les etudiants".
+     * Une annee absente bloque la campagne plutot que d'envoyer aux archives.
+     */
+    private function verifierAnneeDesCourriels(Request $request, bool $publication): void
+    {
+        if ($publication && $request->boolean('send_email')
+            && $request->input('email_audience_scope', CiblageCourrielsAnnonce::ACTIVES_ANNEE) === CiblageCourrielsAnnonce::ACTIVES_ANNEE
+            && ! ESBTPAnneeUniversitaire::getCurrent()) {
+            throw ValidationException::withMessages([
+                'email_audience_scope' => "Aucune année universitaire courante n'est configurée. Activez une année avant l'envoi ciblé.",
+            ]);
+        }
+    }
+
     /** Planifie l'envoi APRÈS commit : aucune diffusion sur un rollback. */
     private function planifierCourrielsAnnonce(ESBTPAnnonce $annonce, bool $premierePublication): void
     {

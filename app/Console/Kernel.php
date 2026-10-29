@@ -198,6 +198,13 @@ class Kernel extends ConsoleKernel
             ->name('rdv-convocations-en-attente')
             ->description('Envoie les convocations de rendez-vous en attente');
 
+        // Campagnes d'annonces : relit MailPulse (et ses retards Resend) sans
+        // jamais re-expedier un courrier deja soumis.
+        $schedule->command('annonces:synchroniser-courriels --max=60 --budget=45')
+            ->everyFiveMinutes()
+            ->withoutOverlapping(10)
+            ->name('annonces-courriels-statut-mailpulse');
+
         $schedule->command('inscriptions:synchroniser-convocations-rdv --max=100')
             ->everyFifteenMinutes()
             ->withoutOverlapping()

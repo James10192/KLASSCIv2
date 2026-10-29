@@ -13,6 +13,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use App\Services\Annonces\CiblageCourrielsAnnonce;
+use App\Mail\Transport\CadenceMailPulse;
+use App\Services\MailPulse\MailPulseClient;
+use App\Services\MailPulse\MailPulseStatutsMessages;
+use App\Services\Annonces\SynchroniserCourrielsAnnonce;
+use App\Services\MailPulse\MailPulseResult;
 use Illuminate\Support\Facades\Mail;
 use Mockery;
 use Tests\TestCase;
@@ -104,25 +110,180 @@ class AnnonceMailPulseTest extends TestCase
             'annonce_id' => $annonce->id, 'email' => 'etudiant@exemple.ci',
             'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
         ]);
-        $mailer = Mockery::mock();
-        $mailer->shouldReceive('raw')->once()->withArgs(function ($texte, $configurer) {
-            $this->assertStringContainsString('Annonce test', $texte);
-            $message = Mockery::mock();
-            $message->shouldReceive('to')->once()->with('etudiant@exemple.ci')->andReturnSelf();
-            $message->shouldReceive('subject')->once()->andReturnSelf();
-            $configurer($message);
-            return true;
-        });
-        // MailManagerDeLEcole est final ; substituer une façade factice plutôt que
-        // demander à Mockery d'étendre le gestionnaire réel.
-        $manager = Mockery::mock();
-        $manager->shouldReceive('mailer')->once()->with('mailpulse')->andReturn($mailer);
-        Mail::swap($manager);
+        $client = Mockery::mock(MailPulseClient::class);
+        $client->shouldReceive('getSetting')->twice()->andReturn('');
+        $client->shouldReceive('sendEmailMessage')->once()
+            ->withArgs(function ($charge, $cle) use ($id, $annonce) {
+                $this->assertSame('email', $charge['channel']);
+                $this->assertSame('etudiant@exemple.ci', $charge['recipient']['value']);
+                $this->assertStringContainsString('Annonce test', $charge['content']['text']);
+                $this->assertSame("klassci-annonce-{$annonce->id}-courriel-{$id}", $cle);
+                $this->assertSame($cle, $charge['metadata']['external_reference']);
+                return true;
+            })->andReturn(new MailPulseResult(
+                true, 'accepted', 201, 'r-test', 'mp-test', null, null, null, 'accepted'
+            ));
 
-        (new EnvoyerAnnonceCourriel($id))->handle();
-        (new EnvoyerAnnonceCourriel($id))->handle();
+        $job = new EnvoyerAnnonceCourriel($id);
+        $job->handle($client, new CadenceMailPulse);
+        $job->handle($client, new CadenceMailPulse);
 
         $this->assertSame('submitted', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
         $this->assertNotNull(DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('submitted_at'));
+        $this->assertNull(DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('provider_delivered_at'));
+        $this->assertSame('mp-test', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('mailpulse_message_id'));
     }
+
+    public function test_mailpulse_pending_reconciliation_n_est_jamais_compte_comme_delivre(): void
+    {
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'exemple@etudiants.test',
+            'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $client = Mockery::mock(MailPulseClient::class);
+        $client->shouldReceive('getSetting')->twice()->andReturn('');
+        $client->shouldReceive('sendEmailMessage')->once()
+            ->andReturn(new MailPulseResult(
+                true, 'accepted', 202, 'r-reconcile', null, null, null, null, 'pending_reconciliation'
+            ));
+        (new EnvoyerAnnonceCourriel($id))->handle($client, new CadenceMailPulse);
+
+        $livraison = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
+        $this->assertSame('awaiting_dispatch', $livraison->status);
+        $this->assertNull($livraison->submitted_at);
+        $this->assertNull($livraison->provider_delivered_at);
+    }
+
+    public function test_le_filtre_annuel_ne_touche_que_les_inscriptions_actives_de_l_annee_choisie(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        $annee = ESBTPAnneeUniversitaire::factory()->create(['is_current' => true]);
+        $ancienne = ESBTPAnneeUniversitaire::factory()->create(['is_current' => false]);
+        ESBTPAnneeUniversitaire::flushCurrentCache();
+
+        $active = ESBTPEtudiant::factory()->create(['email' => 'actif@etudiants.test']);
+        $annule = ESBTPEtudiant::factory()->create(['email' => 'annule@etudiants.test']);
+        $archive = ESBTPEtudiant::factory()->create(['email' => 'archive@etudiants.test']);
+        ESBTPInscription::factory()->create(['etudiant_id' => $active->id, 'annee_universitaire_id' => $annee->id, 'status' => 'active']);
+        ESBTPInscription::factory()->create(['etudiant_id' => $annule->id, 'annee_universitaire_id' => $annee->id, 'status' => 'annulée']);
+        ESBTPInscription::factory()->create(['etudiant_id' => $archive->id, 'annee_universitaire_id' => $ancienne->id, 'status' => 'active']);
+
+        $annonce = $this->annonce();
+        $annonce->update(['email_audience_scope' => CiblageCourrielsAnnonce::ACTIVES_ANNEE, 'email_target_year_id' => $annee->id]);
+
+        (new DiffuserAnnonceParCourriel($annonce->id))->handle();
+
+        $this->assertSame(['actif@etudiants.test'],
+            DB::table('esbtp_annonce_email_deliveries')->where('annonce_id', $annonce->id)->pluck('email')->all());
+    }
+
+    public function test_une_classe_inactive_dans_l_annee_cible_ne_recoit_pas_par_une_autre_inscription_active(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        $annee = ESBTPAnneeUniversitaire::factory()->create(['is_current' => true]);
+        ESBTPAnneeUniversitaire::flushCurrentCache();
+        $cible = ESBTPClasse::factory()->create(['annee_universitaire_id' => $annee->id]);
+        $autre = ESBTPClasse::factory()->create(['annee_universitaire_id' => $annee->id]);
+        $etudiant = ESBTPEtudiant::factory()->create(['email' => 'invalide@etudiants.test']);
+        ESBTPInscription::factory()->create(['etudiant_id' => $etudiant->id,
+            'annee_universitaire_id' => $annee->id, 'classe_id' => $cible->id, 'status' => 'annulée']);
+        ESBTPInscription::factory()->create(['etudiant_id' => $etudiant->id,
+            'annee_universitaire_id' => $annee->id, 'classe_id' => $autre->id, 'status' => 'active']);
+
+        $annonce = $this->annonce('classe');
+        $annonce->classes()->attach($cible->id);
+        $annonce->update(['email_audience_scope' => CiblageCourrielsAnnonce::ACTIVES_ANNEE, 'email_target_year_id' => $annee->id]);
+        (new DiffuserAnnonceParCourriel($annonce->id))->handle();
+        $this->assertSame(0, DB::table('esbtp_annonce_email_deliveries')->where('annonce_id', $annonce->id)->count());
+    }
+
+    public function test_signature_mailpulse_et_protection_contre_statuts_dans_le_desordre(): void
+    {
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'test@etudiants.test',
+            'status' => 'submitted', 'submitted_at' => now(),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->withoutMiddleware(\App\Http\Middleware\CheckInstalled::class);
+        $payload = ['external_reference' => "klassci-annonce-{$annonce->id}-courriel-{$id}", 'state' => 'delivered'];
+        config(['services.mailpulse.announcement_webhook_secret' => 'test-signature-longue']);
+        $this->postJson('/api/v1/mailpulse/announcement-events', $payload)->assertUnauthorized();
+
+        $envoyer = function ($data) {
+            $contenu = json_encode($data);
+            $stamp = (string) time();
+            $sig = hash_hmac('sha256', $stamp.'.'.$contenu, 'test-signature-longue');
+            return $this->call('POST', '/api/v1/mailpulse/announcement-events', [], [], [], [
+                'CONTENT_TYPE' => 'application/json', 'HTTP_X_MAILPULSE_TIMESTAMP' => $stamp,
+                'HTTP_X_MAILPULSE_SIGNATURE' => $sig,
+            ], $contenu);
+        };
+        $this->assertSame(200, $envoyer($payload)->getStatusCode());
+        $this->assertSame(200, $envoyer($payload + ['ignored' => 'not stored'])->getStatusCode());
+        $this->assertSame(200, $envoyer(array_replace($payload, ['state' => 'delivery_delayed']))->getStatusCode());
+        $this->assertSame('delivered', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
+    }
+    public function test_rapprochement_mailpulse_distingue_delivre_retarde_et_rebond_sans_renvoyer(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        $annonce = $this->annonce();
+        $ids = [];
+        foreach (['delivered', 'delayed', 'failed'] as $type) {
+            $ids[$type] = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+                'annonce_id' => $annonce->id, 'email' => "{$type}@etudiants.test",
+                'status' => 'submitted', 'submitted_at' => now(),
+                'mailpulse_message_id' => "mailpulse-{$type}",
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        $reader = Mockery::mock(MailPulseStatutsMessages::class);
+        $reader->shouldReceive('lire')->once()->with('mailpulse-delivered')
+            ->andReturn(['status' => 'delivered', 'error_code' => null,
+                'delivered_at' => now()->toIso8601String(), 'delivery_delays' => []]);
+        $reader->shouldReceive('lire')->once()->with('mailpulse-delayed')
+            ->andReturn(['status' => 'sent', 'error_code' => null,
+                'delivered_at' => null, 'delivery_delays' => [
+                    ['occurred_at' => now()->toIso8601String()],
+                ]]);
+        $reader->shouldReceive('lire')->once()->with('mailpulse-failed')
+            ->andReturn(['status' => 'failed', 'error_code' => 'email_bounced',
+                'delivered_at' => null, 'delivery_delays' => []]);
+
+        $result = (new SynchroniserCourrielsAnnonce($reader))->synchroniser(3);
+        $this->assertSame(3, $result['lues']);
+        $this->assertSame(1, $result['delivrees']);
+        $this->assertSame(1, $result['retardees']);
+        $this->assertSame(1, $result['echecs']);
+        foreach ($ids as $type => $id) {
+            $ligne = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
+            $this->assertSame($type, $ligne->status);
+        }
+        $this->assertSame('email_bounced',
+            DB::table('esbtp_annonce_email_deliveries')->where('id', $ids['failed'])->value('error_code'));
+        Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
+    }
+
+    public function test_synchronisation_ne_devine_pas_la_livraison_et_ignore_un_ancien_envoi_sans_id_mailpulse(): void
+    {
+        $annonce = $this->annonce();
+        foreach (['legacy', 'current'] as $kind) {
+            DB::table('esbtp_annonce_email_deliveries')->insert([
+                'annonce_id' => $annonce->id, 'email' => "{$kind}@etudiants.test",
+                'status' => 'submitted', 'submitted_at' => now(),
+                'mailpulse_message_id' => $kind === 'current' ? 'mailpulse-current' : null,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        $reader = Mockery::mock(MailPulseStatutsMessages::class);
+        $reader->shouldReceive('lire')->once()->with('mailpulse-current')
+            ->andReturn(['status' => 'sent', 'error_code' => null,
+                'delivered_at' => null, 'delivery_delays' => []]);
+        $result = (new SynchroniserCourrielsAnnonce($reader))->synchroniser(10);
+        $this->assertSame(1, $result['lues']);
+        $this->assertSame(0, $result['delivrees']);
+        $this->assertSame(2, DB::table('esbtp_annonce_email_deliveries')->where('status', 'submitted')->count());
+    }
+
 }
