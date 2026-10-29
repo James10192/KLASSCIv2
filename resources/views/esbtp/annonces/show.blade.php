@@ -638,13 +638,13 @@
                         </div>
                         <div class="aps-card-body">
                             <div class="aps-stats" style="grid-template-columns:repeat(auto-fit,minmax(125px,1fr));">
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $totalMail }}</div><div class="aps-stat-label">Adresses retenues</div></div>
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $enAttente }}</div><div class="aps-stat-label">En file / tentatives</div></div>
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $soumis }}</div><div class="aps-stat-label">Acceptés, non confirmés</div></div>
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $enConfirmation }}</div><div class="aps-stat-label">MailPulse à confirmer</div></div>
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $livres }}</div><div class="aps-stat-label">Livraisons confirmées</div></div>
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $retardes }}</div><div class="aps-stat-label">Livraisons retardées</div></div>
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $echoues }}</div><div class="aps-stat-label">Échecs connus</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-mailpulse-kpi="total">{{ $totalMail }}</div><div class="aps-stat-label">Adresses retenues</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-mailpulse-kpi="waiting">{{ $enAttente }}</div><div class="aps-stat-label">En file / tentatives</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-mailpulse-kpi="submitted">{{ $soumis }}</div><div class="aps-stat-label">Acceptés, non confirmés</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-mailpulse-kpi="awaiting">{{ $enConfirmation }}</div><div class="aps-stat-label">MailPulse à confirmer</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-mailpulse-kpi="delivered">{{ $livres }}</div><div class="aps-stat-label">Livraisons confirmées</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-mailpulse-kpi="delayed">{{ $retardes }}</div><div class="aps-stat-label">Livraisons retardées</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-mailpulse-kpi="failed">{{ $echoues }}</div><div class="aps-stat-label">Échecs connus</div></div>
                             </div>
                             <div class="alert alert-info mt-3 mb-0" role="note">
                                 <strong>Un courriel soumis n'est pas nécessairement délivré.</strong>
@@ -669,6 +669,7 @@
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                                 <div><strong>Prévisualisation du courriel officiel</strong>
                                     <div class="text-muted small">Le même modèle est utilisé pour la diffusion via MailPulse.</div></div>
+                                @canany(['annonces.edit', 'edit_annonces'])
                                 <div class="d-flex flex-wrap gap-2">
                                     <button id="annonce-resume-mails" type="button" class="btn btn-outline-primary btn-sm"
                                         data-url="{{ route('esbtp.annonces.courriels.reprendre', $annonce) }}"
@@ -684,6 +685,10 @@
                                         </button>
                                     @endif
                                 </div>
+                                @endcanany
+                                <button type="button" id="annonce-mails-refresh" class="btn btn-outline-secondary btn-sm" data-poll-ms="{{ (int) config('services.mailpulse.announcement_status_poll_ms', 30000) }}" aria-label="Actualiser le suivi des courriels">
+                                    <i class="fas fa-sync-alt me-1"></i>Actualiser le suivi
+                                </button>
                             </div>
                             <div id="annonce-resume-result" class="small mb-2" role="status" aria-live="polite"></div>
                             @if($totalMail > 0 && $livres === $totalMail)
@@ -1097,6 +1102,46 @@ document.addEventListener('DOMContentLoaded', function () {
         }, { rootMargin: '240px' });
         observer.observe(sentinel);
     }
+
+    const refreshBtn = document.getElementById('annonce-mails-refresh');
+    let shouldPoll = true;
+    async function refreshStats() {
+        if (!refreshBtn) return;
+        refreshBtn.disabled = true;
+        try {
+            const url = new URL(window.location.href);
+            url.searchParams.set('courriels_fragment', 'stats');
+            const response = await fetch(url, {headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}});
+            if (!response.ok) throw new Error('Statuts indisponibles');
+            const data = await response.json(), counts = data.counts;
+            const summary = {
+                total:data.total,
+                waiting:counts.pending + counts.processing + counts.retrying,
+                submitted:counts.submitted,
+                awaiting:counts.awaiting_dispatch,
+                delayed:counts.delayed,
+                delivered:counts.delivered,
+                failed:counts.failed
+            };
+            Object.entries(summary).forEach(([key,val]) => {
+                const el = document.querySelector('[data-mailpulse-kpi="'+key+'"]');
+                if(el) el.textContent = new Intl.NumberFormat('fr-FR').format(val);
+            });
+            shouldPoll = !data.terminal;
+            const status = document.getElementById('annonce-resume-result');
+            if (data.terminal && status) status.textContent = data.total > 0 && counts.delivered === data.total
+                ? 'Tous les e-mails sont confirmés délivrés.'
+                : 'Traitement terminé : examinez les éventuels échecs et rebonds.';
+        } catch (error) {
+            const status = document.getElementById('annonce-resume-result');
+            if(status) status.textContent = error.message;
+        } finally {refreshBtn.disabled = false;}
+    }
+    refreshBtn?.addEventListener('click', refreshStats);
+    const pollInterval = Math.max(10000, Number(refreshBtn?.dataset.pollMs || 30000));
+    if (refreshBtn) window.setInterval(() => {
+        if (shouldPoll && !document.hidden) refreshStats();
+    }, pollInterval);
 
     const triggers = Array.from(document.querySelectorAll('[data-mode][data-url]'));
     const modalElement = document.getElementById('annonce-resume-modal');

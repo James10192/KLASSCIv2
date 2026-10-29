@@ -245,6 +245,20 @@ class ESBTPAnnonceController extends Controller
             ->where('annonce_id', $annonce->id)
             ->select('status', DB::raw('COUNT(*) AS total'))
             ->groupBy('status')->pluck('total', 'status');
+        if (request()->query('courriels_fragment') === 'stats' && request()->ajax()) {
+            $stats = [];
+            foreach (['pending', 'processing', 'retrying', 'awaiting_dispatch',
+                'submitted', 'delayed', 'delivered', 'failed'] as $etat) {
+                $stats[$etat] = (int) ($courriels[$etat] ?? 0);
+            }
+            return response()->json([
+                'counts' => $stats,
+                'total' => array_sum($stats),
+                'terminal' => ($stats['pending'] + $stats['processing']
+                    + $stats['retrying'] + $stats['awaiting_dispatch']
+                    + $stats['submitted'] + $stats['delayed']) === 0,
+            ]);
+        }
         $filtre = request()->query('courriels_statut');
         $statuts = ['pending', 'processing', 'retrying', 'awaiting_dispatch',
             'submitted', 'delayed', 'delivered', 'failed'];
