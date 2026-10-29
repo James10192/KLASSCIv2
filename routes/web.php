@@ -1050,6 +1050,17 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware(['permission:annonces.edit|edit_annonces']);
             Route::resource('annonces', ESBTPAnnonceController::class)->only(['index', 'show'])
                 ->middleware(['permission:annonces.view|annonces.create|annonces.edit']);
+            // Campagnes d'annonces : vue/aperçu en lecture, reprise explicite
+            // permissionnée. Placées après le resource pour ne pas casser /create.
+            Route::get('annonces/{annonce}/courriels', [\App\Http\Controllers\ESBTPAnnonceCourrielController::class, 'liste'])
+                ->name('annonces.courriels.liste')
+                ->middleware('permission:annonces.view|annonces.create|annonces.edit');
+            Route::get('annonces/{annonce}/courriels/apercu', [\App\Http\Controllers\ESBTPAnnonceCourrielController::class, 'apercu'])
+                ->name('annonces.courriels.apercu')
+                ->middleware('permission:annonces.view|annonces.create|annonces.edit');
+            Route::post('annonces/{annonce}/courriels/reprendre', [\App\Http\Controllers\ESBTPAnnonceCourrielController::class, 'reprendre'])
+                ->name('annonces.courriels.reprendre')
+                ->middleware(['permission:annonces.create|annonces.edit', 'throttle:6,1']);
 
             // Routes pour les prÃ©sences/absences (esbtp namespace)
             Route::name('attendances.')->group(function () {
