@@ -164,7 +164,7 @@ etape "Tests unitaires (sans base)"
 for chemin in tests/Unit/Services/Frais tests/Unit/Paiements tests/Unit/Models/SettingRepliSurDefautTest.php \
     tests/Unit/Services/FraisAudienceTest.php tests/Unit/Services/ExtensionsDeRoleTest.php tests/Unit/Exploitation \
     tests/Feature/Exploitation tests/Unit/Deployment tests/Unit/Routes tests/Unit/Comptabilite tests/Unit/Photos \
-    tests/Unit/Services/Master; do
+    tests/Unit/Services/Master tests/Unit/Services/Care/TelemetrieIncidentsTest.php; do
     [ -e "$chemin" ] || continue
     "$PHP" -d memory_limit=2G vendor/bin/phpunit "$chemin" --no-coverage > /tmp/ci-local-unit.log 2>&1 \
         && printf '  ok  %s\n' "$chemin" || { tail -n 15 /tmp/ci-local-unit.log; echec "tests : $chemin"; }
