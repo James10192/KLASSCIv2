@@ -102,8 +102,10 @@ class DemandeSupportController extends Controller
 
         // Ouvrir la demande vaut lecture de l'avertissement qui y menait.
         Notification::where('user_id', $request->user()->getKey())->where('is_read', false)
-            ->where('link', route('support.demandes.show', $reference, false))
-            ->update(['is_read' => true]);
+            ->whereIn('link', [
+                route('support.demandes.show', $reference, false),
+                route('support.demandes.show', [$reference, 'portee' => 'ecole'], false),
+            ])->update(['is_read' => true]);
 
         $actionAdministration = $portee === 'school'
             && $this->peutRepondre($demande, $request->user()->getKey(), pourAdministration: true);
