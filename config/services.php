@@ -81,6 +81,7 @@ return [
     ],
 
     'mailpulse' => [
+        'announcement_backlog_warning_after_minutes' => env('MAILPULSE_ANNOUNCEMENT_BACKLOG_WARNING_MINUTES', 120),
         'announcement_metadata_budget_bytes' => env('MAILPULSE_ANNOUNCEMENT_METADATA_BUDGET_BYTES', 14000),
         // Relances manuelles : laisser les jobs cadences passer avant de reprogrammer.
         'announcement_retry_min_age_minutes' => env('MAILPULSE_ANNOUNCEMENT_RETRY_MIN_AGE_MINUTES', 180),

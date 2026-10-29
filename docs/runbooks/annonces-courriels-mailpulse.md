@@ -58,3 +58,35 @@ Sans `MAILPULSE_ANNOUNCEMENT_WEBHOOK_SECRET`, le serveur refuse toute mise à jo
 L'annonce « Reprise des cours » est publiée ; sa remise a eu lieu avec l'ancien transport. La capture MailPulse « Envoyé » montre l'acceptation en amont tandis que Resend affiche plusieurs `Delivery Delayed`. Certaines ont été délivrées, d'autres ont rebondi. **Ne pas relancer cette campagne** avant d'avoir rapproché les preuves, vérifié les inscriptions de l'année et confirmé un lot de test sous le nouveau contrat. Contrôler le domaine expéditeur (SPF/DKIM/DMARC), les retours SMTP détaillés et la réputation du domaine auprès des serveurs destinataires.
 
 La première reprise est à diagnostiquer et n'est pas un échec de toutes les adresses. Voir la documentation Resend sur `email.delivery_delayed` et les webhooks de livraison.
+
+
+## File d'attente volumineuse (cas ESBTP Abidjan)
+
+Si le suivi indique des milliers de lignes `pending` mais peu de soumissions MailPulse,
+**ne pas en déduire que le fournisseur a refusé les messages** : les jobs peuvent encore
+être retardés par cadence, ou le worker peut ne plus travailler. Vérifier le scheduler
+et le traitement des queues de l'instance, les `failed_jobs` et les logs privés.
+
+L'interface affiche un signal d'attente ancienne lorsque le délai configurable
+`MAILPULSE_ANNOUNCEMENT_BACKLOG_WARNING_MINUTES` est dépassé (défaut 120 min).
+Cette alerte **n'affirme pas** que le worker est arrêté.
+
+La relance opérateur passe par une confirmation premium et ne couvre que des états
+`pending`/`retrying`, sans `submitted_at` et sans ID MailPulse. L'ancienneté
+minimale (`MAILPULSE_ANNOUNCEMENT_RETRY_MIN_AGE_MINUTES`, défaut 180 min) évite de
+reprogrammer immédiatement les lots déjà cadencés. Le lot maximal est piloté par
+`MAILPULSE_ANNOUNCEMENT_RETRY_BATCH_SIZE` (défaut 100, plafond technique 500).
+Aucun `submitted`, `awaiting_dispatch`, `delayed`, `delivered` ou `failed`
+ne peut être relancé avec ce bouton.
+
+Vérifier sur l'instance, sans déclencher de mails en masse :
+
+    php artisan schedule:list
+    php artisan queue:failed
+    php artisan queue:monitor default
+
+Adapter le nom de la queue aux paramètres de déploiement, et superviser un worker
+capable d'honorer les jobs différés. Sur cPanel, vérifier la présence du cron
+`schedule:run` et d'un système de worker supervisé adapté ; ne pas installer
+de cron unique `queue:work --once` en espérant qu'il vide 2400 e-mails d'un coup.
+Les traitements asynchrones sont distincts de la synchronisation Git.

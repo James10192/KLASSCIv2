@@ -671,6 +671,14 @@
                                 </div>
                             </div>
                         </div>
+                        @if($ageAttenteMinutes !== null && $ageAttenteMinutes >= $seuilAlerteFileMinutes)
+                            <div class="alert alert-warning mx-3 mb-2" role="status">
+                                <strong>Envois en attente depuis {{ $ageAttenteMinutes }} minutes.</strong>
+                                Cela peut correspondre à la cadence de MailPulse ou à un worker/cron arrêté.
+                                Vérifiez le traitement des files et les jobs échoués avant de relancer :
+                                une soumission MailPulse ne garantit pas la livraison.
+                            </div>
+                        @endif
                         <div class="aps-card-body" style="border-top:1px solid var(--bs-border-color,#dbe3f0)">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                                 <div>

@@ -270,10 +270,17 @@ class ESBTPAnnonceController extends Controller
         }
         $nombreEligibles = $annonce->email_notification_enabled
             ? app(CiblageCourrielsAnnonce::class)->etudiants($annonce)->count() : 0;
+        $attenteAncienne = DB::table('esbtp_annonce_email_deliveries')
+            ->where('annonce_id', $annonce->id)
+            ->whereIn('status', ['pending', 'retrying'])
+            ->min('updated_at');
+        $ageAttenteMinutes = $attenteAncienne
+            ? (int) \Carbon\Carbon::parse($attenteAncienne)->diffInMinutes(now()) : null;
+        $seuilAlerteFileMinutes = max(60, (int) config('services.mailpulse.announcement_backlog_warning_after_minutes', 120));
         $anneeCourriels = $annonce->email_target_year_id
             ? ESBTPAnneeUniversitaire::find($annonce->email_target_year_id) : null;
         return view('esbtp.annonces.show', compact('annonce', 'courriels',
-            'destinataires', 'nombreEligibles', 'filtre', 'anneeCourriels'));
+            'destinataires', 'nombreEligibles', 'filtre', 'anneeCourriels', 'ageAttenteMinutes', 'seuilAlerteFileMinutes'));
     }
 
     /** La saisie n'est ni enregistrée ni transmise à MailPulse pendant cet aperçu. */
