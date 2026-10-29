@@ -91,8 +91,9 @@ class DemandeSupportController extends Controller
         abort_unless($this->disponibilite->suivi(), 404);
         abort_unless(preg_match('/^KC-\d{4}-\d{6,}$/', $reference) === 1, 404);
 
+        $portee = $this->portee($request, defaut: 'school');
         try {
-            $demande = $this->master->afficher($reference, $request->user()->getKey(), $this->portee($request, defaut: 'school'));
+            $demande = $this->master->afficher($reference, $request->user()->getKey(), $portee);
         } catch (MasterSupportIndisponible|MasterSupportRefus) {
             return view('support.demandes.show', ['demande' => null, 'reference' => $reference, 'indisponible' => true]);
         }
@@ -104,11 +105,15 @@ class DemandeSupportController extends Controller
             ->where('link', route('support.demandes.show', $reference, false))
             ->update(['is_read' => true]);
 
+        $actionAdministration = $portee === 'school'
+            && $this->peutRepondre($demande, $request->user()->getKey(), pourAdministration: true);
+
         return view('support.demandes.show', [
             'demande' => $demande,
             'reference' => $reference,
             'indisponible' => false,
-            'peutRepondre' => $this->peutRepondre($demande, $request->user()->getKey()),
+            'peutRepondre' => $actionAdministration || $this->peutRepondre($demande, $request->user()->getKey()),
+            'actionAdministration' => $actionAdministration,
             'peutJoindre' => $this->peutJoindre($demande, $request->user()->getKey()),
             'limites' => $this->master->limites(),
         ]);
@@ -125,6 +130,17 @@ class DemandeSupportController extends Controller
         abort_unless(preg_match('/^KC-\d{4}-\d{6,}$/', $reference) === 1, 404);
 
         $auteur = $request->user()->getKey();
+        $pourAdministration = $request->query('portee') === 'ecole';
+
+        // Lecture de toute l'école et droit d'y agir sont DEUX permissions.
+        // Le Master verrouille ensuite le dossier et vérifie qu'une action
+        // destinée à l'administration attend effectivement une réponse.
+        if ($pourAdministration) {
+            abort_unless(
+                $request->user()->can('support.tickets.view_school')
+                && $request->user()->can('support.tickets.respond_school'), 403
+            );
+        }
 
         try {
             // Toujours `mine` : lire les demandes de l'ecole n'autorise pas a ecrire
@@ -132,7 +148,7 @@ class DemandeSupportController extends Controller
             $demande = $this->master->repondre(
                 $reference,
                 $auteur,
-                'mine',
+                $pourAdministration ? 'school' : 'mine',
                 $request->validated('corps'),
                 $request->user()->name,
                 $request->validated('cle'),
@@ -153,8 +169,8 @@ class DemandeSupportController extends Controller
         return response()->json([
             'fil' => view('support.demandes._fil', ['messages' => $demande['messages'] ?? []])->render(),
             'statut' => view('support.demandes._statut', ['statut' => $demande['statut'] ?? []])->render(),
-            'peut_repondre' => $this->peutRepondre($demande, $auteur),
-            'peut_joindre' => $this->peutJoindre($demande, $auteur),
+            'peut_repondre' => $this->peutRepondre($demande, $auteur, $pourAdministration),
+            'peut_joindre' => ! $pourAdministration && $this->peutJoindre($demande, $auteur),
         ]);
     }
 
