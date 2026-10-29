@@ -562,6 +562,12 @@ jobs:
           done
           exit $echec
 
+      # Régression des annonces par courriel, avec la véritable base MariaDB.
+      # Doit tourner au même titre que les autres tests d'intégration, sans
+      # contacts réels : MailPulse est simulé par un mock dans les tests.
+      - name: Annonces étudiants ciblées par MailPulse
+        run: php vendor/bin/phpunit tests/Feature/Annonces/AnnonceMailPulseTest.php --no-coverage
+
   schema:
     name: Le schéma se crée entièrement (${{ matrix.moteur.nom }})
     runs-on: ubuntu-latest
