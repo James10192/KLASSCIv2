@@ -435,7 +435,7 @@ class ActionsDuJourTest extends TestCase
             'cible' => 'GGT-PARTIAL-26', 'niveaux' => ['L1', 'L2', 'L3'], 'places' => 30,
         ], $this->admin);
         $this->assertSame('approbation', $r['widget']['kind'] ?? null);
-        $this->assertCount(2, $r['widget']['tableau']['lignes'] ?? []);
+        $this->assertCount(2, $r['widget']['lignes'] ?? []);
         $this->valider($r);
         $this->assertCount(3, ESBTPClasse::where('parcours_id', $parcours->id)->get());
         $this->assertSame((int) $ancienne->id, (int) ESBTPClasse::where('code', 'GGT_PARTIAL_26_L1A')->sole()->id);
