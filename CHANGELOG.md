@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Suivi des annonces, interaction légère :** le filtrage premium réutilise Choices.js du module ; les pages suivantes des destinataires arrivent par un fragment AJAX unique, sans recalculer toute la page ni son aperçu HTML et avec une pagination sans JavaScript.
 - **Annonces — suivi des résultats et protection des inconnus :** distinction en cours / terminé et tout délivré / terminé avec échecs, barre de progression basée uniquement sur confirmations MailPulse. Épuisement de la queue sans preuve fournisseur conservé comme résultat inconnu à rapprocher, jamais comme échec définitif à relancer aveuglément.
 - **Annonces — HTML cohérent avec les notifications :** un seul rendu Blade utilise le gabarit d’e-mails KLASSCI (identité, couleurs et bouton). Le HTML est transmis dans metadata.email_html dans la limite acceptée par MailPulse, et aperçu sur la fiche annonce dans une iframe isolée ; les courriels historiques ne sont pas modifiés.
 - **KLASSCI Care — orientation des interventions :** préparation du routage par permissions effectives, avec refus des agents inactifs ou non habilités et sans distribution automatique lorsque plusieurs personnes sont éligibles. Les notifications signalent prioritairement les actions demandées même lorsqu’une réponse du support accompagne le changement de statut. Le workflow d’intervention n’est pas encore activé.
