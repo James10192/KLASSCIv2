@@ -250,10 +250,10 @@ class ESBTPAnnonceController extends Controller
         $destinataires = DB::table('esbtp_annonce_email_deliveries')
             ->where('annonce_id', $annonce->id)
             ->when($filtre, fn ($q) => $q->where('status', $filtre))
-            ->select(['email', 'status', 'attempts', 'submitted_at',
+            ->select(['id', 'email', 'status', 'attempts', 'submitted_at',
                 'provider_delivered_at', 'provider_delayed_at',
                 'provider_failed_at', 'error_code', 'updated_at'])
-            ->orderByDesc('updated_at')->paginate(25, ['*'], 'courriels_page')
+            ->orderByDesc('updated_at')->orderByDesc('id')->paginate(25, ['*'], 'courriels_page')
             ->withQueryString();
         $nombreEligibles = $annonce->email_notification_enabled
             ? app(CiblageCourrielsAnnonce::class)->etudiants($annonce)->count() : 0;
