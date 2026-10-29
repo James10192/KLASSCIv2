@@ -19,6 +19,7 @@ use App\Services\MailPulse\MailPulseClient;
 use App\Services\MailPulse\MailPulseStatutsMessages;
 use App\Services\Annonces\SynchroniserCourrielsAnnonce;
 use App\Services\Annonces\RelancerCourrielsAnnonce;
+use App\Jobs\Annonces\RelancerCampagneCourriels;
 use App\Services\Annonces\CourrielAnnonce;
 use App\Services\MailPulse\MailPulseResult;
 use Illuminate\Support\Facades\Mail;
@@ -293,7 +294,7 @@ class AnnonceMailPulseTest extends TestCase
 
     public function test_la_reprise_ne_reexpedie_jamais_un_courriel_deja_soumis_retarde_livre_ou_inconnu(): void
     {
-        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        Bus::fake([RelancerCampagneCourriels::class, EnvoyerAnnonceCourriel::class]);
         $annonce = $this->annonce();
         $ids = [];
         foreach (['pending', 'retrying', 'processing', 'submitted', 'awaiting_dispatch',
@@ -311,6 +312,9 @@ class AnnonceMailPulseTest extends TestCase
 
         $resultat = (new RelancerCourrielsAnnonce())->reprendre($annonce);
         $this->assertSame(2, $resultat['enfile']);
+        Bus::assertDispatchedTimes(RelancerCampagneCourriels::class, 1);
+        // L'ordonnanceur ne remet pas les courriels dejà soumis.
+        (new RelancerCampagneCourriels($annonce->id))->handle();
         Bus::assertDispatchedTimes(EnvoyerAnnonceCourriel::class, 2);
         Bus::assertDispatched(EnvoyerAnnonceCourriel::class, fn ($job) => $job->deliveryId === $ids['pending']);
         Bus::assertDispatched(EnvoyerAnnonceCourriel::class, fn ($job) => $job->deliveryId === $ids['retrying']);
@@ -326,7 +330,7 @@ class AnnonceMailPulseTest extends TestCase
 
     public function test_reprise_impossible_si_tous_livres_ou_annonce_expiree(): void
     {
-        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        Bus::fake([RelancerCampagneCourriels::class, EnvoyerAnnonceCourriel::class]);
         $annonce = $this->annonce();
         DB::table('esbtp_annonce_email_deliveries')->insert([
             'annonce_id' => $annonce->id, 'email' => 'livre@etudiants.test',

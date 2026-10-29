@@ -70,7 +70,8 @@ final class ESBTPAnnonceCourrielController extends Controller
             'pending' => (int) ($compteurs['pending'] ?? 0)
                 + (int) ($compteurs['processing'] ?? 0) + (int) ($compteurs['retrying'] ?? 0),
             'replayable' => (int) ($compteurs['pending'] ?? 0) + (int) ($compteurs['retrying'] ?? 0),
-            'can_resume' => $annonce->isActive() && $annonce->email_notification_enabled,
+            'can_resume' => $annonce->isActive() && $annonce->email_notification_enabled
+                && ! \Illuminate\Support\Facades\Cache::has(\App\Jobs\Annonces\RelancerCampagneCourriels::cle($annonce->id)),
             'submitted' => (int) ($compteurs['submitted'] ?? 0),
             'delayed' => (int) ($compteurs['delayed'] ?? 0),
             'delivered' => (int) ($compteurs['delivered'] ?? 0),

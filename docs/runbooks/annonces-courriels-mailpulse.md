@@ -61,7 +61,7 @@ La première reprise est à diagnostiquer et n'est pas un échec de toutes les a
 
 ## Reprise manuelle et rendu HTML
 
-La fiche annonce expose une action permissionnée « Reprendre les envois non soumis ». Elle reprogramme, par lots bornés (`MAILPULSE_ANNOUNCEMENT_RESUME_MAX`), UNIQUEMENT les lignes `pending/retrying` sans `submitted_at` ni identifiant MailPulse. L'envoi physique reste protégé par la transition atomique du job. Les statuts `delivered`, `submitted`, `delayed`, `awaiting_dispatch`, `processing` et `failed` ne sont pas automatiquement réémis. Les lignes sans preuve de réception ne doivent pas être relancées aveuglément.
+La fiche annonce expose une action permissionnée « Reprendre les envois non soumis ». Elle planifie une reprise asynchrone unique qui reprogramme toutes les adresses existantes par tranches bornées (`MAILPULSE_ANNOUNCEMENT_RESUME_MAX`) et cadence par minute, UNIQUEMENT les lignes `pending/retrying` sans `submitted_at` ni identifiant MailPulse. L'envoi physique reste protégé par la transition atomique du job. Les statuts `delivered`, `submitted`, `delayed`, `awaiting_dispatch`, `processing` et `failed` ne sont pas automatiquement réémis. Les lignes sans preuve de réception ne doivent pas être relancées aveuglément.
 
 Le gabarit d'e-mail d'annonce dérive de `esbtp.emails.parents.recu`, et utilise les couleurs/logo/contact de l'établissement ; il est transmis dans `metadata.email_html` via MailPulse, le contenu texte restant la version alternative. Le même service sert l'aperçu isolé de KLASSCI. Les nouveaux messages peuvent être visualisés depuis MailPulse via l'aperçu HTML sandboxé. **Les anciens messages texte ne sont pas transformés rétroactivement**.
 
