@@ -667,6 +667,21 @@
                         </div>
                         <div class="aps-card-body" style="border-top:1px solid var(--bs-border-color,#dbe3f0)">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                                <div><strong>Prévisualisation du courriel officiel</strong>
+                                    <div class="text-muted small">Le même modèle est utilisé pour la diffusion via MailPulse.</div></div>
+                                <button id="annonce-resume-mails" type="button" class="btn btn-outline-primary btn-sm"
+                                    data-url="{{ route('esbtp.annonces.courriels.reprendre', $annonce) }}"
+                                    {{ !($enAttente > 0 && $annonce->is_published) ? 'disabled' : '' }}>
+                                    <i class="fas fa-redo-alt me-1"></i>Reprendre les courriels non soumis
+                                </button>
+                            </div>
+                            <div id="annonce-resume-result" class="small mb-2" role="status" aria-live="polite"></div>
+                            <iframe loading="lazy" title="Aperçu de l'e-mail de l'annonce" sandbox=""
+                                src="{{ route('esbtp.annonces.courriel.apercu', $annonce) }}"
+                                style="width:100%;height:540px;border:1px solid #dbe3f0;border-radius:12px;background:#fff"></iframe>
+                        </div>
+                        <div class="aps-card-body" style="border-top:1px solid var(--bs-border-color,#dbe3f0)">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                                 <div>
                                     <strong>Destinataires et état individuel</strong>
                                     <div class="text-muted small">Une ligne par adresse unique ; les statuts sont ceux de MailPulse.</div>
@@ -1032,3 +1047,23 @@
 })();
 </script>
 @endpush
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const btn = document.getElementById('annonce-resume-mails');
+    if (!btn) return;
+    btn.addEventListener('click', async function () {
+        if (btn.disabled || !confirm('Reprendre uniquement les e-mails pas encore soumis ? Les e-mails retardés ou acceptés ne seront pas renvoyés.')) return;
+        const status = document.getElementById('annonce-resume-result');
+        btn.disabled = true;
+        try {
+            const response = await fetch(btn.dataset.url, {
+                method: 'POST',
+                headers: {'Accept':'application/json','X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''}
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || 'Action impossible');
+            status.textContent = data.message + ' (' + data.queued + ')';
+        } catch (e) { status.textContent = e.message; btn.disabled = false; }
+    });
+});
+</script>

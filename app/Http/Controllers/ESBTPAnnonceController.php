@@ -13,6 +13,8 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Services\Annonces\CiblageCourrielsAnnonce;
+use App\Services\Annonces\CorpsCourrielAnnonce;
+use App\Jobs\Annonces\EnvoyerAnnonceCourriel;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 use App\Notifications\ESBTPNotification;
@@ -261,6 +263,37 @@ class ESBTPAnnonceController extends Controller
             ? ESBTPAnneeUniversitaire::find($annonce->email_target_year_id) : null;
         return view('esbtp.annonces.show', compact('annonce', 'courriels',
             'destinataires', 'nombreEligibles', 'filtre', 'anneeCourriels'));
+    }
+
+    /** HTML identique au message envoye, reserve aux utilisateurs autorises a lire l'annonce. */
+    public function apercuCourriel(ESBTPAnnonce $annonce, CorpsCourrielAnnonce $corps)
+    {
+        abort_unless($annonce->email_notification_enabled, 404);
+        return response($corps->html($annonce), 200)
+            ->header('Content-Type', 'text/html; charset=UTF-8')
+            ->header('Content-Security-Policy', "default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'")
+            ->header('Cache-Control', 'private, no-store');
+    }
+
+    /** Reprise manuelle des seules lignes pending ; jamais les messages deja soumis. */
+    public function reprendreCourriels(Request $request, ESBTPAnnonce $annonce)
+    {
+        abort_unless($annonce->is_published && $annonce->email_notification_enabled
+            && !$annonce->date_publication->isFuture() && !$annonce->isExpired(), 409);
+
+        $limite = min(100, max(1, (int) config('services.mailpulse.announcement_resume_batch', 40)));
+        $ids = DB::table('esbtp_annonce_email_deliveries')
+            ->where('annonce_id', $annonce->id)->where('status', 'pending')
+            ->whereNull('submitted_at')->orderBy('id')->limit($limite)->pluck('id');
+        foreach ($ids as $id) {
+            EnvoyerAnnonceCourriel::dispatch((int) $id);
+        }
+        return response()->json([
+            'queued' => $ids->count(),
+            'message' => $ids->isEmpty()
+                ? 'Aucun courriel non soumis à reprendre. Les retards et les échecs doivent être vérifiés auprès du fournisseur.'
+                : 'Les courriels encore en attente ont été remis en file, sans relancer les messages déjà soumis.',
+        ]);
     }
 
     /**
