@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-29 · #1708 · Support : nouvelle action réservée aux responsables de scolarité, distincte des réponses destinées aux étudiants. Les notifications s’affichent aux seuls personnels habilités et leur réponse rend la main au support ; droits à configurer explicitement et recette nécessaire avant diffusion.
 - 2026-10-29 · #1706 · Annonces : option MailPulse pour avertir par e-mail chaque étudiant ciblé, sans double envoi ; campagne asynchrone, pièces accessibles dans KLASSCI. Vérifier queue, quota, ciblage et délivrabilité sur presentation avant diffusion aux écoles.
 - 2026-10-22 · #1677 · Reçu PDF : 15 mm d’espace pour la signature manuscrite et le cachet sur les exemplaires élève et caisse, tout en conservant une seule feuille A4 ; contrôle visuel sur presentation avant diffusion école.
 - 2026-10-22 · #1674 · Fiche inscription : réinscription en Documents complets validable avec les mêmes contrôles que la fiche étudiant, historique et observations conservés. Recette preview/POST mobile BTS/LMD sur presentation avant diffusion.

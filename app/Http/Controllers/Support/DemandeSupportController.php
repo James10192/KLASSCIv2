@@ -91,8 +91,9 @@ class DemandeSupportController extends Controller
         abort_unless($this->disponibilite->suivi(), 404);
         abort_unless(preg_match('/^KC-\d{4}-\d{6,}$/', $reference) === 1, 404);
 
+        $portee = $this->portee($request, defaut: 'school');
         try {
-            $demande = $this->master->afficher($reference, $request->user()->getKey(), $this->portee($request, defaut: 'school'));
+            $demande = $this->master->afficher($reference, $request->user()->getKey(), $portee);
         } catch (MasterSupportIndisponible|MasterSupportRefus) {
             return view('support.demandes.show', ['demande' => null, 'reference' => $reference, 'indisponible' => true]);
         }
@@ -101,15 +102,21 @@ class DemandeSupportController extends Controller
 
         // Ouvrir la demande vaut lecture de l'avertissement qui y menait.
         Notification::where('user_id', $request->user()->getKey())->where('is_read', false)
-            ->where('link', route('support.demandes.show', $reference, false))
-            ->update(['is_read' => true]);
+            ->whereIn('link', [
+                route('support.demandes.show', $reference, false),
+                route('support.demandes.show', [$reference, 'portee' => 'ecole'], false),
+            ])->update(['is_read' => true]);
+
+        $actionAdministration = $portee === 'school'
+            && $this->peutRepondre($demande, $request->user()->getKey(), pourAdministration: true);
 
         return view('support.demandes.show', [
             'demande' => $demande,
             'reference' => $reference,
             'indisponible' => false,
-            'peutRepondre' => $this->peutRepondre($demande, $request->user()->getKey()),
-            'peutJoindre' => $this->peutJoindre($demande, $request->user()->getKey()),
+            'peutRepondre' => $actionAdministration || $this->peutRepondre($demande, $request->user()->getKey()),
+            'actionAdministration' => $actionAdministration,
+            'peutJoindre' => ! $actionAdministration && $this->peutJoindre($demande, $request->user()->getKey()),
             'limites' => $this->master->limites(),
         ]);
     }
@@ -125,14 +132,26 @@ class DemandeSupportController extends Controller
         abort_unless(preg_match('/^KC-\d{4}-\d{6,}$/', $reference) === 1, 404);
 
         $auteur = $request->user()->getKey();
+        $pourAdministration = $request->query('portee') === 'ecole';
+
+        // Lecture de toute l'école et droit d'y agir sont DEUX permissions.
+        // Le Master verrouille ensuite le dossier et vérifie qu'une action
+        // destinée à l'administration attend effectivement une réponse.
+        if ($pourAdministration) {
+            abort_unless(
+                $request->user()->can('support.tickets.view_school')
+                && $request->user()->can('support.tickets.respond_school'), 403
+            );
+        }
 
         try {
-            // Toujours `mine` : lire les demandes de l'ecole n'autorise pas a ecrire
-            // sur celles des collegues. Le Master repond 404 hors de ce perimetre.
+            // Une écriture en `school` n'est autorisée que pour l'action
+            // de l'administration, avec deux permissions effectives.
+            // Toutes les réponses individuelles restent en `mine`.
             $demande = $this->master->repondre(
                 $reference,
                 $auteur,
-                'mine',
+                $pourAdministration ? 'school' : 'mine',
                 $request->validated('corps'),
                 $request->user()->name,
                 $request->validated('cle'),
@@ -145,6 +164,13 @@ class DemandeSupportController extends Controller
             // 404 et non 403 au Master : une reference hors de portee n'existe pas.
             abort_if($e->statut === 404, 404);
 
+            if ($pourAdministration && $e->codeErreur === 'school_action_closed') {
+                return response()->json([
+                    'message' => "Cette action administrative n'est plus attendue. Rechargez la demande.",
+                    'peut_repondre' => false,
+                    'peut_joindre' => false,
+                ], 409);
+            }
             return $e->codeErreur === 'ticket_closed'
                 ? $this->demandeFermee($reference, $auteur)
                 : $this->refusInattendu($e);
@@ -153,8 +179,8 @@ class DemandeSupportController extends Controller
         return response()->json([
             'fil' => view('support.demandes._fil', ['messages' => $demande['messages'] ?? []])->render(),
             'statut' => view('support.demandes._statut', ['statut' => $demande['statut'] ?? []])->render(),
-            'peut_repondre' => $this->peutRepondre($demande, $auteur),
-            'peut_joindre' => $this->peutJoindre($demande, $auteur),
+            'peut_repondre' => $this->peutRepondre($demande, $auteur, $pourAdministration),
+            'peut_joindre' => ! $pourAdministration && $this->peutJoindre($demande, $auteur),
         ]);
     }
 

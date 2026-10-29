@@ -5,10 +5,12 @@ namespace App\Domain\Support\Actions;
 use App\Domain\Support\Models\CurseurSupport;
 use App\Domain\Support\Models\DemandeSuivie;
 use App\Domain\Support\Services\AvertirDuRetourDuSupport;
+use App\Domain\Support\Services\AvertirAdministration;
 use App\Models\User;
 use App\Services\Care\ClientMasterSupport;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
@@ -46,6 +48,7 @@ class SuivreLesReponsesDuSupport
     public function __construct(
         private readonly ClientMasterSupport $master,
         private readonly AvertirDuRetourDuSupport $avertir,
+        private readonly AvertirAdministration $avertirAdministration,
     ) {
     }
 
@@ -92,6 +95,10 @@ class SuivreLesReponsesDuSupport
             }
         }
 
+        // Les actions restées sans destinataire ne doivent pas être perdues
+        // après la fenêtre mis_a_jour_depuis : on les vérifie séparément.
+        $averties += $this->reprendreActionsAdministrationEnAttente();
+
         CurseurSupport::poser(CurseurSupport::SUIVI_DEMANDES, $plusRecente ?? now());
 
         return ['initialisation' => $initialisation, 'lues' => $lues, 'averties' => $averties];
@@ -123,10 +130,22 @@ class SuivreLesReponsesDuSupport
         // rapporteur doit recevoir une alerte comme pour une reponse publique.
         // Un changement RESOLU -> FERME n'envoie pas deux alertes de cloture.
         $statutSignificatif = in_array($statut, ['EN_RESOLUTION', 'ACTION_REQUISE'], true)
+            && ($statut !== 'ACTION_REQUISE' || ($resume['action_cible'] ?? null) !== 'ETABLISSEMENT')
             && $statut !== $suivie->statut_code;
 
+        $derniereAdmin = self::date($resume['derniere_demande_etablissement_le'] ?? null);
+        $actionAdminNouvelle = $derniereAdmin !== null
+            && ($suivie->derniere_action_administration_le === null
+                || $derniereAdmin->gt($suivie->derniere_action_administration_le));
         $rapporteur = User::find((int) ($resume['rapporteur']['id'] ?? 0));
         $averti = $avertir && $rapporteur !== null && ($aRepondu || $cloturee || $statutSignificatif);
+
+        $administrationNotifiee = false;
+        if ($actionAdminNouvelle && $avertir) {
+            // En l'absence de personne autorisée, garder le repère non traité :
+            // une configuration ultérieure du droit permettra de livrer l'alerte.
+            $administrationNotifiee = $this->avertirAdministration->executer($resume) > 0;
+        }
 
         // L'etat vu s'enregistre AVANT d'avertir : si l'avertissement leve,
         // le passage suivant ne renvoie pas une notification deja partie.
@@ -134,6 +153,11 @@ class SuivreLesReponsesDuSupport
             'user_id' => $rapporteur?->getKey(),
             'statut_code' => $statut,
             'derniere_reponse_support_le' => $aRepondu ? $reponseLe : $suivie->derniere_reponse_support_le,
+            'derniere_action_administration_le' => $actionAdminNouvelle && (! $avertir || $administrationNotifiee)
+                ? $derniereAdmin : $suivie->derniere_action_administration_le,
+            'action_administration_en_attente_le' => $actionAdminNouvelle
+                ? ($avertir && ! $administrationNotifiee ? $derniereAdmin : null)
+                : $suivie->action_administration_en_attente_le,
             'mis_a_jour_le' => self::date($resume['mis_a_jour_le'] ?? null),
             'averti_le' => $averti ? now() : $suivie->averti_le,
         ])->save();
@@ -142,7 +166,50 @@ class SuivreLesReponsesDuSupport
             $this->avertir->executer($rapporteur, $resume, $aRepondu, $cloturee);
         }
 
-        return $averti;
+        return $averti || $administrationNotifiee;
+    }
+
+    /**
+     * Retente les actions administratives non livrées même après expiration du
+     * filtre de mise à jour. Borne à 20 dossiers par passage ; si l'action a
+     * été satisfaite ou annulée, ne crée plus de notification obsolète.
+     */
+    private function reprendreActionsAdministrationEnAttente(): int
+    {
+        $averties = 0;
+        $aRevoir = DemandeSuivie::query()
+            ->whereNotNull('action_administration_en_attente_le')
+            ->where('updated_at', '<=', now()->subMinutes(15))
+            ->orderBy('id')->limit(20)->get();
+
+        foreach ($aRevoir as $suivie) {
+            try {
+                $detail = $this->master->afficher($suivie->reference, 1, 'school');
+                if ($detail === null
+                    || ($detail['statut']['code'] ?? null) !== 'ACTION_REQUISE'
+                    || ($detail['action_cible'] ?? null) !== 'ETABLISSEMENT') {
+                    $suivie->update(['action_administration_en_attente_le' => null]);
+                    continue;
+                }
+                if ($this->avertirAdministration->executer($detail) > 0) {
+                    $suivie->update([
+                        'derniere_action_administration_le' => $suivie->action_administration_en_attente_le,
+                        'action_administration_en_attente_le' => null,
+                    ]);
+                    $averties++;
+                } else {
+                    // Retenter dans quinze minutes, pas à chaque tick.
+                    $suivie->touch();
+                }
+            } catch (Throwable $e) {
+                Log::warning('KLASSCI Care : reprise notification scolarité impossible', [
+                    'reference' => $suivie->reference, 'erreur' => $e->getMessage(),
+                ]);
+                $suivie->touch();
+            }
+        }
+
+        return $averties;
     }
 
     /** Une date du Master, a l'heure de l'instance ; absente ou illisible → null. */

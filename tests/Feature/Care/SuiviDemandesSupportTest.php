@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 /**
@@ -133,6 +134,95 @@ class SuiviDemandesSupportTest extends TestCase
         $this->assertSame(2, Notification::count());
         $this->assertStringContainsString('attend une action de votre part', Notification::latest('id')->first()->title);
         Mail::assertSent(ReponseDuSupportMail::class, 2);
+    }
+
+    public function test_une_action_pour_la_scolarite_notifie_les_responsables_habilites_et_pas_l_etudiant(): void
+    {
+        $etudiant = $this->utilisateur(true);
+        $scolarite = $this->utilisateur(true);
+        $lecteur = $this->utilisateur(true);
+        $lecture = Permission::firstOrCreate(['name' => 'support.tickets.view_school', 'guard_name' => 'web']);
+        $reponse = Permission::firstOrCreate(['name' => 'support.tickets.respond_school', 'guard_name' => 'web']);
+        $scolarite->givePermissionTo([$lecture, $reponse]);
+        $lecteur->givePermissionTo($lecture);
+
+        $avant = $this->resume($etudiant);
+        $apres = $this->resume($etudiant, 'ACTION_REQUISE', null, '2026-10-01T09:25:00+00:00');
+        $apres['action_cible'] = 'ETABLISSEMENT';
+        $apres['derniere_demande_etablissement_le'] = '2026-10-01T09:25:00+00:00';
+        $this->master([$avant], [$apres], [$apres]);
+
+        $this->artisan('support:suivre-demandes')->assertSuccessful();
+        $this->artisan('support:suivre-demandes')->assertSuccessful();
+        $this->artisan('support:suivre-demandes')->assertSuccessful();
+
+        $this->assertSame(1, Notification::count());
+        $notification = Notification::sole();
+        $this->assertSame($scolarite->id, (int) $notification->user_id);
+        $this->assertStringContainsString('portee=ecole', $notification->link);
+        $this->assertStringNotContainsString($etudiant->name, $notification->message);
+        $this->assertSame(0, Notification::where('user_id', $etudiant->id)->count());
+        $this->assertSame(0, Notification::where('user_id', $lecteur->id)->count());
+        Mail::assertNothingSent();
+    }
+
+    public function test_sans_responsable_habilite_une_action_administrative_reste_a_notifier(): void
+    {
+        $etudiant = $this->utilisateur(true);
+        Permission::firstOrCreate(['name' => 'support.tickets.respond_school', 'guard_name' => 'web']);
+
+        $avant = $this->resume($etudiant);
+        $apres = $this->resume($etudiant, 'ACTION_REQUISE', null, '2026-10-01T09:25:00+00:00');
+        $apres['action_cible'] = 'ETABLISSEMENT';
+        $apres['derniere_demande_etablissement_le'] = '2026-10-01T09:25:00+00:00';
+        $this->master([$avant], [$apres]);
+
+        $this->artisan('support:suivre-demandes')->assertSuccessful();
+        $this->artisan('support:suivre-demandes')->assertSuccessful();
+
+        $this->assertSame(0, Notification::count());
+        $this->assertNull(\App\Domain\Support\Models\DemandeSuivie::sole()->derniere_action_administration_le);
+    }
+
+    public function test_une_action_sans_destinataire_est_reprise_quand_les_droits_sont_attribues_plus_tard(): void
+    {
+        $etudiant = $this->utilisateur(true);
+        $scolarite = $this->utilisateur(true);
+        Permission::firstOrCreate(['name' => 'support.tickets.view_school', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'support.tickets.respond_school', 'guard_name' => 'web']);
+
+        $avant = $this->resume($etudiant);
+        $apres = $this->resume($etudiant, 'ACTION_REQUISE', null, '2026-10-01T09:25:00+00:00');
+        $apres['action_cible'] = 'ETABLISSEMENT';
+        $apres['derniere_demande_etablissement_le'] = '2026-10-01T09:25:00+00:00';
+        $this->master([$avant], [$apres]);
+
+        $this->artisan('support:suivre-demandes')->assertSuccessful();
+        $this->artisan('support:suivre-demandes')->assertSuccessful();
+        $suivie = \App\Domain\Support\Models\DemandeSuivie::sole();
+        $this->assertNotNull($suivie->action_administration_en_attente_le);
+        $this->assertSame(0, Notification::count());
+
+        $scolarite->givePermissionTo(['support.tickets.view_school', 'support.tickets.respond_school']);
+        $suivie->forceFill(['updated_at' => now()->subMinutes(16)])->saveQuietly();
+        Cache::flush();
+        Http::swap(new \Illuminate\Http\Client\Factory());
+        Http::fake([
+            'master.test/api/v1/support/bootstrap' => Http::response([
+                'fonctionnalites' => ['support_widget' => true, 'support_customer_portal' => true],
+                'portees' => ['support:read'],
+            ]),
+            'master.test/api/v1/support/tickets/KC-*' => Http::response($apres),
+            'master.test/api/v1/support/tickets*' => Http::response([
+                'data' => [], 'meta' => ['page' => 1, 'pages' => 1, 'total' => 0],
+            ]),
+        ]);
+
+        $this->artisan('support:suivre-demandes')->assertSuccessful();
+
+        $this->assertSame($scolarite->id, (int) Notification::sole()->user_id);
+        $this->assertNull($suivie->fresh()->action_administration_en_attente_le);
+        $this->assertNotNull($suivie->fresh()->derniere_action_administration_le);
     }
 
     public function test_master_injoignable_le_curseur_ne_bouge_pas(): void

@@ -4,7 +4,13 @@
     <div class="sd-fil">
         @foreach($messages as $m)
             <div class="sd-msg {{ ($m['auteur'] ?? '') === 'SUPPORT' ? 'sd-msg--support' : 'sd-msg--ecole' }}">
-                <div class="sd-msg-auteur"><strong>{{ $m['nom'] ?? '' }}</strong> · {{ \App\Domain\Support\Services\DateDuMaster::afficher($m['le'] ?? null, 'd M Y à H:i') }}</div>
+                <div class="sd-msg-auteur">
+                    <strong>{{ $m['nom'] ?? '' }}</strong>
+                    @if(($m['destinataire'] ?? null) === 'ETABLISSEMENT')
+                        · <strong>Administration uniquement</strong>
+                    @endif
+                    · {{ \App\Domain\Support\Services\DateDuMaster::afficher($m['le'] ?? null, 'd M Y à H:i') }}
+                </div>
                 <p>{{ $m['corps'] ?? '' }}</p>
             </div>
         @endforeach
