@@ -265,10 +265,14 @@ class ESBTPAnnonceController extends Controller
         }
         $nombreEligibles = $annonce->email_notification_enabled
             ? app(CiblageCourrielsAnnonce::class)->etudiants($annonce)->count() : 0;
+        $nombreReprenables = DB::table('esbtp_annonce_email_deliveries')
+            ->where('annonce_id', $annonce->id)
+            ->where('status', 'failed')->where('error_code', 'queue_exhausted')
+            ->whereNull('mailpulse_message_id')->whereNull('submitted_at')->count();
         $anneeCourriels = $annonce->email_target_year_id
             ? ESBTPAnneeUniversitaire::find($annonce->email_target_year_id) : null;
         return view('esbtp.annonces.show', compact('annonce', 'courriels',
-            'destinataires', 'nombreEligibles', 'filtre', 'anneeCourriels'));
+            'destinataires', 'nombreEligibles', 'filtre', 'anneeCourriels', 'nombreReprenables'));
     }
 
     /** HTML identique au message envoye, reserve aux utilisateurs autorises a lire l'annonce. */
@@ -287,18 +291,43 @@ class ESBTPAnnonceController extends Controller
         abort_unless($annonce->is_published && $annonce->email_notification_enabled
             && !$annonce->date_publication->isFuture() && !$annonce->isExpired(), 409);
 
+        $donnees = $request->validate([
+            'mode' => 'required|in:pending,technical',
+        ]);
+        $technique = $donnees['mode'] === 'technical';
         $limite = min(100, max(1, (int) config('services.mailpulse.announcement_resume_batch', 40)));
-        $ids = DB::table('esbtp_annonce_email_deliveries')
-            ->where('annonce_id', $annonce->id)->where('status', 'pending')
-            ->whereNull('submitted_at')->orderBy('id')->limit($limite)->pluck('id');
+        $selection = DB::table('esbtp_annonce_email_deliveries')
+            ->where('annonce_id', $annonce->id)->whereNull('submitted_at')
+            ->whereNull('mailpulse_message_id');
+        if ($technique) {
+            // Les rebonds, plaintes et messages retardes sont EXCLUS.
+            // Un echec ambigu n'est repris qu'avec la meme cle d'idempotence.
+            $selection->where('status', 'failed')->where('error_code', 'queue_exhausted');
+        } else {
+            $selection->where('status', 'pending');
+        }
+        $ids = $selection->orderBy('id')->limit($limite)->pluck('id');
+        $remis = 0;
         foreach ($ids as $id) {
+            if ($technique) {
+                $pris = DB::table('esbtp_annonce_email_deliveries')
+                    ->where('id', $id)->where('status', 'failed')
+                    ->where('error_code', 'queue_exhausted')
+                    ->whereNull('mailpulse_message_id')->whereNull('submitted_at')
+                    ->update([
+                        'status' => 'pending', 'error_code' => null,
+                        'provider_failed_at' => null, 'updated_at' => now(),
+                    ]);
+                if ($pris !== 1) continue;
+            }
             EnvoyerAnnonceCourriel::dispatch((int) $id);
+            $remis++;
         }
         return response()->json([
-            'queued' => $ids->count(),
-            'message' => $ids->isEmpty()
-                ? 'Aucun courriel non soumis à reprendre. Les retards et les échecs doivent être vérifiés auprès du fournisseur.'
-                : 'Les courriels encore en attente ont été remis en file, sans relancer les messages déjà soumis.',
+            'queued' => $remis,
+            'message' => $remis === 0
+                ? 'Aucun envoi sûr à reprendre. Les messages en transit, différés ou déjà livrés sont préservés.'
+                : 'Reprise ciblée mise en file. Les messages déjà soumis ou retardés ne sont jamais réémis.',
         ]);
     }
 

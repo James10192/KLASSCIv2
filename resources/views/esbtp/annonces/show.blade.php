@@ -669,13 +669,28 @@
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                                 <div><strong>Prévisualisation du courriel officiel</strong>
                                     <div class="text-muted small">Le même modèle est utilisé pour la diffusion via MailPulse.</div></div>
-                                <button id="annonce-resume-mails" type="button" class="btn btn-outline-primary btn-sm"
-                                    data-url="{{ route('esbtp.annonces.courriels.reprendre', $annonce) }}"
-                                    {{ !($enAttente > 0 && $annonce->is_published) ? 'disabled' : '' }}>
-                                    <i class="fas fa-redo-alt me-1"></i>Reprendre les courriels non soumis
-                                </button>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button id="annonce-resume-mails" type="button" class="btn btn-outline-primary btn-sm"
+                                        data-url="{{ route('esbtp.annonces.courriels.reprendre', $annonce) }}"
+                                        data-mode="pending"
+                                        {{ !($enAttente > 0 && $annonce->is_published) ? 'disabled' : '' }}>
+                                        <i class="fas fa-redo-alt me-1"></i>Reprendre les non soumis
+                                    </button>
+                                    @if($nombreReprenables > 0)
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="annonce-resume-failed"
+                                            data-url="{{ route('esbtp.annonces.courriels.reprendre', $annonce) }}"
+                                            data-mode="technical">
+                                            Réessayer {{ $nombreReprenables }} échecs techniques vérifiés
+                                        </button>
+                                    @endif
+                                </div>
                             </div>
                             <div id="annonce-resume-result" class="small mb-2" role="status" aria-live="polite"></div>
+                            @if($totalMail > 0 && $livres === $totalMail)
+                            <div class="alert alert-success">Tous les messages suivis sont confirmés délivrés. Aucune relance possible.</div>
+                            @elseif($echoues > 0)
+                            <div class="alert alert-warning">Certains courriels ont échoué. Les rebonds définitifs ne sont jamais relancés automatiquement ; examinez-les dans MailPulse.</div>
+                            @endif
                             <iframe loading="lazy" title="Aperçu de l'e-mail de l'annonce" sandbox=""
                                 src="{{ route('esbtp.annonces.courriel.apercu', $annonce) }}"
                                 style="width:100%;height:540px;border:1px solid #dbe3f0;border-radius:12px;background:#fff"></iframe>
@@ -958,6 +973,16 @@
             @method('DELETE')
         </form>
 
+        {{-- Confirmation premium Bootstrap, aucun confirm() navigateur. --}}
+        <div class="modal fade" id="annonce-resume-modal" tabindex="-1" aria-labelledby="annonce-resume-title" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title" id="annonce-resume-title">Reprise prudente des courriels</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button></div>
+                <div class="modal-body"><p id="annonce-resume-confirm-description">Seuls les courriels jamais soumis seront repris. Aucun envoi déjà accepté, retardé ou livré ne sera renvoyé.</p></div>
+                <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" id="annonce-resume-confirm" class="btn btn-primary">Confirmer la reprise</button></div>
+            </div></div>
+        </div>
         {{-- =================== MODAL DELETE =================== --}}
         <div class="modal fade aps-modal" id="apsDeleteModal" tabindex="-1"
              aria-labelledby="apsDeleteModalLabel" aria-hidden="true" data-bs-backdrop="static">
@@ -1073,21 +1098,47 @@ document.addEventListener('DOMContentLoaded', function () {
         observer.observe(sentinel);
     }
 
-    const btn = document.getElementById('annonce-resume-mails');
-    if (!btn) return;
-    btn.addEventListener('click', async function () {
-        if (btn.disabled || !confirm('Reprendre uniquement les e-mails pas encore soumis ? Les e-mails retardés ou acceptés ne seront pas renvoyés.')) return;
-        const status = document.getElementById('annonce-resume-result');
+    const triggers = Array.from(document.querySelectorAll('[data-mode][data-url]'));
+    const modalElement = document.getElementById('annonce-resume-modal');
+    const confirmButton = document.getElementById('annonce-resume-confirm');
+    const description = document.getElementById('annonce-resume-confirm-description');
+    const status = document.getElementById('annonce-resume-result');
+    let selected = null;
+    triggers.forEach(btn => btn.addEventListener('click', function () {
+        if (btn.disabled) return;
+        selected = btn;
+        description.textContent = btn.dataset.mode === 'technical'
+            ? "Seuls les échecs techniques de file sans identifiant fournisseur seront replanifiés. Les rebonds et les messages différés restent intacts."
+            : "Seuls les courriels non soumis seront repris. Les messages en transit, retardés ou déjà délivrés ne seront pas renvoyés.";
+        if (window.bootstrap) window.bootstrap.Modal.getOrCreateInstance(modalElement).show();
+    }));
+    confirmButton?.addEventListener('click', async function () {
+        if (!selected) return;
+        const btn = selected;
         btn.disabled = true;
+        confirmButton.disabled = true;
         try {
             const response = await fetch(btn.dataset.url, {
                 method: 'POST',
-                headers: {'Accept':'application/json','X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''}
+                headers: {
+                    'Content-Type':'application/json',
+                    'Accept':'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                },
+                body: JSON.stringify({mode:btn.dataset.mode})
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'Action impossible');
             status.textContent = data.message + ' (' + data.queued + ')';
-        } catch (e) { status.textContent = e.message; btn.disabled = false; }
+            window.dispatchEvent(new CustomEvent('toast', {
+                detail: {type:'success', message:data.message}
+            }));
+            if (window.bootstrap) window.bootstrap.Modal.getOrCreateInstance(modalElement).hide();
+        } catch (e) {
+            status.textContent = e.message;
+            btn.disabled = false;
+            window.dispatchEvent(new CustomEvent('toast', {detail: {type:'error',message:e.message}}));
+        } finally {confirmButton.disabled = false;}
     });
 });
 </script>

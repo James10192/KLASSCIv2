@@ -81,6 +81,7 @@ return [
     ],
 
     'mailpulse' => [
+        'announcement_resume_batch' => env('MAILPULSE_ANNOUNCEMENT_RESUME_BATCH', 40),
         'announcement_webhook_secret' => env('MAILPULSE_ANNOUNCEMENT_WEBHOOK_SECRET'),
         'enabled' => env('MAILPULSE_ENABLED', true),
         'base_url' => env('MAILPULSE_BASE_URL', 'https://mailpulse-two.vercel.app'),
