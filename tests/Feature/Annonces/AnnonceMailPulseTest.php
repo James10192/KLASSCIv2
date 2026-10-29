@@ -59,8 +59,9 @@ class AnnonceMailPulseTest extends TestCase
     public function test_cible_nominative_une_adresse_unique_meme_si_deux_etudiants_la_partagent(): void
     {
         Bus::fake([EnvoyerAnnonceCourriel::class]);
-        $a = ESBTPEtudiant::factory()->create(['email' => 'partage@etudiants.test']);
-        $b = ESBTPEtudiant::factory()->create(['email' => 'partage@etudiants.test']);
+        // Le champ email est unique en base, mais email_personnel peut être partagé.
+        $a = ESBTPEtudiant::factory()->create(['email_personnel' => 'partage@etudiants.test']);
+        $b = ESBTPEtudiant::factory()->create(['email_personnel' => 'partage@etudiants.test']);
         ESBTPEtudiant::factory()->create(['email' => 'hors-cible@etudiants.test']);
 
         $annonce = $this->annonce('etudiant');
