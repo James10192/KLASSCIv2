@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\DB;
 use App\Services\Annonces\CiblageCourrielsAnnonce;
 use App\Mail\Transport\CadenceMailPulse;
 use App\Services\MailPulse\MailPulseClient;
+use App\Services\MailPulse\MailPulseStatutsMessages;
+use App\Services\Annonces\SynchroniserCourrielsAnnonce;
 use App\Services\MailPulse\MailPulseResult;
 use Illuminate\Support\Facades\Mail;
 use Mockery;
@@ -223,4 +225,65 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertSame(200, $envoyer(array_replace($payload, ['state' => 'delivery_delayed']))->getStatusCode());
         $this->assertSame('delivered', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
     }
+    public function test_rapprochement_mailpulse_distingue_delivre_retarde_et_rebond_sans_renvoyer(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        $annonce = $this->annonce();
+        $ids = [];
+        foreach (['delivered', 'delayed', 'failed'] as $type) {
+            $ids[$type] = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+                'annonce_id' => $annonce->id, 'email' => "{$type}@etudiants.test",
+                'status' => 'submitted', 'submitted_at' => now(),
+                'mailpulse_message_id' => "mailpulse-{$type}",
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        $reader = Mockery::mock(MailPulseStatutsMessages::class);
+        $reader->shouldReceive('lire')->once()->with('mailpulse-delivered')
+            ->andReturn(['status' => 'delivered', 'error_code' => null,
+                'delivered_at' => now()->toIso8601String(), 'delivery_delays' => []]);
+        $reader->shouldReceive('lire')->once()->with('mailpulse-delayed')
+            ->andReturn(['status' => 'sent', 'error_code' => null,
+                'delivered_at' => null, 'delivery_delays' => [
+                    ['occurred_at' => now()->toIso8601String()],
+                ]]);
+        $reader->shouldReceive('lire')->once()->with('mailpulse-failed')
+            ->andReturn(['status' => 'failed', 'error_code' => 'email_bounced',
+                'delivered_at' => null, 'delivery_delays' => []]);
+
+        $result = (new SynchroniserCourrielsAnnonce($reader))->synchroniser(3);
+        $this->assertSame(3, $result['lues']);
+        $this->assertSame(1, $result['delivrees']);
+        $this->assertSame(1, $result['retardees']);
+        $this->assertSame(1, $result['echecs']);
+        foreach ($ids as $type => $id) {
+            $ligne = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
+            $this->assertSame($type, $ligne->status);
+        }
+        $this->assertSame('email_bounced',
+            DB::table('esbtp_annonce_email_deliveries')->where('id', $ids['failed'])->value('error_code'));
+        Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
+    }
+
+    public function test_synchronisation_ne_devine_pas_la_livraison_et_ignore_un_ancien_envoi_sans_id_mailpulse(): void
+    {
+        $annonce = $this->annonce();
+        foreach (['legacy', 'current'] as $kind) {
+            DB::table('esbtp_annonce_email_deliveries')->insert([
+                'annonce_id' => $annonce->id, 'email' => "{$kind}@etudiants.test",
+                'status' => 'submitted', 'submitted_at' => now(),
+                'mailpulse_message_id' => $kind === 'current' ? 'mailpulse-current' : null,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        $reader = Mockery::mock(MailPulseStatutsMessages::class);
+        $reader->shouldReceive('lire')->once()->with('mailpulse-current')
+            ->andReturn(['status' => 'sent', 'error_code' => null,
+                'delivered_at' => null, 'delivery_delays' => []]);
+        $result = (new SynchroniserCourrielsAnnonce($reader))->synchroniser(10);
+        $this->assertSame(1, $result['lues']);
+        $this->assertSame(0, $result['delivrees']);
+        $this->assertSame(2, DB::table('esbtp_annonce_email_deliveries')->where('status', 'submitted')->count());
+    }
+
 }
