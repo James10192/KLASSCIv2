@@ -1,9 +1,46 @@
-# Annonces KLASSCI — e-mails facultatifs MailPulse
+# Annonces KLASSCI — ciblage, file et délivrabilité
 
-La case « Envoyer aussi par e-mail (MailPulse) » est désactivée par défaut ; elle est conservée sur le brouillon et prise en compte à la première publication uniquement. Les modifications d'une annonce déjà publiée n'envoient pas une nouvelle campagne.
+## Choisir le public
 
-**Ciblage** : générale = tous les étudiants de l'instance non supprimés ; classe = étudiants inscrits dans les classes sélectionnées durant l'année en cours ; nominative = uniquement les étudiants sélectionnés. Un étudiant sans compte peut recevoir un courriel si son adresse est renseignée. Le premier courriel valide est choisi dans ses adresses ou celle de son compte. Deux étudiants partageant une adresse ne génèrent qu'un mail.
+Une annonce reste visible dans KLASSCI conformément à son type (générale, classes, étudiants).
+**Le filtre e-mail est indépendant**. Par défaut, les NOUVELLES campagnes ciblent les inscriptions `status = active` de l'année universitaire courante ; un agent autorisé peut choisir tout le public de l'annonce, y compris d'anciens inscrits. Le modèle conserve `all` sur les campagnes historiques : aucune modification rétroactive ni nouvelle campagne n'est déclenchée.
 
-**Architecture** : `DiffuserAnnonceParCourriel` crée des livraisons uniques dans `esbtp_annonce_email_deliveries`, puis planifie `EnvoyerAnnonceCourriel` par destinataire. Chaque mail utilise explicitement le transport `mailpulse`. Le corps reprend le titre, le contenu et le lien sécurisé vers le fil étudiant. Les pièces jointes ne sont pas attachées : l'API publique MailPulse ne les prend pas en charge.
+Le filtre est appliqué à la même ligne d'inscription pour l'année, le statut et les classes retenues. L'année est figée à la publication, pas au passage du worker : un changement d'année entre la création et l'exécution ne modifie pas le public. Si aucune année n'est définie, publication avec filtre actif refusée avec une validation claire. Chaque adresse valide est normalisée et dédoublonnée par `(annonce_id,email)` ; les étudiants sans e-mail ne sont pas ajoutés à la file.
 
-**Exploitation** : exécuter la migration par établissement. Exiger `MAILPULSE_API_KEY`, MailPulse activé, une file asynchrone, un worker/cron fonctionnel et suffisamment de crédits e-mail. Le transport traite le débit et les reports temporaires. `submitted_at` signifie accepté ou reporté par le transport, **pas livré à l'inbox**. Suivre les échecs de queue, les logs du transport et les livraisons `pending` / `processing` anciennes ; un crash sur une livraison `processing` demande une reprise supervisée pour éviter les doublons. Ne pas envoyer d'essais réels à des étudiants en CI.
+## États à ne pas confondre
+
+- `pending` : adresse enregistrée, pas encore prise en charge par la queue.
+- `processing` : tentative en cours ; un worker interrompu peut laisser cet état et nécessite un diagnostic.
+- `retrying` : MailPulse a refusé temporairement, job relâché avec délai.
+- `awaiting_dispatch` : MailPulse a répondu mais la remise en amont reste indéterminée (`pending_reconciliation`).
+- `submitted` : MailPulse a accepté la soumission ; **ne prouve PAS la livraison**.
+- `delayed` : fournisseur signale un report temporaire, **ne pas réexpédier** immédiatement.
+- `delivered` : événement signé de délivrance reçu.
+- `failed` : refus définitif de MailPulse, échec de la queue ou retour signé terminal du fournisseur.
+
+Le compteur dans la fiche annonce n'est pas le nombre d'étudiants ayant ouvert leur boîte. Il compte des **adresses uniques**. Un e-mail soumis peut rester retardé chez Resend ; ne jamais marquer `delivered` sur la base de `MailPulseResult.ok` seul.
+
+## Schéma, migration et travail de queue
+
+Sur CHAQUE instance, après sauvegarde, appliquer les migrations selon son journal de déploiement, dont `2026_10_29_110000_add_email_delivery_to_esbtp_annonces.php` et `2026_10_29_160000_ajouter_ciblage_et_suivi_courriels_annonces.php`. Ne jamais les exécuter automatiquement à partir d'une erreur HTTP.
+
+Configurer `MAILPULSE_API_KEY`, `MAILPULSE_ENABLED=true`, une file asynchrone réelle, workers et surveillance des `failed_jobs`, cadences et quotas. Les jobs de campagne utilisent désormais **directement le client MailPulse**, avec une idempotence permanente `klassci-annonce-{annonce_id}-courriel-{delivery_id}`. Pas de deuxième job de remise silencieux. Les envois sont étalés dans le temps à la cadence autorisée par instance, puis le `RateLimiter` protège contre les autres flux. Un replay de fanout ne réinsère jamais les adresses déjà connues.
+
+Ne jamais relancer en masse les anciennes lignes `processing`, `submitted`, `awaiting_dispatch`, `delayed` ou `delivered` ; les idempotences du transport ancien étaient bornées à l'heure, et une reprise pourrait provoquer des doublons. Les premiers envois existants ne gagnent pas des preuves de livraison rétroactives.
+
+## Rapprochement sécurisé avec MailPulse : intégration à compléter côté fournisseur
+
+KLASSCI propose `POST /api/v1/mailpulse/announcement-events`. Il **ne remplace pas** les webhooks Resend : MailPulse doit recevoir les événements de son fournisseur, les associer à `metadata.external_reference`, puis transmettre un événement réduit à KLASSCI. Le système n'affichera des délivrances confirmées qu'une fois ce relais configuré et testé.
+
+Les champs autorisés sont `external_reference` (ex. `klassci-annonce-12-courriel-581`) et `state` (`delivered`, `delivery_delayed`, `bounced`, `failed`, `complained`, `suppressed`). Le corps JSON complet est signé en HMAC-SHA256 :
+- `X-MailPulse-Timestamp`: secondes Unix,
+- `X-MailPulse-Signature`: hex(`HMAC_SHA256(MAILPULSE_ANNOUNCEMENT_WEBHOOK_SECRET, timestamp + "." + rawBody)`),
+- horloge tolérée : cinq minutes.
+
+Sans `MAILPULSE_ANNOUNCEMENT_WEBHOOK_SECRET`, le serveur refuse toute mise à jour. En production, provisionner un secret **distinct par instance**, le garder dans les variables privées, ne pas l'exposer à l'écran ni dans Git. Vérifier les callbacks rejoués ou retardés et le lien entre l'ID MailPulse et le fournisseur. Ne pas inventer de compteurs délivrés en attendant.
+
+## Incident du 29/10/2026
+
+L'annonce « Reprise des cours » est publiée ; sa remise a eu lieu avec l'ancien transport. La capture MailPulse « Envoyé » montre l'acceptation en amont tandis que Resend affiche plusieurs `Delivery Delayed`. Certaines ont été délivrées, d'autres ont rebondi. **Ne pas relancer cette campagne** avant d'avoir rapproché les preuves, vérifié les inscriptions de l'année et confirmé un lot de test sous le nouveau contrat. Contrôler le domaine expéditeur (SPF/DKIM/DMARC), les retours SMTP détaillés et la réputation du domaine auprès des serveurs destinataires.
+
+La première reprise est à diagnostiquer et n'est pas un échec de toutes les adresses. Voir la documentation Resend sur `email.delivery_delayed` et les webhooks de livraison.
