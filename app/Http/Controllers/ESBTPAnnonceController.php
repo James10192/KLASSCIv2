@@ -255,6 +255,14 @@ class ESBTPAnnonceController extends Controller
                 'provider_failed_at', 'error_code', 'updated_at'])
             ->orderByDesc('updated_at')->paginate(25, ['*'], 'courriels_page')
             ->withQueryString();
+        if (request()->ajax() || request()->expectsJson()) {
+            return response()->json([
+                'html' => view('esbtp.annonces.partials.lignes-courriels', compact('destinataires'))->render(),
+                'next_page_url' => $destinataires->nextPageUrl(),
+                'total_filtered' => $destinataires->total(),
+                'counts' => $courriels,
+            ]);
+        }
         $nombreEligibles = $annonce->email_notification_enabled
             ? app(CiblageCourrielsAnnonce::class)->etudiants($annonce)->count() : 0;
         $anneeCourriels = $annonce->email_target_year_id

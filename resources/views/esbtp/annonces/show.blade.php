@@ -677,16 +677,11 @@
                                     <strong>Destinataires et état individuel</strong>
                                     <div class="text-muted small">Une ligne par adresse unique ; les statuts sont ceux de MailPulse.</div>
                                 </div>
-                                <form method="GET" action="{{ route('esbtp.annonces.show', $annonce) }}" class="d-flex gap-2 flex-wrap">
+                                <form method="GET" action="{{ route('esbtp.annonces.show', $annonce) }}" class="d-flex gap-2 flex-wrap" id="aps-mails-filter">
                                     <label for="courriels-statut" class="visually-hidden">Filtrer les états des e-mails</label>
-                                    <select id="courriels-statut" class="form-select form-select-sm" name="courriels_statut" style="max-width:220px">
-                                        <option value="">Tous les états</option>
-                                        @foreach(['pending'=>'En attente', 'processing'=>'Traitement', 'retrying'=>'Nouvel essai',
-                                            'awaiting_dispatch'=>'À confirmer', 'submitted'=>'Soumis',
-                                            'delayed'=>'Retardé', 'delivered'=>'Délivré', 'failed'=>'Échec'] as $code => $libelle)
-                                            <option value="{{ $code }}" {{ $filtre === $code ? 'selected' : '' }}>{{ $libelle }}</option>
-                                        @endforeach
-                                    </select>
+                                    <x-au-select name="courriels_statut" :value="$filtre ?? ''"
+                                        placeholder="Tous les états" icon="fa-envelope-open-text"
+                                        :options="['pending'=>'En attente', 'processing'=>'Traitement', 'retrying'=>'Nouvel essai', 'awaiting_dispatch'=>'À confirmer', 'submitted'=>'Soumis', 'delayed'=>'Retardé', 'delivered'=>'Délivré', 'failed'=>'Échec']" :searchable="false" />
                                     <button class="btn btn-sm btn-outline-primary" type="submit">Filtrer</button>
                                 </form>
                             </div>
@@ -699,36 +694,13 @@
                                         <th scope="col">Dernière mise à jour</th>
                                         <th scope="col">Code fournisseur</th>
                                     </tr></thead>
-                                    <tbody>
-                                    @forelse($destinataires as $livraison)
-                                        @php
-                                            $etatTexte = match($livraison->status) {
-                                                'delivered' => 'Délivré', 'delayed' => 'Retardé',
-                                                'submitted' => 'Soumis', 'failed' => 'Échec',
-                                                'retrying' => 'Nouvelle tentative', 'processing' => 'En cours',
-                                                'awaiting_dispatch' => 'À confirmer', default => 'En attente'
-                                            };
-                                            $couleur = match($livraison->status) {
-                                                'delivered' => 'success', 'failed' => 'danger',
-                                                'delayed', 'retrying' => 'warning', default => 'secondary'
-                                            };
-                                        @endphp
-                                        <tr>
-                                            <td class="text-break">{{ $livraison->email }}</td>
-                                            <td><span class="badge bg-{{ $couleur }}">{{ $etatTexte }}</span></td>
-                                            <td>{{ (int) $livraison->attempts }}</td>
-                                            <td class="text-nowrap">{{ \Illuminate\Support\Carbon::parse($livraison->updated_at)->format('d/m/Y H:i') }}</td>
-                                            <td class="text-break"><small>{{ $livraison->error_code ?: '—' }}</small></td>
-                                        </tr>
-                                    @empty
-                                        <tr><td colspan="5" class="text-muted py-3 text-center">
-                                            Aucune adresse pour ce filtre. Vérifiez le traitement de la file.
-                                        </td></tr>
-                                    @endforelse
+                                    <tbody id="aps-mails-body">
+                                    @include('esbtp.annonces.partials.lignes-courriels', ['destinataires' => $destinataires])
                                     </tbody>
                                 </table>
                             </div>
-                            <div class="mt-2">{{ $destinataires->links() }}</div>
+                            <div class="mt-2" id="aps-mail-pagination">{{ $destinataires->links() }}</div>
+                            <div id="aps-mail-sentinel" class="text-center py-3" aria-live="polite" aria-label="Charger davantage de destinataires"></div>
                         </div>
                     </section>
                 @endif
@@ -1029,6 +1001,77 @@
     'use strict';
 
     document.addEventListener('DOMContentLoaded', function () {
+        // Recherche et défilement infini, sans recharger la page.
+        // La pagination Blade reste utilisable sans JS et comme repli accessible.
+        const mailForm = document.getElementById('aps-mails-filter');
+        const mailRows = document.getElementById('aps-mails-body');
+        const sentinel = document.getElementById('aps-mail-sentinel');
+        const mailPagination = document.getElementById('aps-mail-pagination');
+        let nextPage = @json($destinataires->nextPageUrl());
+        let loadingMail = false;
+        let requestVersion = 0;
+        let pendingRequest = null;
+        const totalEl = document.createElement('span');
+        totalEl.className = 'text-muted small';
+        totalEl.setAttribute('aria-live', 'polite');
+        sentinel?.appendChild(totalEl);
+
+        async function chargerMail(url, remplacer = false) {
+            if (!url || loadingMail && !remplacer) return;
+            if (remplacer) {
+                requestVersion++;
+                pendingRequest?.abort();
+                loadingMail = false;
+            }
+            const version = requestVersion;
+            loadingMail = true;
+            const controller = new AbortController();
+            pendingRequest = controller;
+            totalEl.textContent = 'Chargement des destinataires…';
+            try {
+                const response = await fetch(url, {
+                    signal: controller.signal,
+                    credentials: 'same-origin',
+                    headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
+                });
+                if (!response.ok) throw new Error('error');
+                const payload = await response.json();
+                if (version !== requestVersion) return;
+                if (remplacer) {
+                    mailRows.innerHTML = payload.html;
+                } else {
+                    mailRows.insertAdjacentHTML('beforeend', payload.html);
+                }
+                nextPage = payload.next_page_url;
+                totalEl.textContent = nextPage ? 'Défilez pour voir les suivants' : 'Tous les destinataires affichés';
+                if (mailPagination && 'IntersectionObserver' in window) mailPagination.hidden = true;
+            } catch (error) {
+                if (error.name !== 'AbortError') totalEl.textContent = 'Chargement impossible. Utilisez la pagination.';
+                if (mailPagination) mailPagination.hidden = false;
+            } finally {
+                if (version === requestVersion) loadingMail = false;
+            }
+        }
+
+        if (mailForm && mailRows && sentinel && 'IntersectionObserver' in window) {
+            mailPagination.hidden = true;
+            mailForm.addEventListener('submit', function (event) {
+                event.preventDefault();
+                const query = new URL(mailForm.action);
+                const data = new FormData(mailForm);
+                const statut = String(data.get('courriels_statut') || '');
+                if (statut) query.searchParams.set('courriels_statut', statut);
+                else query.searchParams.delete('courriels_statut');
+                query.searchParams.set('courriels_page', '1');
+                window.history.replaceState(null, '', query.toString());
+                chargerMail(query.toString(), true);
+            });
+            const observer = new IntersectionObserver((entries) => {
+                if (entries.some(e => e.isIntersecting) && nextPage && !loadingMail) chargerMail(nextPage);
+            }, {rootMargin: '300px'});
+            observer.observe(sentinel);
+        }
+
         document.getElementById('aps-mail-preview')?.addEventListener('click', function () {
             const frame = document.getElementById('apsMailPreviewFrame');
             const modal = document.getElementById('apsMailPreviewModal');
