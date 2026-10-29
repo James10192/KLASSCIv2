@@ -81,6 +81,11 @@ return [
     ],
 
     'mailpulse' => [
+        'announcement_backlog_warning_after_minutes' => env('MAILPULSE_ANNOUNCEMENT_BACKLOG_WARNING_MINUTES', 120),
+        'announcement_metadata_budget_bytes' => env('MAILPULSE_ANNOUNCEMENT_METADATA_BUDGET_BYTES', 14000),
+        // Relances manuelles : laisser les jobs cadences passer avant de reprogrammer.
+        'announcement_retry_min_age_minutes' => env('MAILPULSE_ANNOUNCEMENT_RETRY_MIN_AGE_MINUTES', 180),
+        'announcement_retry_batch_size' => env('MAILPULSE_ANNOUNCEMENT_RETRY_BATCH_SIZE', 100),
         'announcement_webhook_secret' => env('MAILPULSE_ANNOUNCEMENT_WEBHOOK_SECRET'),
         'enabled' => env('MAILPULSE_ENABLED', true),
         'base_url' => env('MAILPULSE_BASE_URL', 'https://mailpulse-two.vercel.app'),

@@ -1044,10 +1044,17 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // suppression. « create » est déclarée avant « show », sinon
             // `annonces/create` serait lu comme `annonces/{annonce}`. Les anciens
             // noms (create_annonces…) restent acceptés pour les rôles d'avant.
+            Route::post('annonces/apercu-avant-envoi', [ESBTPAnnonceController::class, 'apercuAvantEnvoi'])
+                ->middleware(['permission:annonces.create|create_annonces'])
+                ->name('annonces.apercu-avant-envoi');
             Route::resource('annonces', ESBTPAnnonceController::class)->only(['create', 'store'])
                 ->middleware(['permission:annonces.create|create_annonces']);
             Route::resource('annonces', ESBTPAnnonceController::class)->only(['edit', 'update', 'destroy'])
                 ->middleware(['permission:annonces.edit|edit_annonces']);
+            Route::get('annonces/{annonce}/apercu-courriel', [ESBTPAnnonceController::class, 'apercuCourriel'])
+                ->middleware(['permission:annonces.view|annonces.create|annonces.edit'])->name('annonces.apercu-courriel');
+            Route::post('annonces/{annonce}/relancer-courriels', [ESBTPAnnonceController::class, 'relancerCourriels'])
+                ->middleware(['permission:annonces.create|create_annonces'])->name('annonces.relancer-courriels');
             Route::resource('annonces', ESBTPAnnonceController::class)->only(['index', 'show'])
                 ->middleware(['permission:annonces.view|annonces.create|annonces.edit']);
 

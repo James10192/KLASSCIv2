@@ -13,6 +13,8 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-29 · Règle UI : ajouter défilement infini AJAX robuste aux listes longues, conservation des filtres et position, fallback accessible. Éviter le chargement massif des destinataires.
+- 2026-10-29 · Annonces : aperçu HTML dans KLASSCI et MailPulse, relance AJAX limitée aux messages non soumis. Recette opérationnelle et vérification anti-doublon avant propagation.
 - 2026-10-29 · amélioration suivi annonces · Depuis la fiche annonce, liste paginée des adresses et statuts MailPulse par destinataire, filtre par état, effectif éligible actuel comparé aux adresses réellement mises en file ; les données d'inscription peuvent changer depuis l'envoi.
 - 2026-10-29 · PR à attribuer · Annonces : filtre facultatif sur les inscriptions actives de l'année en cours pour les e-mails, bilan de diffusion visible depuis chaque annonce, statuts MailPulse exacts et cadence anti-rafale. Recette en bac à sable, contrat de retour de livraison signé et déploiement migration indispensables avant envoi massif.
 - 2026-10-29 · #1711 · Annonces : message d'erreur technique neutre avec code de suivi, aucune requête SQL visible ; remontée des incidents vers adminKLASSCI désactivée jusqu'au déploiement de l'API Master. Vérifier le parcours d'erreur et l'activation de la télémétrie avant diffusion aux écoles.

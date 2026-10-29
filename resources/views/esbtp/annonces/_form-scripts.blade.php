@@ -316,6 +316,35 @@
         document.getElementById('clear_classes_selection')?.addEventListener('click', () => clearAll('classes', originalClassesOptions));
         document.getElementById('clear_etudiants_selection')?.addEventListener('click', () => clearAll('etudiants', originalEtudiantsOptions));
 
+        // Aperçu HTML sécurisé de la saisie, sans sauvegarde ni e-mail.
+        document.getElementById('ac-mail-preview-btn')?.addEventListener('click', async function () {
+            const form = document.getElementById('annonceForm');
+            const modal = document.getElementById('acMailDraftPreviewModal');
+            const frame = document.getElementById('acMailDraftPreviewFrame');
+            if (!form || !modal || !frame || !window.bootstrap) return;
+            const payload = new FormData(form);
+            const titre = String(payload.get('titre') || '').trim();
+            const contenu = String(payload.get('contenu') || '').trim();
+            if (!titre || !contenu) { notifyUser('Renseignez l’objet et le message avant l’aperçu.', 'warning'); return; }
+            const previewPayload = new FormData();
+            previewPayload.set('_token', @json(csrf_token()));
+            previewPayload.set('titre', titre);
+            previewPayload.set('contenu', contenu);
+            previewPayload.set('priorite', String(payload.get('priorite') || '0'));
+            this.disabled = true;
+            try {
+                const response = await fetch(@json(route('esbtp.annonces.apercu-avant-envoi')), {
+                    method: 'POST', credentials: 'same-origin', body: previewPayload,
+                    headers: {'Accept': 'text/html', 'X-Requested-With': 'XMLHttpRequest'}
+                });
+                if (!response.ok) throw new Error('preview');
+                frame.srcdoc = await response.text();
+                bootstrap.Modal.getOrCreateInstance(modal).show();
+            } catch (error) {
+                notifyUser('Aperçu indisponible ou message trop long pour MailPulse. Vérifiez le contenu.', 'warning');
+            } finally { this.disabled = false; }
+        });
+
         // --- 9. Validation submit (au moins 1 classe/étudiant si type contraint) ---
         const form = document.getElementById('annonceForm');
         form?.addEventListener('submit', function (e) {

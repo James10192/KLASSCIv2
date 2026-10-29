@@ -222,10 +222,13 @@
                             {{-- Filtre des destinataires des courriels, sans changement de la visibilité KLASSCI. --}}
                             <div class="ac-field" style="margin-bottom:1rem;">
                                 <label for="email_audience_scope" class="ac-label">Destinataires de l'e-mail</label>
-                                <select class="form-select" id="email_audience_scope" name="email_audience_scope">
-                                    <option value="active_current_year" {{ old('email_audience_scope', 'active_current_year') === 'active_current_year' ? 'selected' : '' }}>Uniquement les inscriptions actives de l'année en cours</option>
-                                    <option value="all" {{ old('email_audience_scope') === 'all' ? 'selected' : '' }}>Tout le public de l'annonce (y compris anciens inscrits)</option>
-                                </select>
+                                <x-au-select id="email_audience_scope" name="email_audience_scope"
+                                    label="Destinataires de l'e-mail"
+                                    icon="fa-user-graduate"
+                                    :options="['active_current_year' => 'Inscriptions actives de l’année en cours', 'all' => 'Tout le public de l’annonce (y compris anciens inscrits)']"
+                                    :value="old('email_audience_scope', 'active_current_year')"
+                                    :searchable="false" />
+
                                 <small class="ac-help">Recommandé : inscriptions actives. Le filtre concerne uniquement l'e-mail, pas la visibilité de l'annonce dans KLASSCI. Une adresse valide par destinataire, sans doublon.</small>
                                 @error('email_audience_scope')<div class="ac-error">{{ $message }}</div>@enderror
                             </div>
@@ -245,6 +248,10 @@
                             </div>
 
                             <div class="ac-actions">
+                                <button type="button" class="ac-btn ac-btn-secondary" id="ac-mail-preview-btn">
+                                    <i class="fas fa-eye"></i> Prévisualiser l'e-mail
+                                </button>
+
                                 <button type="submit" name="action" value="publish" class="ac-btn ac-btn-primary">
                                     <i class="fas fa-paper-plane"></i>Envoyer maintenant
                                 </button>
@@ -526,6 +533,16 @@
             </div>
 
         </form>
+        <div class="modal fade" id="acMailDraftPreviewModal" tabindex="-1" aria-labelledby="acMailDraftPreviewLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title" id="acMailDraftPreviewLabel">Aperçu avant envoi — KLASSCI</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button></div>
+                <div class="modal-body p-2">
+                    <iframe id="acMailDraftPreviewFrame" title="Aperçu sécurisé de l'e-mail" sandbox=""
+                        referrerpolicy="no-referrer" style="width:100%;height:65vh;border:0"></iframe>
+                </div>
+            </div></div>
+        </div>
     </div>
 </div>
 @endsection

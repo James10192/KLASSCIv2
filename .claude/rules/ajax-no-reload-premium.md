@@ -8,6 +8,12 @@ Cette rule s'active automatiquement quand tu :
 - Travailles sur les vues `/esbtp/lmd/jurys/*`, `/esbtp/lmd/rattrapage/*`, `/esbtp/examens/*`, `/esbtp/emploi-temps/bulk-edit`
 - Réponds à un user qui demande "no-reload" / "live" / "AJAX" / "sans rechargement"
 
+## Chargement des listes longues : défilement infini par défaut
+
+Dans les vues premium comportant de nombreux enregistrements (annonces, destinataires, finances, inscriptions), privilégier un **scroll infini AJAX** avec pagination curseur ou pages bornées, `IntersectionObserver`, `AbortController`, et un indicateur de chargement accessible. Conserver les filtres, la position et les choix sans rechargement complet. Une pagination serveur accessible reste le repli pour JS désactivé ou lecteur d'écran. Ne jamais charger tous les étudiants en mémoire, ne pas multiplier les requêtes pendant le défilement ni dédupliquer uniquement côté navigateur.
+
+Les sélecteurs visibles réutilisent `<x-au-select>` / composants de la règle premium-selects, jamais un `<select>` brut dans un nouveau bloc premium.
+
 ## Règle fondamentale
 
 **Aucune action utilisateur sur une UI premium KLASSCI ne doit déclencher un page reload.**

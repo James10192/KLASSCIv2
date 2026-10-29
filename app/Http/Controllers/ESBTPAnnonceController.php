@@ -175,6 +175,11 @@ class ESBTPAnnonceController extends Controller
     {
         $request->validate($this->annonceValidationRules(), $this->annonceValidationMessages());
         $this->verifierAnneeDesCourriels($request, $request->get('action') === 'publish');
+        if ($request->get('action') === 'publish' && $request->boolean('send_email')) {
+            app(\App\Services\Annonces\ApercuCourrielAnnonce::class)->verifierTaille(
+                $request->titre, $request->contenu, (int) $request->priorite
+            );
+        }
 
         DB::beginTransaction();
         try {
@@ -250,17 +255,91 @@ class ESBTPAnnonceController extends Controller
         $destinataires = DB::table('esbtp_annonce_email_deliveries')
             ->where('annonce_id', $annonce->id)
             ->when($filtre, fn ($q) => $q->where('status', $filtre))
-            ->select(['email', 'status', 'attempts', 'submitted_at',
+            ->select(['id', 'email', 'status', 'attempts', 'submitted_at',
                 'provider_delivered_at', 'provider_delayed_at',
                 'provider_failed_at', 'error_code', 'updated_at'])
-            ->orderByDesc('updated_at')->paginate(25, ['*'], 'courriels_page')
+            ->orderByDesc('updated_at')->orderByDesc('id')->paginate(25, ['*'], 'courriels_page')
             ->withQueryString();
+        if (request()->ajax() || request()->expectsJson()) {
+            return response()->json([
+                'html' => view('esbtp.annonces.partials.lignes-courriels', compact('destinataires'))->render(),
+                'next_page_url' => $destinataires->nextPageUrl(),
+                'total_filtered' => $destinataires->total(),
+                'counts' => $courriels,
+            ]);
+        }
         $nombreEligibles = $annonce->email_notification_enabled
             ? app(CiblageCourrielsAnnonce::class)->etudiants($annonce)->count() : 0;
+        $attenteAncienne = DB::table('esbtp_annonce_email_deliveries')
+            ->where('annonce_id', $annonce->id)
+            ->whereIn('status', ['pending', 'retrying'])
+            ->min('updated_at');
+        $ageAttenteMinutes = $attenteAncienne
+            ? (int) \Carbon\Carbon::parse($attenteAncienne)->diffInMinutes(now()) : null;
+        $seuilAlerteFileMinutes = max(60, (int) config('services.mailpulse.announcement_backlog_warning_after_minutes', 120));
         $anneeCourriels = $annonce->email_target_year_id
             ? ESBTPAnneeUniversitaire::find($annonce->email_target_year_id) : null;
         return view('esbtp.annonces.show', compact('annonce', 'courriels',
-            'destinataires', 'nombreEligibles', 'filtre', 'anneeCourriels'));
+            'destinataires', 'nombreEligibles', 'filtre', 'anneeCourriels', 'ageAttenteMinutes', 'seuilAlerteFileMinutes'));
+    }
+
+    /** La saisie n'est ni enregistrée ni transmise à MailPulse pendant cet aperçu. */
+    public function apercuAvantEnvoi(Request $request, \App\Services\Annonces\ApercuCourrielAnnonce $apercu)
+    {
+        $donnees = $request->validate([
+            'titre' => ['required', 'string', 'max:255'],
+            'contenu' => ['required', 'string', 'max:16000'],
+            'priorite' => ['nullable', 'integer', 'in:0,1,2'],
+        ]);
+        $apercu->verifierTaille($donnees['titre'], $donnees['contenu'], (int) ($donnees['priorite'] ?? 0));
+        return response($apercu->htmlAvantPublication(
+            $donnees['titre'], $donnees['contenu'], (int) ($donnees['priorite'] ?? 0)
+        ), 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            'Content-Security-Policy' => "default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; font-src https: data:; form-action 'none'; frame-ancestors 'self'",
+            'Cache-Control' => 'no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    /** Aperçu fidèle au HTML confié au transport MailPulse. */
+    public function apercuCourriel(ESBTPAnnonce $annonce, \App\Services\Annonces\ApercuCourrielAnnonce $apercu)
+    {
+        abort_unless($annonce->email_notification_enabled, 404);
+        return response($apercu->html($annonce), 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            'Content-Security-Policy' => "default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; font-src https: data:; form-action 'none'; frame-ancestors 'self'",
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    /** N'émet QUE les lignes non soumises, non remises et non échouées. */
+    public function relancerCourriels(ESBTPAnnonce $annonce)
+    {
+        abort_unless($annonce->is_published && $annonce->email_notification_enabled && ! $annonce->isExpired(), 409);
+        // Les jobs initiaux peuvent deja etre en file, retardes par la cadence.
+        // Une reprogrammation trop precoce creerait des centaines de jobs inutiles.
+        $anciennete = max(60, (int) config('services.mailpulse.announcement_retry_min_age_minutes', 180));
+        $limite = max(1, min(500, (int) config('services.mailpulse.announcement_retry_batch_size', 100)));
+        $ids = DB::table('esbtp_annonce_email_deliveries')
+            ->where('annonce_id', $annonce->id)->whereIn('status', ['pending', 'retrying'])
+            ->whereNull('submitted_at')->whereNull('mailpulse_message_id')
+            ->where('updated_at', '<=', now()->subMinutes($anciennete))
+            ->orderBy('id')->limit($limite)->pluck('id');
+
+        $cadence = max(1, (int) config('services.mailpulse.mail_per_minute', 30));
+        foreach ($ids as $index => $id) {
+            \App\Jobs\Annonces\EnvoyerAnnonceCourriel::dispatch((int) $id)
+                ->delay(now()->addSeconds(intdiv($index, $cadence) * 60));
+        }
+
+        return response()->json([
+            'success' => true, 'queued' => $ids->count(),
+            'message' => $ids->count() === 0
+                ? 'Aucun courriel admissible à relancer : le délai de sécurité ou les tentatives en cours sont encore actifs.'
+                : $ids->count().' courriels jamais soumis ont été reprogrammés.',
+        ]);
     }
 
     /**
@@ -347,6 +426,11 @@ class ESBTPAnnonceController extends Controller
 
         $request->validate($this->annonceValidationRules(), $this->annonceValidationMessages());
         $this->verifierAnneeDesCourriels($request, ! $annonce->is_published && $request->get('action') === 'publish');
+        if (! $annonce->is_published && $request->get('action') === 'publish' && $request->boolean('send_email')) {
+            app(\App\Services\Annonces\ApercuCourrielAnnonce::class)->verifierTaille(
+                $request->titre, $request->contenu, (int) $request->priorite
+            );
+        }
 
         DB::beginTransaction();
         try {

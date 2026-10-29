@@ -72,15 +72,27 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
             $texte = $annonce->titre."\n\n".$contenu."\n\nConsultez l'annonce dans votre espace étudiant : "
                 .route('esbtp.mes-annonces.index')."\n\n".$ecole;
 
+            $html = \App\Mail\Transport\CorpsPourMailPulse::resserrer(
+                app(\App\Services\Annonces\ApercuCourrielAnnonce::class)->html($annonce)
+            );
             $metadata = array_filter([
                 'source' => 'klassci',
                 'workflow_event' => 'announcement_email',
                 'external_tenant_id' => (string) config('app.tenant_code', ''),
                 'subject' => 'Annonce - '.$annonce->titre,
+                'email_html' => $html,
                 'sender_email' => $client->getSetting('mailpulse_sender_email', 'sender_email', ''),
                 'sender_name' => $client->getSetting('mailpulse_sender_name', 'sender_name', 'KLASSCI'),
                 'external_reference' => $reference,
             ], fn ($v) => $v !== '');
+
+            // MailPulse limite le JSON metadata a 16 KiB. Ne pas remplacer
+            // silencieusement l'HTML apercu par un e-mail brut different.
+            if (\App\Mail\Transport\CorpsPourMailPulse::octetsJson($metadata) > 16384) {
+                $this->statut('failed', ['error_code' => 'announcement_html_too_large',
+                    'provider_failed_at' => now()]);
+                return;
+            }
 
             $resultat = $client->sendEmailMessage([
                 'channel' => 'email',

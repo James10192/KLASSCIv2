@@ -286,4 +286,62 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertSame(2, DB::table('esbtp_annonce_email_deliveries')->where('status', 'submitted')->count());
     }
 
+    public function test_le_modele_email_utilise_le_layout_officiel_et_ne_revele_pas_de_html_saisi(): void
+    {
+        $annonce = $this->annonce();
+        $annonce->update([
+            'titre' => 'Reprise des cours',
+            'contenu' => "Bonjour les étudiants <script>alert('test')</script>",
+        ]);
+        $html = app(\App\Services\Annonces\ApercuCourrielAnnonce::class)->html($annonce);
+        $this->assertStringContainsString('Reprise des cours', $html);
+        $this->assertStringContainsString('Consulter mon espace KLASSCI', $html);
+        $this->assertStringNotContainsString('<script>alert', $html);
+        $this->assertStringContainsString('<!DOCTYPE html>', $html);
+    }
+
+    public function test_la_relance_ne_reprogramme_que_les_messages_jamais_soumis(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        $annonce = $this->annonce();
+        $this->actingAs(\App\Models\User::factory()->create());
+        foreach (['pending','retrying','submitted','delayed','delivered','failed','awaiting_dispatch'] as $statut) {
+            DB::table('esbtp_annonce_email_deliveries')->insert([
+                'annonce_id' => $annonce->id,
+                'email' => "{$statut}@etudiants.test",
+                'status' => $statut,
+                'submitted_at' => in_array($statut, ['submitted','delayed','delivered']) ? now() : null,
+                'mailpulse_message_id' => in_array($statut, ['submitted','delayed','delivered']) ? 'mp-'.$statut : null,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        // La désactivation globale des middlewares supprimerait aussi
+        // SubstituteBindings et injecterait une annonce vierge : tester
+        // ici le contrôleur avec le modèle effectivement résolu.
+        DB::table('esbtp_annonce_email_deliveries')->where('annonce_id', $annonce->id)
+            ->whereIn('status', ['pending','retrying'])
+            ->update(['updated_at' => now()->subHours(4)]);
+
+        $annonce->refresh();
+        $this->assertTrue((bool) $annonce->is_published, 'annonce non publiée');
+        $this->assertTrue((bool) $annonce->email_notification_enabled, 'option e-mail désactivée');
+        $this->assertFalse($annonce->isExpired(), 'annonce expirée');
+        $route = \Illuminate\Support\Facades\Route::getRoutes()
+            ->getByName('esbtp.annonces.relancer-courriels');
+        $this->assertNotNull($route);
+        $this->assertContains('permission:annonces.create|create_annonces', $route->gatherMiddleware());
+
+        $response = app(\App\Http\Controllers\ESBTPAnnonceController::class)
+            ->relancerCourriels($annonce);
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame(2, $response->getData(true)['queued']);
+        Bus::assertDispatchedTimes(EnvoyerAnnonceCourriel::class, 2);
+
+        // Test de la condition SQL effective sans contourner les permissions des routes.
+        $cibles = DB::table('esbtp_annonce_email_deliveries')->where('annonce_id', $annonce->id)
+            ->whereIn('status', ['pending','retrying'])->whereNull('submitted_at')
+            ->whereNull('mailpulse_message_id')->pluck('email')->all();
+        $this->assertEqualsCanonicalizing(['pending@etudiants.test','retrying@etudiants.test'], $cibles);
+    }
+
 }
