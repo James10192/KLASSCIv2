@@ -11,7 +11,7 @@
             'delayed', 'retrying' => 'warning', default => 'secondary'
         };
     @endphp
-    <tr>
+    <tr data-mail-id="{{ $livraison->id }}">
         <td class="text-break">{{ $livraison->email }}</td>
         <td><span class="badge bg-{{ $couleur }}">{{ $etatTexte }}</span></td>
         <td>{{ (int) $livraison->attempts }}</td>

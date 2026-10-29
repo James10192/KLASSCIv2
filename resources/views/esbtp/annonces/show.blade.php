@@ -636,7 +636,7 @@
                                 <div class="d-flex flex-wrap gap-2 mt-2">
                                     <button type="button" class="btn btn-sm btn-outline-primary" id="aps-mail-preview">Aperçu du courriel</button>
                                     @if($annonce->is_published && ! $annonce->isExpired())
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="aps-retry-unsent">Relancer les non soumis</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="aps-retry-unsent" @if($enAttente === 0) disabled @endif>Relancer les non soumis</button>
                                     @endif
                                 </div>
                                 <div class="aps-card-sub">Transport distinct de la délivrance aux destinataires</div>
@@ -644,13 +644,13 @@
                         </div>
                         <div class="aps-card-body">
                             <div class="aps-stats" style="grid-template-columns:repeat(auto-fit,minmax(125px,1fr));">
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $totalMail }}</div><div class="aps-stat-label">Adresses retenues</div></div>
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $enAttente }}</div><div class="aps-stat-label">En file / tentatives</div></div>
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $soumis }}</div><div class="aps-stat-label">Acceptés, non confirmés</div></div>
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $enConfirmation }}</div><div class="aps-stat-label">MailPulse à confirmer</div></div>
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $livres }}</div><div class="aps-stat-label">Livraisons confirmées</div></div>
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $retardes }}</div><div class="aps-stat-label">Livraisons retardées</div></div>
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $echoues }}</div><div class="aps-stat-label">Échecs connus</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-mail-summary="all">{{ $totalMail }}</div><div class="aps-stat-label">Adresses retenues</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-mail-summary="queued">{{ $enAttente }}</div><div class="aps-stat-label">En file / tentatives</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-mail-summary="submitted">{{ $soumis }}</div><div class="aps-stat-label">Acceptés, non confirmés</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-mail-summary="awaiting">{{ $enConfirmation }}</div><div class="aps-stat-label">MailPulse à confirmer</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-mail-summary="delivered">{{ $livres }}</div><div class="aps-stat-label">Livraisons confirmées</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-mail-summary="delayed">{{ $retardes }}</div><div class="aps-stat-label">Livraisons retardées</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" data-mail-summary="failed">{{ $echoues }}</div><div class="aps-stat-label">Échecs connus</div></div>
                             </div>
                             <div class="alert alert-info mt-3 mb-0" role="note">
                                 <strong>Un courriel soumis n'est pas nécessairement délivré.</strong>
@@ -1011,6 +1011,53 @@
         let loadingMail = false;
         let requestVersion = 0;
         let pendingRequest = null;
+        function afficherStatuts(counts) {
+            if (!counts || typeof counts !== 'object') return;
+            const val = (name) => Number(counts[name] || 0);
+            const summary = {
+                all: Object.values(counts).reduce((n, x) => n + Number(x || 0), 0),
+                queued: val('pending') + val('processing') + val('retrying'),
+                submitted: val('submitted'),
+                awaiting: val('awaiting_dispatch'),
+                delivered: val('delivered'),
+                delayed: val('delayed'),
+                failed: val('failed'),
+            };
+            for (const [key, count] of Object.entries(summary)) {
+                const element = document.querySelector('[data-mail-summary="' + key + '"]');
+                if (element) element.textContent = String(count);
+            }
+            const button = document.getElementById('aps-retry-unsent');
+            if (button && summary.queued === 0) button.disabled = true;
+            return summary;
+        }
+        let suiviTermine = false;
+        async function actualiserStatuts() {
+            if (document.hidden || suiviTermine) return;
+            const url = new URL(@json(route('esbtp.annonces.show', $annonce)), location.href);
+            url.searchParams.set('courriels_page', '1');
+            const response = await fetch(url.toString(), {
+                credentials: 'same-origin',
+                headers: {'Accept':'application/json','X-Requested-With':'XMLHttpRequest'},
+            });
+            if (!response.ok) return;
+            const data = await response.json();
+            const summary = afficherStatuts(data.counts);
+            if (summary && summary.all > 0 && summary.all === summary.delivered) {
+                suiviTermine = true;
+                const status = document.getElementById('apsMailRetryFeedback');
+                if (status) status.textContent = 'Tous les courriels sont délivrés. Le suivi automatique est terminé.';
+            } else if (summary && summary.queued + summary.submitted + summary.awaiting + summary.delayed === 0) {
+                suiviTermine = true; // États terminaux : aucune relance automatique.
+            }
+        }
+        // La consultation ne remplace pas le cron MailPulse. Elle n'émet aucun courriel.
+        const suiviTimer = window.setInterval(() => {
+            actualiserStatuts().catch(() => {});
+            if (suiviTermine) window.clearInterval(suiviTimer);
+        }, 45000);
+        window.addEventListener('pagehide', () => window.clearInterval(suiviTimer), {once:true});
+
         const totalEl = document.createElement('span');
         totalEl.className = 'text-muted small';
         totalEl.setAttribute('aria-live', 'polite');
@@ -1040,8 +1087,17 @@
                 if (remplacer) {
                     mailRows.innerHTML = payload.html;
                 } else {
-                    mailRows.insertAdjacentHTML('beforeend', payload.html);
+                    const chunk = document.createElement('tbody');
+                    chunk.innerHTML = payload.html;
+                    const seen = new Set([...mailRows.querySelectorAll('[data-mail-id]')].map(row => row.dataset.mailId));
+                    for (const row of [...chunk.children]) {
+                        if (!row.dataset.mailId || !seen.has(row.dataset.mailId)) {
+                            mailRows.appendChild(row);
+                            if (row.dataset.mailId) seen.add(row.dataset.mailId);
+                        }
+                    }
                 }
+                afficherStatuts(payload.counts);
                 nextPage = payload.next_page_url;
                 totalEl.textContent = nextPage ? 'Défilez pour voir les suivants' : 'Tous les destinataires affichés';
                 if (mailPagination && 'IntersectionObserver' in window) mailPagination.hidden = true;
