@@ -1,9 +1,0 @@
----
-description: regle d'inscription d'un etudiant dans l'application
-globs: 
-alwaysApply: true
----
----
-description: Dans le formulaire d'inscription On doit choisir la classe à laquelle on va lier l'étudiant(pour cela, on aura un bouton qui va open un modal selecteurs de classe avec les filtres (filiere, niveau etude, annee universitaire), le modal recuperera toutes les classes presents dans la database de l'app) On doit remplir le formulaire des informations de l'étudiant On va soit ajouter un nouveau parent ou selectionner un parent existant déjà sur la base de donnée(pour selectionner on aura un bouton qui va n'ouvrir un modal selecteurs de parents cette fois-ci pour choisir plusieurs parents pères-mères, tuteurs par exemple), on va maintenant choisir la relation avec l'étudiant que ce soit le ou les nouveaux parents ajoutés ou les parents existants dans la base de données Pour ajouter un nouveau parent il va y avoir un bouton ajouter un parent qui va debloquer un nouveau formulaire pour renseigner les nouveaux parents  Au maximum deux nouveaux formulaires pour deux parents maximum A la fin de cela l'étudiant a un compte qui se crée automatiquement Un nom d'utlisateur avec un format ($prenom.$nom de l'étudiant) et un mot de passe généré aléatioirement par le système qui va s'afficher pour que la personne qui a inscrit l'étudiant puisse prendre note pour le partager à l'étudiant
-globs: 
----

@@ -1,6 +1,0 @@
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-    RewriteBase /ESBTP-yAKROv2/
-    RewriteRule ^$ public/index.php [L]
-    RewriteRule ^((?!public/).*)$ public/$1 [L,NC]
-</IfModule>
