@@ -460,6 +460,35 @@ class ActionsDuJourTest extends TestCase
         $this->assertSame(12, (int) ESBTPClasse::where('niveau_etude_id', $n->id)->where('code', 'P_DOC_26_D3A')->sole()->places_totales);
     }
 
+    public function test_sigle_ggt_et_code_filiere_different_exigent_confirmation_explicite(): void
+    {
+        $filiere = ESBTPFiliere::factory()->create([
+            'code' => 'GEOMETRE_TOPOGRAPHE_26', 'name' => 'Géomètre Topographe',
+        ]);
+        $args = [
+            'cible' => 'GGT', 'type_cible' => 'parcours', 'niveaux' => ['L1'], 'places' => 30,
+            'structure' => [
+                'domaine' => ['code' => 'DOM-GGT-ALIAS-26', 'name' => 'Sciences et technologie'],
+                'mention' => ['code' => 'MEN-GGT-ALIAS-26', 'name' => 'Géomètre Topographe'],
+                'parcours' => ['code' => 'PAR-GGT-ALIAS-26', 'name' => 'Géomètre Topographe'],
+                'filiere' => ['code' => $filiere->code, 'name' => $filiere->name],
+            ],
+        ];
+        $refus = app(AjouterClassesLmd::class)->executeAuthorized($args, $this->admin);
+        $this->assertArrayNotHasKey('widget', $refus);
+        $this->assertStringContainsString('confirme explicitement', implode(' ', $refus['manques']));
+
+        $args['liaison_filiere_confirmee'] = true;
+        $proposition = app(AjouterClassesLmd::class)->executeAuthorized($args, $this->admin);
+        $this->assertSame('approbation', $proposition['widget']['kind'] ?? null,
+            json_encode($proposition, JSON_UNESCAPED_UNICODE));
+        $this->assertSame(0, ESBTPClasse::where('filiere_id', $filiere->id)->count());
+        $this->valider($proposition);
+        $classe = ESBTPClasse::where('code', 'GGT_L1A')->sole();
+        $this->assertSame((int) $filiere->id, (int) $classe->filiere_id);
+        $this->assertSame('GGT L1A', $classe->name);
+    }
+
     public function test_creation_lmd_et_bts_sont_des_outils_distincts_avec_la_meme_permission(): void
     {
         $schemas = app(CatalogueOutils::class)->schemas($this->admin);
