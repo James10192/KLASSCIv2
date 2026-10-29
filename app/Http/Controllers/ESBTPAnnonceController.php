@@ -13,6 +13,8 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Services\Annonces\CiblageCourrielsAnnonce;
+use App\Services\Annonces\CorpsCourrielAnnonce;
+use App\Jobs\Annonces\EnvoyerAnnonceCourriel;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 use App\Notifications\ESBTPNotification;
@@ -243,6 +245,20 @@ class ESBTPAnnonceController extends Controller
             ->where('annonce_id', $annonce->id)
             ->select('status', DB::raw('COUNT(*) AS total'))
             ->groupBy('status')->pluck('total', 'status');
+        if (request()->query('courriels_fragment') === 'stats' && request()->ajax()) {
+            $stats = [];
+            foreach (['pending', 'processing', 'retrying', 'awaiting_dispatch',
+                'submitted', 'delayed', 'delivered', 'failed'] as $etat) {
+                $stats[$etat] = (int) ($courriels[$etat] ?? 0);
+            }
+            return response()->json([
+                'counts' => $stats,
+                'total' => array_sum($stats),
+                'terminal' => ($stats['pending'] + $stats['processing']
+                    + $stats['retrying'] + $stats['awaiting_dispatch']
+                    + $stats['submitted'] + $stats['delayed']) === 0,
+            ]);
+        }
         $filtre = request()->query('courriels_statut');
         $statuts = ['pending', 'processing', 'retrying', 'awaiting_dispatch',
             'submitted', 'delayed', 'delivered', 'failed'];
@@ -255,12 +271,78 @@ class ESBTPAnnonceController extends Controller
                 'provider_failed_at', 'error_code', 'updated_at'])
             ->orderByDesc('updated_at')->paginate(25, ['*'], 'courriels_page')
             ->withQueryString();
+        if (request()->boolean('courriels_fragment') && request()->ajax()) {
+            return response()->json([
+                'html' => view('esbtp.annonces.partials.courriels-lignes', compact('destinataires'))->render(),
+                'next' => $destinataires->nextPageUrl(),
+            ]);
+        }
         $nombreEligibles = $annonce->email_notification_enabled
             ? app(CiblageCourrielsAnnonce::class)->etudiants($annonce)->count() : 0;
+        $nombreReprenables = DB::table('esbtp_annonce_email_deliveries')
+            ->where('annonce_id', $annonce->id)
+            ->where('status', 'failed')->where('error_code', 'queue_exhausted')
+            ->whereNull('mailpulse_message_id')->whereNull('submitted_at')->count();
         $anneeCourriels = $annonce->email_target_year_id
             ? ESBTPAnneeUniversitaire::find($annonce->email_target_year_id) : null;
         return view('esbtp.annonces.show', compact('annonce', 'courriels',
-            'destinataires', 'nombreEligibles', 'filtre', 'anneeCourriels'));
+            'destinataires', 'nombreEligibles', 'filtre', 'anneeCourriels', 'nombreReprenables'));
+    }
+
+    /** HTML identique au message envoye, reserve aux utilisateurs autorises a lire l'annonce. */
+    public function apercuCourriel(ESBTPAnnonce $annonce, CorpsCourrielAnnonce $corps)
+    {
+        abort_unless($annonce->email_notification_enabled, 404);
+        return response($corps->html($annonce), 200)
+            ->header('Content-Type', 'text/html; charset=UTF-8')
+            ->header('Content-Security-Policy', "default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'")
+            ->header('Cache-Control', 'private, no-store');
+    }
+
+    /** Reprise manuelle des seules lignes pending ; jamais les messages deja soumis. */
+    public function reprendreCourriels(Request $request, ESBTPAnnonce $annonce)
+    {
+        abort_unless($annonce->is_published && $annonce->email_notification_enabled
+            && !$annonce->date_publication->isFuture() && !$annonce->isExpired(), 409);
+
+        $donnees = $request->validate([
+            'mode' => 'required|in:pending,technical',
+        ]);
+        $technique = $donnees['mode'] === 'technical';
+        $limite = min(100, max(1, (int) config('services.mailpulse.announcement_resume_batch', 40)));
+        $selection = DB::table('esbtp_annonce_email_deliveries')
+            ->where('annonce_id', $annonce->id)->whereNull('submitted_at')
+            ->whereNull('mailpulse_message_id');
+        if ($technique) {
+            // Les rebonds, plaintes et messages retardes sont EXCLUS.
+            // Un echec ambigu n'est repris qu'avec la meme cle d'idempotence.
+            $selection->where('status', 'failed')->where('error_code', 'queue_exhausted');
+        } else {
+            $selection->where('status', 'pending');
+        }
+        $ids = $selection->orderBy('id')->limit($limite)->pluck('id');
+        $remis = 0;
+        foreach ($ids as $id) {
+            if ($technique) {
+                $pris = DB::table('esbtp_annonce_email_deliveries')
+                    ->where('id', $id)->where('status', 'failed')
+                    ->where('error_code', 'queue_exhausted')
+                    ->whereNull('mailpulse_message_id')->whereNull('submitted_at')
+                    ->update([
+                        'status' => 'pending', 'error_code' => null,
+                        'provider_failed_at' => null, 'updated_at' => now(),
+                    ]);
+                if ($pris !== 1) continue;
+            }
+            EnvoyerAnnonceCourriel::dispatch((int) $id);
+            $remis++;
+        }
+        return response()->json([
+            'queued' => $remis,
+            'message' => $remis === 0
+                ? 'Aucun envoi sûr à reprendre. Les messages en transit, différés ou déjà livrés sont préservés.'
+                : 'Reprise ciblée mise en file. Les messages déjà soumis ou retardés ne sont jamais réémis.',
+        ]);
     }
 
     /**

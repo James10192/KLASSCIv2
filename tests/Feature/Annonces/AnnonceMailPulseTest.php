@@ -3,6 +3,8 @@
 namespace Tests\Feature\Annonces;
 
 use App\Jobs\Annonces\DiffuserAnnonceParCourriel;
+use App\Services\Annonces\CorpsCourrielAnnonce;
+use App\Mail\Transport\CorpsPourMailPulse;
 use App\Jobs\Annonces\EnvoyerAnnonceCourriel;
 use App\Models\ESBTPAnnonce;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -13,6 +15,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
+use App\Http\Controllers\ESBTPAnnonceController;
 use App\Services\Annonces\CiblageCourrielsAnnonce;
 use App\Mail\Transport\CadenceMailPulse;
 use App\Services\MailPulse\MailPulseClient;
@@ -284,6 +288,145 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertSame(1, $result['lues']);
         $this->assertSame(0, $result['delivrees']);
         $this->assertSame(2, DB::table('esbtp_annonce_email_deliveries')->where('status', 'submitted')->count());
+    }
+
+    public function test_nouveau_layout_mailpulse_et_apercu_utilisent_un_seul_rendu_officiel(): void
+    {
+        $annonce = $this->annonce();
+        $annonce->update(['titre' => 'Rentrée des cours',
+            'contenu' => "Bienvenue <script>alert('x')</script>\nRendez-vous en classe."]);
+
+        $corps = app(CorpsCourrielAnnonce::class);
+        $html = $corps->html($annonce);
+        $this->assertStringContainsString('Rentrée des cours', $html);
+        $this->assertStringContainsString('KLASSCI', $html);
+        $this->assertStringContainsString('Rendez-vous en classe.', $html);
+        $this->assertStringNotContainsString('<script>alert', $html);
+        $this->assertStringContainsString('&lt;script&gt;', $html);
+        $this->assertStringContainsString('esbtp/mes-annonces', $html);
+        $this->assertLessThan(16000, CorpsPourMailPulse::octetsJson([
+            'source' => 'klassci', 'workflow_event' => 'announcement_email',
+            'subject' => 'Annonce - Rentrée des cours', 'email_html' => $html,
+        ]));
+        $this->assertStringContainsString('Rendez-vous en classe.', $corps->texte($annonce));
+    }
+
+    public function test_liste_des_courriels_reconnait_uniquement_les_etats_non_soumis(): void
+    {
+        $annonce = $this->annonce();
+        foreach (['pending', 'submitted', 'delivered', 'delayed', 'failed', 'awaiting_dispatch'] as $status) {
+            DB::table('esbtp_annonce_email_deliveries')->insert([
+                'annonce_id' => $annonce->id,
+                'email' => "{$status}@etudiants.test",
+                'status' => $status,
+                'submitted_at' => $status === 'pending' ? null : now(),
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        $pending = DB::table('esbtp_annonce_email_deliveries')
+            ->where('annonce_id', $annonce->id)->where('status', 'pending')
+            ->whereNull('submitted_at')->pluck('email')->all();
+        $this->assertSame(['pending@etudiants.test'], $pending);
+    }
+
+    public function test_reprise_ajax_ne_relance_jamais_un_message_deja_soumis_ou_retarde(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        $annonce = $this->annonce();
+        $annonce->forceFill([
+            'date_publication' => now()->subMinutes(5),
+            'date_expiration' => now()->addDays(2),
+            'is_published' => true, 'email_notification_enabled' => true,
+        ])->save();
+        $ids = [];
+        foreach (['pending', 'submitted', 'delayed', 'delivered', 'failed'] as $status) {
+            $ids[$status] = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+                'annonce_id' => $annonce->id,
+                'email' => "{$status}@etudiants.test",
+                'status' => $status,
+                'error_code' => $status === 'failed' ? 'bounced' : null,
+                'submitted_at' => $status === 'pending' ? null : now(),
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+
+        $controller = app(ESBTPAnnonceController::class);
+        $res = $controller->reprendreCourriels(
+            Request::create("/esbtp/annonces/{$annonce->id}/courriels/reprendre", 'POST', ['mode' => 'pending']),
+            $annonce
+        );
+        $this->assertSame(1, $res->getData(true)['queued']);
+        Bus::assertDispatchedTimes(EnvoyerAnnonceCourriel::class, 1);
+        Bus::assertDispatched(EnvoyerAnnonceCourriel::class, fn ($job) =>
+            $job->deliveryId === $ids['pending']);
+
+        $res = $controller->reprendreCourriels(
+            Request::create("/esbtp/annonces/{$annonce->id}/courriels/reprendre", 'POST', ['mode' => 'technical']),
+            $annonce
+        );
+        $this->assertSame(0, $res->getData(true)['queued']);
+        $this->assertSame('delayed', DB::table('esbtp_annonce_email_deliveries')->where('id', $ids['delayed'])->value('status'));
+        $this->assertSame('failed', DB::table('esbtp_annonce_email_deliveries')->where('id', $ids['failed'])->value('status'));
+    }
+
+    public function test_reprise_limitee_des_erreurs_techniques_sans_id_fournisseur(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        $annonce = $this->annonce();
+        $annonce->forceFill([
+            'date_publication' => now()->subMinutes(5),
+            'date_expiration' => now()->addDays(2),
+            'is_published' => true, 'email_notification_enabled' => true,
+        ])->save();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id,
+            'email' => 'queue-failed@etudiants.test',
+            'status' => 'failed', 'error_code' => 'queue_exhausted',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $controller = app(ESBTPAnnonceController::class);
+        $res = $controller->reprendreCourriels(
+            Request::create("/esbtp/annonces/{$annonce->id}/courriels/reprendre", 'POST', ['mode' => 'technical']),
+            $annonce
+        );
+        $this->assertSame(1, $res->getData(true)['queued']);
+        Bus::assertDispatched(EnvoyerAnnonceCourriel::class, fn ($job) =>
+            $job->deliveryId === $id);
+        $this->assertSame('pending', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
+        $this->assertNull(DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('error_code'));
+    }
+
+    public function test_tableau_de_suivi_ajax_retourne_les_vrais_statuts_sans_html_de_page_entiere(): void
+    {
+        $annonce = $this->annonce();
+        foreach (['pending', 'delivered', 'delayed'] as $status) {
+            DB::table('esbtp_annonce_email_deliveries')->insert([
+                'annonce_id' => $annonce->id, 'email' => "{$status}@etudiants.test",
+                'status' => $status, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+
+        $controller = app(ESBTPAnnonceController::class);
+        $request = Request::create("/esbtp/annonces/{$annonce->id}", 'GET', ['courriels_fragment' => 'stats']);
+        $request->headers->set('X-Requested-With', 'XMLHttpRequest');
+        app()->instance('request', $request);
+        $counts = $controller->show($annonce)->getData(true);
+        $this->assertSame(3, $counts['total']);
+        $this->assertSame(1, $counts['counts']['delivered']);
+        $this->assertSame(1, $counts['counts']['delayed']);
+        $this->assertSame(1, $counts['counts']['pending']);
+        $this->assertFalse($counts['terminal']);
+
+        $request = Request::create("/esbtp/annonces/{$annonce->id}", 'GET', [
+            'courriels_fragment' => '1', 'courriels_statut' => 'delivered',
+        ]);
+        $request->headers->set('X-Requested-With', 'XMLHttpRequest');
+        app()->instance('request', $request);
+        $data = $controller->show($annonce)->getData(true);
+        $this->assertNull($data['next']);
+        $this->assertStringContainsString('delivered@etudiants.test', $data['html']);
+        $this->assertStringNotContainsString('delayed@etudiants.test', $data['html']);
+        $this->assertStringNotContainsString('<html', $data['html']);
     }
 
 }

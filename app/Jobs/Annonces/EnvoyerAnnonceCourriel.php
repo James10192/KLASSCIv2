@@ -4,6 +4,8 @@ namespace App\Jobs\Annonces;
 
 use App\Mail\Transport\CadenceMailPulse;
 use App\Models\ESBTPAnnonce;
+use App\Services\Annonces\CorpsCourrielAnnonce;
+use App\Mail\Transport\CorpsPourMailPulse;
 use App\Models\Setting;
 use App\Services\MailPulse\MailPulseClient;
 use App\Services\MailPulse\RefusMailPulse;
@@ -33,8 +35,9 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
     {
     }
 
-    public function handle(MailPulseClient $client, CadenceMailPulse $cadence): void
+    public function handle(MailPulseClient $client, CadenceMailPulse $cadence, ?CorpsCourrielAnnonce $corps = null): void
     {
+        $corps ??= app(CorpsCourrielAnnonce::class);
         $ligne = DB::table('esbtp_annonce_email_deliveries')->where('id', $this->deliveryId)->first();
         if (! $ligne || $ligne->submitted_at !== null || in_array($ligne->status, ['submitted', 'awaiting_dispatch', 'failed'], true)) {
             return;
@@ -67,11 +70,8 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
                 return;
             }
 
-            $ecole = (string) Setting::get('school_name', config('app.name'));
-            $contenu = trim(html_entity_decode(strip_tags((string) $annonce->contenu), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-            $texte = $annonce->titre."\n\n".$contenu."\n\nConsultez l'annonce dans votre espace étudiant : "
-                .route('esbtp.mes-annonces.index')."\n\n".$ecole;
-
+            $texte = $corps->texte($annonce);
+            $html = $corps->html($annonce);
             $metadata = array_filter([
                 'source' => 'klassci',
                 'workflow_event' => 'announcement_email',
@@ -80,7 +80,13 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
                 'sender_email' => $client->getSetting('mailpulse_sender_email', 'sender_email', ''),
                 'sender_name' => $client->getSetting('mailpulse_sender_name', 'sender_name', 'KLASSCI'),
                 'external_reference' => $reference,
+                'email_html' => $html,
             ], fn ($v) => $v !== '');
+
+            if (CorpsPourMailPulse::octetsJson($metadata) > \App\Mail\Transport\MailPulseTransport::PLAFOND_METADATA - 512) {
+                $this->statut('failed', ['error_code' => 'html_too_large', 'provider_failed_at' => now()]);
+                return;
+            }
 
             $resultat = $client->sendEmailMessage([
                 'channel' => 'email',
