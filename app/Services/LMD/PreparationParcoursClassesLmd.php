@@ -22,7 +22,7 @@ class PreparationParcoursClassesLmd
     }
 
     /** @return array{choix?:array, spec?:array, apercu?:array, manques:array, avertissements:array} */
-    public function preparer(string $cible, array $structure, string $type, $user): array
+    public function preparer(string $cible, array $structure, string $type, $user, bool $liaisonConfirmee = false): array
     {
         $sortie = ['manques' => [], 'avertissements' => []];
         if (! $user->can('lmd.structure.manage')) {
@@ -92,13 +92,16 @@ class PreparationParcoursClassesLmd
         // L'école demande GGT : son code doit désigner le parcours, la
         // mention ou la filière explicitement rattachée, pas une autre entité.
         $codes = array_filter([$spec['parcours']['code'], $spec['mention']['code'], $filiereCode]);
-        if (! in_array($cible, $codes, true)) {
-            $sortie['manques'][] = "Le code {$cible} ne correspond ni au parcours, ni à la mention, ni à la filière indiqués. Précise le rattachement réel.";
+        if (! in_array($cible, $codes, true) && ! ($liaisonConfirmee && $filiereCode !== '')) {
+            $sortie['manques'][] = "Le code {$cible} ne correspond ni au parcours, ni à la mention, ni à la filière indiqués. Précise le rattachement réel ; si GGT est un sigle et la filière porte un autre code, confirme explicitement le code de la filière à lier.";
+        }
+        if (! in_array($cible, $codes, true) && $liaisonConfirmee && $filiereCode !== '') {
+            $sortie['avertissements'][] = "Correspondance confirmée par l'école : le sigle {$cible} utilisera la filière {$filiereCode}.";
         }
         if ($type === 'mention' && $spec['mention']['code'] !== $cible) {
             $sortie['manques'][] = "Pour une classe de mention, le code de la mention doit être {$cible}.";
         }
-        if ($type === 'parcours' && $spec['parcours']['code'] !== $cible && $filiereCode !== $cible) {
+        if ($type === 'parcours' && $spec['parcours']['code'] !== $cible && $filiereCode !== $cible && ! $liaisonConfirmee) {
             $sortie['manques'][] = "Pour une classe de parcours, précise son code ou la filière {$cible} qui lui correspond.";
         }
         if ($sortie['manques'] !== []) {
