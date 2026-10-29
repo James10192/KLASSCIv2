@@ -51,13 +51,14 @@ class AvertirDuRetourDuSupport
      */
     public static function formuler(?string $objet, array $statut, bool $aRepondu): string
     {
-        if ($aRepondu) {
-            return 'Le support a répondu à '.($objet ?? 'votre demande');
-        }
         $sujet = $objet === null ? 'Votre demande' : "Votre demande {$objet}";
-        // « est action requise » ne se lit pas : ce statut se dit autrement.
+        // Priorité au devoir d'agir, même si un message public accompagne
+        // la transition. « Le support a répondu » masquait l'action à faire.
         if (($statut['code'] ?? null) === TonDuStatut::ACTION_REQUISE) {
             return "{$sujet} attend une action de votre part";
+        }
+        if ($aRepondu) {
+            return 'Le support a répondu à '.($objet ?? 'votre demande');
         }
 
         return "{$sujet} est ".mb_strtolower((string) ($statut['libelle'] ?? 'mise à jour'), 'UTF-8');
