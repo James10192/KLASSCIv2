@@ -26,8 +26,9 @@ class DiffuserAnnonceParCourriel implements ShouldQueue
     {
     }
 
-    public function handle(CiblageCourrielsAnnonce $ciblage): void
+    public function handle(?CiblageCourrielsAnnonce $ciblage = null): void
     {
+        $ciblage ??= app(CiblageCourrielsAnnonce::class);
         $annonce = ESBTPAnnonce::find($this->annonceId);
         if (! $annonce || ! $annonce->is_published || ! $annonce->email_notification_enabled
             || $annonce->date_publication->isFuture() || $annonce->isExpired()) {
