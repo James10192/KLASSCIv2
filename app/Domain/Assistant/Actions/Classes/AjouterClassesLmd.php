@@ -282,13 +282,13 @@ class AjouterClassesLmd extends ActionAgent
             titre: $titre,
             resume: count($classes).' classe(s) LMD de '.$places.' places sous '.$choix['type'].' '.$choix['nom'].'.',
             tableau: ['colonnes' => ['Cible', 'Niveau', 'Nouvelle classe', 'Code', 'Places'],
-                'lignes' => array_map(function ($c) use ($choix, $retenus) {
+                'lignes' => array_map(function ($c) use ($choix) {
                     return [$choix['nom'], $c['niveau_nom'], $c['name'], $c['code'], (string) $c['places_totales']];
                 }, $classes)],
             avertissements: $avertissements,
             donnees: ['cible' => $choix, 'classes' => $classes, 'structure' => $structure,
                 'niveaux_a_creer' => $planNiveaux['lignes']],
-            etat: ['cible' => $choix, 'structure' => $structure?['apercu']['lignes'],
+            etat: ['cible' => $choix, 'structure' => ($structure === null ? null : $structure['apercu']['lignes']),
                 'niveaux_a_creer' => $planNiveaux['lignes'],
                 'classes_existantes' => $lignesEtat, 'annee_courante' => (int) $annee->id],
         );
