@@ -12,6 +12,8 @@
 */
 
 return [
+    // Remontee des seules metadonnees techniques, activee par instance.
+    'telemetry_enabled' => (bool) env('MASTER_TELEMETRY_ENABLED', false),
 
     // Delais courts : un signalement ne doit jamais bloquer une page.
     'delais' => [

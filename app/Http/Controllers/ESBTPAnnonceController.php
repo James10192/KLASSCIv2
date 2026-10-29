@@ -17,6 +17,7 @@ use App\Services\NotificationService;
 use App\Jobs\Annonces\DiffuserAnnonceParCourriel;
 use Illuminate\Support\Facades\Log;
 use App\Support\ListeInfinie;
+use App\Support\Incidents\MessageErreurAnnonce;
 
 class ESBTPAnnonceController extends Controller
 {
@@ -213,8 +214,9 @@ class ESBTPAnnonceController extends Controller
                 ->with('success', 'L\'annonce a été créée avec succès');
         } catch (\Exception $e) {
             DB::rollBack();
+            report($e);
             return redirect()->back()
-                ->with('error', 'Une erreur est survenue lors de la création de l\'annonce: ' . $e->getMessage())
+                ->with('error', MessageErreurAnnonce::pour('create', request()->attributes->get('request_id')))
                 ->withInput();
         }
     }
@@ -368,8 +370,9 @@ class ESBTPAnnonceController extends Controller
                 ->with('success', 'L\'annonce a été mise à jour avec succès');
         } catch (\Exception $e) {
             DB::rollBack();
+            report($e);
             return redirect()->back()
-                ->with('error', 'Une erreur est survenue lors de la mise à jour de l\'annonce: ' . $e->getMessage())
+                ->with('error', MessageErreurAnnonce::pour('update', request()->attributes->get('request_id')))
                 ->withInput();
         }
     }
@@ -398,8 +401,9 @@ class ESBTPAnnonceController extends Controller
             return redirect()->route('esbtp.annonces.index')
                 ->with('success', 'L\'annonce a été supprimée avec succès');
         } catch (\Exception $e) {
+            report($e);
             return redirect()->route('esbtp.annonces.index')
-                ->with('error', 'Une erreur est survenue lors de la suppression de l\'annonce: ' . $e->getMessage());
+                ->with('error', MessageErreurAnnonce::pour('delete', request()->attributes->get('request_id')));
         }
     }
 
