@@ -60,6 +60,21 @@ return [
             'engine' => null,
 
             /*
+             * Modes SQL de la session, quand l'instance les fixe (DB_SQL_MODES,
+             * liste séparée par des virgules). Laissés vides, rien ne change :
+             * 'strict' s'applique comme avant.
+             *
+             * Le code a été écrit et éprouvé sous MariaDB, qui applique
+             * ONLY_FULL_GROUP_BY avec souplesse. MySQL 8 l'applique à la lettre
+             * et refuse des requêtes que MariaDB acceptait (page des paiements :
+             * tri sur created_at dans une requête groupée). Une instance servie
+             * par MySQL 8 pose donc les modes stricts SANS ONLY_FULL_GROUP_BY.
+             */
+            'modes' => env('DB_SQL_MODES')
+                ? array_values(array_filter(array_map('trim', explode(',', env('DB_SQL_MODES')))))
+                : null,
+
+            /*
              * Le fuseau de la SESSION MySQL, distinct de celui de l'application.
              *
              * Il ne sert pas aux horodatages écrits par Laravel : ceux-là sont
