@@ -313,7 +313,7 @@ jobs:
             tests/Unit/Exports/EnseignantsExportRedirectRegressionTest.php \
             tests/Unit/Exports/PresentationAnnuairePdfTest.php \
             tests/Unit/Exports/EnseignantsPremiumSelectsTest.php \
-            tests/Unit/Security/MotDePasseTemporaireEtudiantTest.php \
+            tests/Unit/Security \
             tests/Unit/Comptabilite \
             tests/Unit/Photos \
             tests/Unit/Services/Master \
