@@ -116,7 +116,7 @@ class DemandeSupportController extends Controller
             'indisponible' => false,
             'peutRepondre' => $actionAdministration || $this->peutRepondre($demande, $request->user()->getKey()),
             'actionAdministration' => $actionAdministration,
-            'peutJoindre' => $this->peutJoindre($demande, $request->user()->getKey()),
+            'peutJoindre' => ! $actionAdministration && $this->peutJoindre($demande, $request->user()->getKey()),
             'limites' => $this->master->limites(),
         ]);
     }
