@@ -332,7 +332,7 @@ class ActionsDuJourTest extends TestCase
 
         $r = $action->executeAuthorized(['cible' => 'CODE-INCONNU', 'niveaux' => ['L1'], 'places' => 30], $this->admin);
         $this->assertArrayNotHasKey('widget', $r);
-        $this->assertStringContainsString('Aucun parcours', implode(' ', $r['manques']));
+        $this->assertStringContainsString('CODE du domaine', implode(' ', $r['manques']));
     }
 
     public function test_nanan_demande_la_structure_manquante_et_cree_parcours_et_classes_apres_validation(): void
