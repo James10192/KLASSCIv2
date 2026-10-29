@@ -388,39 +388,10 @@ class ESBTPClasseController extends Controller
     {
         $validatedData = $request->validated();
 
-        // Une seule transaction pour l'ancrage ET la classe : l'ancrage peut
-        // creer une filiere reflet, et si la creation de la classe echoue
-        // ensuite, ce reflet reste seul. Une filiere sans classe n'est plus
-        // protegee contre la suppression — une ecole l'efface, la prenant pour
-        // un doublon, et la mention redevient incapable de porter une classe.
-        $classe = DB::transaction(function () use ($validatedData) {
-            $donnees = $this->ancrerSurUneFiliereReelle($validatedData);
-
-            // Champs de traçabilité
-            $donnees["created_by"] = Auth::id();
-            $donnees["updated_by"] = Auth::id();
-
-            // systeme_academique est auto-determine par le model event saving
-            return ESBTPClasse::create($donnees);
-        });
-
-        // Récupérer les matières associées aux niveaux sélectionnés
-        $matieres = ESBTPMatiere::whereHas("niveaux", function ($query) use (
-            $request,
-        ) {
-            $query->where("esbtp_niveau_etudes.id", $request->niveau_etude_id);
-        })->get();
-
-        // Associer les matières à la classe avec leurs coefficients et heures par défaut
-        foreach ($matieres as $matiere) {
-            $classe->matieres()->attach($matiere->id, [
-                "coefficient" => $matiere->coefficient_default,
-                "total_heures" => $matiere->total_heures_default,
-                "is_active" => true,
-                "created_at" => now(),
-                "updated_at" => now(),
-            ]);
-        }
+        // Même service que Nanan : ancrage LMD, classe et matières créés
+        // dans une seule transaction, avec les règles du formulaire.
+        $classe = app(\App\Services\Classe\CreationClasseService::class)
+            ->creer($validatedData, (int) Auth::id());
 
         // Charger les relations pour la réponse JSON
         $classe->load(["filiere", "niveau", "annee"]);
