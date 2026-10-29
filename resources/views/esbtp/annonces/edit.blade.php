@@ -448,6 +448,10 @@
                             </div>
 
                             <div class="ac-actions">
+                                <button type="button" class="ac-btn ac-btn-secondary" id="ac-mail-preview-btn">
+                                    <i class="fas fa-eye"></i> Prévisualiser l'e-mail
+                                </button>
+
                                 <button type="submit" name="action" value="update" class="ac-btn ac-btn-primary">
                                     <i class="fas fa-save"></i>
                                     @if($isPublished)
@@ -704,6 +708,17 @@
             </div>
 
         </form>
+
+        <div class="modal fade" id="acMailDraftPreviewModal" tabindex="-1" aria-labelledby="acMailDraftPreviewLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title" id="acMailDraftPreviewLabel">Aperçu avant envoi — KLASSCI</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button></div>
+                <div class="modal-body p-2">
+                    <iframe id="acMailDraftPreviewFrame" title="Aperçu sécurisé de l'e-mail" sandbox=""
+                        referrerpolicy="no-referrer" style="width:100%;height:65vh;border:0"></iframe>
+                </div>
+            </div></div>
+        </div>
 
         {{-- Form delete (en-dehors du form principal pour éviter les nested forms) --}}
         <form action="{{ route('esbtp.annonces.destroy', $annonce) }}" method="POST" id="deleteAnnonceForm" style="display:none;">

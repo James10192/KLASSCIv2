@@ -7,6 +7,15 @@ use Illuminate\Support\Facades\View;
 
 final class ApercuCourrielAnnonce
 {
+    public function htmlAvantPublication(string $titre, string $contenu, int $priorite = 0): string
+    {
+        $annonce = new ESBTPAnnonce();
+        $annonce->titre = $titre;
+        $annonce->contenu = $contenu;
+        $annonce->priorite = $priorite;
+        return $this->html($annonce);
+    }
+
     public function html(ESBTPAnnonce $annonce): string
     {
         return View::make('esbtp.emails.annonce-etudiants', [

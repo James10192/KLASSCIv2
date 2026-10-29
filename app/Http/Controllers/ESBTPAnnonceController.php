@@ -271,6 +271,24 @@ class ESBTPAnnonceController extends Controller
             'destinataires', 'nombreEligibles', 'filtre', 'anneeCourriels'));
     }
 
+    /** La saisie n'est ni enregistrée ni transmise à MailPulse pendant cet aperçu. */
+    public function apercuAvantEnvoi(Request $request, \App\Services\Annonces\ApercuCourrielAnnonce $apercu)
+    {
+        $donnees = $request->validate([
+            'titre' => ['required', 'string', 'max:255'],
+            'contenu' => ['required', 'string', 'max:16000'],
+            'priorite' => ['nullable', 'integer', 'in:0,1,2'],
+        ]);
+        return response($apercu->htmlAvantPublication(
+            $donnees['titre'], $donnees['contenu'], (int) ($donnees['priorite'] ?? 0)
+        ), 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            'Content-Security-Policy' => "default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; font-src https: data:; form-action 'none'; frame-ancestors 'self'",
+            'Cache-Control' => 'no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
     /** Aperçu fidèle au HTML confié au transport MailPulse. */
     public function apercuCourriel(ESBTPAnnonce $annonce, \App\Services\Annonces\ApercuCourrielAnnonce $apercu)
     {
