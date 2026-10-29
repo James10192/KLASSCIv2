@@ -204,10 +204,12 @@ class AnnonceMailPulseTest extends TestCase
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
             'annonce_id' => $annonce->id, 'email' => 'test@etudiants.test',
             'status' => 'submitted', 'submitted_at' => now(),
+            'mailpulse_message_id' => 'mp-webhook-target',
             'created_at' => now(), 'updated_at' => now(),
         ]);
         $this->withoutMiddleware(\App\Http\Middleware\CheckInstalled::class);
-        $payload = ['external_reference' => "klassci-annonce-{$annonce->id}-courriel-{$id}", 'state' => 'delivered'];
+        $payload = ['external_reference' => "klassci-annonce-{$annonce->id}-courriel-{$id}", 'state' => 'delivered', 'message_id' => 'mp-webhook-target',
+            'occurred_at' => '2026-10-29T12:30:00+00:00'];
         config(['services.mailpulse.announcement_webhook_secret' => 'test-signature-longue']);
         $this->postJson('/api/v1/mailpulse/announcement-events', $payload)->assertUnauthorized();
 
@@ -220,10 +222,18 @@ class AnnonceMailPulseTest extends TestCase
                 'HTTP_X_MAILPULSE_SIGNATURE' => $sig,
             ], $contenu);
         };
+        $this->assertSame(422, $envoyer(array_diff_key($payload, ['message_id' => true]))->getStatusCode());
+        $this->assertSame(202, $envoyer(array_replace($payload, ['message_id' => 'mp-other-tenant']))->getStatusCode());
+        $this->assertSame('submitted', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
         $this->assertSame(200, $envoyer($payload)->getStatusCode());
+        $horodatage = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('provider_delivered_at');
+        $this->assertSame('2026-10-29 12:30:00', $horodatage);
         $this->assertSame(200, $envoyer($payload + ['ignored' => 'not stored'])->getStatusCode());
         $this->assertSame(200, $envoyer(array_replace($payload, ['state' => 'delivery_delayed']))->getStatusCode());
+        $this->assertSame(200, $envoyer(array_replace($payload, ['state' => 'bounced']))->getStatusCode());
         $this->assertSame('delivered', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
+        $this->assertSame($horodatage, DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('provider_delivered_at'));
+        $this->assertNull(DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('provider_failed_at'));
     }
     public function test_rapprochement_mailpulse_distingue_delivre_retarde_et_rebond_sans_renvoyer(): void
     {

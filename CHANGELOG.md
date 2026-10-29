@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Annonces — événements MailPulse mieux verrouillés :** la confirmation signée doit désormais identifier le message MailPulse exact ; les événements répétés ou concurrents ne réécrivent plus les livraisons terminales. Le contrat d'API et l'horodatage optionnel du fournisseur sont documentés avant activation du relais.
 - **Annonces — anti-doublon réseau :** une réponse MailPulse perdue, un timeout, une erreur 5xx ou un accusé d'acceptation sans identifiant sont conservés comme « soumission inconnue » à rapprocher, jamais réémis par la queue automatiquement ; les refus de débit explicitement confirmés gardent leur temporisation.
 - **Suivi des annonces, interaction légère :** le filtrage premium réutilise Choices.js du module ; les pages suivantes des destinataires arrivent par un fragment AJAX unique, sans recalculer toute la page ni son aperçu HTML et avec une pagination sans JavaScript.
 - **Annonces — suivi des résultats et protection des inconnus :** distinction en cours / terminé et tout délivré / terminé avec échecs, barre de progression basée uniquement sur confirmations MailPulse. Épuisement de la queue sans preuve fournisseur conservé comme résultat inconnu à rapprocher, jamais comme échec définitif à relancer aveuglément.

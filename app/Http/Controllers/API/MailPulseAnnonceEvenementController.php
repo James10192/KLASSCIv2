@@ -28,32 +28,49 @@ class MailPulseAnnonceEvenementController extends Controller
 
         $valide = $request->validate([
             'external_reference' => ['required', 'string', 'regex:/^klassci-annonce-[1-9][0-9]*-courriel-[1-9][0-9]*$/D'],
+            'message_id' => ['required', 'string', 'max:191'],
             'state' => ['required', 'in:delivered,delivery_delayed,bounced,failed,complained,suppressed'],
+            'occurred_at' => ['nullable', 'date'],
         ]);
-        preg_match('/^klassci-annonce-(\d+)-courriel-(\d+)$/', $valide['external_reference'], $matches);
+        preg_match('/^klassci-annonce-(\\d+)-courriel-(\\d+)$/', $valide['external_reference'], $matches);
 
-        $ligne = DB::table('esbtp_annonce_email_deliveries')
+        // A signed event must also belong to the precise MailPulse message:
+        // a stale callback from another delivery or attempt has no authority.
+        $base = DB::table('esbtp_annonce_email_deliveries')
             ->where('id', (int) ($matches[2] ?? 0))
-            ->where('annonce_id', (int) ($matches[1] ?? 0))->first();
-        if (! $ligne) {
+            ->where('annonce_id', (int) ($matches[1] ?? 0))
+            ->where('mailpulse_message_id', $valide['message_id']);
+        if (! (clone $base)->exists()) {
+            // No hints about whether another instance/recipient has this ID.
             return response()->json(['ok' => true], 202);
         }
 
-        $base = DB::table('esbtp_annonce_email_deliveries')->where('id', $ligne->id);
-        // Duplicats et evenements en desordre : un delayed ne retrograde pas
-        // delivered, et un failed reste terminal pour le meme message.
+        $dateEvenement = isset($valide['occurred_at'])
+            ? \\Illuminate\\Support\\Carbon::parse($valide['occurred_at'])
+                ->setTimezone(config('app.timezone', 'UTC'))->format('Y-m-d H:i:s')
+            : now();
+
+        // Compare-and-set at the SQL layer: concurrent or replayed callbacks
+        // cannot regress a delivered/failed message or overwrite its timestamp.
+        $mutable = (clone $base)->whereIn('status', ['submitted', 'awaiting_dispatch', 'delayed']);
         if ($valide['state'] === 'delivered') {
-            if ($ligne->status !== 'failed') {
-                $base->update(['status' => 'delivered', 'provider_delivered_at' => now(), 'updated_at' => now()]);
-            }
+            $mutable->update([
+                'status' => 'delivered',
+                'provider_delivered_at' => $dateEvenement,
+                'updated_at' => now(),
+            ]);
         } elseif ($valide['state'] === 'delivery_delayed') {
-            if (! in_array($ligne->status, ['delivered', 'failed'], true)) {
-                $base->update(['status' => 'delayed', 'provider_delayed_at' => now(), 'updated_at' => now()]);
-            }
-        } elseif ($ligne->status !== 'delivered') {
-            $base->update([
-                'status' => 'failed', 'error_code' => $valide['state'],
-                'provider_failed_at' => now(), 'updated_at' => now(),
+            $mutable->update([
+                'status' => 'delayed',
+                'provider_delayed_at' => $dateEvenement,
+                'updated_at' => now(),
+            ]);
+        } else {
+            $mutable->update([
+                'status' => 'failed',
+                'error_code' => $valide['state'],
+                'provider_failed_at' => $dateEvenement,
+                'updated_at' => now(),
             ]);
         }
 
