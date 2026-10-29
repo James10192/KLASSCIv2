@@ -39,7 +39,7 @@ class AjouterClassesLmd extends ActionAgent
             . "niveaux : liste explicite (ex. L1, L2, L3). places : capacité par classe. "
             . "Si la structure manque, demander codes ET noms du domaine, de la mention et du parcours, "
             . "puis rappeler cet outil avec structure={domaine:{code,name},mention:{code,name},parcours:{code,name},filiere?:{code,name}}. "
-            . "Réutiliser les éléments existants sans les renommer. Proposer aussi les niveaux LMD manquants ; "
+            . "Réutiliser les éléments existants sans les renommer. Par défaut ne pas doubler une classe LMD déjà ouverte ; pour en ajouter une deuxième, ajouter_si_existe=true si explicitement demandé. Proposer aussi les niveaux LMD manquants ; "
             . "ne rien créer avant la validation humaine.";
     }
 
@@ -52,6 +52,7 @@ class AjouterClassesLmd extends ActionAgent
                 'type_cible' => ['type' => 'string', 'enum' => ['parcours', 'mention'], 'description' => 'Préciser si le code est ambigu.'],
                 'niveaux' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Niveaux LMD demandés, ex. ["L1","L2","L3"].'],
                 'places' => ['type' => 'integer', 'description' => 'Nombre de places par nouvelle classe.'],
+                'ajouter_si_existe' => ['type' => 'boolean', 'description' => 'Vrai uniquement si la personne demande une classe supplémentaire malgré une classe existante dans le même niveau et parcours/mention. Défaut faux.'],
                 'liaison_filiere_confirmee' => ['type' => 'boolean', 'description' => 'Vrai seulement si la personne a confirmé que le sigle cible (ex. GGT) correspond au code filière différent (ex. GEOMETRE_TOPOGRAPHE). Jamais supposer.'],
                 'structure' => ['type' => 'object', 'description' => 'À renseigner si les parcours/mentions n’existent pas : noms/codes EXACTS fournis par l’école.', 'properties' => [
                     'domaine' => ['type' => 'object', 'properties' => ['code' => ['type' => 'string'], 'name' => ['type' => 'string']]],
@@ -227,6 +228,12 @@ class AjouterClassesLmd extends ActionAgent
                 ->orderBy('id')->get(['id', 'name', 'code']);
             $lignesEtat[(string) $niveau->id] = $existantes->map(fn ($c) => [$c->id, $c->name, $c->code])->all();
 
+            if ($existantes->isNotEmpty() && ($args['ajouter_si_existe'] ?? false) !== true) {
+                $avertissements[] = $niveau->name.' : classe déjà présente ('
+                    .$existantes->pluck('name')->implode(', ').'). Réutilisée ; demande explicitement une classe supplémentaire si nécessaire.';
+                continue;
+            }
+
             $cycle = match ($niveau->type) {
                 'Licence' => 'L', 'Master' => 'M', 'Doctorat' => 'D',
             };
@@ -269,6 +276,9 @@ class AjouterClassesLmd extends ActionAgent
         }
         if ($manques !== []) {
             return new Proposition(titre: $titre, resume: '', manques: $manques);
+        }
+        if ($classes === []) {
+            return Proposition::sansObjet($titre, 'Toutes les classes demandées existent déjà pour cette mention/parcours ; aucune classe en double.');
         }
 
         if ($structure !== null) {
