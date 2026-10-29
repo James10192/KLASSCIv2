@@ -652,13 +652,77 @@
                                 @if($totalMail === 0)
                                     Aucune adresse enregistrée : vérifiez le worker et le ciblage avant de conclure à un envoi.
                                 @endif
+                                <div class="mt-2">Étudiants éligibles d'après les inscriptions actuelles : <strong>{{ $nombreEligibles }}</strong>.
+                                    Nombre d'adresses uniques effectivement mises en file : <strong>{{ $totalMail }}</strong>.
+                                    L'écart peut provenir d'adresses manquantes, invalides ou partagées ;
+                                    les inscriptions peuvent aussi évoluer depuis la publication.
+                                </div>
                                 <div class="mt-2">Public e-mail :
                                     <strong>{{ $annonce->email_audience_scope === 'active_current_year' ? 'inscriptions actives de l’année choisie' : 'tout le public de l’annonce' }}</strong>
                                     @if($annonce->email_target_year_id)
-                                        (année n°{{ $annonce->email_target_year_id }})
+                                        ({{ $anneeCourriels?->display_name ?? 'année n°'.$annonce->email_target_year_id }})
                                     @endif
                                 </div>
                             </div>
+                        </div>
+                        <div class="aps-card-body" style="border-top:1px solid var(--bs-border-color,#dbe3f0)">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                                <div>
+                                    <strong>Destinataires et état individuel</strong>
+                                    <div class="text-muted small">Une ligne par adresse unique ; les statuts sont ceux de MailPulse.</div>
+                                </div>
+                                <form method="GET" action="{{ route('esbtp.annonces.show', $annonce) }}" class="d-flex gap-2 flex-wrap">
+                                    <label for="courriels-statut" class="visually-hidden">Filtrer les états des e-mails</label>
+                                    <select id="courriels-statut" class="form-select form-select-sm" name="courriels_statut" style="max-width:220px">
+                                        <option value="">Tous les états</option>
+                                        @foreach(['pending'=>'En attente', 'processing'=>'Traitement', 'retrying'=>'Nouvel essai',
+                                            'awaiting_dispatch'=>'À confirmer', 'submitted'=>'Soumis',
+                                            'delayed'=>'Retardé', 'delivered'=>'Délivré', 'failed'=>'Échec'] as $code => $libelle)
+                                            <option value="{{ $code }}" {{ $filtre === $code ? 'selected' : '' }}>{{ $libelle }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button class="btn btn-sm btn-outline-primary" type="submit">Filtrer</button>
+                                </form>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover align-middle">
+                                    <thead><tr>
+                                        <th scope="col">Destinataire</th>
+                                        <th scope="col">État</th>
+                                        <th scope="col">Tentatives</th>
+                                        <th scope="col">Dernière mise à jour</th>
+                                        <th scope="col">Code fournisseur</th>
+                                    </tr></thead>
+                                    <tbody>
+                                    @forelse($destinataires as $livraison)
+                                        @php
+                                            $etatTexte = match($livraison->status) {
+                                                'delivered' => 'Délivré', 'delayed' => 'Retardé',
+                                                'submitted' => 'Soumis', 'failed' => 'Échec',
+                                                'retrying' => 'Nouvelle tentative', 'processing' => 'En cours',
+                                                'awaiting_dispatch' => 'À confirmer', default => 'En attente'
+                                            };
+                                            $couleur = match($livraison->status) {
+                                                'delivered' => 'success', 'failed' => 'danger',
+                                                'delayed', 'retrying' => 'warning', default => 'secondary'
+                                            };
+                                        @endphp
+                                        <tr>
+                                            <td class="text-break">{{ $livraison->email }}</td>
+                                            <td><span class="badge bg-{{ $couleur }}">{{ $etatTexte }}</span></td>
+                                            <td>{{ (int) $livraison->attempts }}</td>
+                                            <td class="text-nowrap">{{ \Illuminate\Support\Carbon::parse($livraison->updated_at)->format('d/m/Y H:i') }}</td>
+                                            <td class="text-break"><small>{{ $livraison->error_code ?: '—' }}</small></td>
+                                        </tr>
+                                    @empty
+                                        <tr><td colspan="5" class="text-muted py-3 text-center">
+                                            Aucune adresse pour ce filtre. Vérifiez le traitement de la file.
+                                        </td></tr>
+                                    @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="mt-2">{{ $destinataires->links() }}</div>
                         </div>
                     </section>
                 @endif
