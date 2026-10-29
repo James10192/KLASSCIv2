@@ -39,7 +39,7 @@ class Handler extends ExceptionHandler
     public function register()
     {
         $this->reportable(function (Throwable $e) {
-            //
+            app(\App\Services\Care\TelemetrieIncidents::class)->programmer($e);
         });
     }
 
