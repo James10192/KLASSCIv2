@@ -321,7 +321,7 @@ class AnnonceMailPulseTest extends TestCase
             ->update(['updated_at' => now()->subHours(4)]);
 
         $response = $this->postJson(route('esbtp.annonces.relancer-courriels', $annonce));
-        $response->assertSuccessful()->assertJsonPath('queued', 2);
+        $response->assertStatus(200)->assertJsonPath('queued', 2);
         Bus::assertDispatchedTimes(EnvoyerAnnonceCourriel::class, 2);
 
         // Test de la condition SQL effective sans contourner les permissions des routes.
