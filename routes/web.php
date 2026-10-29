@@ -1048,6 +1048,12 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware(['permission:annonces.create|create_annonces']);
             Route::resource('annonces', ESBTPAnnonceController::class)->only(['edit', 'update', 'destroy'])
                 ->middleware(['permission:annonces.edit|edit_annonces']);
+            Route::post('/annonces/{annonce}/courriels/reprendre', [ESBTPAnnonceController::class, 'reprendreCourriels'])
+                ->name('annonces.courriels.reprendre')
+                ->middleware(['permission:annonces.edit|edit_annonces', 'throttle:6,1']);
+            Route::get('/annonces/{annonce}/courriel/apercu', [ESBTPAnnonceController::class, 'apercuCourriel'])
+                ->name('annonces.courriel.apercu')
+                ->middleware(['permission:annonces.view|annonces.create|annonces.edit']);
             Route::resource('annonces', ESBTPAnnonceController::class)->only(['index', 'show'])
                 ->middleware(['permission:annonces.view|annonces.create|annonces.edit']);
 

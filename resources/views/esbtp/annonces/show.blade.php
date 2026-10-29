@@ -667,22 +667,49 @@
                         </div>
                         <div class="aps-card-body" style="border-top:1px solid var(--bs-border-color,#dbe3f0)">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                                <div><strong>Prévisualisation du courriel officiel</strong>
+                                    <div class="text-muted small">Le même modèle est utilisé pour la diffusion via MailPulse.</div></div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button id="annonce-resume-mails" type="button" class="btn btn-outline-primary btn-sm"
+                                        data-url="{{ route('esbtp.annonces.courriels.reprendre', $annonce) }}"
+                                        data-mode="pending"
+                                        {{ !($enAttente > 0 && $annonce->is_published) ? 'disabled' : '' }}>
+                                        <i class="fas fa-redo-alt me-1"></i>Reprendre les non soumis
+                                    </button>
+                                    @if($nombreReprenables > 0)
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="annonce-resume-failed"
+                                            data-url="{{ route('esbtp.annonces.courriels.reprendre', $annonce) }}"
+                                            data-mode="technical">
+                                            Réessayer {{ $nombreReprenables }} échecs techniques vérifiés
+                                        </button>
+                                    @endif
+                                </div>
+                            </div>
+                            <div id="annonce-resume-result" class="small mb-2" role="status" aria-live="polite"></div>
+                            @if($totalMail > 0 && $livres === $totalMail)
+                            <div class="alert alert-success">Tous les messages suivis sont confirmés délivrés. Aucune relance possible.</div>
+                            @elseif($echoues > 0)
+                            <div class="alert alert-warning">Certains courriels ont échoué. Les rebonds définitifs ne sont jamais relancés automatiquement ; examinez-les dans MailPulse.</div>
+                            @endif
+                            <iframe loading="lazy" title="Aperçu de l'e-mail de l'annonce" sandbox=""
+                                src="{{ route('esbtp.annonces.courriel.apercu', $annonce) }}"
+                                style="width:100%;height:540px;border:1px solid #dbe3f0;border-radius:12px;background:#fff"></iframe>
+                        </div>
+                        <div class="aps-card-body" style="border-top:1px solid var(--bs-border-color,#dbe3f0)">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                                 <div>
                                     <strong>Destinataires et état individuel</strong>
                                     <div class="text-muted small">Une ligne par adresse unique ; les statuts sont ceux de MailPulse.</div>
                                 </div>
-                                <form method="GET" action="{{ route('esbtp.annonces.show', $annonce) }}" class="d-flex gap-2 flex-wrap">
-                                    <label for="courriels-statut" class="visually-hidden">Filtrer les états des e-mails</label>
-                                    <select id="courriels-statut" class="form-select form-select-sm" name="courriels_statut" style="max-width:220px">
-                                        <option value="">Tous les états</option>
-                                        @foreach(['pending'=>'En attente', 'processing'=>'Traitement', 'retrying'=>'Nouvel essai',
+                                <div id="annonce-courriels-filtre" class="d-flex gap-2 flex-wrap align-items-center">
+                                    <x-au-select name="courriels_statut" :value="$filtre"
+                                        placeholder="Tous les états" icon="fa-filter"
+                                        :options="[
+                                            'pending'=>'En attente', 'processing'=>'En traitement', 'retrying'=>'Nouvel essai',
                                             'awaiting_dispatch'=>'À confirmer', 'submitted'=>'Soumis',
-                                            'delayed'=>'Retardé', 'delivered'=>'Délivré', 'failed'=>'Échec'] as $code => $libelle)
-                                            <option value="{{ $code }}" {{ $filtre === $code ? 'selected' : '' }}>{{ $libelle }}</option>
-                                        @endforeach
-                                    </select>
-                                    <button class="btn btn-sm btn-outline-primary" type="submit">Filtrer</button>
-                                </form>
+                                            'delayed'=>'Retardé', 'delivered'=>'Délivré', 'failed'=>'Échec'
+                                        ]" />
+                                </div>
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-sm table-hover align-middle">
@@ -693,36 +720,19 @@
                                         <th scope="col">Dernière mise à jour</th>
                                         <th scope="col">Code fournisseur</th>
                                     </tr></thead>
-                                    <tbody>
-                                    @forelse($destinataires as $livraison)
-                                        @php
-                                            $etatTexte = match($livraison->status) {
-                                                'delivered' => 'Délivré', 'delayed' => 'Retardé',
-                                                'submitted' => 'Soumis', 'failed' => 'Échec',
-                                                'retrying' => 'Nouvelle tentative', 'processing' => 'En cours',
-                                                'awaiting_dispatch' => 'À confirmer', default => 'En attente'
-                                            };
-                                            $couleur = match($livraison->status) {
-                                                'delivered' => 'success', 'failed' => 'danger',
-                                                'delayed', 'retrying' => 'warning', default => 'secondary'
-                                            };
-                                        @endphp
-                                        <tr>
-                                            <td class="text-break">{{ $livraison->email }}</td>
-                                            <td><span class="badge bg-{{ $couleur }}">{{ $etatTexte }}</span></td>
-                                            <td>{{ (int) $livraison->attempts }}</td>
-                                            <td class="text-nowrap">{{ \Illuminate\Support\Carbon::parse($livraison->updated_at)->format('d/m/Y H:i') }}</td>
-                                            <td class="text-break"><small>{{ $livraison->error_code ?: '—' }}</small></td>
-                                        </tr>
-                                    @empty
-                                        <tr><td colspan="5" class="text-muted py-3 text-center">
-                                            Aucune adresse pour ce filtre. Vérifiez le traitement de la file.
-                                        </td></tr>
-                                    @endforelse
+                                    <tbody id="annonce-courriels-lignes">
+                                    @include('esbtp.annonces.partials.courriels-lignes')
                                     </tbody>
                                 </table>
                             </div>
-                            <div class="mt-2">{{ $destinataires->links() }}</div>
+                            <div class="mt-2 text-center">
+                                <button id="annonce-courriels-plus" type="button" class="btn btn-sm btn-outline-primary"
+                                    data-next="{{ $destinataires->nextPageUrl() }}" {{ !$destinataires->hasMorePages() ? 'hidden' : '' }}>
+                                    Charger d'autres destinataires
+                                </button>
+                                <div id="annonce-courriels-sentinel" style="height:1px" aria-hidden="true"></div>
+                                <div id="annonce-courriels-chargement" class="small text-muted" role="status" aria-live="polite"></div>
+                            </div>
                         </div>
                     </section>
                 @endif
@@ -963,6 +973,16 @@
             @method('DELETE')
         </form>
 
+        {{-- Confirmation premium Bootstrap, aucun confirm() navigateur. --}}
+        <div class="modal fade" id="annonce-resume-modal" tabindex="-1" aria-labelledby="annonce-resume-title" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title" id="annonce-resume-title">Reprise prudente des courriels</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button></div>
+                <div class="modal-body"><p id="annonce-resume-confirm-description">Seuls les courriels jamais soumis seront repris. Aucun envoi déjà accepté, retardé ou livré ne sera renvoyé.</p></div>
+                <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" id="annonce-resume-confirm" class="btn btn-primary">Confirmer la reprise</button></div>
+            </div></div>
+        </div>
         {{-- =================== MODAL DELETE =================== --}}
         <div class="modal fade aps-modal" id="apsDeleteModal" tabindex="-1"
              aria-labelledby="apsDeleteModalLabel" aria-hidden="true" data-bs-backdrop="static">
@@ -1031,4 +1051,96 @@
     });
 })();
 </script>
+@endpush
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const body = document.getElementById('annonce-courriels-lignes');
+    const loadBtn = document.getElementById('annonce-courriels-plus');
+    const sentinel = document.getElementById('annonce-courriels-sentinel');
+    const loadingText = document.getElementById('annonce-courriels-chargement');
+    const filter = document.querySelector('#annonce-courriels-filtre select[name="courriels_statut"]');
+    let loading = false;
+    let nonce = 0;
+    async function loadMore(replace = false) {
+        if (!loadBtn || loading || (!loadBtn.dataset.next && !replace)) return;
+        loading = true;
+        const current = ++nonce;
+        loadBtn.disabled = true;
+        loadingText.textContent = 'Chargement des destinataires…';
+        try {
+            const url = replace ? new URL(window.location.href) : new URL(loadBtn.dataset.next, window.location.href);
+            if (replace) {
+                url.searchParams.delete('courriels_page');
+                if (filter?.value) url.searchParams.set('courriels_statut', filter.value);
+                else url.searchParams.delete('courriels_statut');
+            }
+            url.searchParams.set('courriels_fragment', '1');
+            const response = await fetch(url, { headers: { 'Accept':'application/json', 'X-Requested-With':'XMLHttpRequest' } });
+            if (!response.ok) throw new Error('Chargement impossible.');
+            const data = await response.json();
+            if (current !== nonce) return;
+            if (replace) body.innerHTML = data.html;
+            else body.insertAdjacentHTML('beforeend', data.html);
+            loadBtn.dataset.next = data.next || '';
+            loadBtn.hidden = !data.next;
+            loadingText.textContent = data.next ? '' : 'Fin des destinataires.';
+        } catch (error) {
+            loadingText.textContent = error.message;
+        } finally { loading = false; loadBtn.disabled = false; }
+    }
+    loadBtn?.addEventListener('click', () => loadMore());
+    filter?.addEventListener('change', () => { loadBtn.dataset.next = ''; loadMore(true); });
+    if (sentinel && 'IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && loadBtn && !loadBtn.hidden && !loading) loadMore();
+        }, { rootMargin: '240px' });
+        observer.observe(sentinel);
+    }
+
+    const triggers = Array.from(document.querySelectorAll('[data-mode][data-url]'));
+    const modalElement = document.getElementById('annonce-resume-modal');
+    const confirmButton = document.getElementById('annonce-resume-confirm');
+    const description = document.getElementById('annonce-resume-confirm-description');
+    const status = document.getElementById('annonce-resume-result');
+    let selected = null;
+    triggers.forEach(btn => btn.addEventListener('click', function () {
+        if (btn.disabled) return;
+        selected = btn;
+        description.textContent = btn.dataset.mode === 'technical'
+            ? "Seuls les échecs techniques de file sans identifiant fournisseur seront replanifiés. Les rebonds et les messages différés restent intacts."
+            : "Seuls les courriels non soumis seront repris. Les messages en transit, retardés ou déjà délivrés ne seront pas renvoyés.";
+        if (window.bootstrap) window.bootstrap.Modal.getOrCreateInstance(modalElement).show();
+    }));
+    confirmButton?.addEventListener('click', async function () {
+        if (!selected) return;
+        const btn = selected;
+        btn.disabled = true;
+        confirmButton.disabled = true;
+        try {
+            const response = await fetch(btn.dataset.url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type':'application/json',
+                    'Accept':'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                },
+                body: JSON.stringify({mode:btn.dataset.mode})
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || 'Action impossible');
+            status.textContent = data.message + ' (' + data.queued + ')';
+            window.dispatchEvent(new CustomEvent('toast', {
+                detail: {type:'success', message:data.message}
+            }));
+            if (window.bootstrap) window.bootstrap.Modal.getOrCreateInstance(modalElement).hide();
+        } catch (e) {
+            status.textContent = e.message;
+            btn.disabled = false;
+            window.dispatchEvent(new CustomEvent('toast', {detail: {type:'error',message:e.message}}));
+        } finally {confirmButton.disabled = false;}
+    });
+});
+</script>
+
 @endpush
