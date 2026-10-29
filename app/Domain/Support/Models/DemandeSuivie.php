@@ -9,7 +9,7 @@ class DemandeSuivie extends Model
 {
     protected $table = 'support_demandes_suivies';
 
-    protected $fillable = ['reference', 'user_id', 'statut_code', 'derniere_reponse_support_le', 'derniere_action_administration_le', 'mis_a_jour_le', 'averti_le'];
+    protected $fillable = ['reference', 'user_id', 'statut_code', 'derniere_reponse_support_le', 'derniere_action_administration_le', 'action_administration_en_attente_le', 'mis_a_jour_le', 'averti_le'];
 
     protected $casts = [
         'derniere_reponse_support_le' => 'datetime',
