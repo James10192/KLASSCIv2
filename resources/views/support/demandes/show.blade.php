@@ -85,6 +85,9 @@
 
     <div class="sd-card">
         <h2>Échanges</h2>
+        @if(($demande['action_cible'] ?? null) === 'ETABLISSEMENT' && ($demande['statut']['code'] ?? null) === 'ACTION_REQUISE')
+            <p class="sd-reponse-close">Action demandée à l'administration de l'établissement. Le demandeur initial n'est pas le destinataire de cette intervention.</p>
+        @endif
         <div id="sd-fil">@include('support.demandes._fil', ['messages' => $demande['messages'] ?? []])</div>
 
         @if($peutRepondre)
