@@ -671,7 +671,7 @@
                                     <strong>Destinataires et état individuel</strong>
                                     <div class="text-muted small">Une ligne par adresse unique ; les statuts sont ceux de MailPulse.</div>
                                 </div>
-                                <form method="GET" action="{{ route('esbtp.annonces.show', $annonce) }}" class="d-flex gap-2 flex-wrap">
+                                <form id="aps-email-filter" method="GET" action="{{ route('esbtp.annonces.show', $annonce) }}" class="d-flex gap-2 flex-wrap">
                                     <label for="courriels-statut" class="visually-hidden">Filtrer les états des e-mails</label>
                                     <select id="courriels-statut" class="form-select form-select-sm" name="courriels_statut" style="max-width:220px">
                                         <option value="">Tous les états</option>
@@ -685,7 +685,7 @@
                                 </form>
                             </div>
                             <div class="table-responsive">
-                                <table class="table table-sm table-hover align-middle">
+                                <table id="aps-email-table" class="table table-sm table-hover align-middle">
                                     <thead><tr>
                                         <th scope="col">Destinataire</th>
                                         <th scope="col">État</th>
@@ -722,7 +722,11 @@
                                     </tbody>
                                 </table>
                             </div>
-                            <div class="mt-2">{{ $destinataires->links() }}</div>
+                            <div id="aps-email-pages" class="mt-2">{{ $destinataires->links() }}</div>
+                            <div class="d-flex justify-content-center mt-2">
+                                <button type="button" id="aps-email-more" class="btn btn-outline-primary btn-sm" hidden>Charger plus de destinataires</button>
+                            </div>
+                            <p id="aps-email-ajax-status" class="small text-muted mt-2" role="status" aria-live="polite"></p>
                         </div>
                     </section>
                 @endif
@@ -1039,6 +1043,91 @@
     'use strict';
 
     document.addEventListener('DOMContentLoaded', function () {
+        // Filtrage et pagination incrémentale sans recharger la fiche.
+        // Le formulaire GET et les liens Laravel restent utilisables sans JS.
+        const emailFilter = document.getElementById('aps-email-filter');
+        const emailTable = document.getElementById('aps-email-table');
+        const emailPages = document.getElementById('aps-email-pages');
+        const emailMore = document.getElementById('aps-email-more');
+        const emailStatus = document.getElementById('aps-email-ajax-status');
+        let nextEmailUrl = null;
+        let emailRequest = null;
+        let emailBusy = false;
+
+        function updateNextLink() {
+            nextEmailUrl = emailPages?.querySelector('a[rel="next"]')?.href ?? null;
+            if (emailMore) {
+                emailMore.hidden = !nextEmailUrl;
+                emailMore.disabled = emailBusy;
+            }
+        }
+
+        async function loadEmailPage(url, append) {
+            if (!emailTable || !emailPages || !url) return;
+            if (emailBusy && append) return;
+            if (emailRequest) emailRequest.abort();
+            emailRequest = new AbortController();
+            const signal = emailRequest.signal;
+            emailBusy = true;
+            if (emailMore) emailMore.disabled = true;
+            if (emailStatus) emailStatus.textContent = 'Chargement des destinataires…';
+            try {
+                const response = await fetch(url, {
+                    headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html'},
+                    credentials: 'same-origin',
+                    signal
+                });
+                if (!response.ok) throw new Error('Impossible de récupérer les destinataires.');
+                const fragment = new DOMParser().parseFromString(await response.text(), 'text/html');
+                const incomingRows = fragment.querySelector('#aps-email-table tbody');
+                const incomingPages = fragment.querySelector('#aps-email-pages');
+                if (!incomingRows || !incomingPages) throw new Error('Réponse de pagination incomplète.');
+                if (append) {
+                    emailTable.querySelector('tbody')?.append(...Array.from(incomingRows.children));
+                } else {
+                    emailTable.querySelector('tbody')?.replaceChildren(...Array.from(incomingRows.children));
+                }
+                emailPages.innerHTML = incomingPages.innerHTML;
+                updateNextLink();
+                if (emailStatus) emailStatus.textContent = nextEmailUrl ? 'D’autres résultats sont disponibles.' : 'Fin des résultats.';
+                if (!append) history.replaceState(null, '', url);
+            } catch (error) {
+                if (error.name !== 'AbortError' && emailStatus) {
+                    emailStatus.textContent = 'Chargement impossible. Utilisez les liens de pagination ci-dessus ou réessayez.';
+                }
+            } finally {
+                if (emailRequest?.signal === signal) {
+                    emailBusy = false;
+                    emailRequest = null;
+                    if (emailMore) emailMore.disabled = false;
+                }
+            }
+        }
+
+        if (emailFilter && emailTable && emailPages && emailMore) {
+            updateNextLink();
+            emailFilter.addEventListener('submit', function (event) {
+                event.preventDefault();
+                const url = new URL(emailFilter.action);
+                const selected = new FormData(emailFilter).get('courriels_statut');
+                if (selected) url.searchParams.set('courriels_statut', String(selected));
+                loadEmailPage(url.toString(), false);
+            });
+            emailMore.addEventListener('click', function () {
+                if (nextEmailUrl) loadEmailPage(nextEmailUrl, true);
+            });
+            const observer = 'IntersectionObserver' in window ? new IntersectionObserver(entries => {
+                if (entries.some(entry => entry.isIntersecting) && nextEmailUrl && !emailBusy) {
+                    loadEmailPage(nextEmailUrl, true);
+                }
+            }, {rootMargin: '120px'}) : null;
+            observer?.observe(emailMore);
+            window.addEventListener('pagehide', () => {
+                emailRequest?.abort();
+                observer?.disconnect();
+            }, {once: true});
+        }
+
         const openBtn = document.getElementById('aps-open-delete');
         const modalEl = document.getElementById('apsDeleteModal');
         const confirmBtn = document.getElementById('aps-confirm-delete');
