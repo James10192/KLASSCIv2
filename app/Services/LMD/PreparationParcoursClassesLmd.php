@@ -108,6 +108,18 @@ class PreparationParcoursClassesLmd
             return $sortie;
         }
 
+        // Une demande de création de classes ne peut réaffecter un parcours
+        // déjà opérationnel à une autre filière : cela déplacerait ses classes.
+        $parcoursExistant = ESBTPLMDParcours::where('code', $spec['parcours']['code'])->first();
+        if ($parcoursExistant && isset($spec['filiere'])
+            && $parcoursExistant->filiere_id !== null
+            && $parcoursExistant->filiere?->code !== $spec['filiere']['code']) {
+            $sortie['manques'][] = "Le parcours {$parcoursExistant->code} pointe déjà vers une autre filière. La réaffectation ne fait pas partie de la création de classe ; vérifie la structure à l'écran.";
+        }
+        if ($sortie['manques'] !== []) {
+            return $sortie;
+        }
+
         $erreurs = Validator::make($spec, ReglesDeMaquette::hierarchie())->errors()->all();
         foreach (['domaine', 'mention', 'parcours', 'filiere'] as $partie) {
             if (! isset($spec[$partie])) {
