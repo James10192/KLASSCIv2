@@ -320,6 +320,10 @@ class AnnonceMailPulseTest extends TestCase
             ->whereIn('status', ['pending','retrying'])
             ->update(['updated_at' => now()->subHours(4)]);
 
+        $annonce->refresh();
+        $this->assertTrue((bool) $annonce->is_published, 'annonce non publiée');
+        $this->assertTrue((bool) $annonce->email_notification_enabled, 'option e-mail désactivée');
+        $this->assertFalse($annonce->isExpired(), 'annonce expirée');
         $response = $this->postJson(route('esbtp.annonces.relancer-courriels', $annonce));
         $response->assertStatus(200)->assertJsonPath('queued', 2);
         Bus::assertDispatchedTimes(EnvoyerAnnonceCourriel::class, 2);
