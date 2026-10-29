@@ -386,6 +386,12 @@ jobs:
           cp .env.example .env
           php artisan key:generate --force
 
+      # Régression des annonces par courriel, avec la véritable base MariaDB.
+      # Doit tourner au même titre que les autres tests d'intégration, sans
+      # contacts réels : MailPulse est simulé par un mock dans les tests.
+      - name: Annonces étudiants ciblées par MailPulse
+        run: php vendor/bin/phpunit tests/Feature/Annonces/AnnonceMailPulseTest.php --no-coverage
+
       # Régression réelle SQLSTATE 22007 : la colonne semestre est VARCHAR,
       # une note legacy 'semestre2' ne doit jamais être comparée à l'entier 2.
       - name: Notes BTS - semestre legacy sur MariaDB strict
@@ -561,12 +567,6 @@ jobs:
             php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
           done
           exit $echec
-
-      # Régression des annonces par courriel, avec la véritable base MariaDB.
-      # Doit tourner au même titre que les autres tests d'intégration, sans
-      # contacts réels : MailPulse est simulé par un mock dans les tests.
-      - name: Annonces étudiants ciblées par MailPulse
-        run: php vendor/bin/phpunit tests/Feature/Annonces/AnnonceMailPulseTest.php --no-coverage
 
   schema:
     name: Le schéma se crée entièrement (${{ matrix.moteur.nom }})
