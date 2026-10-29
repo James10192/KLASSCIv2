@@ -35,6 +35,7 @@ class MailPulseStatutsMessages
                 'status' => strtolower($message['status']),
                 'error_code' => is_string($message['error_code'] ?? null) ? $message['error_code'] : null,
                 'delivered_at' => is_string($message['delivered_at'] ?? null) ? $message['delivered_at'] : null,
+                'delivery_delays' => is_array($message['delivery_delays'] ?? null) ? array_slice($message['delivery_delays'], 0, 20) : [],
             ];
         }
 

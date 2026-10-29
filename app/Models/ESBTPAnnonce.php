@@ -31,6 +31,8 @@ class ESBTPAnnonce extends Model
         'priorite',
         'is_published',
         'email_notification_enabled',
+        'email_audience_scope',
+        'email_target_year_id',
         'created_by',
         'updated_by'
     ];
@@ -46,6 +48,7 @@ class ESBTPAnnonce extends Model
         'priorite' => 'integer',
         'is_published' => 'boolean',
         'email_notification_enabled' => 'boolean',
+        'email_target_year_id' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',

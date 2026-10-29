@@ -614,6 +614,55 @@
                     </div>
                 </div>
 
+
+                {{-- Les chiffres de transport ne prouvent pas la reception en boite. --}}
+                @if($annonce->email_notification_enabled)
+                    @php
+                        $totalMail = (int) $courriels->sum();
+                        $livres = (int) ($courriels['delivered'] ?? 0);
+                        $soumis = (int) ($courriels['submitted'] ?? 0);
+                        $enAttente = (int) ($courriels['pending'] ?? 0)
+                            + (int) ($courriels['processing'] ?? 0)
+                            + (int) ($courriels['retrying'] ?? 0);
+                        $enConfirmation = (int) ($courriels['awaiting_dispatch'] ?? 0);
+                        $retardes = (int) ($courriels['delayed'] ?? 0);
+                        $echoues = (int) ($courriels['failed'] ?? 0);
+                    @endphp
+                    <section class="aps-card" aria-label="Suivi des envois par e-mail">
+                        <div class="aps-card-head">
+                            <span class="aps-card-icon"><i class="fas fa-envelope-open-text"></i></span>
+                            <div>
+                                <div class="aps-card-title">Suivi des e-mails MailPulse</div>
+                                <div class="aps-card-sub">Transport distinct de la délivrance aux destinataires</div>
+                            </div>
+                        </div>
+                        <div class="aps-card-body">
+                            <div class="aps-stats" style="grid-template-columns:repeat(auto-fit,minmax(125px,1fr));">
+                                <div class="aps-stat"><div class="aps-stat-value">{{ $totalMail }}</div><div class="aps-stat-label">Adresses retenues</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value">{{ $enAttente }}</div><div class="aps-stat-label">En file / tentatives</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value">{{ $soumis }}</div><div class="aps-stat-label">Acceptés, non confirmés</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value">{{ $enConfirmation }}</div><div class="aps-stat-label">MailPulse à confirmer</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value">{{ $livres }}</div><div class="aps-stat-label">Livraisons confirmées</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value">{{ $retardes }}</div><div class="aps-stat-label">Livraisons retardées</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value">{{ $echoues }}</div><div class="aps-stat-label">Échecs connus</div></div>
+                            </div>
+                            <div class="alert alert-info mt-3 mb-0" role="note">
+                                <strong>Un courriel soumis n'est pas nécessairement délivré.</strong>
+                                Les confirmations et retards du fournisseur nécessitent le rapprochement sécurisé MailPulse.
+                                @if($totalMail === 0)
+                                    Aucune adresse enregistrée : vérifiez le worker et le ciblage avant de conclure à un envoi.
+                                @endif
+                                <div class="mt-2">Public e-mail :
+                                    <strong>{{ $annonce->email_audience_scope === 'active_current_year' ? 'inscriptions actives de l’année choisie' : 'tout le public de l’annonce' }}</strong>
+                                    @if($annonce->email_target_year_id)
+                                        (année n°{{ $annonce->email_target_year_id }})
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                @endif
+
                 {{-- ===== Carte 2 : Pièce jointe ===== --}}
                 @if($piece)
                     <div class="aps-card">
