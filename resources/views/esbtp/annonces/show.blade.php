@@ -633,6 +633,12 @@
                             <span class="aps-card-icon"><i class="fas fa-envelope-open-text"></i></span>
                             <div>
                                 <div class="aps-card-title">Suivi des e-mails MailPulse</div>
+                                <div class="d-flex flex-wrap gap-2 mt-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="aps-mail-preview">Aperçu du courriel</button>
+                                    @if($annonce->is_published && ! $annonce->isExpired())
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="aps-retry-unsent">Relancer les non soumis</button>
+                                    @endif
+                                </div>
                                 <div class="aps-card-sub">Transport distinct de la délivrance aux destinataires</div>
                             </div>
                         </div>
@@ -727,6 +733,15 @@
                     </section>
                 @endif
 
+                <div class="modal fade" id="apsMailPreviewModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
+                        <div class="modal-header"><h5 class="modal-title">Aperçu du courriel</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button></div>
+                        <div class="modal-body p-2"><iframe id="apsMailPreviewFrame" title="Aperçu du courriel"
+                        sandbox="" referrerpolicy="no-referrer" loading="lazy" style="width:100%;height:65vh;border:0"></iframe></div>
+                    </div></div>
+                </div>
+                <div id="apsMailRetryFeedback" role="status" aria-live="polite" class="small my-2"></div>
                 {{-- ===== Carte 2 : Pièce jointe ===== --}}
                 @if($piece)
                     <div class="aps-card">
@@ -1014,6 +1029,30 @@
     'use strict';
 
     document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('aps-mail-preview')?.addEventListener('click', function () {
+            const frame = document.getElementById('apsMailPreviewFrame');
+            const modal = document.getElementById('apsMailPreviewModal');
+            if (!frame || !modal || !window.bootstrap) return;
+            frame.src = @json(route('esbtp.annonces.apercu-courriel', $annonce));
+            bootstrap.Modal.getOrCreateInstance(modal).show();
+        });
+        document.getElementById('aps-retry-unsent')?.addEventListener('click', async function () {
+            if (!window.confirm('Relancer uniquement les messages jamais soumis à MailPulse ?')) return;
+            const button = this, feedback = document.getElementById('apsMailRetryFeedback');
+            button.disabled = true;
+            try {
+                const response = await fetch(@json(route('esbtp.annonces.relancer-courriels', $annonce)), {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'Accept':'application/json', 'X-Requested-With':'XMLHttpRequest', 'X-CSRF-TOKEN':@json(csrf_token()) }
+                });
+                const json = await response.json();
+                if (!response.ok || !json.success) throw new Error('Relance refusée.');
+                if (feedback) feedback.textContent = json.message;
+            } catch (_) {
+                if (feedback) feedback.textContent = 'Échec de programmation. Contactez le support.';
+            } finally { button.disabled = false; }
+        });
+
         const openBtn = document.getElementById('aps-open-delete');
         const modalEl = document.getElementById('apsDeleteModal');
         const confirmBtn = document.getElementById('aps-confirm-delete');

@@ -263,6 +263,41 @@ class ESBTPAnnonceController extends Controller
             'destinataires', 'nombreEligibles', 'filtre', 'anneeCourriels'));
     }
 
+    /** Aperçu fidèle au HTML confié au transport MailPulse. */
+    public function apercuCourriel(ESBTPAnnonce $annonce, \App\Services\Annonces\ApercuCourrielAnnonce $apercu)
+    {
+        abort_unless($annonce->email_notification_enabled, 404);
+        return response($apercu->html($annonce), 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            'Content-Security-Policy' => "default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; font-src https: data:; form-action 'none'; frame-ancestors 'self'",
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    /** N'émet QUE les lignes non soumises, non remises et non échouées. */
+    public function relancerCourriels(ESBTPAnnonce $annonce)
+    {
+        abort_unless($annonce->is_published && $annonce->email_notification_enabled && ! $annonce->isExpired(), 409);
+        $ids = DB::table('esbtp_annonce_email_deliveries')
+            ->where('annonce_id', $annonce->id)->whereIn('status', ['pending', 'retrying'])
+            ->whereNull('submitted_at')->whereNull('mailpulse_message_id')
+            ->orderBy('id')->limit(100)->pluck('id');
+
+        $cadence = max(1, (int) config('services.mailpulse.mail_per_minute', 30));
+        foreach ($ids as $index => $id) {
+            \App\Jobs\Annonces\EnvoyerAnnonceCourriel::dispatch((int) $id)
+                ->delay(now()->addSeconds(intdiv($index, $cadence) * 60));
+        }
+
+        return response()->json([
+            'success' => true, 'queued' => $ids->count(),
+            'message' => $ids->count() === 0
+                ? 'Aucun courriel non soumis à relancer.'
+                : $ids->count().' courriels jamais soumis ont été reprogrammés.',
+        ]);
+    }
+
     /**
      * Vérifie si une annonce peut encore être modifiée (< 15 min après publication)
      */
