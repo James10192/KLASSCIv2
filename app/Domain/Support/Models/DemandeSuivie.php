@@ -14,6 +14,7 @@ class DemandeSuivie extends Model
     protected $casts = [
         'derniere_reponse_support_le' => 'datetime',
         'derniere_action_administration_le' => 'datetime',
+        'action_administration_en_attente_le' => 'datetime',
         'mis_a_jour_le' => 'datetime',
         'averti_le' => 'datetime',
     ];
