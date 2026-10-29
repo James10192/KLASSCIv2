@@ -16,6 +16,8 @@ return new class extends Migration
         });
 
         Schema::table('esbtp_annonce_email_deliveries', function (Blueprint $table): void {
+            // Les nouveaux etats (awaiting_dispatch) depassent 16 caracteres.
+            $table->string('status', 32)->default('pending')->change();
             // ID MailPulse, pas un ID Resend (le transport est MailPulse exclusivement).
             $table->string('mailpulse_message_id', 191)->nullable();
             $table->string('mailpulse_request_id', 191)->nullable();
@@ -31,6 +33,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('esbtp_annonce_email_deliveries', function (Blueprint $table): void {
+            $table->string('status', 16)->default('pending')->change();
             $table->dropIndex('ann_mail_delivered_idx');
             $table->dropColumn([
                 'mailpulse_message_id', 'mailpulse_request_id', 'dispatch_state',

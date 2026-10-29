@@ -164,7 +164,7 @@ class AnnonceMailPulseTest extends TestCase
         $annule = ESBTPEtudiant::factory()->create(['email' => 'annule@etudiants.test']);
         $archive = ESBTPEtudiant::factory()->create(['email' => 'archive@etudiants.test']);
         ESBTPInscription::factory()->create(['etudiant_id' => $active->id, 'annee_universitaire_id' => $annee->id, 'status' => 'active']);
-        ESBTPInscription::factory()->create(['etudiant_id' => $annule->id, 'annee_universitaire_id' => $annee->id, 'status' => 'cancelled']);
+        ESBTPInscription::factory()->create(['etudiant_id' => $annule->id, 'annee_universitaire_id' => $annee->id, 'status' => 'annulée']);
         ESBTPInscription::factory()->create(['etudiant_id' => $archive->id, 'annee_universitaire_id' => $ancienne->id, 'status' => 'active']);
 
         $annonce = $this->annonce();
@@ -204,6 +204,7 @@ class AnnonceMailPulseTest extends TestCase
             'status' => 'submitted', 'submitted_at' => now(),
             'created_at' => now(), 'updated_at' => now(),
         ]);
+        $this->withoutMiddleware(\App\Http\Middleware\CheckInstalled::class);
         $payload = ['external_reference' => "klassci-annonce-{$annonce->id}-courriel-{$id}", 'state' => 'delivered'];
         config(['services.mailpulse.announcement_webhook_secret' => 'test-signature-longue']);
         $this->postJson('/api/v1/mailpulse/announcement-events', $payload)->assertUnauthorized();
