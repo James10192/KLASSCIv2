@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-29 · #1706 · Annonces : option MailPulse pour avertir par e-mail chaque étudiant ciblé, sans double envoi ; campagne asynchrone, pièces accessibles dans KLASSCI. Vérifier queue, quota, ciblage et délivrabilité sur presentation avant diffusion aux écoles.
 - 2026-10-22 · #1677 · Reçu PDF : 15 mm d’espace pour la signature manuscrite et le cachet sur les exemplaires élève et caisse, tout en conservant une seule feuille A4 ; contrôle visuel sur presentation avant diffusion école.
 - 2026-10-22 · #1674 · Fiche inscription : réinscription en Documents complets validable avec les mêmes contrôles que la fiche étudiant, historique et observations conservés. Recette preview/POST mobile BTS/LMD sur presentation avant diffusion.
 - 2026-10-22 · #1675 · Reçus de paiement PDF : les exemplaires élève/parent et caisse tiennent sur une seule feuille A4 sans changement du contenu ni de l’identité visuelle ; vérifier le rendu imprimé sur presentation avant diffusion.

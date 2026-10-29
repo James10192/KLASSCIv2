@@ -30,6 +30,7 @@ class ESBTPAnnonce extends Model
         'date_expiration',
         'priorite',
         'is_published',
+        'email_notification_enabled',
         'created_by',
         'updated_by'
     ];
@@ -44,6 +45,7 @@ class ESBTPAnnonce extends Model
         'date_expiration' => 'datetime',
         'priorite' => 'integer',
         'is_published' => 'boolean',
+        'email_notification_enabled' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',

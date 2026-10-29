@@ -14,6 +14,8 @@ use App\Models\ESBTPNiveauEtude;
 use Carbon\Carbon;
 use App\Notifications\ESBTPNotification;
 use App\Services\NotificationService;
+use App\Jobs\Annonces\DiffuserAnnonceParCourriel;
+use Illuminate\Support\Facades\Log;
 use App\Support\ListeInfinie;
 
 class ESBTPAnnonceController extends Controller
@@ -51,6 +53,7 @@ class ESBTPAnnonceController extends Controller
             'etudiants' => 'required_if:type,etudiant|array|max:' . self::MAX_ETUDIANTS,
             'etudiants.*' => 'integer|exists:esbtp_etudiants,id',
             'piece_jointe' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:5120',
+            'send_email' => 'sometimes|boolean',
         ];
     }
 
@@ -183,6 +186,7 @@ class ESBTPAnnonceController extends Controller
             $annonce->type = $request->type;
             $annonce->priorite = $request->priorite;
             $annonce->is_published = $is_published;
+            $annonce->email_notification_enabled = $request->boolean('send_email');
             $annonce->created_by = Auth::id();
 
             $this->handlePieceJointeUpload($request, $annonce);
@@ -204,6 +208,7 @@ class ESBTPAnnonceController extends Controller
             }
 
             DB::commit();
+            $this->planifierCourrielsAnnonce($annonce, $is_published);
             return redirect()->route('esbtp.annonces.index')
                 ->with('success', 'L\'annonce a été créée avec succès');
         } catch (\Exception $e) {
@@ -331,6 +336,9 @@ class ESBTPAnnonceController extends Controller
             $annonce->type = $request->type;
             $annonce->priorite = $request->priorite;
             $annonce->is_published = $is_published;
+            if (!$wasPublished) {
+                $annonce->email_notification_enabled = $request->boolean('send_email');
+            }
             $annonce->updated_by = Auth::id();
 
             $this->handlePieceJointeUpload($request, $annonce);
@@ -355,6 +363,7 @@ class ESBTPAnnonceController extends Controller
             }
 
             DB::commit();
+            $this->planifierCourrielsAnnonce($annonce, $is_published && !$wasPublished);
             return redirect()->route('esbtp.annonces.index')
                 ->with('success', 'L\'annonce a été mise à jour avec succès');
         } catch (\Exception $e) {
@@ -714,6 +723,22 @@ class ESBTPAnnonceController extends Controller
      * @param ESBTPAnnonce $annonce
      * @return void
      */
+    /** Planifie l'envoi APRÈS commit : aucune diffusion sur un rollback. */
+    private function planifierCourrielsAnnonce(ESBTPAnnonce $annonce, bool $premierePublication): void
+    {
+        if (!$premierePublication || !$annonce->email_notification_enabled || $annonce->date_publication->isFuture()) {
+            return;
+        }
+
+        try {
+            DiffuserAnnonceParCourriel::dispatch($annonce->id);
+        } catch (\Throwable $e) {
+            Log::error('Impossible de planifier les courriels d\'annonce', [
+                'annonce_id' => $annonce->id, 'erreur' => $e->getMessage(),
+            ]);
+        }
+    }
+
     private function sendAnnonceNotification(ESBTPAnnonce $annonce)
     {
         // Utiliser le service de notifications centralisé avec l'expéditeur

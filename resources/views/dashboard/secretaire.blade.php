@@ -873,75 +873,16 @@
                 </div>
             </div>
             <div class="sec-card-body">
-                <form action="{{ route('esbtp.annonces.store') }}" method="POST">
-                    @csrf
-                    <div class="row g-3">
-                        <div class="col-md-4 sec-form-group">
-                            <label for="recipient_type">Destinataire</label>
-                            <select class="form-select" id="recipient_type" name="recipient_type" required>
-                                <option value="">Selectionner un destinataire</option>
-                                <option value="all">Tous les utilisateurs</option>
-                                <option value="etudiant">Tous les etudiants</option>
-                                <option value="specific_user">Etudiant specifique</option>
-                                <option value="specific_class">Classe specifique</option>
-                            </select>
-                        </div>
-
-                        <div class="col-md-4 sec-form-group" id="specific_user_container" style="display: none;">
-                            <label for="recipient_id">Selectionner un etudiant</label>
-                            <select class="form-select" id="recipient_id" name="recipient_id">
-                                <option value="">Choisir un etudiant</option>
-                                @foreach(App\Models\ESBTPEtudiant::all() as $etudiant)
-                                    <option value="{{ $etudiant->user_id }}">{{ $etudiant->nom }} {{ $etudiant->prenoms }} ({{ $etudiant->matricule }})</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="col-md-4 sec-form-group" id="specific_class_container" style="display: none;">
-                            <label for="recipient_group">Selectionner une classe</label>
-                            <select class="form-select" id="recipient_group" name="recipient_group">
-                                <option value="">Choisir une classe</option>
-                                @foreach(App\Models\ESBTPClasse::all() as $classe)
-                                    <option value="{{ $classe->id }}">{{ $classe->nom }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="col-md-8 sec-form-group">
-                            <label for="subject">Sujet</label>
-                            <input type="text" class="form-control" id="subject" name="subject" required placeholder="Objet du message...">
-                        </div>
-
-                        <div class="col-12 sec-form-group">
-                            <label for="content">Message</label>
-                            <textarea class="form-control" id="content" name="content" rows="3" required placeholder="Redigez votre message ici..."></textarea>
-                        </div>
-
-                        <div class="col-12">
-                            <button type="submit" class="sec-btn-send">
-                                <i class="fas fa-paper-plane"></i> Envoyer le message
-                            </button>
-                        </div>
-                    </div>
-                </form>
+                {{-- Un seul compositeur d'annonces : mêmes règles de validation, ciblage et MailPulse. --}}
+                <p class="mb-3">Rédigez votre annonce, sélectionnez les étudiants destinataires et choisissez si vous souhaitez également leur envoyer un e-mail via MailPulse.</p>
+                <a href="{{ route('esbtp.annonces.create') }}" class="sec-btn-send" style="display:inline-flex;align-items:center;gap:.5rem;text-decoration:none;">
+                    <i class="fas fa-paper-plane"></i> Créer une annonce
+                </a>
             </div>
         </div>
 
     </div>
 </div>
 
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const recipientType = document.getElementById('recipient_type');
-        const specificUserContainer = document.getElementById('specific_user_container');
-        const specificClassContainer = document.getElementById('specific_class_container');
-
-        recipientType.addEventListener('change', function() {
-            specificUserContainer.style.display = this.value === 'specific_user' ? 'block' : 'none';
-            specificClassContainer.style.display = this.value === 'specific_class' ? 'block' : 'none';
-        });
-    });
-</script>
-@endpush
+{{-- Le compositeur commun gère maintenant les sélections d'audience et l'envoi. --}}
 @endsection
