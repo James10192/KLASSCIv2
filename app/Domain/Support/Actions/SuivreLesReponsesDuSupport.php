@@ -5,6 +5,7 @@ namespace App\Domain\Support\Actions;
 use App\Domain\Support\Models\CurseurSupport;
 use App\Domain\Support\Models\DemandeSuivie;
 use App\Domain\Support\Services\AvertirDuRetourDuSupport;
+use App\Domain\Support\Services\AvertirAdministration;
 use App\Models\User;
 use App\Services\Care\ClientMasterSupport;
 use Carbon\Carbon;
@@ -46,6 +47,7 @@ class SuivreLesReponsesDuSupport
     public function __construct(
         private readonly ClientMasterSupport $master,
         private readonly AvertirDuRetourDuSupport $avertir,
+        private readonly AvertirAdministration $avertirAdministration,
     ) {
     }
 
@@ -123,10 +125,22 @@ class SuivreLesReponsesDuSupport
         // rapporteur doit recevoir une alerte comme pour une reponse publique.
         // Un changement RESOLU -> FERME n'envoie pas deux alertes de cloture.
         $statutSignificatif = in_array($statut, ['EN_RESOLUTION', 'ACTION_REQUISE'], true)
+            && ($statut !== 'ACTION_REQUISE' || ($resume['action_cible'] ?? null) !== 'ETABLISSEMENT')
             && $statut !== $suivie->statut_code;
 
+        $derniereAdmin = self::date($resume['derniere_demande_etablissement_le'] ?? null);
+        $actionAdminNouvelle = $derniereAdmin !== null
+            && ($suivie->derniere_action_administration_le === null
+                || $derniereAdmin->gt($suivie->derniere_action_administration_le));
         $rapporteur = User::find((int) ($resume['rapporteur']['id'] ?? 0));
         $averti = $avertir && $rapporteur !== null && ($aRepondu || $cloturee || $statutSignificatif);
+
+        $administrationNotifiee = false;
+        if ($actionAdminNouvelle && $avertir) {
+            // En l'absence de personne autorisée, garder le repère non traité :
+            // une configuration ultérieure du droit permettra de livrer l'alerte.
+            $administrationNotifiee = $this->avertirAdministration->executer($resume) > 0;
+        }
 
         // L'etat vu s'enregistre AVANT d'avertir : si l'avertissement leve,
         // le passage suivant ne renvoie pas une notification deja partie.
@@ -134,6 +148,8 @@ class SuivreLesReponsesDuSupport
             'user_id' => $rapporteur?->getKey(),
             'statut_code' => $statut,
             'derniere_reponse_support_le' => $aRepondu ? $reponseLe : $suivie->derniere_reponse_support_le,
+            'derniere_action_administration_le' => $actionAdminNouvelle && (! $avertir || $administrationNotifiee)
+                ? $derniereAdmin : $suivie->derniere_action_administration_le,
             'mis_a_jour_le' => self::date($resume['mis_a_jour_le'] ?? null),
             'averti_le' => $averti ? now() : $suivie->averti_le,
         ])->save();
@@ -142,7 +158,7 @@ class SuivreLesReponsesDuSupport
             $this->avertir->executer($rapporteur, $resume, $aRepondu, $cloturee);
         }
 
-        return $averti;
+        return $averti || $administrationNotifiee;
     }
 
     /** Une date du Master, a l'heure de l'instance ; absente ou illisible → null. */

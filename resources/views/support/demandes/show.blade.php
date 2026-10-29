@@ -85,12 +85,18 @@
 
     <div class="sd-card">
         <h2>Échanges</h2>
+        @if(($demande['action_cible'] ?? null) === 'ETABLISSEMENT' && ($demande['statut']['code'] ?? null) === 'ACTION_REQUISE')
+            <p class="sd-reponse-close">Action demandée à l'administration de l'établissement. Le demandeur initial n'est pas le destinataire de cette intervention.</p>
+        @endif
         <div id="sd-fil">@include('support.demandes._fil', ['messages' => $demande['messages'] ?? []])</div>
 
         @if($peutRepondre)
-            <form id="sd-reponse" class="sd-reponse" action="{{ route('support.demandes.repondre', $demande['reference']) }}" method="POST" novalidate>
+            <form id="sd-reponse" class="sd-reponse" action="{{ route('support.demandes.repondre', $actionAdministration ? [$demande['reference'], 'portee' => 'ecole'] : $demande['reference']) }}" method="POST" novalidate>
                 @csrf
-                <label for="sd-reponse-corps" class="sd-reponse-label">Votre réponse</label>
+                <label for="sd-reponse-corps" class="sd-reponse-label">{{ $actionAdministration ? "Réponse de l'administration à KLASSCI" : 'Votre réponse au support' }}</label>
+                @if($actionAdministration)
+                    <p class="sd-reponse-close">Réponse réservée à l'administration et au support KLASSCI. Elle n'est pas visible par l'étudiant qui a ouvert le ticket. Elle rendra le dossier au support.</p>
+                @endif
                 <textarea id="sd-reponse-corps" name="corps" rows="3" maxlength="{{ $limites['description_max'] }}" required
                     placeholder="Répondez au support, ou précisez ce qui se passe."></textarea>
                 <div class="sd-erreur" role="alert" hidden></div>
