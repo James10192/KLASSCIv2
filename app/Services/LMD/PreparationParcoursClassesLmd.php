@@ -6,6 +6,7 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPLMDDomaine;
 use App\Models\ESBTPLMDMention;
 use App\Models\ESBTPLMDParcours;
+use Illuminate\Support\Facades\Validator;
 
 /**
  * Parcours guidé d'ouverture de classes LMD.
@@ -101,6 +102,20 @@ class PreparationParcoursClassesLmd
             $sortie['manques'][] = "Pour une classe de parcours, précise son code ou la filière {$cible} qui lui correspond.";
         }
         if ($sortie['manques'] !== []) {
+            return $sortie;
+        }
+
+        $erreurs = Validator::make($spec, ReglesDeMaquette::hierarchie())->errors()->all();
+        foreach (['domaine', 'mention', 'parcours', 'filiere'] as $partie) {
+            if (! isset($spec[$partie])) {
+                continue;
+            }
+            if (mb_strlen($spec[$partie]['code']) > 50 || mb_strlen($spec[$partie]['name']) > 255) {
+                $erreurs[] = "Code ou nom trop long pour {$partie} (max 50 et 255 caractères).";
+            }
+        }
+        if ($erreurs !== []) {
+            $sortie['manques'] = array_values(array_unique($erreurs));
             return $sortie;
         }
 
