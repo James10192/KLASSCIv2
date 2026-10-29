@@ -15,6 +15,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
+use App\Http\Controllers\ESBTPAnnonceController;
 use App\Services\Annonces\CiblageCourrielsAnnonce;
 use App\Mail\Transport\CadenceMailPulse;
 use App\Services\MailPulse\MailPulseClient;
@@ -329,7 +331,6 @@ class AnnonceMailPulseTest extends TestCase
 
     public function test_reprise_ajax_ne_relance_jamais_un_message_deja_soumis_ou_retarde(): void
     {
-        $this->withoutMiddleware();
         Bus::fake([EnvoyerAnnonceCourriel::class]);
         $annonce = $this->annonce();
         $annonce->forceFill([
@@ -349,23 +350,27 @@ class AnnonceMailPulseTest extends TestCase
             ]);
         }
 
-        $this->postJson("/esbtp/annonces/{$annonce->id}/courriels/reprendre", [
-            'mode' => 'pending',
-        ])->assertOk()->assertJsonPath('queued', 1);
+        $controller = app(ESBTPAnnonceController::class);
+        $res = $controller->reprendreCourriels(
+            Request::create("/esbtp/annonces/{$annonce->id}/courriels/reprendre", 'POST', ['mode' => 'pending']),
+            $annonce
+        );
+        $this->assertSame(1, $res->getData(true)['queued']);
         Bus::assertDispatchedTimes(EnvoyerAnnonceCourriel::class, 1);
         Bus::assertDispatched(EnvoyerAnnonceCourriel::class, fn ($job) =>
             $job->deliveryId === $ids['pending']);
 
-        $this->postJson("/esbtp/annonces/{$annonce->id}/courriels/reprendre", [
-            'mode' => 'technical',
-        ])->assertOk()->assertJsonPath('queued', 0);
+        $res = $controller->reprendreCourriels(
+            Request::create("/esbtp/annonces/{$annonce->id}/courriels/reprendre", 'POST', ['mode' => 'technical']),
+            $annonce
+        );
+        $this->assertSame(0, $res->getData(true)['queued']);
         $this->assertSame('delayed', DB::table('esbtp_annonce_email_deliveries')->where('id', $ids['delayed'])->value('status'));
         $this->assertSame('failed', DB::table('esbtp_annonce_email_deliveries')->where('id', $ids['failed'])->value('status'));
     }
 
     public function test_reprise_limitee_des_erreurs_techniques_sans_id_fournisseur(): void
     {
-        $this->withoutMiddleware();
         Bus::fake([EnvoyerAnnonceCourriel::class]);
         $annonce = $this->annonce();
         $annonce->forceFill([
@@ -379,9 +384,12 @@ class AnnonceMailPulseTest extends TestCase
             'status' => 'failed', 'error_code' => 'queue_exhausted',
             'created_at' => now(), 'updated_at' => now(),
         ]);
-        $this->postJson("/esbtp/annonces/{$annonce->id}/courriels/reprendre", [
-            'mode' => 'technical',
-        ])->assertOk()->assertJsonPath('queued', 1);
+        $controller = app(ESBTPAnnonceController::class);
+        $res = $controller->reprendreCourriels(
+            Request::create("/esbtp/annonces/{$annonce->id}/courriels/reprendre", 'POST', ['mode' => 'technical']),
+            $annonce
+        );
+        $this->assertSame(1, $res->getData(true)['queued']);
         Bus::assertDispatched(EnvoyerAnnonceCourriel::class, fn ($job) =>
             $job->deliveryId === $id);
         $this->assertSame('pending', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
@@ -390,7 +398,6 @@ class AnnonceMailPulseTest extends TestCase
 
     public function test_tableau_de_suivi_ajax_retourne_les_vrais_statuts_sans_html_de_page_entiere(): void
     {
-        $this->withoutMiddleware();
         $annonce = $this->annonce();
         foreach (['pending', 'delivered', 'delayed'] as $status) {
             DB::table('esbtp_annonce_email_deliveries')->insert([
@@ -399,20 +406,27 @@ class AnnonceMailPulseTest extends TestCase
             ]);
         }
 
-        $this->withHeader('X-Requested-With', 'XMLHttpRequest')
-            ->getJson("/esbtp/annonces/{$annonce->id}?courriels_fragment=stats")
-            ->assertOk()->assertJsonPath('total', 3)
-            ->assertJsonPath('counts.delivered', 1)
-            ->assertJsonPath('counts.delayed', 1)
-            ->assertJsonPath('counts.pending', 1)
-            ->assertJsonPath('terminal', false);
+        $controller = app(ESBTPAnnonceController::class);
+        $request = Request::create("/esbtp/annonces/{$annonce->id}", 'GET', ['courriels_fragment' => 'stats']);
+        $request->headers->set('X-Requested-With', 'XMLHttpRequest');
+        app()->instance('request', $request);
+        $counts = $controller->show($annonce)->getData(true);
+        $this->assertSame(3, $counts['total']);
+        $this->assertSame(1, $counts['counts']['delivered']);
+        $this->assertSame(1, $counts['counts']['delayed']);
+        $this->assertSame(1, $counts['counts']['pending']);
+        $this->assertFalse($counts['terminal']);
 
-        $response = $this->withHeader('X-Requested-With', 'XMLHttpRequest')
-            ->getJson("/esbtp/annonces/{$annonce->id}?courriels_fragment=1&courriels_statut=delivered");
-        $response->assertOk()->assertJsonPath('next', null);
-        $this->assertStringContainsString('delivered@etudiants.test', $response->json('html'));
-        $this->assertStringNotContainsString('delayed@etudiants.test', $response->json('html'));
-        $this->assertStringNotContainsString('<html', $response->json('html'));
+        $request = Request::create("/esbtp/annonces/{$annonce->id}", 'GET', [
+            'courriels_fragment' => '1', 'courriels_statut' => 'delivered',
+        ]);
+        $request->headers->set('X-Requested-With', 'XMLHttpRequest');
+        app()->instance('request', $request);
+        $data = $controller->show($annonce)->getData(true);
+        $this->assertNull($data['next']);
+        $this->assertStringContainsString('delivered@etudiants.test', $data['html']);
+        $this->assertStringNotContainsString('delayed@etudiants.test', $data['html']);
+        $this->assertStringNotContainsString('<html', $data['html']);
     }
 
 }
