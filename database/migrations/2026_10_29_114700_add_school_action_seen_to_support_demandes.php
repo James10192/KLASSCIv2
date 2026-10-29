@@ -10,6 +10,7 @@ return new class extends Migration
     {
         Schema::table('support_demandes_suivies', function (Blueprint $table) {
             $table->timestamp('derniere_action_administration_le')->nullable();
+            $table->timestamp('action_administration_en_attente_le')->nullable();
         });
     }
 
