@@ -135,6 +135,17 @@ class SuiviDemandesSupportTest extends TestCase
         Mail::assertSent(ReponseDuSupportMail::class, 2);
     }
 
+    public function test_une_reponse_avec_action_requise_signale_la_demande_d_action_d_abord(): void
+    {
+        $titre = \App\Domain\Support\Services\AvertirDuRetourDuSupport::formuler(
+            '« Ticket inscription »',
+            ['code' => 'ACTION_REQUISE', 'libelle' => 'Action requise de votre part'],
+            true,
+        );
+        $this->assertStringContainsString('attend une action de votre part', $titre);
+        $this->assertStringNotContainsString('Le support a répondu', $titre);
+    }
+
     public function test_master_injoignable_le_curseur_ne_bouge_pas(): void
     {
         Http::fake([
