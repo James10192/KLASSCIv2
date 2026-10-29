@@ -11,7 +11,7 @@
 Pour intervenir depuis KLASSCI, un personnel doit recevoir **les deux permissions effectives** :
 `support.tickets.view_school` et `support.tickets.respond_school`.
 
-Le nouveau droit doit être synchronisé depuis le registre des permissions et accordé par le responsable habilité. **Aucun rôle, établissement ni utilisateur n'est désigné automatiquement.** Tant qu'aucun destinataire n'est configuré, le suivi conserve l'événement non notifié et réessaie, avec une alerte dans les logs. Le support ne doit pas considérer une intervention comme distribuée avant confirmation dans la cloche de l'établissement.
+Le nouveau droit doit être synchronisé depuis le registre des permissions et accordé par le responsable habilité. **Aucun rôle métier, établissement ni utilisateur n'est désigné automatiquement.** Les profils universels auxquels le registre attribue toutes les permissions conservent ce comportement général ; seules les personnes possédant les deux permissions effectives peuvent intervenir. Tant qu'aucun destinataire n'est configuré, le suivi conserve l'événement non notifié et réessaie, avec une alerte dans les logs. Le support ne doit pas considérer une intervention comme distribuée avant confirmation dans la cloche de l'établissement.
 
 ## Compatibilité, déploiement et recette
 
