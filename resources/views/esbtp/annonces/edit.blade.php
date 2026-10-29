@@ -422,6 +422,20 @@
                                 </div>
                             @endif
 
+                            {{-- Diffusion facultative par MailPulse, sans pièce jointe. --}}
+                            <div class="ac-field" style="margin-bottom:1rem;">
+                                <input type="hidden" name="send_email" value="0" @if($isPublished) disabled @endif>
+                                <label for="send_email" class="ac-label" style="display:flex;align-items:flex-start;gap:.75rem;cursor:pointer;">
+                                    <input type="checkbox" id="send_email" name="send_email" value="1"
+                                        {{ old('send_email', $annonce->email_notification_enabled) ? 'checked' : '' }} @if($isPublished) disabled @endif
+                                        style="width:1.1rem;height:1.1rem;flex-shrink:0;margin-top:.2rem;">
+                                    <span><strong>Envoyer aussi par e-mail (MailPulse)</strong>
+                                        <span class="ac-help" style="display:block;margin-top:.25rem;">@if($isPublished) L’annonce est déjà publiée : aucun nouvel e-mail ne partira lors d’une modification. @else Un courriel par adresse valide du public choisi. Les pièces jointes restent consultables dans KLASSCI. Envoi en arrière-plan lors de la première publication. @endif</span>
+                                    </span>
+                                </label>
+                                @error('send_email')<div class="ac-error">{{ $message }}</div>@enderror
+                            </div>
+
                             <div class="ac-actions">
                                 <button type="submit" name="action" value="update" class="ac-btn ac-btn-primary">
                                     <i class="fas fa-save"></i>
