@@ -82,6 +82,13 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
                 'external_reference' => $reference,
             ], fn ($v) => $v !== '');
 
+            // Même HTML que l'aperçu KLASSCI ; le texte reste un fallback.
+            $html = app(\App\Services\Annonces\CourrielAnnonce::class)
+                ->htmlPourMailPulse($annonce, $metadata);
+            if ($html !== null) {
+                $metadata['email_html'] = $html;
+            }
+
             $resultat = $client->sendEmailMessage([
                 'channel' => 'email',
                 'recipient' => ['type' => 'email', 'value' => $ligne->email],

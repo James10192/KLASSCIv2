@@ -259,8 +259,11 @@ class ESBTPAnnonceController extends Controller
             ? app(CiblageCourrielsAnnonce::class)->etudiants($annonce)->count() : 0;
         $anneeCourriels = $annonce->email_target_year_id
             ? ESBTPAnneeUniversitaire::find($annonce->email_target_year_id) : null;
+        $apercuCourriel = $annonce->email_notification_enabled
+            ? app(\App\Services\Annonces\CourrielAnnonce::class)->html($annonce)
+            : null;
         return view('esbtp.annonces.show', compact('annonce', 'courriels',
-            'destinataires', 'nombreEligibles', 'filtre', 'anneeCourriels'));
+            'destinataires', 'nombreEligibles', 'filtre', 'anneeCourriels', 'apercuCourriel'));
     }
 
     /**

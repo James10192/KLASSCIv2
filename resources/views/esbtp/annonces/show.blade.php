@@ -727,6 +727,31 @@
                     </section>
                 @endif
 
+                @if($apercuCourriel)
+                    <section class="aps-card" aria-label="Prévisualisation du courriel">
+                        <div class="aps-card-head">
+                            <span class="aps-card-icon"><i class="fas fa-at"></i></span>
+                            <div>
+                                <div class="aps-card-title">Aperçu du courriel envoyé aux étudiants</div>
+                                <div class="aps-card-sub">Même modèle d'établissement que les autres notifications KLASSCI.</div>
+                            </div>
+                        </div>
+                        <div class="aps-card-body">
+                            <iframe
+                                title="Aperçu du courriel de cette annonce"
+                                sandbox=""
+                                loading="lazy"
+                                referrerpolicy="no-referrer"
+                                style="display:block;width:100%;min-height:580px;border:1px solid #dbe3f0;border-radius:12px;background:white;"
+                                srcdoc="{{ $apercuCourriel }}">
+                            </iframe>
+                            <p class="text-muted small mt-2 mb-0">
+                                Aperçu du modèle courant. Les courriels déjà expédiés ne changent pas rétroactivement.
+                            </p>
+                        </div>
+                    </section>
+                @endif
+
                 {{-- ===== Carte 2 : Pièce jointe ===== --}}
                 @if($piece)
                     <div class="aps-card">
