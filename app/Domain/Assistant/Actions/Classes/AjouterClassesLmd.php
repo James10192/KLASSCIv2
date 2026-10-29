@@ -116,7 +116,7 @@ class AjouterClassesLmd extends ActionAgent
         $retenus = collect();
         foreach ($codesNiveaux as $code) {
             $cherche = mb_strtoupper(preg_replace('/[\s_-]+/u', '', trim((string) $code)));
-            $niveau = $niveaux->first(function ($n) use ($cherche) {
+            $correspondances = $niveaux->filter(function ($n) use ($cherche) {
                 $codeNiveau = mb_strtoupper(preg_replace('/[\s_-]+/u', '', (string) $n->code));
                 $nom = mb_strtoupper(preg_replace('/[\s_-]+/u', '', (string) $n->name));
                 $cycle = match ($n->type) {
@@ -125,7 +125,19 @@ class AjouterClassesLmd extends ActionAgent
                 $rang = $n->type === 'Master' ? (int) $n->year - 3 : ($n->type === 'Doctorat' ? (int) $n->year - 5 : (int) $n->year);
                 return $cherche === $codeNiveau || $cherche === $nom
                     || $cherche === $cycle.$rang || $cherche === mb_strtoupper($n->type).$rang;
-            });
+            })->values();
+            // Plusieurs lignes legacy peuvent décrire « Licence 1 ».
+            // Ne jamais choisir arbitrairement : un code exact fait foi.
+            $exactes = $correspondances->filter(fn ($n) => mb_strtoupper(
+                preg_replace('/[\s_-]+/u', '', (string) $n->code)
+            ) === $cherche);
+            $niveau = $exactes->count() === 1 ? $exactes->first()
+                : ($correspondances->count() === 1 ? $correspondances->first() : null);
+            if ($correspondances->count() > 1 && $exactes->count() !== 1) {
+                $manques[] = 'Niveau ambigu : '.$code.'. Choisis son code exact : '
+                    .$correspondances->pluck('code')->implode(', ').'.';
+                continue;
+            }
             if (! $niveau) {
                 $manques[] = "Niveau LMD inconnu, inactif ou incohérent : {$code}.";
             } elseif (! $retenus->contains('id', $niveau->id)) {
