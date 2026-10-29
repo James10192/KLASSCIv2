@@ -56,7 +56,7 @@ class ActionsDuJourTest extends TestCase
         parent::setUp();
         $this->withoutMiddleware([PaywallMiddleware::class, EnsureInstalled::class, CheckInstalled::class]);
         Role::findOrCreate('superAdmin', 'web');
-        foreach (['classes.create', 'classes.edit', 'lmd.structure.manage', 'lmd.structure.view', 'inscriptions.view'] as $p) {
+        foreach (['classes.create', 'classes.edit', 'lmd.structure.manage', 'lmd.structure.view', 'niveaux.create', 'inscriptions.view'] as $p) {
             Permission::findOrCreate($p, 'web');
         }
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -408,6 +408,56 @@ class ActionsDuJourTest extends TestCase
         ], $this->admin);
         $this->assertArrayNotHasKey('widget', $r);
         $this->assertStringContainsString('ne correspond ni au parcours', implode(' ', $r['manques']));
+    }
+
+    public function test_si_une_classe_existe_nanan_propose_seulement_les_niveaux_manquants(): void
+    {
+        app(LMDImportService::class)->import([
+            'domaine' => ['name' => 'Sciences partial', 'code' => 'D-PARTIAL-26'],
+            'mention' => ['name' => 'Topographie', 'code' => 'M-PARTIAL-26'],
+            'parcours' => ['name' => 'Topographie', 'code' => 'P-PARTIAL-26'],
+            'filiere' => ['name' => 'Géomètre Topographe', 'code' => 'GGT-PARTIAL-26'],
+            'niveaux' => [
+                ['name' => 'Licence 1', 'year' => 1],
+                ['name' => 'Licence 2', 'year' => 2],
+                ['name' => 'Licence 3', 'year' => 3],
+            ],
+        ], $this->admin->id);
+        $parcours = ESBTPLMDParcours::where('code', 'P-PARTIAL-26')->sole();
+        $l1 = ESBTPNiveauEtude::where('type', 'Licence')->where('year', 1)->firstOrFail();
+        $ancienne = ESBTPClasse::factory()->create([
+            'name' => 'GGT-PARTIAL-26 L1A', 'code' => 'GGT_PARTIAL_26_L1A',
+            'systeme_academique' => 'LMD', 'filiere_id' => $parcours->filiere_id,
+            'parcours_id' => $parcours->id, 'niveau_etude_id' => $l1->id,
+            'places_totales' => 30,
+        ]);
+        $r = app(AjouterClassesLmd::class)->executeAuthorized([
+            'cible' => 'GGT-PARTIAL-26', 'niveaux' => ['L1', 'L2', 'L3'], 'places' => 30,
+        ], $this->admin);
+        $this->assertSame('approbation', $r['widget']['kind'] ?? null);
+        $this->assertCount(2, $r['widget']['tableau']['lignes'] ?? []);
+        $this->valider($r);
+        $this->assertCount(3, ESBTPClasse::where('parcours_id', $parcours->id)->get());
+        $this->assertSame((int) $ancienne->id, (int) ESBTPClasse::where('code', 'GGT_PARTIAL_26_L1A')->sole()->id);
+    }
+
+    public function test_creation_d_un_niveau_lmd_manquant_est_proposee_sans_ecriture_anticipee(): void
+    {
+        app(LMDImportService::class)->import([
+            'domaine' => ['name' => 'Sciences doctorales', 'code' => 'D-DOC-26'],
+            'mention' => ['name' => 'Recherche', 'code' => 'M-DOC-26'],
+            'parcours' => ['name' => 'Recherche', 'code' => 'P-DOC-26'],
+            'niveaux' => [],
+        ], $this->admin->id);
+        $avant = ESBTPNiveauEtude::where('type', 'Doctorat')->where('year', 8)->count();
+        $r = app(AjouterClassesLmd::class)->executeAuthorized([
+            'cible' => 'P-DOC-26', 'niveaux' => ['D3'], 'places' => 12,
+        ], $this->admin);
+        $this->assertSame('approbation', $r['widget']['kind'] ?? null, json_encode($r, JSON_UNESCAPED_UNICODE));
+        $this->assertSame($avant, ESBTPNiveauEtude::where('type', 'Doctorat')->where('year', 8)->count());
+        $this->valider($r);
+        $n = ESBTPNiveauEtude::where('type', 'Doctorat')->where('year', 8)->sole();
+        $this->assertSame(12, (int) ESBTPClasse::where('niveau_etude_id', $n->id)->where('code', 'P_DOC_26_D3A')->sole()->places_totales);
     }
 
     public function test_creation_lmd_et_bts_sont_des_outils_distincts_avec_la_meme_permission(): void
