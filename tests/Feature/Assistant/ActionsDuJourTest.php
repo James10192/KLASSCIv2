@@ -3,6 +3,7 @@
 namespace Tests\Feature\Assistant;
 
 use App\Domain\Assistant\Actions\Classes\AjouterClasses;
+use App\Domain\Assistant\Actions\Classes\AjouterClassesLmd;
 use App\Domain\Assistant\Actions\Classes\ModifierClasses;
 use App\Domain\Assistant\Actions\ContexteDEchange;
 use App\Domain\Assistant\Actions\Lmd\LierUeAuxParcours;
@@ -286,6 +287,64 @@ class ActionsDuJourTest extends TestCase
         $trop = app(AjouterClasses::class)->executeAuthorized(['places' => 40, 'filieres' => ['IDAT'], 'niveaux' => ['BTS1I'], 'nombre' => 30], $this->admin);
         $this->assertArrayNotHasKey('widget', $trop);
         $this->assertStringContainsString('26', implode(' ', $trop['manques']));
+    }
+
+    /**
+     * Nanan doit créer trois classes LMD, pas tenter l'outil BTS. Chaque
+     * proposition est non mutante avant le clic « Valider ».
+     */
+    public function test_creation_ggt_licences_par_nanan_avec_30_places(): void
+    {
+        app(LMDImportService::class)->import([
+            'domaine' => ['name' => 'Sciences GGT', 'code' => 'D-GGT-26'],
+            'mention' => ['name' => 'Géomètre-Topographe', 'code' => 'MENT-GGT-26'],
+            'parcours' => ['name' => 'Géomètre-Topographe', 'code' => 'PAR-GGT-26'],
+            'filiere' => ['name' => 'Géomètre-Topographe', 'code' => 'GGT'],
+            'niveaux' => [
+                ['name' => 'Licence 1', 'year' => 1],
+                ['name' => 'Licence 2', 'year' => 2],
+                ['name' => 'Licence 3', 'year' => 3],
+            ],
+        ], $this->admin->id);
+
+        $parcours = ESBTPLMDParcours::where('code', 'PAR-GGT-26')->sole();
+        $action = app(AjouterClassesLmd::class);
+        $r = $action->executeAuthorized(['cible' => 'GGT', 'niveaux' => ['L1', 'L2', 'L3'], 'places' => 30], $this->admin);
+        $this->assertSame('approbation', $r['widget']['kind'] ?? null, json_encode($r, JSON_UNESCAPED_UNICODE));
+        $this->assertSame(0, ESBTPClasse::where('parcours_id', $parcours->id)->count(), 'aucune écriture pendant la proposition');
+
+        $this->valider($r);
+
+        $classes = ESBTPClasse::where('parcours_id', $parcours->id)->orderBy('name')->get();
+        $this->assertCount(3, $classes);
+        $this->assertSame(['GGT L1A', 'GGT L2A', 'GGT L3A'], $classes->pluck('name')->all());
+        $this->assertSame([30, 30, 30], $classes->pluck('places_totales')->all());
+        $this->assertSame(['LMD'], $classes->pluck('systeme_academique')->unique()->values()->all());
+        $this->assertSame([(int) $parcours->filiere_id], $classes->pluck('filiere_id')->unique()->values()->all());
+    }
+
+    public function test_creation_lmd_n_invente_pas_un_parcours_et_demande_les_places(): void
+    {
+        $action = app(AjouterClassesLmd::class);
+        $r = $action->executeAuthorized(['cible' => 'GGT', 'niveaux' => ['L1', 'L2', 'L3']], $this->admin);
+        $this->assertArrayNotHasKey('widget', $r);
+        $this->assertStringContainsString('places', implode(' ', $r['manques']));
+
+        $r = $action->executeAuthorized(['cible' => 'CODE-INCONNU', 'niveaux' => ['L1'], 'places' => 30], $this->admin);
+        $this->assertArrayNotHasKey('widget', $r);
+        $this->assertStringContainsString('Aucun parcours', implode(' ', $r['manques']));
+    }
+
+    public function test_creation_lmd_et_bts_sont_des_outils_distincts_avec_la_meme_permission(): void
+    {
+        $schemas = app(CatalogueOutils::class)->schemas($this->admin);
+        $noms = array_column($schemas, 'nom');
+        $this->assertContains('proposer_creation_classes', $noms);
+        $this->assertContains('proposer_creation_classes_lmd', $noms);
+
+        $systeme = app(ConstructeurDePrompt::class)->systeme($this->admin, null, null);
+        $this->assertStringContainsString('proposer_creation_classes_lmd', $systeme);
+        $this->assertStringContainsString('GGT', $systeme);
     }
 
     public function test_modifier_les_places_d_une_filiere_et_niveau(): void
