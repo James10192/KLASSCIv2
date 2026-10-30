@@ -649,6 +649,17 @@ class AnnonceMailPulseTest extends TestCase
         Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
     }
 
+    public function test_les_references_generiques_ou_a_identifiants_debordants_sont_rejetees(): void
+    {
+        $service = \App\Services\Annonces\ReferenceCourrielAnnonce::class;
+        $this->assertNull($service::extraire('klassci-annonce-1-courriel-1', 'default'));
+        $this->assertNull($service::extraire('klassci-annonce-1-courriel-1', ''));
+        $this->assertNull($service::extraire('klassci-annonce-999999999999999999999-courriel-1', 'presentation'));
+        $this->assertNull($service::extraire('klassci-v2-presentation-annonce-1-courriel-999999999999999999999', 'presentation'));
+        $this->assertSame(['annonce_id' => 1, 'livraison_id' => 1, 'v2' => false],
+            $service::extraire('klassci-annonce-1-courriel-1', 'presentation'));
+    }
+
     public function test_le_refus_429_utilise_la_meme_reference_v2_au_second_essai(): void
     {
         $annonce = $this->annonce();
