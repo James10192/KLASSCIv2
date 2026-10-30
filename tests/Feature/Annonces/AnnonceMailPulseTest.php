@@ -315,7 +315,7 @@ class AnnonceMailPulseTest extends TestCase
             });
         $result = (new SynchroniserCourrielsAnnonce($reader))->synchroniser(2);
         $this->assertSame(0, $result['delivrees']);
-        $this->assertSame(0, $result['lues']);
+        $this->assertSame(1, $result['lues']);
         $row = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
         $this->assertSame('submitted', $row->status);
         $this->assertSame('nouveau@etudiants.test', $row->email);
@@ -351,7 +351,7 @@ class AnnonceMailPulseTest extends TestCase
             });
         $result = (new SynchroniserCourrielsAnnonce($reader))->synchroniser(2);
         $this->assertSame(0, $result['delivrees']);
-        $this->assertSame(0, $result['lues']);
+        $this->assertSame(1, $result['lues']);
         $row = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
         $this->assertSame('awaiting_dispatch', $row->status);
         $this->assertSame('nouveau@etudiants.test', $row->email);
@@ -381,7 +381,7 @@ class AnnonceMailPulseTest extends TestCase
             });
         $result = (new SynchroniserCourrielsAnnonce($reader))->synchroniser(2);
         $this->assertSame(0, $result['echecs']);
-        $this->assertSame(0, $result['lues']);
+        $this->assertSame(1, $result['lues']);
         $row = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
         $this->assertSame('delivered', $row->status);
         $this->assertNull($row->provider_failed_at);
