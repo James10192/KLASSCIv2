@@ -557,6 +557,7 @@ jobs:
             tests/Feature/Resultat/StudentDocumentRouteAvailabilityTest.php \
             tests/Feature/Notes/NotesExcelExportTest.php \
             tests/Feature/LMD/SaisieGroupeeNotesLmdTest.php \
+            tests/Feature/Notes/LmdNotesFiltersAjaxTest.php \
             tests/Feature/Mobile/ScolariteBottomNavTest.php
           do
             php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
