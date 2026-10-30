@@ -138,7 +138,13 @@ final class SynchroniserCourrielsAnnonce
                     $bilan['bloque'] = 'budget_epuise';
                     break;
                 }
-                $reference = 'klassci-annonce-'.$cible->annonce_id.'-courriel-'.$cible->id;
+                $reference = ReferenceCourrielAnnonce::pourRapprochement($cible, $tenant);
+                if ($reference === null) {
+                    // A previously pinned reference from another school is
+                    // never queried with a different tenant or re-submitted.
+                    $bilan['erreurs']++;
+                    continue;
+                }
                 $etat = $this->statuts->lireParReference($reference, $tenant);
                 if (is_string($etat)) {
                     if ($etat === 'introuvable') {
