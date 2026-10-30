@@ -244,7 +244,7 @@ class AnnonceMailPulseTest extends TestCase
             'status' => 'submitted', 'submitted_at' => now(),
             'mailpulse_message_id' => 'mp-standard', 'created_at' => now(), 'updated_at' => now(),
         ]);
-        $this->withoutMiddleware(\\App\\Http\\Middleware\\CheckInstalled::class);
+        $this->withoutMiddleware(\App\Http\Middleware\CheckInstalled::class);
         config([
             'app.tenant_code' => 'esbtp-abidjan',
             'services.mailpulse.external_organization_id' => 'org-mailpulse-esbtp',
