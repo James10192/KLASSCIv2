@@ -48,12 +48,14 @@ final class SynchroniserCourrielsAnnonce
                 $bilan['erreurs']++;
                 continue;
             }
-            $bilan['lues']++;
             $status = $etat['status'];
             // Le rapprochement borne par id, message et etat ne peut pas
             // effacer un resultat concurrent venant d'un webhook.
             $ligne = DB::table('esbtp_annonce_email_deliveries')
                 ->where('id', $cible->id)
+                ->where('annonce_id', $cible->annonce_id)
+                ->where('email', $cible->email)
+                ->where('mailpulse_request_id', $cible->mailpulse_request_id)
                 ->where('mailpulse_message_id', $cible->mailpulse_message_id)
                 ->whereIn('status', ['submitted', 'awaiting_dispatch', 'delayed']);
             $correction = ['updated_at' => now()];
@@ -61,27 +63,38 @@ final class SynchroniserCourrielsAnnonce
             $dateRemise = $this->normaliserDate($etat['delivered_at'] ?? null);
             if (in_array($status, ['delivered', 'read'], true) && $dateRemise !== null) {
                 $correction += ['status' => 'delivered', 'provider_delivered_at' => $dateRemise];
-                $bilan['delivrees']++;
             } elseif (in_array($status, ['failed', 'cancelled', 'template_required'], true)) {
                 $correction += [
                     'status' => 'failed', 'error_code' => mb_substr($etat['error_code'] ?: $status, 0, 64),
                     'provider_failed_at' => now(),
                 ];
-                $bilan['echecs']++;
             } elseif (!empty($etat['delivery_delays'])) {
                 $horodatage = $etat['delivery_delays'][0]['occurred_at'] ?? null;
                 $correction += [
                     'status' => 'delayed',
                     'provider_delayed_at' => $this->normaliserDate($horodatage) ?? now(),
                 ];
-                $bilan['retardees']++;
             } else {
                 if ($status === 'sent' && $cible->status === 'awaiting_dispatch') {
                     $correction += ['status' => 'submitted', 'submitted_at' => now()];
                 }
+            }
+            // Count only outcomes actually committed: a newer callback or an
+            // administrative recipient/reference edit may win during the GET.
+            // Never claim a delivery when the compare-and-set affected 0 rows.
+            if ($ligne->update($correction) !== 1) {
+                continue;
+            }
+            $bilan['lues']++;
+            if (($correction['status'] ?? null) === 'delivered') {
+                $bilan['delivrees']++;
+            } elseif (($correction['status'] ?? null) === 'failed') {
+                $bilan['echecs']++;
+            } elseif (($correction['status'] ?? null) === 'delayed') {
+                $bilan['retardees']++;
+            } else {
                 $bilan['en_transit']++;
             }
-            $ligne->update($correction);
         }
 
         // A crashed worker can strand 'processing' forever. Its outcome is
@@ -183,6 +196,7 @@ final class SynchroniserCourrielsAnnonce
                 $ecrit = DB::table('esbtp_annonce_email_deliveries')
                     ->where('id', $cible->id)
                     ->where('annonce_id', $cible->annonce_id)
+                    ->where('email', $cible->email)
                     ->whereNull('mailpulse_message_id')
                     // A key altered while the network GET was in flight must
                     // invalidate the stale response, not bind a foreign ID.
