@@ -184,6 +184,9 @@ final class SynchroniserCourrielsAnnonce
                     ->where('id', $cible->id)
                     ->where('annonce_id', $cible->annonce_id)
                     ->whereNull('mailpulse_message_id')
+                    // A key altered while the network GET was in flight must
+                    // invalidate the stale response, not bind a foreign ID.
+                    ->where('mailpulse_request_id', $cible->mailpulse_request_id)
                     ->where('status', 'awaiting_dispatch')
                     ->update($correction);
                 if ($ecrit === 1) {
