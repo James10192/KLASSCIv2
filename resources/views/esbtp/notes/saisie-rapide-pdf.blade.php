@@ -183,6 +183,22 @@
         .nm-notes-table thead { display: table-header-group; }
         .nm-notes-table tbody tr { page-break-inside: avoid; }
         .nm-notes-table--multi .nm-note-empty { min-width: 24px; }
+        /* Le paysage offre davantage de largeur mais moins de hauteur. On
+           récupère de l'espace dans les marges intérieures, jamais en diminuant
+           les polices : bannière, KPI, lignes et synthèse restent lisibles. */
+        @if($plusieursNotes && $orientationFeuille === 'landscape')
+        .pdf-banner-logo-cell { padding: 7px 8px; }
+        .pdf-banner-info-cell { padding: 7px 12px; }
+        .pdf-meta-bar { margin-bottom: 7px; }
+        .pdf-meta-bar td { padding: 4px 12px 5px; }
+        .pdf-filters-recap { padding: 5px 9px; margin-bottom: 7px; }
+        .nm-kpis { margin: 5px 0 7px; }
+        .nm-kpi { padding: 5px 8px; }
+        .nm-notes-table thead th { padding: 4px 3px; }
+        .nm-notes-table tbody td { padding: 4px 3px; }
+        .nm-summary { margin-top: 6px; }
+        @endif
+
         .nm-notes-table--multi .nm-matricule { overflow-wrap: break-word; word-wrap: break-word; }
         .nm-notes-table tbody td {
             padding: 5px 5px;
