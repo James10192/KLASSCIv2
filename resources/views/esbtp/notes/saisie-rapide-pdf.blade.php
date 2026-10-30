@@ -111,7 +111,7 @@
 @endphp
 
 <x-pdf-document
-    :title="$blank ? 'Feuille de saisie des notes' : 'Feuille de saisie — ' . ($titreEval ?: 'Évaluation')"
+    :title="$ficheClasseVierge ? 'Liste de notation — fiche vierge' : ($blank ? 'Feuille de saisie des notes' : 'Feuille de saisie — ' . ($titreEval ?: 'Évaluation'))"
     :subtitle="$subtitle ?: null"
     :filters="$filters"
     :orientation="$orientationFeuille">
@@ -438,7 +438,7 @@
 
     {{-- ── Tableau étudiants/notes ─────────────────────────────── --}}
     @if($etudiants->count() > 0)
-        @if($plusieursNotes)
+        @if($plusieursNotes && ! $ficheClasseVierge)
             <div style="font-size:8.5px; margin: 5px 0; color: {{ $cMuted }};">
                 Correspondance des évaluations :
                 @for($i = 1; $i <= $colonnesNotes; $i++)
