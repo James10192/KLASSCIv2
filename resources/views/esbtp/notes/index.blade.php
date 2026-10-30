@@ -24,7 +24,7 @@
     .nm-blank-config-field label { color: #334155; font-size: .78rem; font-weight: 650; }
     .nm-blank-config-field .au-select { width: 100%; }
     .nm-blank-config-hint { margin: .65rem 0 0; min-height: 1.2em; color: #475569; font-size: .78rem; }
-    @media(max-width: 580px) { .nm-blank-config-fields { grid-template-columns: minmax(0, 1fr); } .nm-blank-config { margin: .85rem; } }
+    @@media(max-width: 580px) { .nm-blank-config-fields { grid-template-columns: minmax(0, 1fr); } .nm-blank-config { margin: .85rem; } }
 </style>
 @endpush
 
@@ -1131,8 +1131,10 @@ function nmBlankCurrentOptions() {
         }
         if (select.value !== String(chosen)) {
             select.value = String(chosen);
+            // Met à jour le texte du picker Alpine après une réduction des options.
+            // Émettre seulement en cas de changement évite une boucle de change.
+            select.dispatchEvent(new Event('change', { bubbles: false }));
         }
-        select.dispatchEvent(new Event('change', { bubbles: false }));
     }
     const hint = document.getElementById('nm-blank-config-hint');
     if (hint) hint.textContent = 'A4 ' + (orientation === 'portrait' ? 'portrait' : 'paysage') +
