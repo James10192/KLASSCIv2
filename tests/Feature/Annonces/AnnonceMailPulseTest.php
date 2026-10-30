@@ -118,7 +118,7 @@ class AnnonceMailPulseTest extends TestCase
                 $this->assertSame('email', $charge['channel']);
                 $this->assertSame('etudiant@exemple.ci', $charge['recipient']['value']);
                 $this->assertStringContainsString('Annonce test', $charge['content']['text']);
-                $this->assertSame("klassci-annonce-{$annonce->id}-courriel-{$id}", $cle);
+                $this->assertSame("klassci-v2-presentation-annonce-{$annonce->id}-courriel-{$id}", $cle);
                 $this->assertSame($cle, $charge['metadata']['external_reference']);
                 return true;
             })->andReturn(new MailPulseResult(
@@ -425,7 +425,7 @@ class AnnonceMailPulseTest extends TestCase
         $ligne = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
         $this->assertSame('awaiting_dispatch', $ligne->status);
         $this->assertSame('submission_outcome_unknown', $ligne->error_code);
-        $this->assertSame('reference-incertaine', $ligne->mailpulse_request_id);
+        $this->assertSame("klassci-v2-presentation-annonce-{$annonce->id}-courriel-{$id}", $ligne->mailpulse_request_id);
         $this->assertNull($ligne->provider_failed_at);
         $this->assertNull($ligne->submitted_at);
         $this->assertSame(1, (int) $ligne->attempts);
@@ -577,6 +577,76 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertSame('missing_api_key', $ligne->error_code);
         $this->assertNull($ligne->provider_failed_at);
         $this->assertNull($ligne->submitted_at);
+    }
+
+    public function test_references_versionnees_sont_isolees_par_ecole_et_legacy_reste_identique(): void
+    {
+        $ligne = (object) ['annonce_id' => 12, 'id' => 581, 'attempts' => 0, 'mailpulse_request_id' => null];
+        $abidjan = \App\Services\Annonces\ReferenceCourrielAnnonce::pourEnvoi($ligne, 'esbtp-abidjan');
+        $yakro = \App\Services\Annonces\ReferenceCourrielAnnonce::pourEnvoi($ligne, 'esbtp-yakro');
+        $this->assertSame('klassci-v2-esbtp-abidjan-annonce-12-courriel-581', $abidjan);
+        $this->assertSame('klassci-v2-esbtp-yakro-annonce-12-courriel-581', $yakro);
+        $this->assertNotSame($abidjan, $yakro);
+        $this->assertSame('klassci-annonce-12-courriel-581',
+            \App\Services\Annonces\ReferenceCourrielAnnonce::pourEnvoi((object) ['annonce_id' => 12, 'id' => 581, 'attempts' => 1, 'mailpulse_request_id' => null], 'esbtp-abidjan'));
+        $ligne->mailpulse_request_id = $abidjan;
+        $ligne->attempts = 3;
+        $this->assertSame($abidjan, \App\Services\Annonces\ReferenceCourrielAnnonce::pourEnvoi($ligne, 'esbtp-abidjan'));
+        $this->assertNull(\App\Services\Annonces\ReferenceCourrielAnnonce::pourEnvoi($ligne, 'esbtp-yakro'));
+        $this->assertSame($abidjan, \App\Services\Annonces\ReferenceCourrielAnnonce::pourRapprochement($ligne, 'esbtp-abidjan'));
+        $this->assertNull(\App\Services\Annonces\ReferenceCourrielAnnonce::pourRapprochement($ligne, 'esbtp-yakro'));
+    }
+
+    public function test_ref_v2_est_stockee_avant_http_et_reste_stable_apres_une_reponse_incertaine(): void
+    {
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'v2@etudiants.test',
+            'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $reference = "klassci-v2-presentation-annonce-{$annonce->id}-courriel-{$id}";
+        $client = Mockery::mock(MailPulseClient::class);
+        $client->shouldReceive('getSetting')->twice()->andReturn('');
+        $client->shouldReceive('sendEmailMessage')->once()
+            ->withArgs(function ($charge, $key) use ($id, $reference) {
+                $this->assertSame($reference, $key);
+                $this->assertSame($reference, $charge['metadata']['external_reference']);
+                $this->assertSame($reference,
+                    DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('mailpulse_request_id'));
+                return true;
+            })->andReturn(new MailPulseResult(false, 'connection_failed', null, 'external-request-id'));
+        (new EnvoyerAnnonceCourriel($id))->handle($client, new CadenceMailPulse);
+        (new EnvoyerAnnonceCourriel($id))->handle($client, new CadenceMailPulse);
+        $row = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
+        $this->assertSame('awaiting_dispatch', $row->status);
+        $this->assertSame($reference, $row->mailpulse_request_id);
+        $this->assertSame(1, (int) $row->attempts);
+    }
+
+    public function test_le_rapprochement_v2_consulte_la_cle_originale_sans_post(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        config(['app.tenant_code' => 'esbtp-abidjan']);
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'v2@etudiants.test',
+            'status' => 'awaiting_dispatch', 'error_code' => 'submission_outcome_unknown',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $reference = "klassci-v2-esbtp-abidjan-annonce-{$annonce->id}-courriel-{$id}";
+        DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->update(['mailpulse_request_id' => $reference]);
+        $reader = Mockery::mock(MailPulseStatutsMessages::class);
+        $reader->shouldReceive('lireParReference')->once()
+            ->with($reference, 'esbtp-abidjan')->andReturn([
+                'id' => 'mp-v2', 'recipient' => 'v2@etudiants.test',
+                'status' => 'delivered', 'delivered_at' => '2026-10-30T01:00:00+00:00',
+                'error_code' => null, 'delivery_delays' => [],
+            ]);
+        $outcome = (new SynchroniserCourrielsAnnonce($reader))->synchroniser(2);
+        $this->assertSame(1, $outcome['delivrees']);
+        $this->assertSame('delivered', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
+        $this->assertSame($reference, DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('mailpulse_request_id'));
+        Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
     }
 
     public function test_epuisement_queue_ne_devient_pas_faussement_un_echec_fournisseur(): void
