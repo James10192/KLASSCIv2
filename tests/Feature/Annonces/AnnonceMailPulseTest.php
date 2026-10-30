@@ -206,6 +206,7 @@ class AnnonceMailPulseTest extends TestCase
             'annonce_id' => $annonce->id, 'email' => 'test@etudiants.test',
             'status' => 'submitted', 'submitted_at' => now(),
             'mailpulse_message_id' => 'mp-webhook-target',
+            'error_code' => 'submission_outcome_unknown',
             'created_at' => now(), 'updated_at' => now(),
         ]);
         $this->withoutMiddleware(\App\Http\Middleware\CheckInstalled::class);
@@ -236,6 +237,7 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertSame('delivered', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
         $this->assertSame($horodatage, DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('provider_delivered_at'));
         $this->assertNull(DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('provider_failed_at'));
+        $this->assertNull(DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('error_code'));
     }
     public function test_callback_standard_mailpulse_v1_controle_ecole_et_message_et_replay(): void
     {
@@ -421,6 +423,7 @@ class AnnonceMailPulseTest extends TestCase
                 'annonce_id' => $annonce->id, 'email' => "{$type}@etudiants.test",
                 'status' => 'submitted', 'submitted_at' => now(),
                 'mailpulse_message_id' => "mailpulse-{$type}",
+                'error_code' => 'submission_outcome_unknown',
                 'created_at' => now(), 'updated_at' => now(),
             ]);
         }
@@ -448,6 +451,8 @@ class AnnonceMailPulseTest extends TestCase
         }
         $this->assertSame('email_bounced',
             DB::table('esbtp_annonce_email_deliveries')->where('id', $ids['failed'])->value('error_code'));
+        $this->assertNull(DB::table('esbtp_annonce_email_deliveries')->where('id', $ids['delivered'])->value('error_code'));
+        $this->assertNull(DB::table('esbtp_annonce_email_deliveries')->where('id', $ids['delayed'])->value('error_code'));
         Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
     }
 
