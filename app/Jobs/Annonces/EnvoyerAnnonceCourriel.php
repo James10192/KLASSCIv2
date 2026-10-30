@@ -87,6 +87,9 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
         $pris = DB::table('esbtp_annonce_email_deliveries')
             ->where('id', $this->deliveryId)
             ->whereIn('status', ['pending', 'retrying'])
+            ->where('annonce_id', $ligne->annonce_id)
+            ->where('email', $ligne->email)
+            ->whereNull('mailpulse_message_id')
             ->whereNull('submitted_at')
             ->update([
                 'status' => 'processing', 'processing_at' => now(),
@@ -137,6 +140,9 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
             $frontiere = DB::table('esbtp_annonce_email_deliveries')
                 ->where('id', $this->deliveryId)
                 ->where('status', 'processing')
+                ->where('annonce_id', $ligne->annonce_id)
+                ->where('email', $ligne->email)
+                ->where('mailpulse_request_id', $reference)
                 ->whereNull('submitted_at')
                 ->whereNull('mailpulse_message_id')
                 ->update([
