@@ -122,18 +122,20 @@ class LmdNotesFiltersAjaxTest extends TestCase
     public function test_la_vue_utilise_des_selects_premium_et_ajax_sans_reload(): void
     {
         $view = file_get_contents(resource_path('views/esbtp/lmd/notes/index.blade.php'));
+        $filters = file_get_contents(resource_path('views/esbtp/lmd/notes/partials/_filters.blade.php'));
+        $script = file_get_contents(resource_path('views/esbtp/lmd/notes/partials/_filters-script.blade.php'));
 
         foreach (['filiere_id', 'niveau_id', 'statut', 'capacite', 'annee_universitaire_id'] as $name) {
-            $this->assertStringContainsString('name="'.$name.'"', $view);
+            $this->assertStringContainsString('name="'.$name.'"', $filters);
         }
         foreach (['ueSelect', 'ecueSelect', 'periodeFilter', 'evalType', 'evalPeriode'] as $id) {
             $this->assertStringContainsString('id="'.$id.'"', $view);
         }
         $this->assertStringNotContainsString('<select', $view);
-        $this->assertStringContainsString('new AbortController()', $view);
-        $this->assertStringContainsString('history.replaceState', $view);
-        $this->assertStringContainsString('restoreCommitted()', $view);
-        $this->assertStringContainsString('lmdAcademicYearId = newYear', $view);
+        $this->assertStringContainsString('new AbortController()', $script);
+        $this->assertStringContainsString('history.replaceState', $script);
+        $this->assertStringContainsString('restoreCommitted()', $script);
+        $this->assertStringContainsString('lmdAcademicYearId = newYear', $script);
         $this->assertStringNotContainsString('location.reload(', $view);
     }
 }

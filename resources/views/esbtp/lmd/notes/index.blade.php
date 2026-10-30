@@ -449,34 +449,7 @@
     .ln-eval-submit-btn:hover { background: #033a8e; }
     .ln-eval-submit-btn:disabled { opacity: .6; cursor: not-allowed; }
 
-    /* Filtres BTS/LMD : grille premium responsive, sans rechargement. */
-    .ln-filter-panel { margin: 0 0 1.4rem; padding: 1.2rem 1.35rem; background: #fff; border: 1px solid #e8ecf1; border-radius: 14px; box-shadow: 0 2px 12px rgba(15,23,42,.035); }
-    .ln-filter-heading { display: flex; align-items: center; gap: .55rem; color: #1e293b; font-size: .94rem; font-weight: 700; margin-bottom: .9rem; }
-    .ln-filter-heading i { color: #0453cb; }
-    .ln-filter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .85rem; }
-    .ln-filter-field { display: flex; flex-direction: column; min-width: 0; gap: .35rem; }
-    .ln-filter-field label { color: #475569; font-size: .75rem; font-weight: 700; }
-    .ln-filter-field .au-select, .ln-eval-field .au-select { display: flex; width: 100%; min-width: 0; }
-    .ln-filter-search { width: 100%; min-height: 44px; border: 1px solid #e2e8f0; border-radius: 10px; padding: .55rem .85rem; font-size: .86rem; color: #1e293b; }
-    .ln-filter-search:focus { outline: 0; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.1); }
-    .ln-filter-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem; margin-top: 1rem; }
-    .ln-filter-btn { border: 1px solid #0453cb; background: #0453cb; color: #fff; padding: .55rem 1rem; border-radius: 9px; font-size: .82rem; font-weight: 700; }
-    .ln-filter-btn--reset { border-color: #e2e8f0; background: #fff; color: #475569; }
-    .ln-filter-btn:focus-visible { outline: 3px solid rgba(4,83,203,.2); outline-offset: 2px; }
-    .ln-filter-count { margin-left: auto; color: #64748b; font-size: .82rem; }
-    .ln-filter-feedback { margin-top: .55rem; color: #b91c1c; font-size: .8rem; min-height: 1em; }
-    #lmd-classes-results.ln-results-loading { opacity: .45; pointer-events: none; }
-    .ln-modal-toolbar .au-select { flex: 1 1 195px; min-width: 0; }
-    .ln-modal-toolbar .au-select-trigger { min-height: 42px; }
-    .ln-eval-field .au-select-trigger { min-height: 40px; }
-    @media (max-width: 1000px) { .ln-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    @media (max-width: 600px) {
-        .ln-filter-panel { padding: 1rem; }
-        .ln-filter-grid { grid-template-columns: minmax(0, 1fr); }
-        .ln-filter-actions { align-items: stretch; }
-        .ln-filter-count { margin-left: 0; width: 100%; }
-    }
-
+    @include('esbtp.lmd.notes.partials._filters-styles')
     /* Modal slide animation */
     .ln-modal.fade .modal-dialog { transform: translateY(20px) scale(.98); transition: transform .25s ease-out, opacity .2s; }
     .ln-modal.show .modal-dialog { transform: translateY(0) scale(1); }
@@ -559,59 +532,7 @@
         @endif
     @endforeach
 
-    {{-- Filtres partages avec les notes BTS, appliques en AJAX sans recharger la page. --}}
-    <section class="ln-filter-panel" aria-label="Filtres des notes LMD">
-        <div class="ln-filter-heading"><i class="fas fa-filter"></i>Filtres de recherche</div>
-        <form method="GET" action="{{ route('esbtp.lmd.notes.index') }}" id="lmdYearForm">
-            <div class="ln-filter-grid">
-                <div class="ln-filter-field">
-                    <label for="lmd_annee_universitaire_id">Année universitaire</label>
-                    <x-au-select name="annee_universitaire_id" id="lmd_annee_universitaire_id" label="Année universitaire"
-                        :value="$anneeSelectionnee?->id" icon="fa-calendar" :searchable="false" :placeholder-is-first-option="false"
-                        :options="$anneesUniversitaires->mapWithKeys(fn($a) => [$a->id => $a->name.($a->is_current ? ' · courante' : '')])->toArray()" />
-                </div>
-                <div class="ln-filter-field">
-                    <label for="lmd_search">Recherche</label>
-                    <input type="search" id="lmd_search" name="search" class="ln-filter-search" maxlength="120"
-                        value="{{ request('search') }}" placeholder="Classe, code, filière, niveau…" autocomplete="off">
-                </div>
-                <div class="ln-filter-field">
-                    <label for="lmd_filiere_id">Filière</label>
-                    <x-au-select id="lmd_filiere_id" name="filiere_id" label="Filière" icon="fa-graduation-cap"
-                        :value="request('filiere_id', '')" placeholder="Toutes les filières"
-                        :searchable="$filieres->count() > 8"
-                        :options="$filieres->mapWithKeys(fn($f) => [$f->id => $f->name])->toArray()" />
-                </div>
-                <div class="ln-filter-field">
-                    <label for="lmd_niveau_id">Niveau</label>
-                    <x-au-select id="lmd_niveau_id" name="niveau_id" label="Niveau" icon="fa-layer-group"
-                        :value="request('niveau_id', '')" placeholder="Tous les niveaux"
-                        :searchable="$niveaux->count() > 8"
-                        :options="$niveaux->mapWithKeys(fn($n) => [$n->id => $n->name])->toArray()" />
-                </div>
-                <div class="ln-filter-field">
-                    <label for="lmd_statut">Statut</label>
-                    <x-au-select id="lmd_statut" name="statut" label="Statut" icon="fa-circle-check"
-                        :value="request('statut', '')" placeholder="Tous les statuts"
-                        :options="['active' => 'Actives', 'inactive' => 'Inactives']" />
-                </div>
-                <div class="ln-filter-field">
-                    <label for="lmd_capacite">Capacité</label>
-                    <x-au-select id="lmd_capacite" name="capacite" label="Capacité" icon="fa-users"
-                        :value="request('capacite', '')" placeholder="Toutes les capacités"
-                        :options="['disponible' => 'Disponibles', 'pleine' => 'Pleines']" />
-                </div>
-            </div>
-            <div class="ln-filter-actions">
-                <button type="submit" class="ln-filter-btn"><i class="fas fa-search me-1"></i>Filtrer</button>
-                <button type="button" class="ln-filter-btn ln-filter-btn--reset" id="lmd-reset-filters">
-                    <i class="fas fa-times me-1"></i>Réinitialiser
-                </button>
-                <span class="ln-filter-count"><i class="fas fa-list me-1"></i><strong id="lmd-filter-count">{{ $totalClasses }}</strong> classe(s)</span>
-            </div>
-            <div id="lmd-year-feedback" class="ln-filter-feedback" role="status" aria-live="polite"></div>
-        </form>
-    </section>
+    @include('esbtp.lmd.notes.partials._filters')
 
     {{-- ══ Classes grid ══ --}}
     <div id="lmd-classes-results">
@@ -675,7 +596,7 @@
                     <x-au-select id="ueSelect" class="ln-modal-picker" label="Unité d’enseignement" placeholder="— Choisir une UE —"
                         :searchable="true" :options="[]" />
                     <x-au-select id="ecueSelect" class="ln-modal-picker" label="Élément constitutif d’UE" placeholder="— Choisir un ECUE —"
-                        :searchable="true" :options="[]" :disabled="true" />
+                        :searchable="true" :options="[]" />
                     <x-au-select id="periodeFilter" class="ln-modal-picker" label="Période des notes" :value="'all'"
                         :placeholder-is-first-option="false" :options="['all' => 'Toutes les périodes']" />
                     <button type="button" id="createEvalBtn" class="ln-modal-add-btn" style="display:none;"
@@ -870,156 +791,7 @@ const lmdNotesQueueKey = 'klassci:lmd-notes:offline-queue:v1';
 let offlineNoteQueue = loadOfflineNoteQueue();
 let isReplayingOfflineQueue = false;
 
-document.addEventListener('DOMContentLoaded', function() {
-    const yearForm = document.getElementById('lmdYearForm');
-    const yearSelect = document.getElementById('lmd_annee_universitaire_id');
-    const feedback = document.getElementById('lmd-year-feedback');
-    const results = document.getElementById('lmd-classes-results');
-    const reset = document.getElementById('lmd-reset-filters');
-    if (!yearForm || !yearSelect || !results) return;
-
-    let requestSequence = 0;
-    let inflight = null;
-    let restoring = false;
-    let searchTimer = null;
-    const names = ['annee_universitaire_id', 'search', 'filiere_id', 'niveau_id', 'statut', 'capacite'];
-    const values = () => Object.fromEntries(names.map(name => [name, String(yearForm.elements.namedItem(name)?.value ?? '')]));
-    let committed = values();
-
-    function restoreCommitted() {
-        restoring = true;
-        names.forEach(name => {
-            const element = yearForm.elements.namedItem(name);
-            if (!element) return;
-            element.value = committed[name] ?? '';
-            if (element.tagName === 'SELECT') {
-                element.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-        });
-        restoring = false;
-    }
-
-    async function refreshClasses() {
-        if (restoring) return;
-        const requested = values();
-        const newYear = Number(requested.annee_universitaire_id) || null;
-        // Never discard a live grade sheet while changing academic context.
-        if (newYear !== lmdAcademicYearId && document.getElementById('modalNotes')?.classList.contains('show')) {
-            feedback.textContent = 'Fermez la saisie des notes avant de changer d’année.';
-            restoreCommitted();
-            return;
-        }
-        inflight?.abort();
-        const controller = new AbortController();
-        inflight = controller;
-        const sequence = ++requestSequence;
-        feedback.textContent = 'Actualisation des classes…';
-        yearForm.setAttribute('aria-busy', 'true');
-        results.classList.add('ln-results-loading');
-
-        const url = new URL(yearForm.action, window.location.origin);
-        for (const [name, value] of Object.entries(requested)) {
-            if (value !== '') url.searchParams.set(name, value);
-        }
-        url.searchParams.set('classes_ajax', '1');
-
-        try {
-            const response = await fetch(url.toString(), {
-                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                credentials: 'same-origin',
-                signal: controller.signal,
-            });
-            if (!response.ok) throw new Error('HTTP ' + response.status);
-            const data = await response.json();
-            if (!data.success || typeof data.html !== 'string') throw new Error('Réponse de filtrage invalide.');
-            if (sequence !== requestSequence) return;
-
-            const yearChanged = newYear !== lmdAcademicYearId;
-            if (yearChanged) {
-                lmdAcademicYearId = newYear;
-                anneeSuivi = newYear;
-                currentClasseId = null;
-                currentClasseData = null;
-                currentMatiereId = null;
-                currentMatiereName = '';
-                evaluationsData = {};
-                notesData = {};
-                evalParamsCache = {};
-                classeSemestres = [];
-                document.querySelectorAll('#evalCreateForm input[name="annee_universitaire_id"]').forEach(
-                    input => { input.value = String(newYear ?? ''); }
-                );
-                const context = document.getElementById('lmd-year-context');
-                if (context) context.textContent = 'Gestion des notes par classe — ' + data.annee_name;
-                const heroYear = document.querySelector('.ln-hero-year');
-                if (heroYear) {
-                    heroYear.textContent = data.annee_name;
-                }
-                window.dispatchEvent(new CustomEvent('couverture:contexte', {
-                    detail: { classe_id: null, annee_universitaire_id: newYear, periode: 'semestre1' }
-                }));
-            }
-
-            results.innerHTML = data.html;
-            document.getElementById('lmd-filter-count').textContent = data.total_classes;
-            const kpis = document.querySelectorAll('.ln-hero-kpis .ln-kpi-value');
-            if (kpis.length === 3) {
-                kpis[0].textContent = data.total_classes;
-                kpis[1].textContent = data.total_etudiants;
-                kpis[2].textContent = data.total_evaluations;
-            }
-            committed = requested;
-            feedback.textContent = '';
-            const currentUrl = new URL(window.location.href);
-            names.forEach(name => {
-                if (requested[name] === '') currentUrl.searchParams.delete(name);
-                else currentUrl.searchParams.set(name, requested[name]);
-            });
-            currentUrl.searchParams.delete('classe');
-            currentUrl.searchParams.delete('ecue');
-            history.replaceState(history.state, '', currentUrl.toString());
-        } catch (error) {
-            if (sequence !== requestSequence || error.name === 'AbortError') return;
-            console.error('Filtres des notes LMD :', error);
-            restoreCommitted();
-            feedback.textContent = 'Impossible de charger les classes. Vos filtres précédents sont conservés.';
-        } finally {
-            if (sequence === requestSequence) {
-                yearForm.removeAttribute('aria-busy');
-                results.classList.remove('ln-results-loading');
-                inflight = null;
-            }
-        }
-    }
-
-    yearForm.addEventListener('submit', event => {
-        event.preventDefault();
-        clearTimeout(searchTimer);
-        refreshClasses();
-    });
-    yearForm.querySelectorAll('select').forEach(select => select.addEventListener('change', refreshClasses));
-    const search = yearForm.querySelector('[name="search"]');
-    search?.addEventListener('input', () => {
-        clearTimeout(searchTimer);
-        searchTimer = setTimeout(refreshClasses, 300);
-    });
-    reset?.addEventListener('click', () => {
-        clearTimeout(searchTimer);
-        restoring = true;
-        // Ne pas utiliser form.reset() : les valeurs initiales peuvent venir
-        // de l'URL et etre deja filtrees. Reinitialiser explicitement.
-        names.filter(name => name !== 'annee_universitaire_id').forEach(name => {
-            const control = yearForm.elements.namedItem(name);
-            if (control) control.value = '';
-        });
-        yearSelect.value = String(lmdAcademicYearId ?? '');
-        yearForm.querySelectorAll('select').forEach(select => {
-            select.dispatchEvent(new Event('change', { bubbles: true }));
-        });
-        restoring = false;
-        refreshClasses();
-    });
-});
+@include('esbtp.lmd.notes.partials._filters-script')
 
 document.addEventListener('DOMContentLoaded', function() {
     notesModal = new bootstrap.Modal(document.getElementById('modalNotes'));

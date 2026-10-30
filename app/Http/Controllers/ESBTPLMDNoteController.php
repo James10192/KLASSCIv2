@@ -42,6 +42,64 @@ class ESBTPLMDNoteController extends Controller
         $anneeId = $anneeSelectionnee?->id;
         $anneesUniversitaires = ESBTPAnneeUniversitaire::orderByDesc('id')->get();
 
+        $classes = $this->classesFiltrees($request, $anneeId);
+
+        // Nombre d'évaluations par classe (uniquement celles liées à des ECUEs LMD)
+        $evalCounts = ESBTPEvaluation::whereHas('classe', fn ($q) => $q->where('systeme_academique', 'LMD'))
+            ->whereIn('classe_id', $classes->pluck('id'))
+            ->whereHas('matiere', fn ($q) => $q->whereNotNull('unite_enseignement_id'))
+            ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED)
+            ->when($anneeId, fn ($q, $id) => $q->where('annee_universitaire_id', $id))
+            ->select('classe_id')
+            ->selectRaw('COUNT(*) as total')
+            ->groupBy('classe_id')
+            ->pluck('total', 'classe_id');
+
+        // La règle de la requalification elle-même : le bandeau ne s'affiche qu'à qui peut l'utiliser.
+        $peutRequalifier = \App\Domain\Notes\RequalificationEnExamen::refusPour($request->user()) === null;
+
+        // La moyenne affichée dans la grille suit la règle du bulletin LMD :
+        // pondération contrôle continu / examen si l'école l'applique, sinon null.
+        $ponderation = app(\App\Services\LMD\LmdAcademicRuleProfile::class)->ponderationGravee();
+
+        if ($request->ajax() && $request->boolean('classes_ajax')) {
+            return response()->json([
+                'success' => true,
+                'html' => view('esbtp.lmd.notes.partials._classes', [
+                    'classes' => $classes,
+                    'evalCounts' => $evalCounts,
+                    'anneeSelectionnee' => $anneeSelectionnee,
+                    'totalClasses' => $classes->count(),
+                ])->render(),
+                'annee_name' => $anneeSelectionnee?->name ?? 'Aucune année',
+                'total_classes' => $classes->count(),
+                'total_etudiants' => $classes->sum('etudiants_count'),
+                'total_evaluations' => $evalCounts->sum(),
+            ]);
+        }
+
+        $filieres = ESBTPFiliere::orderBy('name')->get();
+        $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
+
+        return view('esbtp.lmd.notes.index', compact(
+            'filieres',
+            'niveaux',
+            'classes',
+            'evalCounts',
+            'anneeCourante',
+            'anneeSelectionnee',
+            'anneesUniversitaires',
+            'peutRequalifier',
+            'ponderation'
+        ));
+    }
+
+    /**
+     * Filtres LMD + visibilité enseignant : même périmètre pour HTML et AJAX.
+     * @return \Illuminate\Database\Eloquent\Collection<int, ESBTPClasse>
+     */
+    private function classesFiltrees(Request $request, ?int $anneeId): \Illuminate\Database\Eloquent\Collection
+    {
         $classesQuery = ESBTPClasse::where('systeme_academique', 'LMD')
             ->with(['filiere', 'niveau'])
             ->withCount([
@@ -109,54 +167,7 @@ class ESBTPLMDNoteController extends Controller
             })->values();
         }
 
-        // Nombre d'évaluations par classe (uniquement celles liées à des ECUEs LMD)
-        $evalCounts = ESBTPEvaluation::whereHas('classe', fn ($q) => $q->where('systeme_academique', 'LMD'))
-            ->whereIn('classe_id', $classes->pluck('id'))
-            ->whereHas('matiere', fn ($q) => $q->whereNotNull('unite_enseignement_id'))
-            ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED)
-            ->when($anneeId, fn ($q, $id) => $q->where('annee_universitaire_id', $id))
-            ->select('classe_id')
-            ->selectRaw('COUNT(*) as total')
-            ->groupBy('classe_id')
-            ->pluck('total', 'classe_id');
-
-        // La règle de la requalification elle-même : le bandeau ne s'affiche qu'à qui peut l'utiliser.
-        $peutRequalifier = \App\Domain\Notes\RequalificationEnExamen::refusPour($request->user()) === null;
-
-        // La moyenne affichée dans la grille suit la règle du bulletin LMD :
-        // pondération contrôle continu / examen si l'école l'applique, sinon null.
-        $ponderation = app(\App\Services\LMD\LmdAcademicRuleProfile::class)->ponderationGravee();
-
-        if ($request->ajax() && $request->boolean('classes_ajax')) {
-            return response()->json([
-                'success' => true,
-                'html' => view('esbtp.lmd.notes.partials._classes', [
-                    'classes' => $classes,
-                    'evalCounts' => $evalCounts,
-                    'anneeSelectionnee' => $anneeSelectionnee,
-                    'totalClasses' => $classes->count(),
-                ])->render(),
-                'annee_name' => $anneeSelectionnee?->name ?? 'Aucune année',
-                'total_classes' => $classes->count(),
-                'total_etudiants' => $classes->sum('etudiants_count'),
-                'total_evaluations' => $evalCounts->sum(),
-            ]);
-        }
-
-        $filieres = ESBTPFiliere::orderBy('name')->get();
-        $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
-
-        return view('esbtp.lmd.notes.index', compact(
-            'filieres',
-            'niveaux',
-            'classes',
-            'evalCounts',
-            'anneeCourante',
-            'anneeSelectionnee',
-            'anneesUniversitaires',
-            'peutRequalifier',
-            'ponderation'
-        ));
+        return $classes;
     }
 
     /**
