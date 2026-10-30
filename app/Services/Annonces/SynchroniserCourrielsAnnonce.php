@@ -182,6 +182,9 @@ final class SynchroniserCourrielsAnnonce
                     continue;
                 }
 
+                // Same semantics as GET-by-ID: the upstream read succeeded,
+                // even if a concurrent edit later invalidates the SQL write.
+                $bilan['lues']++;
                 $correction = ['mailpulse_message_id' => $etat['id'], 'updated_at' => now()];
                 $statut = (string) ($etat['status'] ?? '');
                 $dateRemise = $this->normaliserDate($etat['delivered_at'] ?? null);
@@ -208,7 +211,6 @@ final class SynchroniserCourrielsAnnonce
                     ->where('status', 'awaiting_dispatch')
                     ->update($correction);
                 if ($ecrit === 1) {
-                    $bilan['lues']++;
                     if (($correction['status'] ?? null) === 'delivered') {
                         $bilan['delivrees']++;
                     } elseif (($correction['status'] ?? null) === 'failed') {
