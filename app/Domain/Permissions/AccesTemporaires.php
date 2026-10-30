@@ -44,7 +44,12 @@ class AccesTemporaires
         'identity.',   // lues par hasAnyPermission
         'system.',     // configuration et acces de secours
         'paywall.',    // abonnement de l'instance
-        'module.',     // couche abonnement : un module non souscrit ne s'ouvre pas ainsi
+        'module.',     // modules par tenant : seules les exceptions explicites ci-dessous passent
+    ];
+
+    /** Acces individuel a la grille BTS, sans changer le role ni l'abonnement. */
+    public const MODULES_ACCORDABLES_INDIVIDUELLEMENT = [
+        'module.notes_evaluations.access',
     ];
 
     /**
@@ -170,6 +175,12 @@ class AccesTemporaires
         }
         foreach (self::NON_ACCORDABLES_PREFIXES as $prefixe) {
             if (str_starts_with($permission, $prefixe)) {
+                // La grille BTS est un droit individuel utile, mais les autres
+                // modules restent exclus (abonnement, caisse, support, etc.).
+                if ($prefixe === 'module.' && in_array($permission, self::MODULES_ACCORDABLES_INDIVIDUELLEMENT, true)) {
+                    continue;
+                }
+
                 return false;
             }
         }
