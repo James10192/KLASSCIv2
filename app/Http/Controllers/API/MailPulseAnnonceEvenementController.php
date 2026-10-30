@@ -93,12 +93,14 @@ class MailPulseAnnonceEvenementController extends Controller
             $mutable->update([
                 'status' => 'delivered',
                 'provider_delivered_at' => $dateEvenement,
+                'error_code' => null,
                 'updated_at' => now(),
             ]);
         } elseif ($valide['state'] === 'delivery_delayed') {
             $mutable->update([
                 'status' => 'delayed',
                 'provider_delayed_at' => $dateEvenement,
+                'error_code' => null,
                 'updated_at' => now(),
             ]);
         } else {
