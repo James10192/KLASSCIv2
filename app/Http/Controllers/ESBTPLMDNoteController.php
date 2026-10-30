@@ -38,8 +38,7 @@ class ESBTPLMDNoteController extends Controller
                     ->where('status', 'active')
                     ->where('workflow_step', 'etudiant_cree')
                     ->when($anneeId, fn ($q2, $id) => $q2->where('annee_universitaire_id', $id)),
-            ])
-;
+            ]);
 
         $user = $request->user();
         if ($user->can('identity.teach') && ! $user->can('identity.coordinate')) {
@@ -76,7 +75,9 @@ class ESBTPLMDNoteController extends Controller
         if ($request->filled('search')) {
             $terms = preg_split('/\\s+/u', trim((string) $request->input('search'))) ?: [];
             foreach ($terms as $term) {
-                if ($term === '') continue;
+                if ($term === '') {
+                    continue;
+                }
                 $escaped = addcslashes($term, '%_\\\\');
                 $classesQuery->where(fn ($q) => $q
                     ->where('name', 'like', "%{$escaped}%")
@@ -92,8 +93,11 @@ class ESBTPLMDNoteController extends Controller
             $classesQuery->where('niveau_etude_id', (int) $request->input('niveau_id'));
         }
         $statut = $request->input('statut', 'active');
-        if ($statut === 'active') $classesQuery->where('is_active', true);
-        if ($statut === 'inactive') $classesQuery->where('is_active', false);
+        if ($statut === 'active') {
+            $classesQuery->where('is_active', true);
+        } elseif ($statut === 'inactive') {
+            $classesQuery->where('is_active', false);
+        }
 
         $classes = $classesQuery->orderBy('name')->get();
         $capacite = $request->input('capacite');
