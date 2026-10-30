@@ -62,7 +62,7 @@ final class SynchroniserCourrielsAnnonce
 
             $dateRemise = $this->normaliserDate($etat['delivered_at'] ?? null);
             if (in_array($status, ['delivered', 'read'], true) && $dateRemise !== null) {
-                $correction += ['status' => 'delivered', 'provider_delivered_at' => $dateRemise];
+                $correction += ['status' => 'delivered', 'provider_delivered_at' => $dateRemise, 'error_code' => null];
             } elseif (in_array($status, ['failed', 'cancelled', 'template_required'], true)) {
                 $correction += [
                     'status' => 'failed', 'error_code' => mb_substr($etat['error_code'] ?: $status, 0, 64),
@@ -73,10 +73,11 @@ final class SynchroniserCourrielsAnnonce
                 $correction += [
                     'status' => 'delayed',
                     'provider_delayed_at' => $this->normaliserDate($horodatage) ?? now(),
+                    'error_code' => null,
                 ];
             } else {
                 if ($status === 'sent' && $cible->status === 'awaiting_dispatch') {
-                    $correction += ['status' => 'submitted', 'submitted_at' => now()];
+                    $correction += ['status' => 'submitted', 'submitted_at' => now(), 'error_code' => null];
                 }
             }
             // Count only outcomes actually committed: a newer callback or an
