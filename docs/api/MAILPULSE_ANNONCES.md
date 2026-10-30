@@ -36,8 +36,15 @@ La signature standard est `mailpulse-signature: v1=<HMAC_SHA256>` (plusieurs sig
 
 Lorsque la requête d'envoi a pu être acceptée mais que KLASSCI a perdu l'ID MailPulse, le synchroniseur exécute uniquement `GET /api/v1/messages/by-idempotency-key?key=<reference>&tenant=<code_etablissement>` avec la clé API de l'envoi initial. Le résultat doit correspondre à l'instance, la référence, l'adresse du destinataire et au message exact avant toute mise à jour SQL conditionnelle. Une réponse `404`, un problème réseau, une rotation de clé ou un autre destinataire laissent l'e-mail **en quarantaine**, sans nouvelle soumission. Le code `default` ne peut pas effectuer cette recherche. L'API est introduite par MailPulse PR #64 ; ne pas activer ce chemin avant déploiement de cette API.
 
+## Rapprochement concurrent et destinataire immuable
+
+Les deux voies de lecture (par `mailpulse_message_id` ou par clé d'idempotence) capturent le contexte du destinataire **avant** l'appel réseau. Leur mise à jour SQL utilise un `compare-and-set` exigeant la même annonce, la même adresse e-mail, la même référence d'envoi, le même message fournisseur et un statut non terminal. Une nouvelle valeur de destinataire/référence ou un webhook plus récent rend la lecture obsolète : **aucune livraison ni erreur n'est alors ajoutée aux compteurs**, et aucun second e-mail n'est envoyé.
+
+Le job vérifie également l'adresse et la référence figée juste avant le `POST` réseau. Si le destinataire a changé pendant la préparation du gabarit, il met la ligne en quarantaine sous le code `pre_submission_context_changed` sans appeler MailPulse. Cette quarantaine n'est **pas** un échec confirmé de Resend et ne rend pas l'e-mail éligible à une relance aveugle.
+
 ## Historique
 
+- 2026-10-30 — Protection contre les modifications de destinataire ou de référence pendant l'appel fournisseur : SQL CAS sur le contexte exact, compteurs uniquement après écriture effective ; arrêt avant HTTP et quarantaine immédiate si le contexte a changé. Aucune nouvelle réémission.
 - 2026-10-30 — Lecture seule d'une soumission inconnue par clé d'idempotence et contrôle de l'adresse (MailPulse #64), sans aucune relance.
 - 2026-10-30 — Réception des webhooks MailPulse standard v1 en plus du legacy, avec corrélation multi-tenant et adresse.
 - 2026-10-29 — **Breaking change par rapport à l'ébauche non activée** : `message_id` devient obligatoire et doit correspondre à la ligne `mailpulse_message_id`. Mise à jour SQL conditionnelle pour éviter le déclassement sur replay/race ; horodatage fournisseur facultatif.
