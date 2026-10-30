@@ -368,13 +368,13 @@
                 <span class="nm-kpi-sub">{{ $evaluation->classe->filiere->name ?? 'Filière' }}</span>
             </td>
             <td class="nm-kpi" style="width: 25%;">
-                <span class="nm-kpi-label">{{ $blank ? 'Évaluation' : 'Type' }}</span>
-                <span class="nm-kpi-value small">{{ $blank ? 'à compléter' : (ucfirst($evaluation->type ?? '') ?: '—') }}</span>
+                <span class="nm-kpi-label">{{ $plusieursNotes ? 'Évaluations' : ($blank ? 'Évaluation' : 'Type') }}</span>
+                <span class="nm-kpi-value small">{{ $plusieursNotes ? $colonnesNotes.' à compléter' : ($blank ? 'à compléter' : (ucfirst($evaluation->type ?? '') ?: '—')) }}</span>
                 <span class="nm-kpi-sub">{{ $blank ? '' : (isset($evaluation->coefficient) ? 'Coef '.$evaluation->coefficient : '') }}</span>
             </td>
             <td class="nm-kpi" style="width: 25%;">
-                <span class="nm-kpi-label">Barème</span>
-                <span class="nm-kpi-value">/ {{ $blank ? '____' : ($evaluation->bareme ?? '20') }}</span>
+                <span class="nm-kpi-label">{{ $plusieursNotes ? 'Colonnes' : 'Barème' }}</span>
+                <span class="nm-kpi-value">{{ $plusieursNotes ? $colonnesNotes : '/ '.($blank ? '____' : ($evaluation->bareme ?? '20')) }}</span>
                 <span class="nm-kpi-sub">{{ $anneeCourante->name ?? 'Année courante' }}</span>
             </td>
         </tr>
@@ -479,25 +479,43 @@
                         <tr>
                             <td>
                                 <span class="nm-summary-num">{{ $totalEtudiants }}</span>
-                                Total
+                                {{ $plusieursNotes ? 'Étudiants' : 'Total' }}
                             </td>
                             <td>
-                                <span class="nm-summary-num">{{ $blank ? '___' : $notesSaisies }}</span>
-                                Saisies
+                                <span class="nm-summary-num">{{ $plusieursNotes ? $totalEtudiants * $colonnesNotes : ($blank ? '___' : $notesSaisies) }}</span>
+                                {{ $plusieursNotes ? 'Cases' : 'Saisies' }}
                             </td>
                             <td>
                                 <span class="nm-summary-num">{{ $blank ? '___' : $absents }}</span>
-                                Absents
+                                {{ $plusieursNotes ? 'Notes saisies' : 'Absents' }}
                             </td>
                             <td>
                                 <span class="nm-summary-num">{{ $blank ? '___' : $vierges }}</span>
-                                Vierges
+                                {{ $plusieursNotes ? 'ABS' : 'Vierges' }}
                             </td>
                         </tr>
                     </table>
                 </td>
                 <td class="nm-summary-card" style="width: 50%;">
                     <div class="nm-summary-title">Informations document</div>
+                    @if($plusieursNotes)
+                        <div class="nm-info-row">
+                            <span class="nm-info-label">Année universitaire</span>
+                            <span class="nm-info-value">{{ $anneeCourante->name ?? 'Courante' }}</span>
+                        </div>
+                        <div class="nm-info-row">
+                            <span class="nm-info-label">Papier</span>
+                            <span class="nm-info-value">A4 {{ $orientationFeuille === 'landscape' ? 'paysage' : 'portrait' }}</span>
+                        </div>
+                        <div class="nm-info-row">
+                            <span class="nm-info-label">Évaluations</span>
+                            <span class="nm-info-value">{{ $colonnesNotes }} colonnes indépendantes</span>
+                        </div>
+                        <div class="nm-info-row">
+                            <span class="nm-info-label">Absence</span>
+                            <span class="nm-info-value">Écrire ABS dans la note concernée</span>
+                        </div>
+                    @else
                     <div class="nm-info-row">
                         <span class="nm-info-label">Date évaluation</span>
                         <span class="nm-info-value">
@@ -518,6 +536,7 @@
                         <span class="nm-info-label">Année universitaire</span>
                         <span class="nm-info-value">{{ $anneeCourante->name ?? 'Courante' }}</span>
                     </div>
+                    @endif
                 </td>
             </tr>
         </table>
