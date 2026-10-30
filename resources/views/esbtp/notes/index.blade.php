@@ -15,16 +15,31 @@
     .nm-student-docs a:focus-visible{outline:2px solid #0453cb;outline-offset:2px}
     @@media(max-width:640px){.nm-quick-document{padding:7px 9px;font-size:11px}}
 
-    .nm-blank-config { margin: 1rem 1.25rem; padding: 1rem; border: 1px solid #dbeafe; border-radius: 14px; background: #f8fbff; }
-    .nm-blank-config-header { display: flex; align-items: flex-start; gap: .65rem; color: #1e293b; font-size: .9rem; }
-    .nm-blank-config-header > i { margin-top: .18rem; color: #0453cb; }
-    .nm-blank-config-sub { color: #64748b; font-size: .78rem; font-weight: 400; margin-top: .2rem; }
-    .nm-blank-config-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; margin-top: .85rem; }
-    .nm-blank-config-field { display: flex; flex-direction: column; gap: .35rem; min-width: 0; }
-    .nm-blank-config-field label { color: #334155; font-size: .78rem; font-weight: 650; }
-    .nm-blank-config-field .au-select { width: 100%; }
-    .nm-blank-config-hint { margin: .65rem 0 0; min-height: 1.2em; color: #475569; font-size: .78rem; }
-    @@media(max-width: 580px) { .nm-blank-config-fields { grid-template-columns: minmax(0, 1fr); } .nm-blank-config { margin: .85rem; } }
+    /* Réglages de la feuille vierge : une barre compacte, jamais une carte haute
+       qui repousse la grille de notes hors du modal. */
+    .nm-blank-config { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .8rem; margin: .45rem 0 .65rem; padding: .5rem .75rem; border: 1px solid #dbeafe; border-radius: 10px; background: #f8fbff; }
+    .nm-blank-config-header { display: inline-flex; flex: 0 0 auto; align-items: center; gap: .4rem; color: #1e293b; font-size: .83rem; white-space: nowrap; }
+    .nm-blank-config-header i { color: #0453cb; }
+    .nm-blank-config-fields { display: flex; flex: 0 1 auto; flex-wrap: wrap; align-items: center; gap: .45rem .75rem; min-width: 0; }
+    .nm-blank-config-field { display: flex; flex: 0 1 auto; align-items: center; gap: .4rem; min-width: 0; }
+    .nm-blank-config-field label { color: #475569; font-size: .73rem; font-weight: 650; white-space: nowrap; margin: 0; }
+    .nm-blank-config-field .au-select { flex: 0 1 auto; width: 156px; min-width: 124px; }
+    .nm-blank-config-field--columns .au-select { width: 143px; }
+    .nm-blank-config-field .au-select-trigger { min-height: 36px; padding-top: .4rem; padding-bottom: .4rem; }
+    .nm-blank-config-hint { margin: 0; color: #64748b; font-size: .72rem; line-height: 1.3; }
+    @@media (max-width: 820px) {
+        .nm-blank-config { gap: .45rem .6rem; }
+        .nm-blank-config-fields { flex: 1 1 100%; }
+        .nm-blank-config-hint { flex: 1 1 auto; }
+    }
+    @@media (max-width: 540px) {
+        .nm-blank-config { margin: .4rem 0 .6rem; padding: .55rem .65rem; }
+        .nm-blank-config-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; width: 100%; }
+        .nm-blank-config-field { display: flex; flex-direction: column; align-items: stretch; gap: .2rem; min-width: 0; }
+        .nm-blank-config-field .au-select, .nm-blank-config-field--columns .au-select { width: 100%; min-width: 0; }
+        .nm-blank-config-field .au-select-trigger { min-height: 44px; }
+    }
+    @@media (max-width: 340px) { .nm-blank-config-fields { grid-template-columns: minmax(0, 1fr); } }
 </style>
 @endpush
 
@@ -326,11 +341,9 @@
                 @can('notes.feuille_vierge.export')
                 {{-- Configuration locale du PDF : n'affecte ni les notes ni l'année globale. --}}
                 <section class="nm-blank-config" id="nm-blank-config" aria-label="Options d'impression de la feuille vierge">
-                    <div class="nm-blank-config-header">
+                    <div class="nm-blank-config-header" title="Options de la feuille vierge A4">
                         <i class="fas fa-print" aria-hidden="true"></i>
-                        <div><strong>Feuille vierge · format A4</strong>
-                            <div class="nm-blank-config-sub">Préparez plusieurs cases de notes par étudiant sans réduire la police du document.</div>
-                        </div>
+                        <strong>Feuille vierge A4</strong>
                     </div>
                     <div class="nm-blank-config-fields">
                         <div class="nm-blank-config-field">
@@ -340,8 +353,8 @@
                                 icon="fa-file-pdf"
                                 :options="['portrait' => 'A4 portrait', 'landscape' => 'A4 paysage']" />
                         </div>
-                        <div class="nm-blank-config-field">
-                            <label for="nmBlankColumns">Colonnes de notes</label>
+                        <div class="nm-blank-config-field nm-blank-config-field--columns">
+                            <label for="nmBlankColumns">Notes</label>
                             <x-au-select id="nmBlankColumns" name="colonnes" label="Nombre de colonnes de notes"
                                 :value="1" :placeholder-is-first-option="false" icon="fa-table-columns"
                                 :options="collect(range(1, \App\Domain\Notes\FormatFeuilleViergeA4::LIMITES['landscape']))->mapWithKeys(fn ($n) => [$n => $n.' colonne'.($n > 1 ? 's' : '')])->toArray()" />
@@ -1137,10 +1150,13 @@ function nmBlankCurrentOptions() {
         }
     }
     const hint = document.getElementById('nm-blank-config-hint');
-    if (hint) hint.textContent = 'A4 ' + (orientation === 'portrait' ? 'portrait' : 'paysage') +
-        ' · maximum ' + max + ' colonnes. ' +
-        (chosen > 1 ? 'Écrivez ABS dans la case de la note concernée.' : 'Une colonne : case Abs. indépendante.') +
-        (previous > max ? ' Nombre de colonnes ramené à ' + max + '.' : '');
+    if (hint) {
+        hint.textContent = 'Max. ' + max + ' · ' +
+            (chosen > 1 ? 'ABS dans la note concernée' : 'Case Abs. indépendante') +
+            (previous > max ? ' · ramené à ' + max : '');
+        hint.title = 'Format A4 ' + (orientation === 'portrait' ? 'portrait' : 'paysage') +
+            ' : ' + max + ' colonnes de notes maximum.';
+    }
     return { orientation, colonnes: chosen };
 }
 
