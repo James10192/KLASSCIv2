@@ -15,6 +15,16 @@
     .nm-student-docs a:focus-visible{outline:2px solid #0453cb;outline-offset:2px}
     @@media(max-width:640px){.nm-quick-document{padding:7px 9px;font-size:11px}}
 
+    .nm-blank-config { margin: 1rem 1.25rem; padding: 1rem; border: 1px solid #dbeafe; border-radius: 14px; background: #f8fbff; }
+    .nm-blank-config-header { display: flex; align-items: flex-start; gap: .65rem; color: #1e293b; font-size: .9rem; }
+    .nm-blank-config-header > i { margin-top: .18rem; color: #0453cb; }
+    .nm-blank-config-sub { color: #64748b; font-size: .78rem; font-weight: 400; margin-top: .2rem; }
+    .nm-blank-config-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; margin-top: .85rem; }
+    .nm-blank-config-field { display: flex; flex-direction: column; gap: .35rem; min-width: 0; }
+    .nm-blank-config-field label { color: #334155; font-size: .78rem; font-weight: 650; }
+    .nm-blank-config-field .au-select { width: 100%; }
+    .nm-blank-config-hint { margin: .65rem 0 0; min-height: 1.2em; color: #475569; font-size: .78rem; }
+    @@media(max-width: 580px) { .nm-blank-config-fields { grid-template-columns: minmax(0, 1fr); } .nm-blank-config { margin: .85rem; } }
 </style>
 @endpush
 
@@ -312,6 +322,34 @@
                         Charger <span id="nm-load-more-count">30</span> étudiants de plus
                     </button>
                 </div>
+
+                @can('notes.feuille_vierge.export')
+                {{-- Configuration locale du PDF : n'affecte ni les notes ni l'année globale. --}}
+                <section class="nm-blank-config" id="nm-blank-config" aria-label="Options d'impression de la feuille vierge">
+                    <div class="nm-blank-config-header">
+                        <i class="fas fa-print" aria-hidden="true"></i>
+                        <div><strong>Feuille vierge · format A4</strong>
+                            <div class="nm-blank-config-sub">Préparez plusieurs cases de notes par étudiant sans réduire la police du document.</div>
+                        </div>
+                    </div>
+                    <div class="nm-blank-config-fields">
+                        <div class="nm-blank-config-field">
+                            <label for="nmBlankOrientation">Orientation du papier</label>
+                            <x-au-select id="nmBlankOrientation" name="orientation" label="Orientation du papier"
+                                :value="'portrait'" :placeholder-is-first-option="false"
+                                icon="fa-file-pdf"
+                                :options="['portrait' => 'A4 portrait', 'landscape' => 'A4 paysage']" />
+                        </div>
+                        <div class="nm-blank-config-field">
+                            <label for="nmBlankColumns">Colonnes de notes</label>
+                            <x-au-select id="nmBlankColumns" name="colonnes" label="Nombre de colonnes de notes"
+                                :value="1" :placeholder-is-first-option="false" icon="fa-table-columns"
+                                :options="collect(range(1, \App\Domain\Notes\FormatFeuilleViergeA4::LIMITES['landscape']))->mapWithKeys(fn ($n) => [$n => $n.' colonne'.($n > 1 ? 's' : '')])->toArray()" />
+                        </div>
+                    </div>
+                    <p class="nm-blank-config-hint" id="nm-blank-config-hint" role="status" aria-live="polite"></p>
+                </section>
+                @endcan
 
                 {{-- Auto-save info --}}
                 <div class="nm-autosave-info">
@@ -631,6 +669,7 @@ let nmFinalSaveRetryTimer = null;
 const nmCanEditSubmittedNotes = @json(auth()->user()?->can('notes.edit') ?? false);
 const nmCanCreateNotes = @json(auth()->user()?->can('notes.create') ?? false);
 const nmAppreciationScale = @json(app(\App\Services\AppreciationScaleService::class)->frontendScale('bts'));
+const nmBlankPdfLimits = @json(\App\Domain\Notes\FormatFeuilleViergeA4::LIMITES);
 const blankPdfUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf", ["classe" => ":classId", "annee_universitaire_id" => $anneeSelectionneeId]) }}';
 const blankPdfPreviewUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf-preview", ["classe" => ":classId", "annee_universitaire_id" => $anneeSelectionneeId]) }}';
 
@@ -1071,9 +1110,53 @@ function nmShowGridError(message) {
     `);
 }
 
+// Options physiques A4. Le backend valide exactement les mêmes limites.
+function nmBlankCurrentOptions() {
+    const orientation = document.getElementById('nmBlankOrientation')?.value === 'landscape'
+        ? 'landscape' : 'portrait';
+    const select = document.getElementById('nmBlankColumns');
+    const max = Number(nmBlankPdfLimits[orientation]);
+    const previous = Math.max(1, Number(select?.value) || 1);
+    const chosen = Math.min(previous, max);
+    if (select) {
+        // Le composant premium observe les options du select natif caché.
+        if (select.options.length !== max || Array.from(select.options).some((opt, i) => Number(opt.value) !== i + 1)) {
+            select.replaceChildren();
+            for (let count = 1; count <= max; count++) {
+                const option = document.createElement('option');
+                option.value = String(count);
+                option.textContent = count + ' colonne' + (count > 1 ? 's' : '');
+                select.appendChild(option);
+            }
+        }
+        if (select.value !== String(chosen)) {
+            select.value = String(chosen);
+            // Met à jour le texte du picker Alpine après une réduction des options.
+            // Émettre seulement en cas de changement évite une boucle de change.
+            select.dispatchEvent(new Event('change', { bubbles: false }));
+        }
+    }
+    const hint = document.getElementById('nm-blank-config-hint');
+    if (hint) hint.textContent = 'A4 ' + (orientation === 'portrait' ? 'portrait' : 'paysage') +
+        ' · maximum ' + max + ' colonnes. ' +
+        (chosen > 1 ? 'Écrivez ABS dans la case de la note concernée.' : 'Une colonne : case Abs. indépendante.') +
+        (previous > max ? ' Nombre de colonnes ramené à ' + max + '.' : '');
+    return { orientation, colonnes: chosen };
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const orientation = document.getElementById('nmBlankOrientation');
+    const columns = document.getElementById('nmBlankColumns');
+    if (!orientation || !columns) return;
+    orientation.addEventListener('change', updateBlankPdfLink);
+    columns.addEventListener('change', updateBlankPdfLink);
+    updateBlankPdfLink();
+});
+
 function updateBlankPdfLink() {
     const downloadBtn = document.getElementById('exportBlankPdfBtn');
     const previewBtn = document.getElementById('previewBlankPdfBtn');
+    const printOptions = nmBlankCurrentOptions();
 
     [
         { btn: downloadBtn, template: blankPdfUrlTemplate },
@@ -1091,6 +1174,8 @@ function updateBlankPdfLink() {
 
         const pdfUrl = new URL(template.replace(':classId', currentClassId), window.location.origin);
         pdfUrl.searchParams.set('annee_universitaire_id', String(nmAcademicYearId ?? ''));
+        pdfUrl.searchParams.set('orientation', printOptions.orientation);
+        pdfUrl.searchParams.set('colonnes', String(printOptions.colonnes));
         btn.setAttribute('href', pdfUrl.toString());
         btn.classList.remove('disabled');
         btn.removeAttribute('aria-disabled');
