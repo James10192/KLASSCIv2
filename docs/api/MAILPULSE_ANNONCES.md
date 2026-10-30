@@ -46,3 +46,11 @@ Lorsque la requête d'envoi a pu être acceptée mais que KLASSCI a perdu l'ID M
 ## Déploiement sécurisé
 
 Ne pas publier de secrets ni relancer l'annonce historique ; garder le relais désactivé tant que l'adaptateur fournisseur, l'isolation tenant/organisation, les tests de replay et les vérifications cron/queue ne sont pas approuvés. Les campagnes utilisent aussi un polling de secours sur les identifiants MailPulse connus.
+
+## Références tenant-qualifiées (v2, 30/10/2026)
+
+Les envois **jamais tentés** utilisent `klassci-v2-<TENANT_CODE>-annonce-<annonce_id>-courriel-<delivery_id>` pour éviter la collision d'idempotence entre établissements (même si leurs identifiants SQL locaux sont identiques et qu'une organisation MailPulse est mutualisée). Le code tenant doit être réel et conforme au format accepté. La clé est **figée avant le pacing et avant la requête HTTP** dans `esbtp_annonce_email_deliveries.mailpulse_request_id`, puis conservée à l'identique lors des retours fournisseur, des interruptions et du rapprochement en lecture seule.
+
+Les envois historiques déjà tentés et sans repère v2 gardent `klassci-annonce-<annonce_id>-courriel-<delivery_id>`. Aucun renumérotage des idempotency keys, aucun `POST` de récupération. Un repère v2 ne correspondant pas à `TENANT_CODE` produit une quarantaine sans envoi ni consultation sous l'autre identité.
+
+La réception HMAC de l'événement accepte les deux formats. Sur un événement v2 elle exige le code tenant de l'instance **et** que la ligne possède exactement `mailpulse_request_id = external_reference`. Un callback legacy ne peut pas modifier une livraison déjà estampillée v2. Ce contrat suppose l'API MailPulse compatible ([PR #65](https://github.com/James10192/mailpulse/pull/65)) déployée avant l'activation. Ce changement n'active toujours aucune relance effective ; le journal immuable d'essais reste à créer avec Artisan.
