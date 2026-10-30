@@ -90,19 +90,31 @@ final class SynchroniserCourrielsAnnonce
         // Compare-and-set and the worker's pre-HTTP transition prevent a late
         // worker from sending after losing ownership of this row.
         $minutes = max(15, (int) config('services.mailpulse.announcement_stale_minutes', 30));
-        $quarantaines = DB::table('esbtp_annonce_email_deliveries')
+        $cutoff = now()->subMinutes($minutes);
+        // Never lock or rewrite an unbounded historic campaign in one cron.
+        // Read a small, indexed candidate page, then CAS every selected row.
+        $idsBloques = DB::table('esbtp_annonce_email_deliveries')
             ->where('status', 'processing')
             ->whereNotNull('processing_at')
-            ->where('processing_at', '<=', now()->subMinutes($minutes))
+            ->where('processing_at', '<=', $cutoff)
             ->whereNull('submitted_at')
             ->whereNull('mailpulse_message_id')
-            ->update([
-                'status' => 'awaiting_dispatch',
-                'error_code' => 'queue_outcome_unknown',
-                'processing_at' => null,
-                'updated_at' => now(),
-            ]);
-        $bilan['quarantaines'] = $quarantaines;
+            ->orderBy('processing_at')->orderBy('id')
+            ->limit(max(1, min(60, $max)))
+            ->pluck('id');
+        $bilan['quarantaines'] = $idsBloques->isEmpty() ? 0
+            : DB::table('esbtp_annonce_email_deliveries')
+                ->whereIn('id', $idsBloques)
+                ->where('status', 'processing')
+                ->where('processing_at', '<=', $cutoff)
+                ->whereNull('submitted_at')
+                ->whereNull('mailpulse_message_id')
+                ->update([
+                    'status' => 'awaiting_dispatch',
+                    'error_code' => 'queue_outcome_unknown',
+                    'processing_at' => null,
+                    'updated_at' => now(),
+                ]);
 
         // Second passage EN LECTURE SEULE : retrouver par clé initiale les
         // soumissions HTTP dont le message_id s'est perdu. Ne jamais faire POST.

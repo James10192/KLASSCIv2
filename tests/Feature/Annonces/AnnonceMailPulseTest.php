@@ -521,6 +521,27 @@ class AnnonceMailPulseTest extends TestCase
         Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
     }
 
+    public function test_quarantaine_workers_est_bornee_par_le_budget_de_lot(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        config(['app.tenant_code' => 'esbtp-abidjan', 'services.mailpulse.announcement_stale_minutes' => 15]);
+        $annonce = $this->annonce();
+        for ($i = 0; $i < 3; $i++) {
+            DB::table('esbtp_annonce_email_deliveries')->insert([
+                'annonce_id' => $annonce->id, 'email' => "bloque-{$i}@etudiants.test",
+                'status' => 'processing', 'processing_at' => now()->subMinutes(20),
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        $reader = Mockery::mock(MailPulseStatutsMessages::class);
+        $reader->shouldReceive('lireParReference')->once()->andReturn('introuvable');
+        $result = (new SynchroniserCourrielsAnnonce($reader))->synchroniser(1);
+        $this->assertSame(1, $result['quarantaines']);
+        $this->assertSame(1, $result['sans_preuve']);
+        $this->assertSame(2, DB::table('esbtp_annonce_email_deliveries')->where('status', 'processing')->count());
+        Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
+    }
+
     public function test_code_tenant_non_configure_bloque_avant_tout_appel_mailpulse(): void
     {
         config(['app.tenant_code' => 'default']);

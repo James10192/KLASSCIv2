@@ -90,3 +90,5 @@ Ce garde ne résout PAS les clés d'idempotence historiques non préfixées par 
 ## Précondition tenant et configuration MailPulse
 
 Avant toute première soumission, le code d'établissement `TENANT_CODE` doit être réel, non `default`, et respecter l'identifiant des instances. Sans ce code, le job met la ligne en quarantaine (`tenant_unconfigured`) **avant** le transport, sans la déclarer refusée par Resend. Un refus purement local (`missing_api_key`, `disabled`, `auth_failed`, `quota_exceeded`) est enregistré sans `provider_failed_at` et ne déclenche pas de nouvelle tentative automatique. Il faut corriger la configuration et faire une intervention explicitement contrôlée et tracée avant toute reprise. Ce contrôle n'est pas une solution au risque des clés historiques partagées entre organisations : provisionner MailPulse séparément par établissement.
+
+Les lignes bloquées sont isolées par lots bornés (`min(60, --max)`), dans l'ordre du plus ancien traitement. Le cron n'exécute jamais une mutation massive sur tout l'historique, et les mises à jour restent conditionnées à l'état `processing` et à l'horodatage observé.
