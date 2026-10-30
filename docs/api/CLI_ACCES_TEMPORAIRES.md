@@ -17,7 +17,7 @@ Même logique que l'écran `/esbtp/acces-individuels` (ancienne URL
     accès temporaires ;
   - ce qui modifie les comptes, les rôles, les réglages ou l'abonnement (`users.manage`,
     `personnel.manage`, `settings.edit`, `settings.pdf.manage`, `system.*`, `paywall.*`,
-    `module.*`, `admin.system.security`, `security.users.monitor`,
+    `module.*` (sauf `module.notes_evaluations.access`), `admin.system.security`, `security.users.monitor`,
     `security.backup.restore`, `permissions.temporaires.manage`,
     `permissions.individuels.permanents.manage`, `sod.bypass` et les
     permissions de contournement des contrôles financiers) : ces droits
@@ -41,6 +41,12 @@ Même logique que l'écran `/esbtp/acces-individuels` (ancienne URL
   avec sérialisation transactionnelle des octrois concurrents.
 
 ## Ce qui reste accordable, et pourquoi
+
+Le droit `module.notes_evaluations.access` peut etre delegue a **une personne**
+(temporairement ou definitivement) sans modifier son role. Il ne suffit pas a
+lui seul pour ouvrir `/esbtp/notes` : `notes.view`, l'authentification et le
+`paywall` restent requis. Les autres `module.*` ne sont pas accordables par
+ce circuit : aucune modification de l'abonnement ou des modules souscrits.
 
 `students.*` et `inscriptions.*` restent accordables : leurs chemins de création de
 compte écrivent le rôle `etudiant` en dur. Un bénéficiaire peut donc créer un compte

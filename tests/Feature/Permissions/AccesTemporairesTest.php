@@ -35,7 +35,7 @@ class AccesTemporairesTest extends TestCase
             \App\Http\Middleware\PaywallMiddleware::class,
         ]);
 
-        foreach (['notes.edit', 'paiements.view', 'identity.coordinate', 'identity.student', 'permissions.temporaires.manage', 'permissions.individuels.permanents.manage', 'personnel.manage', 'users.manage'] as $p) {
+        foreach (['notes.edit', 'notes.view', 'module.notes_evaluations.access', 'paiements.view', 'identity.coordinate', 'identity.student', 'permissions.temporaires.manage', 'permissions.individuels.permanents.manage', 'personnel.manage', 'users.manage'] as $p) {
             Permission::findOrCreate($p, 'web');
         }
         Role::findOrCreate('superAdmin', 'web');
@@ -208,6 +208,89 @@ class AccesTemporairesTest extends TestCase
         $sansPersonnel->givePermissionTo('personnel.manage');
         $this->actingAs($sansPersonnel->fresh());
         $this->assertStringContainsString($lien, (string) $this->blade($bouton, ['id' => $cible->id]));
+    }
+
+    public function test_le_module_notes_est_propose_dans_les_acces_individuels_et_pas_les_autres_modules(): void
+    {
+        $service = $this->service();
+        $this->assertTrue($service->estAccordable('module.notes_evaluations.access'));
+        $this->assertFalse($service->estAccordable('module.lmd.access'));
+        $this->assertFalse($service->estAccordable('module.comptabilite.access'));
+        $this->assertFalse($service->estAccordable('module.technical_support.access'));
+
+        $this->actingAs($this->admin)
+            ->get(route('esbtp.acces-individuels.index'))
+            ->assertOk()
+            ->assertSee('value="module.notes_evaluations.access"', false)
+            ->assertDontSee('value="module.lmd.access"', false);
+    }
+
+    public function test_le_lien_sidebar_notes_suit_les_acces_individuels_sans_doublon_enseignant(): void
+    {
+        $personne = User::factory()->create();
+        $personne->givePermissionTo(['notes.view', 'identity.teach']);
+        $this->service()->accorder(
+            $personne, 'module.notes_evaluations.access', now(), null,
+            'Consultation nominative des notes depuis le menu lateral', $this->admin, true,
+        );
+
+        $reponse = $this->actingAs($personne->fresh())->get(route('esbtp.notes.index'));
+        $reponse->assertOk();
+        $reponse->assertSee('<span>Gestion des notes</span>', false);
+        $this->assertSame(
+            1, substr_count($reponse->getContent(), '<span>Gestion des notes</span>'),
+            'La sidebar canonique doit proposer un lien unique vers les notes.',
+        );
+        $reponse->assertDontSee('<div class="menu-text">Gestion des notes</div>', false);
+    }
+
+    public function test_octroi_definitif_du_module_notes_ne_modifie_pas_le_role_et_se_revoque(): void
+    {
+        $beneficiaire = User::factory()->create();
+        $autre = User::factory()->create();
+
+        $this->actingAs($this->admin)->postJson(route('esbtp.acces-temporaires.store'), [
+            'user_id' => $beneficiaire->id,
+            'permission' => 'module.notes_evaluations.access',
+            'mode' => 'definitif',
+            'motif' => 'Autoriser personnellement la consultation des notes BTS',
+        ])->assertCreated();
+
+        $grant = TemporaryPermissionGrant::where('user_id', $beneficiaire->id)
+            ->where('permission', 'module.notes_evaluations.access')
+            ->firstOrFail();
+
+        $this->assertTrue($grant->is_permanent);
+        $this->assertTrue($this->peut($beneficiaire, 'module.notes_evaluations.access'));
+        $this->assertFalse($this->peut($beneficiaire, 'notes.view'));
+        $this->assertFalse($this->peut($autre, 'module.notes_evaluations.access'));
+        $this->assertTrue($beneficiaire->fresh()->roles->isEmpty());
+
+        $this->actingAs($this->admin)
+            ->deleteJson(route('esbtp.acces-temporaires.destroy', $grant))
+            ->assertOk();
+
+        $this->assertFalse($this->peut($beneficiaire, 'module.notes_evaluations.access'));
+    }
+
+    public function test_le_module_notes_temporaire_expire_et_un_autre_module_reste_interdit(): void
+    {
+        $beneficiaire = User::factory()->create();
+        $this->service()->accorder(
+            $beneficiaire, 'module.notes_evaluations.access', now(), now()->addDay(),
+            'Acces individuel aux notes pour une journee', $this->admin,
+        );
+
+        $this->assertTrue($this->peut($beneficiaire, 'module.notes_evaluations.access'));
+        Carbon::setTestNow(now()->addDays(2));
+        $this->assertFalse($this->peut($beneficiaire, 'module.notes_evaluations.access'));
+
+        $this->actingAs($this->admin)->postJson(route('esbtp.acces-temporaires.store'), [
+            'user_id' => $beneficiaire->id,
+            'permission' => 'module.lmd.access',
+            'mode' => 'definitif',
+            'motif' => 'Tentative de changement de module hors liste',
+        ])->assertUnprocessable();
     }
 
     public function test_ce_qui_modifie_comptes_roles_ou_reglages_ne_s_accorde_pas(): void
