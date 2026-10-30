@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-30 · PR à attribuer · Notes LMD : filtres année, recherche, filière, niveau, statut et capacité comme BTS ; sélecteurs premium dans les fenêtres, rafraîchissement AJAX sans rechargement, états d'erreur et protection contre les réponses obsolètes. Recette multi-profils et mobile sur presentation avant propagation.
 - 2026-10-30 · #1727 · Accès individuels : la permission « Module : Notes & Évaluations » peut être attribuée à une seule personne, sans modifier son rôle. Le lien « Gestion des notes » apparaît dans le menu lorsque les deux droits nécessaires sont accordés ; le doublon du menu enseignant est supprimé. Tester sur présentation avant diffusion ISLG.
 - 2026-10-29 · amélioration suivi annonces · Depuis la fiche annonce, liste paginée des adresses et statuts MailPulse par destinataire, filtre par état, effectif éligible actuel comparé aux adresses réellement mises en file ; les données d'inscription peuvent changer depuis l'envoi.
 - 2026-10-29 · PR à attribuer · Annonces : filtre facultatif sur les inscriptions actives de l'année en cours pour les e-mails, bilan de diffusion visible depuis chaque annonce, statuts MailPulse exacts et cadence anti-rafale. Recette en bac à sable, contrat de retour de livraison signé et déploiement migration indispensables avant envoi massif.

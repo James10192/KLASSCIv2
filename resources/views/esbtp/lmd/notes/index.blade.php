@@ -485,6 +485,27 @@
 .ln-anon-ligne { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; padding: .6rem .85rem; border: 1px solid rgba(4,83,203,.2); background: rgba(4,83,203,.05); border-radius: 10px; font-size: .84rem; color: #1e293b; }
 .ln-anon-ligne i { color: #0453cb; }
 .ln-anon-ligne a { margin-left: auto; font-weight: 600; color: #0453cb; text-decoration: none; }
+
+    /* Filtres responsive : aucun select natif visible, dropdowns ancrés au composant. */
+    .ln-filter-bar { padding: 1.3rem; margin-bottom: 1.5rem; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 7px 24px rgba(15, 23, 42, .045); }
+    .ln-filter-heading { color: #0f172a; font-size: 1rem; font-weight: 750; display: flex; align-items: center; gap: .55rem; margin-bottom: 1rem; }
+    .ln-filter-heading i { color: #0453cb; }
+    .ln-filter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+    .ln-filter-field { min-width: 0; display: flex; flex-direction: column; gap: .4rem; }
+    .ln-filter-field label { color: #334155; font-size: .78rem; font-weight: 650; }
+    .ln-filter-field input { border: 1px solid #e2e8f0; border-radius: 10px; min-height: 44px; padding: .55rem .85rem; width: 100%; color: #0f172a; background: #fff; }
+    .ln-filter-field input:focus-visible { outline: 2px solid #0453cb; outline-offset: 1px; }
+    .ln-filter-field .au-select { width: 100%; }
+    .ln-filter-actions { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; margin-top: 1.1rem; }
+    .ln-filter-btn { border: none; border-radius: 10px; padding: .7rem 1rem; cursor: pointer; font-weight: 700; font-size: .83rem; }
+    .ln-filter-btn--primary { background: #0453cb; color: white; }
+    .ln-filter-btn--secondary { background: #eff6ff; color: #0453cb; }
+    #lmd-filter-count { margin-left: auto; font-size: .82rem; color: #64748b; }
+    #lmd-year-feedback { min-height: 1.3rem; margin-top: .35rem; font-size: .8rem; color: #475569; }
+    .ln-modal-toolbar .au-select { min-width: 0; flex: 1 1 180px; }
+    .ln-eval-field .au-select { width: 100%; }
+    @media (max-width: 900px) { .ln-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 580px) { .ln-filter-grid { grid-template-columns: minmax(0, 1fr); } .ln-filter-bar { padding: 1rem; } #lmd-filter-count { margin-left: 0; width: 100%; } }
 </style>
 @endpush
 
@@ -507,11 +528,9 @@
                     <p id="lmd-year-context">Gestion des notes par classe — {{ $anneeSelectionnee->name ?? 'Aucune année' }}</p>
                 </div>
             </div>
-            <form method="GET" action="{{ route('esbtp.lmd.notes.index') }}" id="lmdYearForm"><x-au-select name="annee_universitaire_id" id="lmd_annee_universitaire_id"
-                :value="$anneeSelectionnee?->id" icon="fa-calendar" :searchable="false" :placeholder-is-first-option="false"
-                :options="$anneesUniversitaires->mapWithKeys(fn($a) => [$a->id => $a->name.($a->is_current ? ' · courante' : '')])->toArray()" /></form>
+            <div class="ln-hero-year" aria-hidden="true"><i class="fas fa-calendar-alt"></i> Année universitaire</div>
         </div>
-        <div id="lmd-year-feedback" role="status" aria-live="polite" style="font-size:.8rem;margin-top:.35rem;"></div>
+
 
         <div class="ln-hero-kpis">
             <div class="ln-kpi ln-kpi--classes">
@@ -537,6 +556,58 @@
             </div>
         </div>
     </div>
+
+
+    {{-- Filtres identiques aux notes BTS, avec requête AJAX unique pour l'année et les critères. --}}
+    <section class="ln-filter-bar" aria-label="Filtres de recherche des notes LMD">
+        <div class="ln-filter-heading"><i class="fas fa-filter"></i> Filtres de recherche</div>
+        <form method="GET" action="{{ route('esbtp.lmd.notes.index') }}" id="lmdYearForm">
+            <div class="ln-filter-grid">
+                <div class="ln-filter-field">
+                    <label for="lmd_annee_universitaire_id">Année universitaire</label>
+                    <x-au-select name="annee_universitaire_id" id="lmd_annee_universitaire_id"
+                        :value="$anneeSelectionnee?->id" icon="fa-calendar" :searchable="false"
+                        :placeholder-is-first-option="false"
+                        :options="$anneesUniversitaires->mapWithKeys(fn($a) => [$a->id => $a->name.($a->is_current ? ' · courante' : '')])->toArray()" />
+                </div>
+                <div class="ln-filter-field">
+                    <label for="lmd_search">Recherche</label>
+                    <input type="search" id="lmd_search" name="search" value="{{ request('search') }}"
+                        placeholder="Nom, code, filière ou niveau..." autocomplete="off">
+                </div>
+                <div class="ln-filter-field">
+                    <label for="lmd_filiere_id">Filière</label>
+                    <x-au-select id="lmd_filiere_id" name="filiere_id" :value="request('filiere_id')"
+                        placeholder="Toutes les filières" icon="fa-graduation-cap" :searchable="$filieres->count() > 8"
+                        :options="$filieres->mapWithKeys(fn ($f) => [$f->id => $f->name])->toArray()" />
+                </div>
+                <div class="ln-filter-field">
+                    <label for="lmd_niveau_id">Niveau</label>
+                    <x-au-select id="lmd_niveau_id" name="niveau_id" :value="request('niveau_id')"
+                        placeholder="Tous les niveaux" icon="fa-layer-group" :searchable="$niveaux->count() > 8"
+                        :options="$niveaux->mapWithKeys(fn ($n) => [$n->id => $n->name])->toArray()" />
+                </div>
+                <div class="ln-filter-field">
+                    <label for="lmd_statut">Statut</label>
+                    <x-au-select id="lmd_statut" name="statut" :value="request('statut', 'active')"
+                        placeholder="Tous les statuts" icon="fa-check-circle"
+                        :options="['active' => 'Actives', 'inactive' => 'Inactives']" />
+                </div>
+                <div class="ln-filter-field">
+                    <label for="lmd_capacite">Capacité</label>
+                    <x-au-select id="lmd_capacite" name="capacite" :value="request('capacite')"
+                        placeholder="Toutes les capacités" icon="fa-users"
+                        :options="['disponible' => 'Places disponibles', 'pleine' => 'Classes pleines']" />
+                </div>
+            </div>
+            <div class="ln-filter-actions">
+                <button type="submit" class="ln-filter-btn ln-filter-btn--primary"><i class="fas fa-search"></i> Filtrer</button>
+                <button type="button" id="lmd-reset-filters" class="ln-filter-btn ln-filter-btn--secondary"><i class="fas fa-times"></i> Réinitialiser</button>
+                <span id="lmd-filter-count" aria-live="polite">{{ $totalClasses ?? $classes->count() }} classe(s)</span>
+            </div>
+        </form>
+        <div id="lmd-year-feedback" role="status" aria-live="polite"></div>
+    </section>
 
     {{-- Flash messages --}}
     @foreach(['success' => 'check-circle', 'error' => 'exclamation-circle'] as $type => $icon)
@@ -607,16 +678,9 @@
                 </div>
 
                 <div class="ln-modal-toolbar">
-                    <select id="ueSelect" style="min-width:220px;">
-                        <option value="">— Choisir une UE —</option>
-                    </select>
-                    <select id="ecueSelect" style="min-width:220px;" disabled>
-                        <option value="">— Choisir un ECUE —</option>
-                    </select>
-                    <select id="periodeFilter" style="min-width:120px;">
-                        <option value="all">Toutes</option>
-                        {{-- Options dynamiques peuplées par JS selon classe.semestres --}}
-                    </select>
+                    <x-au-select id="ueSelect" placeholder="— Choisir une UE —" icon="fa-book" :searchable="true" :options="[]" />
+                    <x-au-select id="ecueSelect" placeholder="— Choisir un ECUE —" icon="fa-book-open" :searchable="true" :options="[]" />
+                    <x-au-select id="periodeFilter" :placeholder-is-first-option="false" icon="fa-calendar" :options="['all' => 'Toutes les périodes']" />
                     <button type="button" id="createEvalBtn" class="ln-modal-add-btn" style="display:none;"
                             onclick="openEvalCreateModal()">
                         <i class="fas fa-plus"></i> Créer évaluation
@@ -712,22 +776,12 @@
                     <div class="ln-eval-row-fields">
                         <div class="ln-eval-field">
                             <label for="evalType">Type <span class="text-danger">*</span></label>
-                            <select name="type" id="evalType" required>
-                                <option value="">— Choisir —</option>
-                                <option value="devoir">Devoir</option>
-                                <option value="examen">Examen</option>
-                                <option value="controle">Contrôle</option>
-                                <option value="quiz">Quiz</option>
-                                <option value="tp">TP</option>
-                                <option value="projet">Projet</option>
-                            </select>
+                            <x-au-select id="evalType" name="type" required placeholder="— Choisir —" icon="fa-clipboard-list"
+                                :options="['devoir' => 'Devoir', 'examen' => 'Examen', 'controle' => 'Contrôle', 'quiz' => 'Quiz', 'tp' => 'TP', 'projet' => 'Projet']" />
                         </div>
                         <div class="ln-eval-field">
                             <label for="evalPeriode">Période <span class="text-danger">*</span></label>
-                            <select name="periode" id="evalPeriode" required>
-                                <option value="">— Choisir —</option>
-                                {{-- Options dynamiques peuplées par JS selon classe.semestres --}}
-                            </select>
+                            <x-au-select id="evalPeriode" name="periode" required placeholder="— Choisir —" icon="fa-calendar" :options="[]" />
                         </div>
                     </div>
                 </div>
@@ -822,38 +876,64 @@ document.addEventListener('DOMContentLoaded', function() {
     const yearForm = document.getElementById('lmdYearForm');
     const yearSelect = document.getElementById('lmd_annee_universitaire_id');
     const feedback = document.getElementById('lmd-year-feedback');
+    const results = document.getElementById('lmd-classes-results');
+    const reset = document.getElementById('lmd-reset-filters');
     let requestSequence = 0;
+    let activeRequest = null;
+    let debounce = null;
     let restoring = false;
+    let lastApplied = new FormData(yearForm);
     if (!yearForm || !yearSelect) return;
 
-    async function changeYear() {
+    function setNativeValue(field, value) {
+        if (!field) return;
+        field.value = value;
+        field.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    async function refreshLmdClasses() {
         if (restoring) return;
-        const newYear = Number(yearSelect.value) || null;
-        if (newYear === lmdAcademicYearId) return;
         const sequence = ++requestSequence;
+        activeRequest?.abort();
+        activeRequest = new AbortController();
+        const formData = new FormData(yearForm);
+        const selectedYear = Number(formData.get('annee_universitaire_id')) || null;
+        const url = new URL(yearForm.action, window.location.origin);
+        formData.set('classes_ajax', '1');
+        for (const [key, value] of formData.entries()) {
+            if (value !== '') url.searchParams.set(key, String(value));
+        }
         feedback.textContent = 'Chargement des classes…';
         yearForm.setAttribute('aria-busy', 'true');
+        results.setAttribute('aria-busy', 'true');
         try {
-            const url = new URL(yearForm.action, window.location.origin);
-            url.searchParams.set('classes_ajax', '1');
-            url.searchParams.set('annee_universitaire_id', String(newYear ?? ''));
             const response = await fetch(url.toString(), {
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                credentials: 'same-origin'
+                credentials: 'same-origin',
+                signal: activeRequest.signal
             });
             if (!response.ok) throw new Error('Erreur HTTP ' + response.status);
             const data = await response.json();
             if (!data.success) throw new Error('Impossible de charger les classes.');
             if (sequence !== requestSequence) return;
 
-            lmdAcademicYearId = newYear;
-            anneeSuivi = newYear;
-            currentClasseId = null;
-            currentClasseData = null;
-            currentMatiereId = null;
-            evaluationsData = {};
-            notesData = {};
-            document.getElementById('lmd-classes-results').innerHTML = data.html;
+            const previousYear = lmdAcademicYearId;
+            lmdAcademicYearId = selectedYear;
+            anneeSuivi = selectedYear;
+            if (previousYear !== selectedYear) {
+                currentClasseId = null;
+                currentClasseData = null;
+                currentMatiereId = null;
+                evaluationsData = {};
+                notesData = {};
+                document.querySelectorAll('#evalCreateForm input[name="annee_universitaire_id"]').forEach(
+                    input => { input.value = String(selectedYear ?? ''); }
+                );
+                window.dispatchEvent(new CustomEvent('couverture:contexte', {
+                    detail: { classe_id: null, annee_universitaire_id: selectedYear, periode: 'semestre1' }
+                }));
+            }
+            results.innerHTML = data.html;
             document.getElementById('lmd-year-context').textContent = 'Gestion des notes par classe — ' + data.annee_name;
             const kpis = document.querySelectorAll('.ln-hero-kpis .ln-kpi-value');
             if (kpis.length === 3) {
@@ -861,32 +941,55 @@ document.addEventListener('DOMContentLoaded', function() {
                 kpis[1].textContent = data.total_etudiants;
                 kpis[2].textContent = data.total_evaluations;
             }
-            document.querySelectorAll('#evalCreateForm input[name="annee_universitaire_id"]').forEach(
-                input => { input.value = String(newYear ?? ''); }
-            );
-            window.dispatchEvent(new CustomEvent('couverture:contexte', {
-                detail: { classe_id: null, annee_universitaire_id: newYear, periode: 'semestre1' }
-            }));
+            document.getElementById('lmd-filter-count').textContent = data.total_classes + ' classe(s)';
             const currentUrl = new URL(window.location.href);
-            currentUrl.searchParams.set('annee_universitaire_id', String(newYear ?? ''));
-            currentUrl.searchParams.delete('classe');
-            currentUrl.searchParams.delete('ecue');
+            ['annee_universitaire_id', 'search', 'filiere_id', 'niveau_id', 'statut', 'capacite'].forEach(
+                key => currentUrl.searchParams.delete(key)
+            );
+            for (const [key, value] of new FormData(yearForm).entries()) {
+                if (value !== '') currentUrl.searchParams.set(key, String(value));
+            }
+            if (previousYear !== selectedYear) {
+                currentUrl.searchParams.delete('classe');
+                currentUrl.searchParams.delete('ecue');
+            }
             history.replaceState(history.state, '', currentUrl.toString());
+            lastApplied = new FormData(yearForm);
             feedback.textContent = '';
         } catch (error) {
-            if (sequence !== requestSequence) return;
-            console.error('Changement d’année LMD :', error);
+            if (sequence !== requestSequence || error.name === 'AbortError') return;
+            console.error('Filtres des notes LMD :', error);
             restoring = true;
-            yearSelect.value = String(lmdAcademicYearId ?? '');
-            yearSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            for (const [name, value] of lastApplied.entries()) {
+                const field = yearForm.elements.namedItem(name);
+                if (field) setNativeValue(field, String(value));
+            }
             restoring = false;
-            feedback.textContent = 'Impossible de charger cette année. Sélection précédente conservée.';
+            feedback.textContent = 'Impossible de charger les classes. Les filtres précédents ont été restaurés.';
         } finally {
-            if (sequence === requestSequence) yearForm.removeAttribute('aria-busy');
+            if (sequence === requestSequence) {
+                yearForm.removeAttribute('aria-busy');
+                results.removeAttribute('aria-busy');
+            }
         }
     }
-    yearSelect.addEventListener('change', changeYear);
-    yearForm.addEventListener('submit', event => { event.preventDefault(); changeYear(); });
+
+    yearForm.addEventListener('submit', event => { event.preventDefault(); clearTimeout(debounce); refreshLmdClasses(); });
+    yearForm.querySelectorAll('select').forEach(field => field.addEventListener('change', () => refreshLmdClasses()));
+    yearForm.querySelector('[name="search"]').addEventListener('input', () => {
+        clearTimeout(debounce);
+        debounce = setTimeout(refreshLmdClasses, 300);
+    });
+    reset.addEventListener('click', () => {
+        clearTimeout(debounce);
+        restoring = true;
+        yearForm.querySelector('[name="search"]').value = '';
+        ['filiere_id', 'niveau_id', 'capacite'].forEach(name => setNativeValue(yearForm.elements.namedItem(name), ''));
+        setNativeValue(yearForm.elements.namedItem('statut'), 'active');
+        restoring = false;
+        // L'année sélectionnée reste en place, comme dans la gestion des notes BTS.
+        refreshLmdClasses();
+    });
 });
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -932,6 +1035,8 @@ async function openNotesModal(classeId, classeName) {
     ueSelect.innerHTML = '<option value="">— Choisir une UE —</option>';
     ecueSelect.innerHTML = '<option value="">— Choisir un ECUE —</option>';
     ecueSelect.disabled = true;
+    ueSelect.dispatchEvent(new Event('change', { bubbles: false }));
+    ecueSelect.dispatchEvent(new Event('change', { bubbles: false }));
 
     notesModal.show();
     chargerRequalification(classeId);
@@ -984,6 +1089,8 @@ async function openNotesModal(classeId, classeName) {
             ueSelect.appendChild(opt);
         });
 
+        ueSelect.dispatchEvent(new Event('change', { bubbles: false }));
+        periodeFilter.dispatchEvent(new Event('change', { bubbles: false }));
         currentClasseData._ueMap = ueMap;
         document.getElementById('notesLoading').style.display = 'none';
 
@@ -1041,6 +1148,7 @@ document.getElementById('ueSelect').addEventListener('change', function() {
         ecueSelect.appendChild(opt);
     });
     ecueSelect.disabled = false;
+    ecueSelect.dispatchEvent(new Event('change', { bubbles: false }));
 });
 
 // ══ ECUE selection → load evaluations & build grid ══
@@ -1805,6 +1913,7 @@ function openEvalCreateModal() {
     if (currentFilter !== 'all') {
         periodeSelect.value = currentFilter;
     }
+    periodeSelect.dispatchEvent(new Event('change', { bubbles: false }));
 
     // Set default date to today
     document.getElementById('evalDate').value = new Date().toISOString().split('T')[0];
@@ -1812,6 +1921,7 @@ function openEvalCreateModal() {
     // Reset form
     document.getElementById('evalTitre').value = '';
     document.getElementById('evalType').value = '';
+    document.getElementById('evalType').dispatchEvent(new Event('change', { bubbles: false }));
     document.getElementById('evalDescription').value = '';
     document.getElementById('evalBareme').value = '20';
     document.getElementById('evalCoeff').value = '1';
