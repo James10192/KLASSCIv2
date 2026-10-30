@@ -204,21 +204,8 @@
         display: flex; align-items: center; gap: .75rem; padding: 1rem 1.5rem;
         border-bottom: 1px solid #e8ecf1; flex-wrap: wrap; background: #fafbfc;
     }
-    /* Ces listes sont remplies en direct par le script (UE, puis éléments,
-       puis semestres) : elles restent des listes du navigateur, mais habillées
-       comme les sélecteurs de la charte — flèche, rayon, focus bleu. */
-    .ln-modal-toolbar select,
-    .ln-eval-field select {
-        -webkit-appearance: none; appearance: none;
-        border-radius: 10px; border: 1.5px solid #e2e8f0; padding: .5rem 2.1rem .5rem .8rem;
-        font-size: .84rem; font-weight: 600; color: #1e293b; transition: all .2s; cursor: pointer;
-        background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230453cb' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right .75rem center;
-    }
-    .ln-modal-toolbar select:disabled { color: #94a3b8; background-color: #f8fafc; cursor: not-allowed; }
-    .ln-eval-field select:focus { border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.08); outline: none; }
-    .ln-modal-toolbar select:focus {
-        border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.08); outline: none;
-    }
+    /* Les listes UE/ECUE/semestre utilisent x-au-select : le select natif
+       cache reste la source de verite des traitements AJAX. */
     .ln-modal-add-btn {
         display: inline-flex; align-items: center; gap: .3rem;
         padding: .45rem .85rem; border-radius: 9px; font-size: .82rem;
@@ -433,14 +420,13 @@
     .ln-eval-field label {
         font-size: .78rem; font-weight: 600; color: #475569; margin-bottom: .25rem; display: block;
     }
-    .ln-eval-field input, .ln-eval-field select, .ln-eval-field textarea {
+    .ln-eval-field input, .ln-eval-field textarea {
         width: 100%; border: 1.5px solid #e2e8f0; border-radius: 8px;
         padding: .4rem .65rem; font-size: .84rem; transition: all .2s;
     }
-    .ln-eval-field input:focus, .ln-eval-field select:focus, .ln-eval-field textarea:focus {
+    .ln-eval-field input:focus, .ln-eval-field textarea:focus {
         border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.08); outline: none;
     }
-    .ln-eval-field select { padding-right: 2.1rem; background-color: #fff; }
     .ln-eval-field .is-invalid { border-color: #dc2626 !important; }
     .ln-eval-field .invalid-feedback { font-size: .72rem; color: #dc2626; margin-top: .15rem; }
     .ln-eval-duree-badge--ko { color: #b91c1c !important; background: rgba(220,38,38,.08) !important; border-color: rgba(220,38,38,.25) !important; }
@@ -463,6 +449,7 @@
     .ln-eval-submit-btn:hover { background: #033a8e; }
     .ln-eval-submit-btn:disabled { opacity: .6; cursor: not-allowed; }
 
+    @include('esbtp.lmd.notes.partials._filters-styles')
     /* Modal slide animation */
     .ln-modal.fade .modal-dialog { transform: translateY(20px) scale(.98); transition: transform .25s ease-out, opacity .2s; }
     .ln-modal.show .modal-dialog { transform: translateY(0) scale(1); }
@@ -507,11 +494,8 @@
                     <p id="lmd-year-context">Gestion des notes par classe — {{ $anneeSelectionnee->name ?? 'Aucune année' }}</p>
                 </div>
             </div>
-            <form method="GET" action="{{ route('esbtp.lmd.notes.index') }}" id="lmdYearForm"><x-au-select name="annee_universitaire_id" id="lmd_annee_universitaire_id"
-                :value="$anneeSelectionnee?->id" icon="fa-calendar" :searchable="false" :placeholder-is-first-option="false"
-                :options="$anneesUniversitaires->mapWithKeys(fn($a) => [$a->id => $a->name.($a->is_current ? ' · courante' : '')])->toArray()" /></form>
+            <span class="ln-hero-year"><i class="fas fa-calendar-alt me-1"></i>{{ $anneeSelectionnee?->name ?? 'Aucune année' }}</span>
         </div>
-        <div id="lmd-year-feedback" role="status" aria-live="polite" style="font-size:.8rem;margin-top:.35rem;"></div>
 
         <div class="ln-hero-kpis">
             <div class="ln-kpi ln-kpi--classes">
@@ -547,6 +531,8 @@
             </div>
         @endif
     @endforeach
+
+    @include('esbtp.lmd.notes.partials._filters')
 
     {{-- ══ Classes grid ══ --}}
     <div id="lmd-classes-results">
@@ -607,16 +593,12 @@
                 </div>
 
                 <div class="ln-modal-toolbar">
-                    <select id="ueSelect" style="min-width:220px;">
-                        <option value="">— Choisir une UE —</option>
-                    </select>
-                    <select id="ecueSelect" style="min-width:220px;" disabled>
-                        <option value="">— Choisir un ECUE —</option>
-                    </select>
-                    <select id="periodeFilter" style="min-width:120px;">
-                        <option value="all">Toutes</option>
-                        {{-- Options dynamiques peuplées par JS selon classe.semestres --}}
-                    </select>
+                    <x-au-select id="ueSelect" class="ln-modal-picker" label="Unité d’enseignement" placeholder="— Choisir une UE —"
+                        :searchable="true" :options="[]" />
+                    <x-au-select id="ecueSelect" class="ln-modal-picker" label="Élément constitutif d’UE" placeholder="— Choisir un ECUE —"
+                        :searchable="true" :options="[]" />
+                    <x-au-select id="periodeFilter" class="ln-modal-picker" label="Période des notes" :value="'all'"
+                        :placeholder-is-first-option="false" :options="['all' => 'Toutes les périodes']" />
                     <button type="button" id="createEvalBtn" class="ln-modal-add-btn" style="display:none;"
                             onclick="openEvalCreateModal()">
                         <i class="fas fa-plus"></i> Créer évaluation
@@ -712,22 +694,13 @@
                     <div class="ln-eval-row-fields">
                         <div class="ln-eval-field">
                             <label for="evalType">Type <span class="text-danger">*</span></label>
-                            <select name="type" id="evalType" required>
-                                <option value="">— Choisir —</option>
-                                <option value="devoir">Devoir</option>
-                                <option value="examen">Examen</option>
-                                <option value="controle">Contrôle</option>
-                                <option value="quiz">Quiz</option>
-                                <option value="tp">TP</option>
-                                <option value="projet">Projet</option>
-                            </select>
+                            <x-au-select name="type" id="evalType" label="Type d’évaluation" required
+                                placeholder="— Choisir un type —"
+                                :options="['devoir' => 'Devoir', 'examen' => 'Examen', 'controle' => 'Contrôle', 'quiz' => 'Quiz', 'tp' => 'TP', 'projet' => 'Projet']" />
                         </div>
                         <div class="ln-eval-field">
                             <label for="evalPeriode">Période <span class="text-danger">*</span></label>
-                            <select name="periode" id="evalPeriode" required>
-                                <option value="">— Choisir —</option>
-                                {{-- Options dynamiques peuplées par JS selon classe.semestres --}}
-                            </select>
+                            <x-au-select name="periode" id="evalPeriode" label="Période de l’évaluation" required placeholder="— Choisir une période —" :options="[]" />
                         </div>
                     </div>
                 </div>
@@ -818,76 +791,7 @@ const lmdNotesQueueKey = 'klassci:lmd-notes:offline-queue:v1';
 let offlineNoteQueue = loadOfflineNoteQueue();
 let isReplayingOfflineQueue = false;
 
-document.addEventListener('DOMContentLoaded', function() {
-    const yearForm = document.getElementById('lmdYearForm');
-    const yearSelect = document.getElementById('lmd_annee_universitaire_id');
-    const feedback = document.getElementById('lmd-year-feedback');
-    let requestSequence = 0;
-    let restoring = false;
-    if (!yearForm || !yearSelect) return;
-
-    async function changeYear() {
-        if (restoring) return;
-        const newYear = Number(yearSelect.value) || null;
-        if (newYear === lmdAcademicYearId) return;
-        const sequence = ++requestSequence;
-        feedback.textContent = 'Chargement des classes…';
-        yearForm.setAttribute('aria-busy', 'true');
-        try {
-            const url = new URL(yearForm.action, window.location.origin);
-            url.searchParams.set('classes_ajax', '1');
-            url.searchParams.set('annee_universitaire_id', String(newYear ?? ''));
-            const response = await fetch(url.toString(), {
-                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                credentials: 'same-origin'
-            });
-            if (!response.ok) throw new Error('Erreur HTTP ' + response.status);
-            const data = await response.json();
-            if (!data.success) throw new Error('Impossible de charger les classes.');
-            if (sequence !== requestSequence) return;
-
-            lmdAcademicYearId = newYear;
-            anneeSuivi = newYear;
-            currentClasseId = null;
-            currentClasseData = null;
-            currentMatiereId = null;
-            evaluationsData = {};
-            notesData = {};
-            document.getElementById('lmd-classes-results').innerHTML = data.html;
-            document.getElementById('lmd-year-context').textContent = 'Gestion des notes par classe — ' + data.annee_name;
-            const kpis = document.querySelectorAll('.ln-hero-kpis .ln-kpi-value');
-            if (kpis.length === 3) {
-                kpis[0].textContent = data.total_classes;
-                kpis[1].textContent = data.total_etudiants;
-                kpis[2].textContent = data.total_evaluations;
-            }
-            document.querySelectorAll('#evalCreateForm input[name="annee_universitaire_id"]').forEach(
-                input => { input.value = String(newYear ?? ''); }
-            );
-            window.dispatchEvent(new CustomEvent('couverture:contexte', {
-                detail: { classe_id: null, annee_universitaire_id: newYear, periode: 'semestre1' }
-            }));
-            const currentUrl = new URL(window.location.href);
-            currentUrl.searchParams.set('annee_universitaire_id', String(newYear ?? ''));
-            currentUrl.searchParams.delete('classe');
-            currentUrl.searchParams.delete('ecue');
-            history.replaceState(history.state, '', currentUrl.toString());
-            feedback.textContent = '';
-        } catch (error) {
-            if (sequence !== requestSequence) return;
-            console.error('Changement d’année LMD :', error);
-            restoring = true;
-            yearSelect.value = String(lmdAcademicYearId ?? '');
-            yearSelect.dispatchEvent(new Event('change', { bubbles: true }));
-            restoring = false;
-            feedback.textContent = 'Impossible de charger cette année. Sélection précédente conservée.';
-        } finally {
-            if (sequence === requestSequence) yearForm.removeAttribute('aria-busy');
-        }
-    }
-    yearSelect.addEventListener('change', changeYear);
-    yearForm.addEventListener('submit', event => { event.preventDefault(); changeYear(); });
-});
+@include('esbtp.lmd.notes.partials._filters-script')
 
 document.addEventListener('DOMContentLoaded', function() {
     notesModal = new bootstrap.Modal(document.getElementById('modalNotes'));
@@ -1805,6 +1709,8 @@ function openEvalCreateModal() {
     if (currentFilter !== 'all') {
         periodeSelect.value = currentFilter;
     }
+    // Garder la valeur affichee par x-au-select synchronisee avec son natif cache.
+    periodeSelect.dispatchEvent(new Event('change', { bubbles: true }));
 
     // Set default date to today
     document.getElementById('evalDate').value = new Date().toISOString().split('T')[0];
@@ -1812,6 +1718,7 @@ function openEvalCreateModal() {
     // Reset form
     document.getElementById('evalTitre').value = '';
     document.getElementById('evalType').value = '';
+    document.getElementById('evalType').dispatchEvent(new Event('change', { bubbles: true }));
     document.getElementById('evalDescription').value = '';
     document.getElementById('evalBareme').value = '20';
     document.getElementById('evalCoeff').value = '1';
