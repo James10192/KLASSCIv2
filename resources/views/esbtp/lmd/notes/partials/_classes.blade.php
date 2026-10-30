@@ -3,8 +3,14 @@
         <div class="ln-empty-card">
             <div class="ln-empty">
                 <div class="ln-empty-icon"><i class="fas fa-layer-group"></i></div>
-                <div class="ln-empty-title">Aucune classe LMD</div>
-                <div class="ln-empty-text">Aucune classe utilisant le système LMD n'a été trouvée. Configurez d'abord vos classes.</div>
+                <div class="ln-empty-title">{{ request()->hasAny(['search', 'filiere_id', 'niveau_id', 'statut', 'capacite']) ? 'Aucun résultat' : 'Aucune classe LMD' }}</div>
+                <div class="ln-empty-text">
+                    @if(request()->filled('search') || request()->filled('filiere_id') || request()->filled('niveau_id') || request()->filled('statut') || request()->filled('capacite'))
+                        Aucune classe ne correspond aux filtres sélectionnés. Modifiez ou réinitialisez vos critères.
+                    @else
+                        Aucune classe utilisant le système LMD n'a été trouvée. Configurez d'abord vos classes.
+                    @endif
+                </div>
             </div>
         </div>
     @else

@@ -6,6 +6,8 @@ use App\Domain\AcademicPilotage\Services\AcademicMetricSnapshotInvalidationServi
 use App\Domain\AcademicPilotage\Services\GradeSheetNoteMutationGuard;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPFiliere;
+use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPNote;
@@ -24,6 +26,15 @@ class ESBTPLMDNoteController extends Controller
     public function index(Request $request)
     {
         abort_unless($request->user()?->can('lmd.notes.view') || $request->user()?->can('lmd.notes.manage'), 403);
+        // Meme contrat de filtres que la page BTS.
+        $request->validate([
+            'search' => ['nullable', 'string', 'max:120'],
+            'filiere_id' => ['nullable', 'integer', 'min:1'],
+            'niveau_id' => ['nullable', 'integer', 'min:1'],
+            'statut' => ['nullable', 'in:active,inactive'],
+            'capacite' => ['nullable', 'in:disponible,pleine'],
+        ]);
+
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
         $anneeSelectionnee = $request->filled('annee_universitaire_id')
             ? ESBTPAnneeUniversitaire::findOrFail((int) $request->input('annee_universitaire_id'))
@@ -32,15 +43,16 @@ class ESBTPLMDNoteController extends Controller
         $anneesUniversitaires = ESBTPAnneeUniversitaire::orderByDesc('id')->get();
 
         $classesQuery = ESBTPClasse::where('systeme_academique', 'LMD')
-            ->where('is_active', true)
             ->with(['filiere', 'niveau'])
             ->withCount([
                 'inscriptions as etudiants_count' => fn ($q) => $q
                     ->where('status', 'active')
                     ->where('workflow_step', 'etudiant_cree')
                     ->when($anneeId, fn ($q2, $id) => $q2->where('annee_universitaire_id', $id)),
-            ])
-            ->when($request->search, fn ($q, $s) => $q->where('name', 'like', "%{$s}%"));
+                'inscriptions as inscriptions_count' => fn ($q) => $q
+                    ->where('status', 'active')
+                    ->when($anneeId, fn ($q2, $id) => $q2->where('annee_universitaire_id', $id)),
+            ]);
 
         $user = $request->user();
         if ($user->can('identity.teach') && ! $user->can('identity.coordinate')) {
@@ -68,7 +80,34 @@ class ESBTPLMDNoteController extends Controller
                 ->orWhereIn('id', $classesPlanifiees));
         }
 
+        if ($request->filled('search')) {
+            $search = trim((string) $request->input('search'));
+            $classesQuery->where(fn ($q) => $q
+                ->where('name', 'like', '%'.$search.'%')
+                ->orWhere('code', 'like', '%'.$search.'%')
+                ->orWhereHas('filiere', fn ($f) => $f->where('name', 'like', '%'.$search.'%'))
+                ->orWhereHas('niveau', fn ($n) => $n->where('name', 'like', '%'.$search.'%')));
+        }
+        if ($request->filled('filiere_id')) {
+            $classesQuery->where('filiere_id', $request->integer('filiere_id'));
+        }
+        if ($request->filled('niveau_id')) {
+            $classesQuery->where('niveau_etude_id', $request->integer('niveau_id'));
+        }
+        if ($request->filled('statut')) {
+            $classesQuery->where('is_active', $request->input('statut') === 'active');
+        }
+
         $classes = $classesQuery->orderBy('name')->get();
+        if ($request->filled('capacite')) {
+            $capacite = $request->input('capacite');
+            $classes = $classes->filter(function ($classe) use ($capacite) {
+                // Une inscription active occupe la place, meme avant « etudiant_cree ».
+                $disponibles = (int) ($classe->places_totales ?? 0) - (int) ($classe->inscriptions_count ?? 0);
+
+                return $capacite === 'disponible' ? $disponibles > 0 : $disponibles <= 0;
+            })->values();
+        }
 
         // Nombre d'évaluations par classe (uniquement celles liées à des ECUEs LMD)
         $evalCounts = ESBTPEvaluation::whereHas('classe', fn ($q) => $q->where('systeme_academique', 'LMD'))
@@ -104,7 +143,12 @@ class ESBTPLMDNoteController extends Controller
             ]);
         }
 
+        $filieres = ESBTPFiliere::orderBy('name')->get();
+        $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
+
         return view('esbtp.lmd.notes.index', compact(
+            'filieres',
+            'niveaux',
             'classes',
             'evalCounts',
             'anneeCourante',
