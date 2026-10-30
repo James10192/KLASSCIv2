@@ -404,8 +404,10 @@ class AnnonceMailPulseTest extends TestCase
         $client->shouldNotReceive('sendEmailMessage');
         (new EnvoyerAnnonceCourriel($id))->handle($client, new CadenceMailPulse);
         $row = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
-        $this->assertSame('processing', $row->status);
+        $this->assertSame('awaiting_dispatch', $row->status);
+        $this->assertSame('pre_submission_context_changed', $row->error_code);
         $this->assertNull($row->submitted_at);
+        $this->assertNull($row->mailpulse_message_id);
         $this->assertSame('nouveau@etudiants.test', $row->email);
     }
 
