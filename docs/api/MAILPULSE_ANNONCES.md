@@ -44,6 +44,7 @@ Le job vérifie également l'adresse et la référence figée juste avant le `PO
 
 ## Historique
 
+- 2026-10-30 — Les états `delivered`, `delivery_delayed` et `sent` confirmés par MailPulse effacent les anciens codes internes de résultat indéterminé lorsqu'ils sont effectivement enregistrés, sans toucher aux preuves d'erreur terminale.
 - 2026-10-30 — Protection contre les modifications de destinataire ou de référence pendant l'appel fournisseur : SQL CAS sur le contexte exact, compteurs uniquement après écriture effective ; arrêt avant HTTP et quarantaine immédiate si le contexte a changé. Aucune nouvelle réémission.
 - 2026-10-30 — Lecture seule d'une soumission inconnue par clé d'idempotence et contrôle de l'adresse (MailPulse #64), sans aucune relance.
 - 2026-10-30 — Réception des webhooks MailPulse standard v1 en plus du legacy, avec corrélation multi-tenant et adresse.
