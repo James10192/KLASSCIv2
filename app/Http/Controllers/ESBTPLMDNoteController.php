@@ -32,15 +32,13 @@ class ESBTPLMDNoteController extends Controller
         $anneesUniversitaires = ESBTPAnneeUniversitaire::orderByDesc('id')->get();
 
         $classesQuery = ESBTPClasse::where('systeme_academique', 'LMD')
-            ->where('is_active', true)
             ->with(['filiere', 'niveau'])
             ->withCount([
                 'inscriptions as etudiants_count' => fn ($q) => $q
                     ->where('status', 'active')
                     ->where('workflow_step', 'etudiant_cree')
                     ->when($anneeId, fn ($q2, $id) => $q2->where('annee_universitaire_id', $id)),
-            ])
-            ->when($request->search, fn ($q, $s) => $q->where('name', 'like', "%{$s}%"));
+            ]);
 
         $user = $request->user();
         if ($user->can('identity.teach') && ! $user->can('identity.coordinate')) {
@@ -68,7 +66,47 @@ class ESBTPLMDNoteController extends Controller
                 ->orWhereIn('id', $classesPlanifiees));
         }
 
+        // Options construites sur les classes accessibles à cet utilisateur avant
+        // les filtres : aucune fuite de filières/classes d'un autre périmètre.
+        $optionsClasses = (clone $classesQuery)->get();
+        $filieres = $optionsClasses->pluck('filiere')->filter()->unique('id')->sortBy('name')->values();
+        $niveaux = $optionsClasses->pluck('niveau')->filter()->unique('id')->sortBy('name')->values();
+
+        if ($request->filled('search')) {
+            $terms = preg_split('/\\s+/u', trim((string) $request->input('search'))) ?: [];
+            foreach ($terms as $term) {
+                if ($term === '') {
+                    continue;
+                }
+                $escaped = addcslashes($term, '%_\\\\');
+                $classesQuery->where(fn ($q) => $q
+                    ->where('name', 'like', "%{$escaped}%")
+                    ->orWhere('code', 'like', "%{$escaped}%")
+                    ->orWhereHas('filiere', fn ($sub) => $sub->where('name', 'like', "%{$escaped}%"))
+                    ->orWhereHas('niveau', fn ($sub) => $sub->where('name', 'like', "%{$escaped}%")));
+            }
+        }
+        if ($request->filled('filiere_id')) {
+            $classesQuery->where('filiere_id', (int) $request->input('filiere_id'));
+        }
+        if ($request->filled('niveau_id')) {
+            $classesQuery->where('niveau_etude_id', (int) $request->input('niveau_id'));
+        }
+        $statut = $request->input('statut', 'active');
+        if ($statut === 'active') {
+            $classesQuery->where('is_active', true);
+        } elseif ($statut === 'inactive') {
+            $classesQuery->where('is_active', false);
+        }
+
         $classes = $classesQuery->orderBy('name')->get();
+        $capacite = $request->input('capacite');
+        if (in_array($capacite, ['disponible', 'pleine'], true)) {
+            $classes = $classes->filter(function ($classe) use ($capacite) {
+                $disponibles = (int) ($classe->places_totales ?? 0) - (int) $classe->etudiants_count;
+                return $capacite === 'disponible' ? $disponibles > 0 : $disponibles <= 0;
+            })->values();
+        }
 
         // Nombre d'évaluations par classe (uniquement celles liées à des ECUEs LMD)
         $evalCounts = ESBTPEvaluation::whereHas('classe', fn ($q) => $q->where('systeme_academique', 'LMD'))
@@ -110,6 +148,8 @@ class ESBTPLMDNoteController extends Controller
             'anneeCourante',
             'anneeSelectionnee',
             'anneesUniversitaires',
+            'filieres',
+            'niveaux',
             'peutRequalifier',
             'ponderation'
         ));
