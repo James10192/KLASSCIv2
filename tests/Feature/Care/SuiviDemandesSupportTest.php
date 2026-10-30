@@ -82,8 +82,11 @@ class SuiviDemandesSupportTest extends TestCase
     public function test_une_reponse_du_support_avertit_une_fois_dans_l_application_et_par_e_mail(): void
     {
         $user = $this->utilisateur(true);
-        $avant = $this->resume($user);
-        $apres = $this->resume($user, 'EN_ANALYSE', '2026-10-01T09:10:00+00:00', '2026-10-01T09:10:00+00:00');
+        // Le curseur du Master est borne a 29 jours. Utiliser des dates
+        // relatives evite que ce scenario expire au fil du calendrier.
+        $avant = $this->resume($user, 'EN_ANALYSE', null, now()->subMinutes(15)->toIso8601String());
+        $reponseLe = now()->subMinutes(5)->toIso8601String();
+        $apres = $this->resume($user, 'EN_ANALYSE', $reponseLe, $reponseLe);
         $this->master([$avant], [$apres], [$apres]);
 
         $this->artisan('support:suivre-demandes')->assertSuccessful();
