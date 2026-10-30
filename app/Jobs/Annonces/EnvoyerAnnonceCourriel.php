@@ -66,6 +66,23 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
             return;
         }
 
+        // A retry from the old rail must retain its LEGACY key; only truly
+        // untouched rows get the new school-qualified reference.
+        $reference = \App\Services\Annonces\ReferenceCourrielAnnonce::pourEnvoi($ligne, $tenant);
+        if ($reference === null) {
+            DB::table('esbtp_annonce_email_deliveries')
+                ->where('id', $this->deliveryId)
+                ->whereIn('status', ['pending', 'retrying'])
+                ->whereNull('submitted_at')
+                ->update([
+                    'status' => 'awaiting_dispatch',
+                    'error_code' => 'invalid_dispatch_contract',
+                    'updated_at' => now(),
+                ]);
+
+            return; // A mismatching previously pinned v2 key is never sent.
+        }
+
         // Un seul worker prend la ligne; la prochaine relance est permise depuis retrying.
         $pris = DB::table('esbtp_annonce_email_deliveries')
             ->where('id', $this->deliveryId)
@@ -73,13 +90,14 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
             ->whereNull('submitted_at')
             ->update([
                 'status' => 'processing', 'processing_at' => now(),
+                // Persist this key even when local pacing defers the HTTP call.
+                'mailpulse_request_id' => $reference,
                 'attempts' => DB::raw('attempts + 1'), 'updated_at' => now(),
             ]);
         if ($pris !== 1) {
             return;
         }
 
-        $reference = 'klassci-annonce-'.$annonce->id.'-courriel-'.$ligne->id;
         // After crossing the HTTP boundary, a lost response cannot prove non-delivery.
         $soumissionCommencee = false;
         try {
@@ -146,7 +164,7 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
                 if (in_array($resultat->status, ['connection_failed', 'request_timeout', 'provider_unavailable', 'invalid_dispatch_contract'], true)) {
                     $this->statut('awaiting_dispatch', [
                         'error_code' => 'submission_outcome_unknown',
-                        'mailpulse_request_id' => $resultat->requestId ?? $reference,
+                        // The pinned idempotency key must never be overwritten with an HTTP request ID.
                         'mailpulse_message_id' => $resultat->id,
                     ]);
                     Log::warning('Annonce : soumission MailPulse indeterminee, relance bloquee', [
@@ -161,7 +179,7 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
                     // Do not release an endless job storm or claim a bounce.
                     $this->statut('awaiting_dispatch', [
                         'error_code' => $resultat->status,
-                        'mailpulse_request_id' => $resultat->requestId ?? $reference,
+                        // The pinned idempotency key must never be overwritten with an HTTP request ID.
                     ]);
                     return;
                 }
@@ -188,7 +206,7 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
             $this->statut($etat, [
                 'error_code' => $accepteAvecId ? null : 'submission_outcome_unknown',
                 'mailpulse_message_id' => $resultat->id,
-                'mailpulse_request_id' => $resultat->requestId,
+                // Retain the original school-qualified/legacy idempotency key.
                 'dispatch_state' => $resultat->dispatchState,
                 'submitted_at' => $accepteAvecId ? now() : null,
             ]);
