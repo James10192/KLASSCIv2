@@ -55,7 +55,7 @@ class MailPulseStatutsMessages
      */
     public function lireParReference(string $reference, string $tenant): array|string
     {
-        if (! preg_match('/^klassci-annonce-[1-9][0-9]*-courriel-[1-9][0-9]*$/D', $reference)
+        if (\App\Services\Annonces\ReferenceCourrielAnnonce::extraire($reference, $tenant) === null
             || trim($tenant) === '' || $tenant === 'default') {
             return 'invalid_dispatch_contract';
         }
