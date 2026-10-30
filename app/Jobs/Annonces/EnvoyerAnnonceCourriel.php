@@ -46,6 +46,26 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
             return;
         }
 
+        // A default/absent tenant code would make the idempotency reference
+        // ambiguous across schools using a shared MailPulse organization.
+        // Fail closed BEFORE any HTTP call: no provider failure is asserted.
+        $tenant = (string) config('app.tenant_code', 'default');
+        if ($tenant === 'default' || ! preg_match('/^[a-z0-9][a-z0-9_-]{1,62}$/D', $tenant)) {
+            DB::table('esbtp_annonce_email_deliveries')
+                ->where('id', $this->deliveryId)
+                ->whereIn('status', ['pending', 'retrying'])
+                ->whereNull('submitted_at')
+                ->update([
+                    'status' => 'awaiting_dispatch',
+                    'error_code' => 'tenant_unconfigured',
+                    'updated_at' => now(),
+                ]);
+            Log::warning('Annonce : tenant manquant, aucun email soumis', [
+                'livraison_id' => $this->deliveryId,
+            ]);
+            return;
+        }
+
         // Un seul worker prend la ligne; la prochaine relance est permise depuis retrying.
         $pris = DB::table('esbtp_annonce_email_deliveries')
             ->where('id', $this->deliveryId)
@@ -132,6 +152,16 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
                     Log::warning('Annonce : soumission MailPulse indeterminee, relance bloquee', [
                         'annonce_id' => $annonce->id, 'livraison_id' => $ligne->id,
                         'statut' => $resultat->status,
+                    ]);
+                    return;
+                }
+                if (in_array($resultat->status, RefusMailPulse::CONFIGURATION, true)) {
+                    // A disabled connector, missing credentials or exhausted
+                    // quota is not proof of a provider delivery failure.
+                    // Do not release an endless job storm or claim a bounce.
+                    $this->statut('awaiting_dispatch', [
+                        'error_code' => $resultat->status,
+                        'mailpulse_request_id' => $resultat->requestId ?? $reference,
                     ]);
                     return;
                 }

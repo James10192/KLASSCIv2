@@ -31,6 +31,7 @@ class AnnonceMailPulseTest extends TestCase
     {
         parent::setUp();
         Cache::flush();
+        config(['app.tenant_code' => 'presentation']);
     }
 
     private function annonce(string $type = 'general', bool $courriel = true): ESBTPAnnonce
@@ -518,6 +519,43 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertSame('awaiting_dispatch', DB::table('esbtp_annonce_email_deliveries')->where('id', $ids['ancien'])->value('status'));
         $this->assertSame('processing', DB::table('esbtp_annonce_email_deliveries')->where('id', $ids['recent'])->value('status'));
         Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
+    }
+
+    public function test_code_tenant_non_configure_bloque_avant_tout_appel_mailpulse(): void
+    {
+        config(['app.tenant_code' => 'default']);
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'protection@etudiants.test',
+            'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $client = Mockery::mock(MailPulseClient::class);
+        $client->shouldNotReceive('sendEmailMessage');
+        (new EnvoyerAnnonceCourriel($id))->handle($client, new CadenceMailPulse);
+        $ligne = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
+        $this->assertSame('awaiting_dispatch', $ligne->status);
+        $this->assertSame('tenant_unconfigured', $ligne->error_code);
+        $this->assertNull($ligne->provider_failed_at);
+        $this->assertSame(0, (int) $ligne->attempts);
+    }
+
+    public function test_un_refus_local_de_configuration_n_est_pas_un_echec_fournisseur(): void
+    {
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'cle-absente@etudiants.test',
+            'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $client = Mockery::mock(MailPulseClient::class);
+        $client->shouldReceive('getSetting')->twice()->andReturn('');
+        $client->shouldReceive('sendEmailMessage')->once()
+            ->andReturn(new MailPulseResult(false, 'missing_api_key', null, 'req-manquante'));
+        (new EnvoyerAnnonceCourriel($id))->handle($client, new CadenceMailPulse);
+        $ligne = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
+        $this->assertSame('awaiting_dispatch', $ligne->status);
+        $this->assertSame('missing_api_key', $ligne->error_code);
+        $this->assertNull($ligne->provider_failed_at);
+        $this->assertNull($ligne->submitted_at);
     }
 
     public function test_epuisement_queue_ne_devient_pas_faussement_un_echec_fournisseur(): void

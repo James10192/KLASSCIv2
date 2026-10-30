@@ -145,3 +145,5 @@ Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 - 2026-10-26 · Paiements, export détaillé : le formulaire affiche le plafond réel (400 lignes) et le récapitulatif du document imprime le libellé des modes de règlement choisis.
 
 - Sécurisation des envois d'annonces : quarantaines durables avant la requête MailPulse, reprise des workers interrompus en lecture seule et protection contre les états régressifs ; aucun mail historique renvoyé.
+
+- Les envois d'annonces sont bloqués en sécurité lorsque l'identifiant d'établissement ou les paramètres MailPulse sont manquants : aucune fausse preuve d'échec de livraison.
