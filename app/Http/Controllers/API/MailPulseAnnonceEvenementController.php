@@ -46,7 +46,7 @@ class MailPulseAnnonceEvenementController extends Controller
         }
 
         $dateEvenement = isset($valide['occurred_at'])
-            ? \\Illuminate\\Support\\Carbon::parse($valide['occurred_at'])
+            ? \Illuminate\Support\Carbon::parse($valide['occurred_at'])
                 ->setTimezone(config('app.timezone', 'UTC'))->format('Y-m-d H:i:s')
             : now();
 

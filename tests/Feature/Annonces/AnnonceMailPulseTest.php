@@ -330,7 +330,7 @@ class AnnonceMailPulseTest extends TestCase
         $client = Mockery::mock(MailPulseClient::class);
         $client->shouldReceive('getSetting')->twice()->andReturn('');
         $client->shouldReceive('sendEmailMessage')->once()
-            ->andThrow(new \\RuntimeException('remote response lost'));
+            ->andThrow(new \RuntimeException('remote response lost'));
         $job = new EnvoyerAnnonceCourriel($id);
         $job->handle($client, new CadenceMailPulse);
         $job->handle($client, new CadenceMailPulse);
