@@ -153,7 +153,23 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
                     'updated_at' => now(),
                 ]);
             if ($frontiere !== 1) {
-                return; // lease revoked or another worker already settled it
+                // A recipient/reference edit while composing invalidates this
+                // worker's snapshot. Quarantine the stale lease immediately,
+                // rather than waiting for a later scheduled cleanup. Nothing
+                // has crossed the HTTP boundary yet; no provider failure claim.
+                DB::table('esbtp_annonce_email_deliveries')
+                    ->where('id', $this->deliveryId)
+                    ->where('status', 'processing')
+                    ->whereNull('submitted_at')
+                    ->whereNull('mailpulse_message_id')
+                    ->update([
+                        'status' => 'awaiting_dispatch',
+                        'error_code' => 'pre_submission_context_changed',
+                        'processing_at' => null,
+                        'updated_at' => now(),
+                    ]);
+
+                return; // a terminal webhook or another worker always wins
             }
 
             $soumissionCommencee = true;
