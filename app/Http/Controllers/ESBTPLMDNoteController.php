@@ -49,6 +49,9 @@ class ESBTPLMDNoteController extends Controller
                     ->where('status', 'active')
                     ->where('workflow_step', 'etudiant_cree')
                     ->when($anneeId, fn ($q2, $id) => $q2->where('annee_universitaire_id', $id)),
+                'inscriptions as inscriptions_count' => fn ($q) => $q
+                    ->where('status', 'active')
+                    ->when($anneeId, fn ($q2, $id) => $q2->where('annee_universitaire_id', $id)),
             ]);
 
         $user = $request->user();
@@ -99,7 +102,8 @@ class ESBTPLMDNoteController extends Controller
         if ($request->filled('capacite')) {
             $capacite = $request->input('capacite');
             $classes = $classes->filter(function ($classe) use ($capacite) {
-                $disponibles = (int) ($classe->places_totales ?? 0) - (int) ($classe->etudiants_count ?? 0);
+                // Une inscription active occupe la place, meme avant « etudiant_cree ».
+                $disponibles = (int) ($classe->places_totales ?? 0) - (int) ($classe->inscriptions_count ?? 0);
 
                 return $capacite === 'disponible' ? $disponibles > 0 : $disponibles <= 0;
             })->values();

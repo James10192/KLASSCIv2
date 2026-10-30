@@ -944,6 +944,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentMatiereName = '';
                 evaluationsData = {};
                 notesData = {};
+                evalParamsCache = {};
+                classeSemestres = [];
                 document.querySelectorAll('#evalCreateForm input[name="annee_universitaire_id"]').forEach(
                     input => { input.value = String(newYear ?? ''); }
                 );
@@ -1004,7 +1006,12 @@ document.addEventListener('DOMContentLoaded', function() {
     reset?.addEventListener('click', () => {
         clearTimeout(searchTimer);
         restoring = true;
-        yearForm.reset();
+        // Ne pas utiliser form.reset() : les valeurs initiales peuvent venir
+        // de l'URL et etre deja filtrees. Reinitialiser explicitement.
+        names.filter(name => name !== 'annee_universitaire_id').forEach(name => {
+            const control = yearForm.elements.namedItem(name);
+            if (control) control.value = '';
+        });
         yearSelect.value = String(lmdAcademicYearId ?? '');
         yearForm.querySelectorAll('select').forEach(select => {
             select.dispatchEvent(new Event('change', { bubbles: true }));

@@ -99,7 +99,9 @@ class LmdNotesFiltersAjaxTest extends TestCase
             'filiere_id' => $filiere->id,
             'niveau_id' => $niveau->id,
             'status' => 'active',
-            'workflow_step' => 'etudiant_cree',
+            // Une inscription active occupe la capacite avant la creation
+            // effective du compte etudiant.
+            'workflow_step' => 'documents_complets',
         ]);
 
         $this->filtrer(['annee_universitaire_id' => $anneeA->id, 'capacite' => 'pleine'])
