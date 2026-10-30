@@ -24,6 +24,12 @@
 #classSelectionModal .nm-network-badge {
     color: #1e40af; background: #eff6ff; border-color: #bfdbfe;
 }
+#classSelectionModal .nm-network-badge[data-state="syncing"] {
+    color: #92400e; background: #fffbeb; border-color: #fde68a;
+}
+#classSelectionModal .nm-network-badge[data-state="offline"] {
+    color: #b91c1c; background: #fef2f2; border-color: #fecaca;
+}
 #classSelectionModal .nm-quick-document {
     color: #0453cb; border-color: #c7d7f2; background: #f8fbff;
 }
