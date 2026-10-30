@@ -236,6 +236,57 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertSame($horodatage, DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('provider_delivered_at'));
         $this->assertNull(DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('provider_failed_at'));
     }
+    public function test_callback_standard_mailpulse_v1_controle_ecole_et_message_et_replay(): void
+    {
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'test@etudiants.test',
+            'status' => 'submitted', 'submitted_at' => now(),
+            'mailpulse_message_id' => 'mp-standard', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->withoutMiddleware(\\App\\Http\\Middleware\\CheckInstalled::class);
+        config([
+            'app.tenant_code' => 'esbtp-abidjan',
+            'services.mailpulse.external_organization_id' => 'org-mailpulse-esbtp',
+            'services.mailpulse.announcement_webhook_secret' => 'secret-webhook-standard',
+        ]);
+        $event = [
+            'event_id' => 'evt-001', 'tenant_id' => 'org-mailpulse-esbtp',
+            'type' => 'message.delivered', 'created_at' => '2026-10-29T12:33:00+00:00',
+            'data' => [
+                'occurred_at' => '2026-10-29T12:30:00+00:00',
+                'message' => [
+                    'id' => 'mp-standard', 'channel' => 'email', 'status' => 'delivered',
+                    'external_tenant_id' => 'esbtp-abidjan',
+                    'recipient' => ['type' => 'email', 'value' => 'test@etudiants.test'],
+                    'metadata' => [
+                        'source' => 'klassci', 'workflow_event' => 'announcement_email',
+                        'external_reference' => "klassci-annonce-{$annonce->id}-courriel-{$id}",
+                    ],
+                ],
+            ],
+        ];
+        $post = function (array $payload) {
+            $body = json_encode($payload, JSON_UNESCAPED_SLASHES);
+            $stamp = (string) time();
+            $signature = 'v1='.hash_hmac('sha256', $stamp.'.'.$body, 'secret-webhook-standard');
+            return $this->call('POST', '/api/v1/mailpulse/announcement-events', [], [], [], [
+                'CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json',
+                'HTTP_X_MAILPULSE_TIMESTAMP' => $stamp,
+                'HTTP_X_MAILPULSE_SIGNATURE' => 'v1='.str_repeat('0', 64).','.$signature,
+            ], $body);
+        };
+        $this->assertSame(202, $post(array_replace($event, ['tenant_id' => 'other-org']))->getStatusCode());
+        $this->assertSame(202, $post(array_replace_recursive($event, ['data' => ['message' => ['external_tenant_id' => 'other-school']]]))->getStatusCode());
+        $this->assertSame(202, $post(array_replace_recursive($event, ['data' => ['message' => ['id' => 'other-message']]]))->getStatusCode());
+        $this->assertSame(202, $post(array_replace_recursive($event, ['data' => ['message' => ['recipient' => ['value' => 'wrong@etudiants.test']]]]))->getStatusCode());
+        $this->assertSame('submitted', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
+        $this->assertSame(200, $post($event)->getStatusCode());
+        $this->assertSame(200, $post($event)->getStatusCode());
+        $this->assertSame('delivered', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
+        $this->assertSame('2026-10-29 12:30:00', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('provider_delivered_at'));
+    }
+
     public function test_rapprochement_mailpulse_distingue_delivre_retarde_et_rebond_sans_renvoyer(): void
     {
         Bus::fake([EnvoyerAnnonceCourriel::class]);

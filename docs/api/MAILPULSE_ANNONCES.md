@@ -26,8 +26,15 @@ Headers : `X-MailPulse-Timestamp` (secondes Unix), `X-MailPulse-Signature` (hex 
 - Les callbacks dupliqués, retardés et concurrents n'altèrent pas une ligne déjà `delivered` ou `failed`. Les délais restent transitoires et ne déclenchent pas de réémission.
 - Validation invalide : HTTP 422, signature invalide : HTTP 401, résultat conforme : HTTP 200.
 
+## Format de webhook MailPulse v1
+
+L'endpoint accepte désormais l'enveloppe standard des webhooks de l'organisation MailPulse : `event_id`, `type`, `tenant_id` (organisation), `created_at` et `data.message` avec `id`, `channel=email`, `status`, `external_tenant_id`, `recipient.type=email`, `recipient.value` et `metadata` (`source=klassci`, `workflow_event=announcement_email`, `external_reference`). L'horodatage fournisseur `data.occurred_at` est facultatif. Types pris en charge : `message.delivered`, `message.delivery_delayed`, `message.failed`, `message.bounced`, `message.complained`, `message.suppressed`.
+
+La signature standard est `mailpulse-signature: v1=<HMAC_SHA256>` (plusieurs signatures séparées par virgules possibles durant la rotation). Le contrat historique en hex brut reste compatible. Le secret du webhook MailPulse d'une instance doit correspondre à `MAILPULSE_ANNOUNCEMENT_WEBHOOK_SECRET` de cette instance. Code école `app.tenant_code` obligatoire pour le format standard ; si `MAILPULSE_EXTERNAL_ORGANIZATION_ID` est configuré, l'organisation doit également correspondre. La ligne en base doit correspondre à la référence, au message **et à l'adresse e-mail exacte** ; aucune réponse ne révèle l'existence d'un destinataire d'une autre instance. Les événements ne peuvent pas provoquer de nouvelle soumission.
+
 ## Historique
 
+- 2026-10-30 — Réception des webhooks MailPulse standard v1 en plus du legacy, avec corrélation multi-tenant et adresse.
 - 2026-10-29 — **Breaking change par rapport à l'ébauche non activée** : `message_id` devient obligatoire et doit correspondre à la ligne `mailpulse_message_id`. Mise à jour SQL conditionnelle pour éviter le déclassement sur replay/race ; horodatage fournisseur facultatif.
 - Initial — endpoint HMAC interne KLASSCI, réservé à une future passerelle MailPulse.
 
