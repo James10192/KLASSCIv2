@@ -1,0 +1,106 @@
+/* LMD Notes modal — UI only, pedagogical rules and AJAX unchanged. */
+#modalNotes.ln-modal .modal-dialog {
+    width: min(1380px, calc(100vw - 32px)) !important;
+    max-width: calc(100vw - 32px) !important;
+    margin: 12px auto !important;
+}
+#modalNotes.ln-modal .modal-content {
+    display: flex; flex-direction: column; height: min(94dvh, 960px);
+    max-height: calc(100dvh - 24px); border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, .16);
+}
+#modalNotes.ln-modal .modal-header {
+    flex: 0 0 auto; border-bottom: 1px solid #dce3ef;
+}
+#modalNotes .ln-modal-hero {
+    padding: .85rem 1.25rem; background: #fff; color: #0f172a;
+}
+#modalNotes .ln-modal-hero::before { display: none; }
+#modalNotes .ln-modal-icon {
+    width: 38px; height: 38px; color: #0453cb;
+    background: #eff6ff; border: 1px solid #dbeafe; backdrop-filter: none;
+}
+#modalNotes .ln-modal-title { color: #0f172a; font-size: 1rem; }
+#modalNotes .ln-modal-subtitle { color: #64748b; opacity: 1; font-size: .75rem; }
+#modalNotes .btn-close { filter: none; opacity: .75; }
+#modalNotes .ln-modal-kpis { margin-top: .55rem; gap: .45rem; }
+#modalNotes .ln-modal-kpi {
+    padding: .22rem .6rem; gap: .35rem; background: #f8fafc; border-color: #dce3ef;
+}
+#modalNotes .ln-modal-kpi-val { color: #0453cb; font-size: .85rem; }
+#modalNotes .ln-modal-kpi-lbl { color: #64748b; font-size: .7rem; }
+#modalNotes.ln-modal .modal-body {
+    flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+    overflow: auto; padding: 0; background: #fff; overscroll-behavior: contain;
+}
+#modalNotes .ln-modal-toolbar {
+    display: grid; align-items: end;
+    grid-template-columns: minmax(0,1.1fr) minmax(0,1.25fr) minmax(160px,.85fr) auto;
+    flex: 0 0 auto; padding: .7rem 1.25rem; gap: .6rem;
+    background: #fff; position: sticky; top: 0; z-index: 14;
+}
+#modalNotes .ln-modal-field {
+    min-width: 0; display: flex; flex-direction: column; gap: .2rem;
+}
+#modalNotes .ln-modal-field label {
+    margin: 0; color: #475569; font-size: .7rem; font-weight: 700;
+}
+#modalNotes .ln-modal-field .au-select {
+    display: flex; width: 100%; min-width: 0; flex: 1 1 auto;
+}
+#modalNotes .ln-modal-field .au-select-trigger {
+    min-height: 42px; border: 1px solid #dce3ef; border-radius: 9px;
+}
+#modalNotes .ln-modal-add-btn {
+    margin-left: 0; min-height: 42px; padding: .55rem .8rem;
+    justify-content: center; white-space: nowrap;
+}
+#modalNotes .ln-suivi, #modalNotes .ln-requal {
+    margin: .45rem 1.25rem 0; flex: 0 0 auto;
+}
+#modalNotes .ln-grid-wrap {
+    min-height: 0; max-height: none; flex: 1 1 auto;
+    overflow: auto; border-top: 1px solid #e8ecf1;
+}
+#modalNotes .ln-grid tbody td { padding: .35rem .5rem; }
+#modalNotes .ln-modal-empty, #modalNotes .ln-modal-loading { padding: 2rem 1.25rem; }
+#modalNotes .ln-autosave-info { flex: 0 0 auto; padding: .5rem 1.25rem; font-size: .75rem; }
+#modalNotes.ln-modal .modal-footer {
+    flex: 0 0 auto; z-index: 8; padding: .65rem 1.25rem;
+    background: #fff; border-top: 1px solid #dce3ef;
+}
+#modalNotes .ln-modal-fbtn { min-height: 42px; border-radius: 9px; }
+#modalNotes .ln-modal-add-btn:focus-visible,
+#modalNotes .ln-modal-fbtn:focus-visible {
+    outline: 2px solid #0453cb; outline-offset: 2px;
+}
+@media (max-width: 990px) {
+    #modalNotes .ln-modal-toolbar { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    #modalNotes .ln-modal-add-btn { grid-column: 1 / -1; }
+}
+@media (max-width: 580px) {
+    #modalNotes.ln-modal .modal-dialog {
+        width: calc(100vw - 16px) !important; max-width: calc(100vw - 16px) !important;
+        margin: 8px auto !important;
+    }
+    #modalNotes.ln-modal .modal-content {
+        height: calc(100dvh - 16px); max-height: calc(100dvh - 16px);
+    }
+    #modalNotes .ln-modal-hero { padding: .75rem; }
+    #modalNotes .ln-modal-title { font-size: .9rem; }
+    #modalNotes .ln-modal-kpis { flex-wrap: wrap; }
+    #modalNotes .ln-modal-kpi { padding: .18rem .4rem; }
+    #modalNotes .ln-modal-toolbar {
+        grid-template-columns: minmax(0,1fr); padding: .6rem .75rem;
+        gap: .45rem; position: static;
+    }
+    #modalNotes .ln-modal-add-btn { grid-column: auto; }
+    #modalNotes .ln-suivi, #modalNotes .ln-requal { margin: .35rem .75rem 0; }
+    #modalNotes .ln-grid-wrap { min-height: 48dvh; flex: 0 0 auto; }
+    #modalNotes .ln-autosave-info { padding: .45rem .75rem; }
+    #modalNotes.ln-modal .modal-footer {
+        padding: .5rem .75rem calc(.5rem + env(safe-area-inset-bottom));
+        gap: .45rem; flex-wrap: wrap;
+    }
+    #modalNotes .ln-modal-fbtn { flex: 1 1 auto; justify-content: center; }
+}

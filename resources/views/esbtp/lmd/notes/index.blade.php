@@ -507,6 +507,7 @@
     @media (max-width: 900px) { .ln-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (max-width: 580px) { .ln-filter-grid { grid-template-columns: minmax(0, 1fr); } .ln-filter-bar { padding: 1rem; } #lmd-filter-count { margin-left: 0; width: 100%; } }
 </style>
+<link rel="stylesheet" href="{{ asset('css/notes-modal-lmd-premium.css') }}?v={{ @filemtime(public_path('css/notes-modal-lmd-premium.css')) ?: '1' }}">
 @endpush
 
 @section('content')
@@ -629,8 +630,8 @@
 {{-- ══════════════════════════════════════════════════════════ --}}
 {{-- ══ MODAL — Gestion des notes (pattern BTS avec UE → ECUE) ══ --}}
 {{-- ══════════════════════════════════════════════════════════ --}}
-<div class="modal fade ln-modal" id="modalNotes" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+<div class="modal fade ln-modal" id="modalNotes" tabindex="-1" aria-labelledby="notesModalHeading" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <div class="ln-modal-hero w-100">
@@ -638,7 +639,7 @@
                         <div class="ln-modal-hero-left">
                             <div class="ln-modal-icon"><i class="fas fa-edit"></i></div>
                             <div>
-                                <h5 class="ln-modal-title">Gestion des Notes — <span id="notesModalTitle">Sélectionnez une classe</span></h5>
+                                <h5 class="ln-modal-title" id="notesModalHeading">Gestion des Notes LMD — <span id="notesModalTitle">Sélectionnez une classe</span></h5>
                                 <div class="ln-modal-subtitle" id="notesModalSubtitle">Sélectionnez une UE puis un ECUE pour saisir les notes</div>
                             </div>
                         </div>
@@ -662,29 +663,30 @@
             </div>
 
             <div class="modal-body">
-                {{-- Callout intro --}}
-                <div class="ln-callout">
-                    <div class="ln-callout-icon"><i class="fas fa-edit"></i></div>
-                    <div>
-                        <div class="ln-callout-title">Saisie intelligente des notes</div>
-                        <div class="ln-callout-text">Choisissez une UE, un ECUE, créez des évaluations et saisissez les notes en temps réel.</div>
+                {{-- Les sélecteurs natifs cachés et leurs IDs restent la source de vérité des gestionnaires LMD. --}}
+                <div class="ln-modal-toolbar">
+                    <div class="ln-modal-field">
+                        <label for="ueSelect">Unité d'enseignement</label>
+                        <x-au-select id="ueSelect" placeholder="— Choisir une UE —" icon="fa-book" :searchable="true" :options="[]" />
                     </div>
+                    <div class="ln-modal-field">
+                        <label for="ecueSelect">Élément constitutif (ECUE)</label>
+                        <x-au-select id="ecueSelect" placeholder="— Choisir un ECUE —" icon="fa-book-open" :searchable="true" :options="[]" />
+                    </div>
+                    <div class="ln-modal-field">
+                        <label for="periodeFilter">Période</label>
+                        <x-au-select id="periodeFilter" :placeholder-is-first-option="false" icon="fa-calendar" :options="['all' => 'Toutes les périodes']" />
+                    </div>
+                    <button type="button" id="createEvalBtn" class="ln-modal-add-btn" style="display:none;"
+                            onclick="openEvalCreateModal()">
+                        <i class="fas fa-plus"></i> Créer évaluation
+                    </button>
                 </div>
 
                 @include('esbtp.lmd.notes.partials._requalification')
 
                 <div class="ln-suivi">
                     @include('esbtp.partials._couverture-notes', ['classeId' => null, 'anneeId' => $anneeSelectionnee->id ?? null, 'periode' => 'semestre1', 'titre' => 'Suivi du semestre', 'replie' => true])
-                </div>
-
-                <div class="ln-modal-toolbar">
-                    <x-au-select id="ueSelect" placeholder="— Choisir une UE —" icon="fa-book" :searchable="true" :options="[]" />
-                    <x-au-select id="ecueSelect" placeholder="— Choisir un ECUE —" icon="fa-book-open" :searchable="true" :options="[]" />
-                    <x-au-select id="periodeFilter" :placeholder-is-first-option="false" icon="fa-calendar" :options="['all' => 'Toutes les périodes']" />
-                    <button type="button" id="createEvalBtn" class="ln-modal-add-btn" style="display:none;"
-                            onclick="openEvalCreateModal()">
-                        <i class="fas fa-plus"></i> Créer évaluation
-                    </button>
                 </div>
 
                 {{-- Loading --}}
