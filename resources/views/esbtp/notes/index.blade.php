@@ -20,7 +20,7 @@
     .nm-blank-config { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .8rem; margin: .45rem 0 .65rem; padding: .5rem .75rem; border: 1px solid #dbeafe; border-radius: 10px; background: #f8fbff; }
     .nm-blank-config-header { display: inline-flex; flex: 0 0 auto; align-items: center; gap: .4rem; color: #1e293b; font-size: .83rem; white-space: nowrap; }
     .nm-blank-config-header i { color: #0453cb; }
-    .nm-blank-config-fields { display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: .45rem .75rem; min-width: 0; }
+    .nm-blank-config-fields { display: flex; flex: 0 1 auto; flex-wrap: wrap; align-items: center; gap: .45rem .75rem; min-width: 0; }
     .nm-blank-config-field { display: flex; flex: 0 1 auto; align-items: center; gap: .4rem; min-width: 0; }
     .nm-blank-config-field label { color: #475569; font-size: .73rem; font-weight: 650; white-space: nowrap; margin: 0; }
     .nm-blank-config-field .au-select { flex: 0 1 auto; width: 156px; min-width: 124px; }
