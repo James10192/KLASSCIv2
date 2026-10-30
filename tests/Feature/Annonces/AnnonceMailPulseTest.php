@@ -649,6 +649,87 @@ class AnnonceMailPulseTest extends TestCase
         Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
     }
 
+    public function test_le_refus_429_utilise_la_meme_reference_v2_au_second_essai(): void
+    {
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'deux-essais@etudiants.test',
+            'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $reference = "klassci-v2-presentation-annonce-{$annonce->id}-courriel-{$id}";
+        $client = Mockery::mock(MailPulseClient::class);
+        $client->shouldReceive('getSetting')->times(4)->andReturn('');
+        $client->shouldReceive('sendEmailMessage')->twice()
+            ->withArgs(function ($charge, $key) use ($reference) {
+                $this->assertSame($reference, $key);
+                $this->assertSame($reference, $charge['metadata']['external_reference']);
+                return true;
+            })
+            ->andReturn(
+                new MailPulseResult(false, 'rate_limited', 429, 'req-429'),
+                new MailPulseResult(true, 'accepted', 201, 'req-ok', 'mp-apres-429', null, null, null, 'accepted')
+            );
+        $job = new EnvoyerAnnonceCourriel($id);
+        $job->handle($client, new CadenceMailPulse);
+        $this->assertSame('retrying', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
+        $this->assertSame($reference, DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('mailpulse_request_id'));
+        $job->handle($client, new CadenceMailPulse);
+        $row = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
+        $this->assertSame('submitted', $row->status);
+        $this->assertSame($reference, $row->mailpulse_request_id);
+        $this->assertSame('mp-apres-429', $row->mailpulse_message_id);
+        $this->assertSame(2, (int) $row->attempts);
+    }
+
+    public function test_callback_v2_refuse_autre_tenant_et_reference_ancienne_sur_ligne_v2(): void
+    {
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'v2-signature@etudiants.test',
+            'status' => 'submitted', 'submitted_at' => now(),
+            'mailpulse_message_id' => 'mp-signature',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $ref = "klassci-v2-esbtp-abidjan-annonce-{$annonce->id}-courriel-{$id}";
+        DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->update(['mailpulse_request_id' => $ref]);
+        config([
+            'app.tenant_code' => 'esbtp-abidjan',
+            'services.mailpulse.external_organization_id' => 'org-test',
+            'services.mailpulse.announcement_webhook_secret' => 'secret-v2',
+        ]);
+        $this->withoutMiddleware(\App\Http\Middleware\CheckInstalled::class);
+        $event = [
+            'event_id' => 'evt-v2', 'tenant_id' => 'org-test',
+            'type' => 'message.delivered', 'created_at' => '2026-10-30T02:00:00+00:00',
+            'data' => ['message' => [
+                'id' => 'mp-signature', 'channel' => 'email', 'status' => 'delivered',
+                'external_tenant_id' => 'esbtp-abidjan',
+                'recipient' => ['type' => 'email', 'value' => 'v2-signature@etudiants.test'],
+                'metadata' => [
+                    'source' => 'klassci', 'workflow_event' => 'announcement_email',
+                    'external_reference' => $ref,
+                ],
+            ]],
+        ];
+        $post = function (array $body) {
+            $raw = json_encode($body, JSON_UNESCAPED_SLASHES);
+            $timestamp = (string) time();
+            return $this->call('POST', '/api/v1/mailpulse/announcement-events', [], [], [], [
+                'CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json',
+                'HTTP_X_MAILPULSE_TIMESTAMP' => $timestamp,
+                'HTTP_X_MAILPULSE_SIGNATURE' => 'v1='.hash_hmac('sha256', $timestamp.'.'.$raw, 'secret-v2'),
+            ], $raw);
+        };
+        $legacy = "klassci-annonce-{$annonce->id}-courriel-{$id}";
+        $this->assertSame(202, $post(array_replace_recursive($event, ['data' => ['message' => ['metadata' => ['external_reference' => $legacy]]]]))->getStatusCode());
+        $wrong = "klassci-v2-esbtp-yakro-annonce-{$annonce->id}-courriel-{$id}";
+        $this->assertSame(202, $post(array_replace_recursive($event, ['data' => ['message' => ['metadata' => ['external_reference' => $wrong]]]]))->getStatusCode());
+        $this->assertSame('submitted', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
+        $this->assertSame(200, $post($event)->getStatusCode());
+        $this->assertSame(200, $post($event)->getStatusCode());
+        $this->assertSame('delivered', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
+    }
+
     public function test_epuisement_queue_ne_devient_pas_faussement_un_echec_fournisseur(): void
     {
         $annonce = $this->annonce();
