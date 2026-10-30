@@ -26,7 +26,7 @@ class NotesAcademicYearAjaxContractTest extends TestCase
 
         $this->assertStringNotContainsString('onchange="this.form.submit()"', $view);
         $this->assertStringContainsString("formData.set('classes_ajax', '1')", $view);
-        $this->assertStringContainsString('lmdAcademicYearId = newYear', $view);
+        $this->assertStringContainsString('lmdAcademicYearId = selectedYear', $view);
         $this->assertStringContainsString('anneeSuivi = selectedYear', $view);
         $this->assertStringContainsString('activeRequest?.abort()', $view);
         $this->assertStringContainsString('event.preventDefault()', $view);
