@@ -63,5 +63,20 @@ class FormatFeuilleViergeA4Test extends TestCase
         $this->assertStringContainsString('nm-notes-table--multi', $pdf);
         $this->assertStringContainsString('$plusieursNotes', $pdf);
         $this->assertStringContainsString('page-break-inside: avoid', $pdf);
+        // La liste vierge conserve le template PDF commun ET toutes les
+        // colonnes du modèle « Liste de notation » fourni (7 notes en paysage).
+        $this->assertStringContainsString('<x-pdf-document', $pdf);
+        $this->assertStringContainsString('Matricule Ministère', $pdf);
+        foreach (['Nom', 'Prénom', 'Sexe', 'Statut', 'Moyenne', 'Enseignant', 'Matière', 'Section', 'Niveau / Classe'] as $colonne) {
+            $this->assertStringContainsString($colonne, $pdf);
+        }
+        $this->assertStringContainsString('rowspan="2"', $pdf);
+        $this->assertStringContainsString('colspan="{{ $colonnesNotes }}"', $pdf);
+        $this->assertStringContainsString('StatutFicheViergeBts::abreger', $pdf);
+        $this->assertStringContainsString("getAttribute('notes_inscription_id')", $pdf);
+        $this->assertStringContainsString('whereIn(\'id\', $etudiants->pluck(\'notes_inscription_id\')', $controller);
+        $this->assertStringContainsString('$ficheClasseVierge = true', $controller);
+        $this->assertStringContainsString('@if(! $ficheClasseVierge)', $pdf);
+        $this->assertStringContainsString('@else', $pdf);
     }
 }

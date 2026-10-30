@@ -3,6 +3,13 @@
     $orientationFeuille = $blank ? ($orientationFeuille ?? 'portrait') : 'portrait';
     $colonnesNotes = $blank ? (int) ($colonnesNotes ?? 1) : 1;
     $plusieursNotes = $blank && $colonnesNotes > 1;
+    // Seule la liste vierge PAR CLASSE affiche le registre complet BTS :
+    // la fiche liée à une évaluation conserve son ancien tableau.
+    $ficheClasseVierge = $ficheClasseVierge ?? false;
+    $largeursListeVierge = $orientationFeuille === 'landscape'
+        ? ['num' => 3, 'matricule' => 9, 'ministere' => 9, 'nom' => 13, 'prenoms' => 20, 'sexe' => 4, 'statut' => 6, 'moyenne' => 8]
+        : ['num' => 4, 'matricule' => 11, 'ministere' => 11, 'nom' => 14, 'prenoms' => 20, 'sexe' => 4, 'statut' => 7, 'moyenne' => 9];
+    $largeurNoteListeVierge = (100 - array_sum($largeursListeVierge)) / $colonnesNotes;
     // Largeurs pour A4, sans toucher aux tailles de police : les notes partagent
     // uniquement l'espace restant après les colonnes d'identification et d'observation.
     $largeurs = $orientationFeuille === 'landscape'
@@ -29,6 +36,7 @@
         'Coefficient' => $blank ? null : (isset($evaluation->coefficient) && $evaluation->coefficient !== '' ? (string) $evaluation->coefficient : null),
         'Période'     => $blank ? null : (ucfirst(str_replace('semestre', 'Semestre ', $evaluation->periode ?? '')) ?: null),
         'Année'       => $anneeCourante->name ?? null,
+        'Effectif'    => $ficheClasseVierge ? $etudiants->count() : null,
         'Date évaluation' => $blank ? null : (isset($evaluation->date_evaluation) && $evaluation->date_evaluation
             ? (is_object($evaluation->date_evaluation) ? $evaluation->date_evaluation->format('d/m/Y') : $evaluation->date_evaluation)
             : null),
@@ -182,6 +190,22 @@
         /* Les entêtes sont répétées sur chaque page ; les lignes ne sont pas scindées. */
         .nm-notes-table thead { display: table-header-group; }
         .nm-notes-table tbody tr { page-break-inside: avoid; }
+        /* Liste vierge BTS : ajout des identités/régime du modèle de notation
+           sans changer le thème commun (x-pdf-document) ni réduire les polices. */
+        .nm-notes-table--roster { table-layout: fixed; }
+        .nm-notes-table--roster thead th { text-transform: none; letter-spacing: 0; padding: 4px 2px; }
+        .nm-notes-table--roster tbody td { padding: 4px 3px; }
+        .nm-notes-table--roster .nm-roster-text { overflow-wrap: break-word; word-wrap: break-word; }
+        .nm-notes-table--roster .nm-roster-sexe,
+        .nm-notes-table--roster .nm-roster-statut { text-align: center; }
+        .nm-notes-table--roster .nm-note-cell { font-size: 11px; }
+        .nm-notes-table--roster .nm-note-empty { min-width: 0; width: 90%; min-height: 14px; }
+        .nm-roster-meta { width: 100%; border-collapse: collapse; margin: 4px 0 6px; font-size: 9.5px; }
+        .nm-roster-meta td { border: 1px solid {{ $cBorder }}; padding: 4px 6px; width: 50%; }
+        .nm-roster-meta strong { color: {{ $cAccent }}; }
+        .nm-roster-meta .nm-fill { display: inline-block; min-width: 90px; border-bottom: 1px dotted {{ $cMuted }}; }
+        .nm-roster-guide { font-size: 8.5px; margin: 3px 0 5px; color: {{ $cMuted }}; }
+
         .nm-notes-table--multi .nm-note-empty { min-width: 24px; }
         /* Le paysage offre davantage de largeur mais moins de hauteur. On
            récupère de l'espace dans les marges intérieures, jamais en diminuant
@@ -370,6 +394,21 @@
         }
     </style>
 
+    @if($ficheClasseVierge)
+        {{-- Métadonnées à compléter comme sur la liste de notation de référence,
+             tout en conservant la bannière, le logo et le pied commun KLASSCI. --}}
+        <table class="nm-roster-meta">
+            <tr>
+                <td><strong>Niveau / Classe :</strong> {{ $evaluation->classe->niveau->name ?? $classeName ?? '—' }}</td>
+                <td><strong>Enseignant :</strong> <span class="nm-fill">&nbsp;</span></td>
+            </tr>
+            <tr>
+                <td><strong>Section :</strong> {{ $classeName ?: '—' }}</td>
+                <td><strong>Matière :</strong> <span class="nm-fill">&nbsp;</span></td>
+            </tr>
+        </table>
+        <div class="nm-roster-guide">N1 à N{{ $colonnesNotes }} : notes à renseigner · absence : inscrire ABS dans la case concernée · moyenne à compléter.</div>
+    @else
     {{-- ── KPIs bandeau premium — tous en header_bg_color (identité tenant) ──── --}}
     <table class="nm-kpis">
         <tr>
@@ -395,6 +434,7 @@
             </td>
         </tr>
     </table>
+    @endif
 
     {{-- ── Tableau étudiants/notes ─────────────────────────────── --}}
     @if($etudiants->count() > 0)
@@ -406,8 +446,20 @@
                 @endfor
             </div>
         @endif
-        <table class="nm-notes-table{{ $plusieursNotes ? ' nm-notes-table--multi' : '' }}">
-            @if($plusieursNotes)
+        <table class="nm-notes-table{{ $ficheClasseVierge ? ' nm-notes-table--roster' : ($plusieursNotes ? ' nm-notes-table--multi' : '') }}">
+            @if($ficheClasseVierge)
+                <colgroup>
+                    @foreach($largeursListeVierge as $nomColonne => $largeur)
+                        @if($nomColonne !== 'moyenne')
+                            <col style="width:{{ $largeur }}%">
+                        @endif
+                    @endforeach
+                    @for($i = 1; $i <= $colonnesNotes; $i++)
+                        <col style="width:{{ $largeurNoteListeVierge }}%">
+                    @endfor
+                    <col style="width:{{ $largeursListeVierge['moyenne'] }}%">
+                </colgroup>
+            @elseif($plusieursNotes)
                 <colgroup>
                     <col style="width:{{ $largeurs['num'] }}%">
                     <col style="width:{{ $largeurs['matricule'] }}%">
@@ -419,6 +471,24 @@
                 </colgroup>
             @endif
             <thead>
+                @if($ficheClasseVierge)
+                    <tr>
+                        <th rowspan="2">N°</th>
+                        <th rowspan="2">Matricule</th>
+                        <th rowspan="2">Matricule Ministère</th>
+                        <th rowspan="2">Nom</th>
+                        <th rowspan="2">Prénom</th>
+                        <th rowspan="2">Sexe</th>
+                        <th rowspan="2">Statut</th>
+                        <th colspan="{{ $colonnesNotes }}">Notes</th>
+                        <th rowspan="2">Moyenne</th>
+                    </tr>
+                    <tr>
+                        @for($i = 1; $i <= $colonnesNotes; $i++)
+                            <th>N{{ $i }}</th>
+                        @endfor
+                    </tr>
+                @else
                 <tr>
                     <th style="width:{{ $plusieursNotes ? $largeurs['num'] : 6 }}%;">N°</th>
                     <th style="width:{{ $plusieursNotes ? $largeurs['matricule'] : 14 }}%;">Matricule</th>
@@ -433,6 +503,7 @@
                     @endif
                     <th style="width:{{ $plusieursNotes ? $largeurs['observations'] : 26 }}%;">Observations</th>
                 </tr>
+                @endif
             </thead>
             <tbody>
                 @foreach($etudiants as $index => $etudiant)
@@ -445,6 +516,29 @@
                         <td style="text-align: center;">
                             <span class="nm-num-badge">{{ $index + 1 }}</span>
                         </td>
+                        @if($ficheClasseVierge)
+                            <td class="nm-roster-text"><span class="nm-matricule">{{ $etudiant->matricule ?: '—' }}</span></td>
+                            <td class="nm-roster-text">
+                                {{-- Aucun champ ministériel standard n'existe encore dans le modèle ;
+                                     ne jamais substituer le matricule interne. --}}
+                                {{ data_get($etudiant, 'matricule_ministere') ?: '________' }}
+                            </td>
+                            <td class="nm-roster-text">{{ mb_strtoupper($etudiant->nom ?? '', 'UTF-8') }}</td>
+                            <td class="nm-roster-text">
+                                {{ $etudiant->prenoms ?? '' }}
+                                @if(auth()->user()?->can('students.accessibility.export') && $etudiant->accessibilityProfile)
+                                    <x-pdf-accessibility-pill :summary="$etudiant->accessibilityProfile->summaryBadge()" />
+                                @endif
+                            </td>
+                            <td class="nm-roster-sexe">{{ $etudiant->sexe ?: '—' }}</td>
+                            <td class="nm-roster-statut">
+                                {{ \App\Domain\Notes\StatutFicheViergeBts::abreger($statutsAffectation[$etudiant->getAttribute('notes_inscription_id')] ?? null) }}
+                            </td>
+                            @for($i = 1; $i <= $colonnesNotes; $i++)
+                                <td class="nm-note-cell"><span class="nm-note-empty"></span></td>
+                            @endfor
+                            <td class="nm-note-cell"><span class="nm-note-empty"></span></td>
+                        @else
                         <td style="text-align: center;">
                             <span class="nm-matricule">{{ $etudiant->matricule ?? '—' }}</span>
                         </td>
@@ -481,11 +575,13 @@
                         <td class="nm-obs-cell">
                             {{ $note->commentaire ?? '' }}
                         </td>
+                        @endif
                     </tr>
                 @endforeach
             </tbody>
         </table>
 
+        @if(! $ficheClasseVierge)
         {{-- ── Résumé en 2 cards ─────────────────────────────── --}}
         <table class="nm-summary">
             <tr>
@@ -569,6 +665,7 @@
                 doit être indiquée dans la dernière colonne.
             @endif
         </div>
+        @endif
     @else
         <div class="nm-empty">
             <div class="nm-empty-title">Aucun étudiant inscrit</div>

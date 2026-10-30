@@ -1056,10 +1056,17 @@ class ESBTPNoteController extends Controller
             'duree_minutes' => null,
         ];
 
+        // Cohorte historique exacte (notes_inscription_id attaché par NoteStudentCohortService).
+        // Une requête groupée, sans N+1 et sans utiliser une inscription d'une autre année.
+        $statutsAffectation = \App\Models\ESBTPInscription::query()
+            ->whereIn('id', $etudiants->pluck('notes_inscription_id')->filter()->unique()->values())
+            ->pluck('affectation_status', 'id');
+
         $notesByEtudiant = collect();
         $isBlank = true;
+        $ficheClasseVierge = true;
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('esbtp.notes.saisie-rapide-pdf', compact('evaluation', 'etudiants', 'anneeCourante', 'etablissement', 'notesByEtudiant', 'isBlank', 'colonnesNotes', 'orientationFeuille'));
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('esbtp.notes.saisie-rapide-pdf', compact('evaluation', 'etudiants', 'anneeCourante', 'etablissement', 'notesByEtudiant', 'isBlank', 'ficheClasseVierge', 'statutsAffectation', 'colonnesNotes', 'orientationFeuille'));
         $pdf->setPaper('A4', $orientationFeuille);
 
         $variante = $colonnesNotes !== 1 || $orientationFeuille !== 'portrait'
