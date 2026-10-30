@@ -218,7 +218,8 @@ class AnnonceMailPulseTest extends TestCase
             $stamp = (string) time();
             $sig = hash_hmac('sha256', $stamp.'.'.$contenu, 'test-signature-longue');
             return $this->call('POST', '/api/v1/mailpulse/announcement-events', [], [], [], [
-                'CONTENT_TYPE' => 'application/json', 'HTTP_X_MAILPULSE_TIMESTAMP' => $stamp,
+                'CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json',
+                'HTTP_X_MAILPULSE_TIMESTAMP' => $stamp,
                 'HTTP_X_MAILPULSE_SIGNATURE' => $sig,
             ], $contenu);
         };
