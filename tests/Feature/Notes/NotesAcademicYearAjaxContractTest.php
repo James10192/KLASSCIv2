@@ -27,7 +27,15 @@ class NotesAcademicYearAjaxContractTest extends TestCase
         $this->assertStringNotContainsString('onchange="this.form.submit()"', $view);
         $this->assertStringContainsString("url.searchParams.set('classes_ajax', '1')", $view);
         $this->assertStringContainsString('lmdAcademicYearId = newYear', $view);
-        $this->assertStringContainsString('anneeSuivi = newYear', $view);
+        $this->assertStringContainsString('anneeSuivi = selectedYear', $view);
+        $this->assertStringContainsString('activeRequest?.abort()', $view);
+        $this->assertStringContainsString('event.preventDefault()', $view);
+        foreach (['filiere_id', 'niveau_id', 'statut', 'capacite', 'search'] as $filter) {
+            $this->assertStringContainsString('name="'.$filter.'"', $view);
+        }
+        $this->assertSame(0, preg_match('/<select\\b/i', $view), 'Aucun select natif visible dans la page LMD');
+        $this->assertStringContainsString("request->filled('filiere_id')", $controller);
+        $this->assertStringContainsString("request->filled('niveau_id')", $controller);
         $this->assertStringContainsString("view('esbtp.lmd.notes.partials._classes'", $controller);
         $this->assertStringContainsString('let anneeSuivi = lmdAcademicYearId', $suivi);
     }
