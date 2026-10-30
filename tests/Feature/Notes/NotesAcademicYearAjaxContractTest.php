@@ -25,7 +25,7 @@ class NotesAcademicYearAjaxContractTest extends TestCase
         $suivi = file_get_contents(resource_path('views/esbtp/lmd/notes/partials/_suivi-script.blade.php'));
 
         $this->assertStringNotContainsString('onchange="this.form.submit()"', $view);
-        $this->assertStringContainsString("url.searchParams.set('classes_ajax', '1')", $view);
+        $this->assertStringContainsString("formData.set('classes_ajax', '1')", $view);
         $this->assertStringContainsString('lmdAcademicYearId = newYear', $view);
         $this->assertStringContainsString('anneeSuivi = selectedYear', $view);
         $this->assertStringContainsString('activeRequest?.abort()', $view);
