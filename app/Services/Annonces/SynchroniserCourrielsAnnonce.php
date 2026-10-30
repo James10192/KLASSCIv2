@@ -32,11 +32,13 @@ final class SynchroniserCourrielsAnnonce
             ->orderBy('updated_at')->orderBy('id')
             ->limit(max(1, $max))->get();
 
+        $traitees = 0;
         foreach ($cibles as $cible) {
             if (microtime(true) - $debut >= max(1, $budget)) {
                 $bilan['bloque'] = 'budget_epuise';
                 break;
             }
+            $traitees++;
             $etat = $this->statuts->lire((string) $cible->mailpulse_message_id);
             if (is_string($etat)) {
                 if (RefusMailPulse::bloquant($etat)) {
@@ -80,6 +82,83 @@ final class SynchroniserCourrielsAnnonce
                 $bilan['en_transit']++;
             }
             $ligne->update($correction);
+        }
+
+        // Second passage EN LECTURE SEULE : retrouver par clé initiale les
+        // soumissions HTTP dont le message_id s'est perdu. Ne jamais faire POST.
+        $reste = max(0, max(1, $max) - $traitees);
+        if ($bilan['bloque'] === null && $reste > 0) {
+            $incertaines = DB::table('esbtp_annonce_email_deliveries')
+                ->whereNull('mailpulse_message_id')
+                ->where('status', 'awaiting_dispatch')
+                ->whereIn('error_code', ['submission_outcome_unknown', 'queue_outcome_unknown'])
+                ->where('created_at', '>=', now()->subDays(self::FENETRE_JOURS))
+                ->orderBy('updated_at')->orderBy('id')
+                ->limit($reste)->get();
+
+            $tenant = trim((string) config('app.tenant_code', ''));
+            foreach ($incertaines as $cible) {
+                if ($tenant === '' || $tenant === 'default') {
+                    $bilan['bloque'] = 'tenant_unconfigured';
+                    break;
+                }
+                if (microtime(true) - $debut >= max(1, $budget)) {
+                    $bilan['bloque'] = 'budget_epuise';
+                    break;
+                }
+                $reference = 'klassci-annonce-'.$cible->annonce_id.'-courriel-'.$cible->id;
+                $etat = $this->statuts->lireParReference($reference, $tenant);
+                if (is_string($etat)) {
+                    if ($etat === 'introuvable') {
+                        // Une absence de résultat est incertaine : NE PAS relancer.
+                        $bilan['sans_preuve'] = ($bilan['sans_preuve'] ?? 0) + 1;
+                        continue;
+                    }
+                    if (RefusMailPulse::bloquant($etat)) {
+                        $bilan['bloque'] = $etat;
+                        break;
+                    }
+                    $bilan['erreurs']++;
+                    continue;
+                }
+                if (! is_string($etat['id'] ?? null) || trim($etat['id']) === ''
+                    || ($etat['recipient'] ?? null) !== strtolower(trim((string) $cible->email))) {
+                    $bilan['erreurs']++;
+                    continue;
+                }
+
+                $correction = ['mailpulse_message_id' => $etat['id'], 'updated_at' => now()];
+                $statut = (string) ($etat['status'] ?? '');
+                $dateRemise = $this->normaliserDate($etat['delivered_at'] ?? null);
+                if (in_array($statut, ['delivered', 'read'], true) && $dateRemise !== null) {
+                    $correction += ['status' => 'delivered', 'provider_delivered_at' => $dateRemise, 'error_code' => null];
+                } elseif (in_array($statut, ['failed', 'cancelled', 'template_required'], true)) {
+                    $correction += [
+                        'status' => 'failed',
+                        'error_code' => mb_substr((string) (($etat['error_code'] ?? null) ?: $statut), 0, 64),
+                        'provider_failed_at' => now(),
+                    ];
+                } elseif (in_array($statut, ['sent', 'delivered', 'read'], true)) {
+                    $correction += ['status' => 'submitted', 'submitted_at' => now(), 'error_code' => null];
+                }
+                // Les autres états demeurent en quarantaine même avec un ID.
+                $ecrit = DB::table('esbtp_annonce_email_deliveries')
+                    ->where('id', $cible->id)
+                    ->where('annonce_id', $cible->annonce_id)
+                    ->whereNull('mailpulse_message_id')
+                    ->where('status', 'awaiting_dispatch')
+                    ->update($correction);
+                if ($ecrit === 1) {
+                    $bilan['lues']++;
+                    if (($correction['status'] ?? null) === 'delivered') {
+                        $bilan['delivrees']++;
+                    } elseif (($correction['status'] ?? null) === 'failed') {
+                        $bilan['echecs']++;
+                    } else {
+                        $bilan['en_transit']++;
+                    }
+                }
+            }
         }
 
         return $bilan;

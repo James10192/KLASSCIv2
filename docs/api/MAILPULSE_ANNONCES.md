@@ -32,8 +32,13 @@ L'endpoint accepte désormais l'enveloppe standard des webhooks de l'organisatio
 
 La signature standard est `mailpulse-signature: v1=<HMAC_SHA256>` (plusieurs signatures séparées par virgules possibles durant la rotation). Le contrat historique en hex brut reste compatible. Le secret du webhook MailPulse d'une instance doit correspondre à `MAILPULSE_ANNOUNCEMENT_WEBHOOK_SECRET` de cette instance. Code école `app.tenant_code` réel et distinct de la valeur par défaut `default` obligatoire pour le format standard ; si `MAILPULSE_EXTERNAL_ORGANIZATION_ID` est configuré, l'organisation doit également correspondre. La ligne en base doit correspondre à la référence, au message **et à l'adresse e-mail exacte** ; aucune réponse ne révèle l'existence d'un destinataire d'une autre instance. Les événements ne peuvent pas provoquer de nouvelle soumission.
 
+## Rapprochement sans renvoi par clé historique
+
+Lorsque la requête d'envoi a pu être acceptée mais que KLASSCI a perdu l'ID MailPulse, le synchroniseur exécute uniquement `GET /api/v1/messages/by-idempotency-key?key=<reference>&tenant=<code_etablissement>` avec la clé API de l'envoi initial. Le résultat doit correspondre à l'instance, la référence, l'adresse du destinataire et au message exact avant toute mise à jour SQL conditionnelle. Une réponse `404`, un problème réseau, une rotation de clé ou un autre destinataire laissent l'e-mail **en quarantaine**, sans nouvelle soumission. Le code `default` ne peut pas effectuer cette recherche. L'API est introduite par MailPulse PR #64 ; ne pas activer ce chemin avant déploiement de cette API.
+
 ## Historique
 
+- 2026-10-30 — Lecture seule d'une soumission inconnue par clé d'idempotence et contrôle de l'adresse (MailPulse #64), sans aucune relance.
 - 2026-10-30 — Réception des webhooks MailPulse standard v1 en plus du legacy, avec corrélation multi-tenant et adresse.
 - 2026-10-29 — **Breaking change par rapport à l'ébauche non activée** : `message_id` devient obligatoire et doit correspondre à la ligne `mailpulse_message_id`. Mise à jour SQL conditionnelle pour éviter le déclassement sur replay/race ; horodatage fournisseur facultatif.
 - Initial — endpoint HMAC interne KLASSCI, réservé à une future passerelle MailPulse.
