@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Annonces — reprise après crash worker :** passage SQL atomique en quarantaine avant la soumission HTTP, protection des statuts terminaux et isolement des traitements bloqués après une durée configurable ; rapprochement en lecture seule uniquement, aucun renvoi automatique.
 - **Annonces — rapprochement des réponses perdues :** lecture seule par clé historique sur MailPulse #64 et contrôle de l'école et de l'adresse ; un 404 ou une réponse ambiguë restent en quarantaine, sans nouvelle tentative. La séparation par organisation reste indispensable entre établissements.
 - **Annonces — réception de webhooks MailPulse v1 :** prise en charge du format standard à signatures multiples, contrôle école/organisation/message/destinataire et protection contre les replays ; la passerelle et le déploiement restent à valider avant activation.
 - **Annonces — événements MailPulse mieux verrouillés :** la confirmation signée doit désormais identifier le message MailPulse exact ; les événements répétés ou concurrents ne réécrivent plus les livraisons terminales. Le contrat d'API et l'horodatage optionnel du fournisseur sont documentés avant activation du relais.

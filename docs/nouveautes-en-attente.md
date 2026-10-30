@@ -143,3 +143,5 @@ Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 - 2026-10-26 · Paiements : le défilement infini charge bien toutes les tranches (la liste ne revient plus à la première page toutes les 30 s), l'aperçu PDF de l'export détaillé ne répond plus par « Service indisponible » sur les gros volumes, et un filtre « Mode de règlement » apparaît dans la liste des paiements.
 - 2026-10-26 · Paiements : le filtre « Mode de règlement » regroupe les modes saisis en code et en libellé ; l'export détaillé s'ouvre en aperçu sans erreur jusqu'à 400 lignes, au-delà il est refusé avec un message.
 - 2026-10-26 · Paiements, export détaillé : le formulaire affiche le plafond réel (400 lignes) et le récapitulatif du document imprime le libellé des modes de règlement choisis.
+
+- Sécurisation des envois d'annonces : quarantaines durables avant la requête MailPulse, reprise des workers interrompus en lecture seule et protection contre les états régressifs ; aucun mail historique renvoyé.

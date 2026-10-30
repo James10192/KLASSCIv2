@@ -91,6 +91,27 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
                 $metadata['email_html'] = $html;
             }
 
+            // Commit the uncertain state BEFORE the HTTP boundary. If a worker
+            // dies between the provider call and its response, the next queue
+            // execution MUST NOT resend; a read-only lookup will reconcile it.
+            // Also prevents a suspended worker from sending after a stale
+            // processing lease was quarantined by the scheduler.
+            $frontiere = DB::table('esbtp_annonce_email_deliveries')
+                ->where('id', $this->deliveryId)
+                ->where('status', 'processing')
+                ->whereNull('submitted_at')
+                ->whereNull('mailpulse_message_id')
+                ->update([
+                    'status' => 'awaiting_dispatch',
+                    'error_code' => 'submission_outcome_unknown',
+                    'mailpulse_request_id' => $reference,
+                    'processing_at' => null,
+                    'updated_at' => now(),
+                ]);
+            if ($frontiere !== 1) {
+                return; // lease revoked or another worker already settled it
+            }
+
             $soumissionCommencee = true;
             $resultat = $client->sendEmailMessage([
                 'channel' => 'email',
@@ -168,6 +189,9 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
     private function statut(string $statut, array $attributs = []): void
     {
         DB::table('esbtp_annonce_email_deliveries')->where('id', $this->deliveryId)
+            ->whereIn('status', ['processing', 'retrying', 'awaiting_dispatch'])
+            ->whereNull('submitted_at')
+            ->whereNull('provider_delivered_at')
             ->update($attributs + [
                 'status' => $statut,
                 'processing_at' => null,

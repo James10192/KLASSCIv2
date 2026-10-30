@@ -10,9 +10,9 @@ Le filtre est appliqué à la même ligne d'inscription pour l'année, le statut
 ## États à ne pas confondre
 
 - `pending` : adresse enregistrée, pas encore prise en charge par la queue.
-- `processing` : tentative en cours ; un worker interrompu peut laisser cet état et nécessite un diagnostic.
+- `processing` : préparation avant le transport HTTP ; un worker interrompu n'est jamais repris automatiquement par un nouvel envoi.
 - `retrying` : MailPulse a refusé temporairement, job relâché avec délai.
-- `awaiting_dispatch` : MailPulse a répondu mais la remise en amont reste indéterminée (`pending_reconciliation`).
+- `awaiting_dispatch` : issue de soumission inconnue, y compris **avant** la requête HTTP (crash) ou durant l'appel ; aucun renvoi sans rapprochement (`pending_reconciliation`).
 - `submitted` : MailPulse a accepté la soumission ; **ne prouve PAS la livraison**.
 - `delayed` : fournisseur signale un report temporaire, **ne pas réexpédier** immédiatement.
 - `delivered` : événement signé de délivrance reçu.
@@ -80,3 +80,9 @@ Les `rate_limited` (429 explicitement refusés) gardent la reprise différée. L
 ## Réception atomique des événements (contrat renforcé)
 
 L'API d'événements signés impose maintenant `message_id` en plus de `external_reference` et `state`. C'est l'identifiant interne MailPulse retourné à l'envoi, PAS l'identifiant Resend. La ligne cible doit porter les deux identifiants exacts dans la base de l'instance : sinon HTTP 202 sans mutation ni renseignement sur un autre destinataire. `occurred_at` (ISO-8601) peut transporter l'horodatage du fournisseur ; à défaut l'heure de réception est enregistrée. Les transitions `submitted` / `awaiting_dispatch` / `delayed` vers un état confirmé utilisent une mise à jour SQL conditionnelle : doublons, races et callbacks reçus après un état terminal ne réécrivent ni le statut ni son heure. Ce contrat est une évolution incompatible de l'ancienne ébauche de callback ; adapter et tester le relais MailPulse avant son activation. Voir `docs/api/MAILPULSE_ANNONCES.md`.
+
+## Protection des workers interrompus (30/10/2026)
+
+Avant de franchir l'appel `POST /api/v1/messages`, le job marque durablement la livraison comme `awaiting_dispatch` avec l'identifiant de requête original. Une transition SQL conditionnelle garantit qu'un ancien worker ayant perdu son bail n'envoie rien. Une réponse HTTP arrivée après une transition terminale ne la réécrit pas. Les lignes `processing` restées au-delà de `MAILPULSE_ANNOUNCEMENT_STALE_MINUTES` (par défaut 30, minimum 15) sont placées en quarantaine via la synchronisation planifiée, sans `POST`, et rapprochées avec la lecture seule `GET /api/v1/messages/by-idempotency-key`. Une réponse `404` reste **une absence de preuve, pas une permission de réexpédier**.
+
+Ce garde ne résout PAS les clés d'idempotence historiques non préfixées par le tenant : organisations MailPulse et API keys séparées par établissement tant qu'un journal de tentatives versionné et sa migration Artisan ne sont pas déployés. Ce changement n'active aucune relance manuelle.

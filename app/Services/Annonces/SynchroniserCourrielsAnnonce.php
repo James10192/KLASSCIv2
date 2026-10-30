@@ -84,6 +84,26 @@ final class SynchroniserCourrielsAnnonce
             $ligne->update($correction);
         }
 
+        // A crashed worker can strand 'processing' forever. Its outcome is
+        // UNKNOWN, including when the provider accepted the email just before
+        // the crash. Quarantine old leases; NEVER turn these back into pending.
+        // Compare-and-set and the worker's pre-HTTP transition prevent a late
+        // worker from sending after losing ownership of this row.
+        $minutes = max(15, (int) config('services.mailpulse.announcement_stale_minutes', 30));
+        $quarantaines = DB::table('esbtp_annonce_email_deliveries')
+            ->where('status', 'processing')
+            ->whereNotNull('processing_at')
+            ->where('processing_at', '<=', now()->subMinutes($minutes))
+            ->whereNull('submitted_at')
+            ->whereNull('mailpulse_message_id')
+            ->update([
+                'status' => 'awaiting_dispatch',
+                'error_code' => 'queue_outcome_unknown',
+                'processing_at' => null,
+                'updated_at' => now(),
+            ]);
+        $bilan['quarantaines'] = $quarantaines;
+
         // Second passage EN LECTURE SEULE : retrouver par clé initiale les
         // soumissions HTTP dont le message_id s'est perdu. Ne jamais faire POST.
         $reste = max(0, max(1, $max) - $traitees);

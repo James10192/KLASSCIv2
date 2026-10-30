@@ -468,6 +468,58 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertSame('submission_outcome_unknown', $ligne->error_code);
     }
 
+    public function test_avant_http_le_job_est_deja_en_quarantaine_et_ne_regresse_pas_un_terminal(): void
+    {
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'sans-doublon@etudiants.test',
+            'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $client = Mockery::mock(MailPulseClient::class);
+        $client->shouldReceive('getSetting')->twice()->andReturn('');
+        $client->shouldReceive('sendEmailMessage')->once()
+            ->andReturnUsing(function () use ($id) {
+                $ligne = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
+                $this->assertSame('awaiting_dispatch', $ligne->status);
+                $this->assertSame('submission_outcome_unknown', $ligne->error_code);
+                $this->assertNull($ligne->submitted_at);
+                // A concurrent confirmed provider outcome wins over a stale
+                // response from this worker; never regress a terminal state.
+                DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->update([
+                    'status' => 'delivered', 'provider_delivered_at' => now(),
+                ]);
+                return new MailPulseResult(true, 'accepted', 202, 'req-test', 'mp-1', null, null, null, 'accepted');
+            });
+        (new EnvoyerAnnonceCourriel($id))->handle($client, new CadenceMailPulse);
+        (new EnvoyerAnnonceCourriel($id))->handle($client, new CadenceMailPulse);
+        $this->assertSame('delivered', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
+    }
+
+    public function test_un_worker_perdu_est_isole_sans_relance_mais_un_worker_actif_reste_intact(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        config(['app.tenant_code' => 'esbtp-abidjan', 'services.mailpulse.announcement_stale_minutes' => 15]);
+        $annonce = $this->annonce();
+        $ids = [];
+        foreach (['ancien' => 20, 'recent' => 5] as $nom => $minutes) {
+            $ids[$nom] = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+                'annonce_id' => $annonce->id, 'email' => "{$nom}@etudiants.test",
+                'status' => 'processing', 'processing_at' => now()->subMinutes($minutes),
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        $reader = Mockery::mock(MailPulseStatutsMessages::class);
+        $reader->shouldReceive('lireParReference')->once()
+            ->with("klassci-annonce-{$annonce->id}-courriel-{$ids['ancien']}", 'esbtp-abidjan')
+            ->andReturn('introuvable');
+        $bilan = (new SynchroniserCourrielsAnnonce($reader))->synchroniser(5);
+        $this->assertSame(1, $bilan['quarantaines']);
+        $this->assertSame(1, $bilan['sans_preuve']);
+        $this->assertSame('awaiting_dispatch', DB::table('esbtp_annonce_email_deliveries')->where('id', $ids['ancien'])->value('status'));
+        $this->assertSame('processing', DB::table('esbtp_annonce_email_deliveries')->where('id', $ids['recent'])->value('status'));
+        Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
+    }
+
     public function test_epuisement_queue_ne_devient_pas_faussement_un_echec_fournisseur(): void
     {
         $annonce = $this->annonce();
