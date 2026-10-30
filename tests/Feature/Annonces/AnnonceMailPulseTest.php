@@ -276,6 +276,9 @@ class AnnonceMailPulseTest extends TestCase
                 'HTTP_X_MAILPULSE_SIGNATURE' => 'v1='.str_repeat('0', 64).','.$signature,
             ], $body);
         };
+        config(['app.tenant_code' => 'default']);
+        $this->assertSame(202, $post($event)->getStatusCode());
+        config(['app.tenant_code' => 'esbtp-abidjan']);
         $this->assertSame(202, $post(array_replace($event, ['tenant_id' => 'other-org']))->getStatusCode());
         $this->assertSame(202, $post(array_replace_recursive($event, ['data' => ['message' => ['external_tenant_id' => 'other-school']]]))->getStatusCode());
         $this->assertSame(202, $post(array_replace_recursive($event, ['data' => ['message' => ['id' => 'other-message']]]))->getStatusCode());

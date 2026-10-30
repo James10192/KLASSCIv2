@@ -122,7 +122,7 @@ class MailPulseAnnonceEvenementController extends Controller
         $message = $data['data']['message'];
         $school = trim((string) config('app.tenant_code', ''));
         $organization = trim((string) config('services.mailpulse.external_organization_id', ''));
-        if ($school === '' || ! hash_equals($school, $message['external_tenant_id'])
+        if ($school === '' || $school === 'default' || ! hash_equals($school, $message['external_tenant_id'])
             || ($organization !== '' && ! hash_equals($organization, $data['tenant_id']))) {
             return null;
         }
