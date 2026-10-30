@@ -2027,14 +2027,9 @@
                         </div>
                         @endcan
 
-                        @can('module.notes_evaluations.access')
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.notes.index') }}" class="menu-link {{ Request::routeIs('esbtp.notes.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-clipboard-list"></i></div>
-                                <div class="menu-text">Gestion des notes</div>
-                            </a>
-                        </div>
-                        @endcan
+                        {{-- Gestion des notes reste dans le menu canonique Notes & Bulletins.
+                             PorteDeRoute y vérifie les droits effectifs, même individuels,
+                             et évite un doublon ou un lien enseignant conduisant à 403. --}}
 
                         {{-- Les réclamations sur ses propres évaluations : l'enseignant y donne son avis. --}}
                         <div class="menu-item">
