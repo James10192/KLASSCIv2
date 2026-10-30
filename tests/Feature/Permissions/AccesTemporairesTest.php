@@ -35,7 +35,7 @@ class AccesTemporairesTest extends TestCase
             \App\Http\Middleware\PaywallMiddleware::class,
         ]);
 
-        foreach (['notes.edit', 'notes.view', 'module.notes_evaluations.access', 'paiements.view', 'identity.coordinate', 'identity.student', 'permissions.temporaires.manage', 'permissions.individuels.permanents.manage', 'personnel.manage', 'users.manage'] as $p) {
+        foreach (['notes.edit', 'notes.view', 'module.notes_evaluations.access', 'paiements.view', 'identity.coordinate', 'identity.teach', 'identity.student', 'permissions.temporaires.manage', 'permissions.individuels.permanents.manage', 'personnel.manage', 'users.manage'] as $p) {
             Permission::findOrCreate($p, 'web');
         }
         Role::findOrCreate('superAdmin', 'web');
