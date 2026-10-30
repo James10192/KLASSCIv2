@@ -679,7 +679,7 @@
 
                 <div class="ln-modal-toolbar">
                     <x-au-select id="ueSelect" placeholder="— Choisir une UE —" icon="fa-book" :searchable="true" :options="[]" />
-                    <x-au-select id="ecueSelect" placeholder="— Choisir un ECUE —" icon="fa-book-open" :searchable="true" :options="[]" :disabled="true" />
+                    <x-au-select id="ecueSelect" placeholder="— Choisir un ECUE —" icon="fa-book-open" :searchable="true" :options="[]" />
                     <x-au-select id="periodeFilter" :placeholder-is-first-option="false" icon="fa-calendar" :options="['all' => 'Toutes les périodes']" />
                     <button type="button" id="createEvalBtn" class="ln-modal-add-btn" style="display:none;"
                             onclick="openEvalCreateModal()">
