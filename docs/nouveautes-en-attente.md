@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-30 · PR à attribuer · Notes BTS : feuille vierge personnalisable, jusqu'à 4 colonnes en A4 portrait ou 8 en A4 paysage ; choix premium depuis la fenêtre de notes, lisibilité et gabarit existant conservés. À vérifier sur présentation avec petits et grands effectifs avant propagation.
 - 2026-10-30 · PR à attribuer · Notes LMD : filtres année, recherche, filière, niveau, statut et capacité comme BTS ; sélecteurs premium dans les fenêtres, rafraîchissement AJAX sans rechargement, états d'erreur et protection contre les réponses obsolètes. Recette multi-profils et mobile sur presentation avant propagation.
 - 2026-10-30 · #1727 · Accès individuels : la permission « Module : Notes & Évaluations » peut être attribuée à une seule personne, sans modifier son rôle. Le lien « Gestion des notes » apparaît dans le menu lorsque les deux droits nécessaires sont accordés ; le doublon du menu enseignant est supprimé. Tester sur présentation avant diffusion ISLG.
 - 2026-10-29 · amélioration suivi annonces · Depuis la fiche annonce, liste paginée des adresses et statuts MailPulse par destinataire, filtre par état, effectif éligible actuel comparé aux adresses réellement mises en file ; les données d'inscription peuvent changer depuis l'envoi.

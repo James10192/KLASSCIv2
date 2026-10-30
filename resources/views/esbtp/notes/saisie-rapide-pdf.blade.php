@@ -1,5 +1,16 @@
 @php
     $blank = $isBlank ?? false;
+    $orientationFeuille = $blank ? ($orientationFeuille ?? 'portrait') : 'portrait';
+    $colonnesNotes = $blank ? (int) ($colonnesNotes ?? 1) : 1;
+    $plusieursNotes = $blank && $colonnesNotes > 1;
+    // Largeurs pour A4, sans toucher aux tailles de police : les notes partagent
+    // uniquement l'espace restant après les colonnes d'identification et d'observation.
+    $largeurs = $orientationFeuille === 'landscape'
+        ? ['num' => 4, 'matricule' => 14, 'nom' => 32, 'observations' => 14]
+        : ['num' => 5, 'matricule' => 16, 'nom' => 34, 'observations' => 15];
+    $largeurNote = $plusieursNotes
+        ? (100 - array_sum($largeurs)) / $colonnesNotes
+        : 12;
     $matiereName = $blank ? null : ($evaluation->matiere->name ?? null);
     $classeName = $evaluation->classe->name ?? ($evaluation->classe ?? null);
     $titreEval = $blank ? null : ($evaluation->titre ?? null);
@@ -95,7 +106,7 @@
     :title="$blank ? 'Feuille de saisie des notes' : 'Feuille de saisie — ' . ($titreEval ?: 'Évaluation')"
     :subtitle="$subtitle ?: null"
     :filters="$filters"
-    orientation="portrait">
+    :orientation="$orientationFeuille">
 
     <style>
         /* ── KPI bandeau premium ──────────────────────────────────────
@@ -168,6 +179,11 @@
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
         }
+        /* Les entêtes sont répétées sur chaque page ; les lignes ne sont pas scindées. */
+        .nm-notes-table thead { display: table-header-group; }
+        .nm-notes-table tbody tr { page-break-inside: avoid; }
+        .nm-notes-table--multi .nm-note-empty { min-width: 24px; }
+        .nm-notes-table--multi .nm-matricule { overflow-wrap: break-word; word-wrap: break-word; }
         .nm-notes-table tbody td {
             padding: 5px 5px;
             border: 1px solid {{ $cBorder }};
@@ -366,15 +382,40 @@
 
     {{-- ── Tableau étudiants/notes ─────────────────────────────── --}}
     @if($etudiants->count() > 0)
-        <table class="nm-notes-table">
+        @if($plusieursNotes)
+            <div style="font-size:8.5px; margin: 5px 0; color: {{ $cMuted }};">
+                Correspondance des évaluations :
+                @for($i = 1; $i <= $colonnesNotes; $i++)
+                    <span style="display:inline-block; margin-right:7px; white-space:nowrap;">N{{ $i }} : __________</span>
+                @endfor
+            </div>
+        @endif
+        <table class="nm-notes-table{{ $plusieursNotes ? ' nm-notes-table--multi' : '' }}">
+            @if($plusieursNotes)
+                <colgroup>
+                    <col style="width:{{ $largeurs['num'] }}%">
+                    <col style="width:{{ $largeurs['matricule'] }}%">
+                    <col style="width:{{ $largeurs['nom'] }}%">
+                    @for($i = 1; $i <= $colonnesNotes; $i++)
+                        <col style="width:{{ $largeurNote }}%">
+                    @endfor
+                    <col style="width:{{ $largeurs['observations'] }}%">
+                </colgroup>
+            @endif
             <thead>
                 <tr>
-                    <th style="width: 6%;">N°</th>
-                    <th style="width: 14%;">Matricule</th>
-                    <th style="text-align: left;">Nom et Prénoms</th>
-                    <th style="width: 12%;">Note{{ $blank ? '' : ' / '.($evaluation->bareme ?? '20') }}</th>
-                    <th style="width: 8%;">Abs.</th>
-                    <th style="width: 26%;">Observations</th>
+                    <th style="width:{{ $plusieursNotes ? $largeurs['num'] : 6 }}%;">N°</th>
+                    <th style="width:{{ $plusieursNotes ? $largeurs['matricule'] : 14 }}%;">Matricule</th>
+                    <th style="text-align: left;{{ $plusieursNotes ? ' width:'.$largeurs['nom'].'%;' : '' }}">Nom et Prénoms</th>
+                    @if($plusieursNotes)
+                        @for($i = 1; $i <= $colonnesNotes; $i++)
+                            <th style="width:{{ $largeurNote }}%;">N{{ $i }}</th>
+                        @endfor
+                    @else
+                        <th style="width: 12%;">Note{{ $blank ? '' : ' / '.($evaluation->bareme ?? '20') }}</th>
+                        <th style="width: 8%;">Abs.</th>
+                    @endif
+                    <th style="width:{{ $plusieursNotes ? $largeurs['observations'] : 26 }}%;">Observations</th>
                 </tr>
             </thead>
             <tbody>
@@ -401,20 +442,26 @@
                             </div>
                             <div class="nm-student-genre">{{ ($etudiant->genre ?? '') === 'M' ? 'Masculin' : (($etudiant->genre ?? '') === 'F' ? 'Féminin' : '') }}</div>
                         </td>
-                        <td class="nm-note-cell">
-                            @if($hasNote)
-                                {{ rtrim(rtrim(number_format((float) $note->note, 2, ',', ''), '0'), ',') }}
-                            @else
-                                <span class="nm-note-empty"></span>
-                            @endif
-                        </td>
-                        <td class="nm-abs-cell">
-                            @if($isAbsent)
-                                <span class="nm-abs-marked">ABS</span>
-                            @else
-                                <span class="nm-abs-tick"></span>
-                            @endif
-                        </td>
+                        @if($plusieursNotes)
+                            @for($i = 1; $i <= $colonnesNotes; $i++)
+                                <td class="nm-note-cell"><span class="nm-note-empty"></span></td>
+                            @endfor
+                        @else
+                            <td class="nm-note-cell">
+                                @if($hasNote)
+                                    {{ rtrim(rtrim(number_format((float) $note->note, 2, ',', ''), '0'), ',') }}
+                                @else
+                                    <span class="nm-note-empty"></span>
+                                @endif
+                            </td>
+                            <td class="nm-abs-cell">
+                                @if($isAbsent)
+                                    <span class="nm-abs-marked">ABS</span>
+                                @else
+                                    <span class="nm-abs-tick"></span>
+                                @endif
+                            </td>
+                        @endif
                         <td class="nm-obs-cell">
                             {{ $note->commentaire ?? '' }}
                         </td>
@@ -477,9 +524,15 @@
 
         <div class="nm-instructions">
             <strong>Instructions :</strong>
-            Renseigner la note dans la case prévue (ou cocher la case <em>Abs.</em> si l'étudiant était absent).
-            Les notes décimales sont autorisées (utiliser la virgule). Toute observation ou justification d'absence
-            doit être indiquée dans la dernière colonne.
+            @if($plusieursNotes)
+                Renseigner l'intitulé de chaque évaluation (N1 à N{{ $colonnesNotes }}) puis sa note dans la colonne correspondante.
+                Inscrire <em>ABS</em> dans la case de l'évaluation concernée en cas d'absence ;
+                les décimales s'écrivent avec une virgule. Signaler les justifications dans « Observations ».
+            @else
+                Renseigner la note dans la case prévue (ou cocher la case <em>Abs.</em> si l'étudiant était absent).
+                Les notes décimales sont autorisées (utiliser la virgule). Toute observation ou justification d'absence
+                doit être indiquée dans la dernière colonne.
+            @endif
         </div>
     @else
         <div class="nm-empty">

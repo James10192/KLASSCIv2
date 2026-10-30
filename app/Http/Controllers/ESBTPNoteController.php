@@ -997,7 +997,8 @@ class ESBTPNoteController extends Controller
     public function saisieRapideBlankPDF(Request $request, ESBTPClasse $classe)
     {
         $this->assertTeacherDocumentScope((int) $classe->id, $request->integer('annee_universitaire_id') ?: ESBTPAnneeUniversitaire::where('is_current', true)->value('id'));
-        [$pdf, $filename] = $this->buildSaisieRapideBlankPdf($classe, $request->integer('annee_universitaire_id') ?: null);
+        [$orientationFeuille, $colonnesNotes] = \App\Domain\Notes\FormatFeuilleViergeA4::depuisRequete($request);
+        [$pdf, $filename] = $this->buildSaisieRapideBlankPdf($classe, $request->integer('annee_universitaire_id') ?: null, $colonnesNotes, $orientationFeuille);
 
         return $pdf->download($filename);
     }
@@ -1008,7 +1009,8 @@ class ESBTPNoteController extends Controller
     public function saisieRapideBlankPDFPreview(Request $request, ESBTPClasse $classe)
     {
         $this->assertTeacherDocumentScope((int) $classe->id, $request->integer('annee_universitaire_id') ?: ESBTPAnneeUniversitaire::where('is_current', true)->value('id'));
-        [$pdf, $filename] = $this->buildSaisieRapideBlankPdf($classe, $request->integer('annee_universitaire_id') ?: null);
+        [$orientationFeuille, $colonnesNotes] = \App\Domain\Notes\FormatFeuilleViergeA4::depuisRequete($request);
+        [$pdf, $filename] = $this->buildSaisieRapideBlankPdf($classe, $request->integer('annee_universitaire_id') ?: null, $colonnesNotes, $orientationFeuille);
 
         return $pdf->stream($filename);
     }
@@ -1016,7 +1018,12 @@ class ESBTPNoteController extends Controller
     /**
      * Construit le PDF vierge de saisie rapide pour une classe. Retourne [PDF, filename].
      */
-    private function buildSaisieRapideBlankPdf(ESBTPClasse $classe, ?int $anneeUniversitaireId = null): array
+    private function buildSaisieRapideBlankPdf(
+        ESBTPClasse $classe,
+        ?int $anneeUniversitaireId = null,
+        int $colonnesNotes = 1,
+        string $orientationFeuille = 'portrait'
+    ): array
     {
         $classe->load(['filiere']);
 
@@ -1052,10 +1059,13 @@ class ESBTPNoteController extends Controller
         $notesByEtudiant = collect();
         $isBlank = true;
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('esbtp.notes.saisie-rapide-pdf', compact('evaluation', 'etudiants', 'anneeCourante', 'etablissement', 'notesByEtudiant', 'isBlank'));
-        $pdf->setPaper('A4', 'portrait');
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('esbtp.notes.saisie-rapide-pdf', compact('evaluation', 'etudiants', 'anneeCourante', 'etablissement', 'notesByEtudiant', 'isBlank', 'colonnesNotes', 'orientationFeuille'));
+        $pdf->setPaper('A4', $orientationFeuille);
 
-        $filename = 'saisie-notes-'.\Illuminate\Support\Str::slug($classe->name ?? 'classe').'-'.date('Y-m-d').'.pdf';
+        $variante = $colonnesNotes !== 1 || $orientationFeuille !== 'portrait'
+            ? '-'.$colonnesNotes.'-colonnes-'.$orientationFeuille
+            : '';
+        $filename = 'saisie-notes-'.\Illuminate\Support\Str::slug($classe->name ?? 'classe').$variante.'-'.date('Y-m-d').'.pdf';
 
         return [$pdf, $filename];
     }
