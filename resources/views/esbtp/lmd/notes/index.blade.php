@@ -1035,6 +1035,8 @@ async function openNotesModal(classeId, classeName) {
     ueSelect.innerHTML = '<option value="">— Choisir une UE —</option>';
     ecueSelect.innerHTML = '<option value="">— Choisir un ECUE —</option>';
     ecueSelect.disabled = true;
+    ueSelect.dispatchEvent(new Event('change', { bubbles: false }));
+    ecueSelect.dispatchEvent(new Event('change', { bubbles: false }));
 
     notesModal.show();
     chargerRequalification(classeId);
@@ -1087,6 +1089,8 @@ async function openNotesModal(classeId, classeName) {
             ueSelect.appendChild(opt);
         });
 
+        ueSelect.dispatchEvent(new Event('change', { bubbles: false }));
+        periodeFilter.dispatchEvent(new Event('change', { bubbles: false }));
         currentClasseData._ueMap = ueMap;
         document.getElementById('notesLoading').style.display = 'none';
 
@@ -1144,6 +1148,7 @@ document.getElementById('ueSelect').addEventListener('change', function() {
         ecueSelect.appendChild(opt);
     });
     ecueSelect.disabled = false;
+    ecueSelect.dispatchEvent(new Event('change', { bubbles: false }));
 });
 
 // ══ ECUE selection → load evaluations & build grid ══
@@ -1908,6 +1913,7 @@ function openEvalCreateModal() {
     if (currentFilter !== 'all') {
         periodeSelect.value = currentFilter;
     }
+    periodeSelect.dispatchEvent(new Event('change', { bubbles: false }));
 
     // Set default date to today
     document.getElementById('evalDate').value = new Date().toISOString().split('T')[0];
@@ -1915,6 +1921,7 @@ function openEvalCreateModal() {
     // Reset form
     document.getElementById('evalTitre').value = '';
     document.getElementById('evalType').value = '';
+    document.getElementById('evalType').dispatchEvent(new Event('change', { bubbles: false }));
     document.getElementById('evalDescription').value = '';
     document.getElementById('evalBareme').value = '20';
     document.getElementById('evalCoeff').value = '1';
