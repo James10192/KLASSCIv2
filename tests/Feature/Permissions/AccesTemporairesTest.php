@@ -225,6 +225,25 @@ class AccesTemporairesTest extends TestCase
             ->assertDontSee('value="module.lmd.access"', false);
     }
 
+    public function test_le_lien_sidebar_notes_suit_les_acces_individuels_sans_doublon_enseignant(): void
+    {
+        $personne = User::factory()->create();
+        $personne->givePermissionTo(['notes.view', 'identity.teach']);
+        $this->service()->accorder(
+            $personne, 'module.notes_evaluations.access', now(), null,
+            'Consultation nominative des notes depuis le menu lateral', $this->admin, true,
+        );
+
+        $reponse = $this->actingAs($personne->fresh())->get(route('esbtp.notes.index'));
+        $reponse->assertOk();
+        $reponse->assertSee('<span>Gestion des notes</span>', false);
+        $this->assertSame(
+            1, substr_count($reponse->getContent(), '<span>Gestion des notes</span>'),
+            'La sidebar canonique doit proposer un lien unique vers les notes.',
+        );
+        $reponse->assertDontSee('<div class="menu-text">Gestion des notes</div>', false);
+    }
+
     public function test_octroi_definitif_du_module_notes_ne_modifie_pas_le_role_et_se_revoque(): void
     {
         $beneficiaire = User::factory()->create();
