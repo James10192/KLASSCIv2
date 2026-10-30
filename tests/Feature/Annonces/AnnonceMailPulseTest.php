@@ -730,6 +730,40 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertSame('delivered', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
     }
 
+    public function test_un_get_ancien_n_ecrase_pas_une_reference_modifiee_pendant_le_reseau(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        config(['app.tenant_code' => 'esbtp-abidjan']);
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'race@etudiants.test',
+            'status' => 'awaiting_dispatch', 'error_code' => 'submission_outcome_unknown',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $ref = "klassci-v2-esbtp-abidjan-annonce-{$annonce->id}-courriel-{$id}";
+        DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->update(['mailpulse_request_id' => $ref]);
+        $reader = Mockery::mock(MailPulseStatutsMessages::class);
+        $reader->shouldReceive('lireParReference')->once()
+            ->with($ref, 'esbtp-abidjan')
+            ->andReturnUsing(function () use ($id) {
+                // A competing administrative correction changed ownership
+                // while MailPulse was being queried.
+                DB::table('esbtp_annonce_email_deliveries')->where('id', $id)
+                    ->update(['mailpulse_request_id' => 'klassci-v2-esbtp-yakro-annonce-9-courriel-9']);
+                return [
+                    'id' => 'mp-foreign', 'recipient' => 'race@etudiants.test',
+                    'status' => 'delivered', 'delivered_at' => now()->toIso8601String(),
+                    'error_code' => null, 'delivery_delays' => [],
+                ];
+            });
+        $result = (new SynchroniserCourrielsAnnonce($reader))->synchroniser(2);
+        $this->assertSame(0, $result['delivrees']);
+        $row = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
+        $this->assertSame('awaiting_dispatch', $row->status);
+        $this->assertNull($row->mailpulse_message_id);
+        Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
+    }
+
     public function test_epuisement_queue_ne_devient_pas_faussement_un_echec_fournisseur(): void
     {
         $annonce = $this->annonce();
