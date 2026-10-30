@@ -48,6 +48,10 @@ final class SynchroniserCourrielsAnnonce
                 $bilan['erreurs']++;
                 continue;
             }
+            // "lues" counts successful upstream reads, even when a newer
+            // webhook wins the CAS or the provider state needs no SQL change.
+            // Confirmed outcome counters below remain write-confirmed only.
+            $bilan['lues']++;
             $status = $etat['status'];
             // Le rapprochement borne par id, message et etat ne peut pas
             // effacer un resultat concurrent venant d'un webhook.
@@ -86,7 +90,6 @@ final class SynchroniserCourrielsAnnonce
             if ($ligne->update($correction) !== 1) {
                 continue;
             }
-            $bilan['lues']++;
             if (($correction['status'] ?? null) === 'delivered') {
                 $bilan['delivrees']++;
             } elseif (($correction['status'] ?? null) === 'failed') {
