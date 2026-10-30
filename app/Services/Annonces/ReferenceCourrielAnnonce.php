@@ -17,8 +17,7 @@ final class ReferenceCourrielAnnonce
 
     public static function nouvelle(string $tenant, int $annonceId, int $livraisonId): ?string
     {
-        if ($tenant === 'default' || ! preg_match('/^[a-z0-9][a-z0-9_-]{1,62}$/D', $tenant)
-            || $annonceId < 1 || $livraisonId < 1) {
+        if (! self::tenantValide($tenant) || $annonceId < 1 || $livraisonId < 1) {
             return null;
         }
 
@@ -62,17 +61,35 @@ final class ReferenceCourrielAnnonce
     /** @return array{annonce_id:int,livraison_id:int,v2:bool}|null */
     public static function extraire(string $reference, string $tenant): ?array
     {
+        if (! self::tenantValide($tenant) || strlen($reference) > 191) {
+            return null;
+        }
         if (preg_match('/^klassci-v2-([a-z0-9][a-z0-9_-]{1,62})-annonce-([1-9][0-9]*)-courriel-([1-9][0-9]*)$/D', $reference, $m)) {
-            if ($tenant === 'default' || ! hash_equals($tenant, $m[1])) {
+            if (! hash_equals($tenant, $m[1]) || ! self::identifiantsValides($m[2], $m[3])) {
                 return null;
             }
 
             return ['annonce_id' => (int) $m[2], 'livraison_id' => (int) $m[3], 'v2' => true];
         }
-        if (preg_match('/^klassci-annonce-([1-9][0-9]*)-courriel-([1-9][0-9]*)$/D', $reference, $m)) {
+        if (preg_match('/^klassci-annonce-([1-9][0-9]*)-courriel-([1-9][0-9]*)$/D', $reference, $m)
+            && self::identifiantsValides($m[1], $m[2])) {
             return ['annonce_id' => (int) $m[1], 'livraison_id' => (int) $m[2], 'v2' => false];
         }
 
         return null;
     }
+    private static function tenantValide(string $tenant): bool
+    {
+        return $tenant !== 'default'
+            && (bool) preg_match('/^[a-z0-9][a-z0-9_-]{1,62}$/D', $tenant);
+    }
+
+    private static function identifiantsValides(string $annonce, string $livraison): bool
+    {
+        // Prevent integer overflow turning a forged reference into another
+        // real row ID (PHP silently clamps huge numeric strings).
+        return (string) (int) $annonce === $annonce
+            && (string) (int) $livraison === $livraison;
+    }
+
 }
