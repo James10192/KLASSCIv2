@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Services\Annonces\ReferenceCourrielAnnonce;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -42,20 +43,36 @@ class MailPulseAnnonceEvenementController extends Controller
             }
         } else {
             $valide = $request->validate([
-                'external_reference' => ['required', 'string', 'regex:/^klassci-annonce-[1-9][0-9]*-courriel-[1-9][0-9]*$/D'],
+                'external_reference' => ['required', 'string', 'max:191'],
                 'message_id' => ['required', 'string', 'max:191'],
                 'state' => ['required', 'in:delivered,delivery_delayed,bounced,failed,complained,suppressed'],
                 'occurred_at' => ['nullable', 'date'],
             ]);
         }
-        preg_match('/^klassci-annonce-(\\d+)-courriel-(\\d+)$/', $valide['external_reference'], $matches);
+        $reference = (string) $valide['external_reference'];
+        $referenceLue = ReferenceCourrielAnnonce::extraire(
+            $reference, trim((string) config('app.tenant_code', ''))
+        );
+        if ($referenceLue === null) {
+            return response()->json(['ok' => true], 202);
+        }
 
         // A signed event must also belong to the precise MailPulse message:
         // a stale callback from another delivery or attempt has no authority.
         $base = DB::table('esbtp_annonce_email_deliveries')
-            ->where('id', (int) ($matches[2] ?? 0))
-            ->where('annonce_id', (int) ($matches[1] ?? 0))
+            ->where('id', $referenceLue['livraison_id'])
+            ->where('annonce_id', $referenceLue['annonce_id'])
             ->where('mailpulse_message_id', $valide['message_id']);
+        if ($referenceLue['v2']) {
+            $base->where('mailpulse_request_id', $reference);
+        } else {
+            // An old callback must not be used to settle a newer v2 delivery,
+            // even when numeric IDs coincide between two school instances.
+            $base->where(function ($query): void {
+                $query->whereNull('mailpulse_request_id')
+                    ->orWhere('mailpulse_request_id', 'not like', 'klassci-v2-%');
+            });
+        }
         if (isset($valide['recipient_email'])) {
             $base->where('email', strtolower($valide['recipient_email']));
         }
@@ -117,7 +134,7 @@ class MailPulseAnnonceEvenementController extends Controller
             'data.message.recipient.value' => ['required', 'email', 'max:254'],
             'data.message.metadata.source' => ['required', 'in:klassci'],
             'data.message.metadata.workflow_event' => ['required', 'in:announcement_email'],
-            'data.message.metadata.external_reference' => ['required', 'string', 'regex:/^klassci-annonce-[1-9][0-9]*-courriel-[1-9][0-9]*$/D'],
+            'data.message.metadata.external_reference' => ['required', 'string', 'max:191'],
         ]);
         $message = $data['data']['message'];
         $school = trim((string) config('app.tenant_code', ''));
