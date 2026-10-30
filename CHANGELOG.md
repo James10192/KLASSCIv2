@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Annonces — anti-collision multi-établissement :** nouvelles références idempotentes tenant-qualifiées, persistées avant l'appel MailPulse et réutilisées en rapprochement ; références historiques inchangées, webhooks signés liés à la référence de la ligne, aucun envoi rétroactif.
 - **Annonces — reprise bornée :** quarantaine des workers interrompus limitée à un lot pour éviter toute mise à jour massive de campagne et préserver le budget du cron.
 - **Annonces — sécurité de configuration :** aucun e-mail soumis si `TENANT_CODE` est absent ou générique ; les refus locaux de MailPulse (clé manquante, connecteur désactivé, quota) sont conservés sans preuve artificielle d'échec fournisseur.
 - **Annonces — reprise après crash worker :** passage SQL atomique en quarantaine avant la soumission HTTP, protection des statuts terminaux et isolement des traitements bloqués après une durée configurable ; rapprochement en lecture seule uniquement, aucun renvoi automatique.
