@@ -881,6 +881,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let requestSequence = 0;
     let activeRequest = null;
     let debounce = null;
+    let restoring = false;
+    let lastApplied = new FormData(yearForm);
     if (!yearForm || !yearSelect) return;
 
     function setNativeValue(field, value) {
@@ -890,6 +892,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function refreshLmdClasses() {
+        if (restoring) return;
         const sequence = ++requestSequence;
         activeRequest?.abort();
         activeRequest = new AbortController();
@@ -951,11 +954,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentUrl.searchParams.delete('ecue');
             }
             history.replaceState(history.state, '', currentUrl.toString());
+            lastApplied = new FormData(yearForm);
             feedback.textContent = '';
         } catch (error) {
             if (sequence !== requestSequence || error.name === 'AbortError') return;
             console.error('Filtres des notes LMD :', error);
-            feedback.textContent = 'Impossible de charger les classes. Réessayez : les résultats précédents ont été conservés.';
+            restoring = true;
+            for (const [name, value] of lastApplied.entries()) {
+                const field = yearForm.elements.namedItem(name);
+                if (field) setNativeValue(field, String(value));
+            }
+            restoring = false;
+            feedback.textContent = 'Impossible de charger les classes. Les filtres précédents ont été restaurés.';
         } finally {
             if (sequence === requestSequence) {
                 yearForm.removeAttribute('aria-busy');
@@ -972,9 +982,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     reset.addEventListener('click', () => {
         clearTimeout(debounce);
+        restoring = true;
         yearForm.querySelector('[name="search"]').value = '';
         ['filiere_id', 'niveau_id', 'capacite'].forEach(name => setNativeValue(yearForm.elements.namedItem(name), ''));
         setNativeValue(yearForm.elements.namedItem('statut'), 'active');
+        restoring = false;
         // L'année sélectionnée reste en place, comme dans la gestion des notes BTS.
         refreshLmdClasses();
     });
