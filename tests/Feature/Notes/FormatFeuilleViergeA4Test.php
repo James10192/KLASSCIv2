@@ -51,6 +51,13 @@ class FormatFeuilleViergeA4Test extends TestCase
         $this->assertSame(2, substr_count($controller, 'FormatFeuilleViergeA4::depuisRequete($request)'));
         $this->assertStringContainsString("pdfUrl.searchParams.set('colonnes'", $view);
         $this->assertStringContainsString("pdfUrl.searchParams.set('orientation'", $view);
+        $this->assertStringContainsString('nm-blank-config-fields { display: flex;', $view);
+        $this->assertStringContainsString('nm-blank-config { display: flex;', $view);
+        $this->assertStringContainsString('nm-blank-config-field--columns', $view);
+        $this->assertStringContainsString('max-width: 540px', $view);
+        $this->assertStringNotContainsString('nm-blank-config-sub', $view);
+        $this->assertStringContainsString('nmBlankOrientation', $view);
+        $this->assertStringContainsString('nmBlankColumns', $view);
         $this->assertStringContainsString("pdf->setPaper('A4', \$orientationFeuille)", $controller);
         $this->assertStringContainsString('notes.feuille_vierge.export', $view);
         $this->assertStringContainsString('nm-notes-table--multi', $pdf);
