@@ -5,6 +5,7 @@
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <link rel="stylesheet" href="{{ asset('css/notes-management.css') }}?v={{ @filemtime(public_path('css/notes-management.css')) ?: '1' }}">
+<link rel="stylesheet" href="{{ asset('css/notes-modal-bts-premium.css') }}?v={{ @filemtime(public_path('css/notes-modal-bts-premium.css')) ?: '1' }}">
 <style>
     .note-input.nm-note-refused { border-color: #dc2626 !important; background: rgba(220,38,38,.06) !important; }
     .nm-quick-document {display:inline-flex;align-items:center;gap:6px;padding:8px 11px;border-radius:9px;border:1px solid rgba(255,255,255,.4);color:#fff;font-size:12px;font-weight:700;text-decoration:none}
@@ -189,7 +190,7 @@
      MODAL: Sélection Classe & Saisie Notes
      ══════════════════════════════════════════════════════ --}}
 <div class="modal fade nm-notes-modal" id="classSelectionModal" tabindex="-1" aria-labelledby="classSelectionModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header nm-modal-header">
                 <div class="nm-header-left">
@@ -243,36 +244,20 @@
                     'titre' => 'Reste à saisir',
                 ])
 
-                {{-- Intro callout --}}
-                <div class="nm-modal-intro">
-                    <div class="nm-modal-intro-icon">
-                        <i class="fas fa-clipboard-check"></i>
-                    </div>
-                    <div>
-                        <div class="nm-modal-intro-title">Saisie intelligente des notes</div>
-                        <div class="nm-modal-intro-sub">Choisissez une matière, créez des évaluations et saisissez les notes en temps réel.</div>
-                    </div>
-                </div>
-
                 {{-- Controls row --}}
                 <div class="nm-modal-controls">
                     <div class="nm-modal-control" style="flex: 2;">
                         <label for="matiereSelect">Matière</label>
-                        <select class="form-select" id="matiereSelect">
-                            <option value="">-- Sélectionner une matière --</option>
-                            @foreach($matieres as $matiere)
-                                <option value="{{ $matiere->id }}">{{ $matiere->name ?? $matiere->nom ?? 'Matière sans nom' }}</option>
-                            @endforeach
-                        </select>
+                        <x-au-select id="matiereSelect" name="matiere_id" label="Matière" placeholder="Sélectionner une matière"
+                            icon="fa-book" :searchable="true"
+                            :options="collect($matieres)->mapWithKeys(fn ($m) => [$m->id => ($m->name ?? $m->nom ?? 'Matière sans nom')])->all()" />
                         <small id="nmMatiereAide" class="text-muted" style="display:none;"></small>
                     </div>
                     <div class="nm-modal-control">
                         <label for="periodeFilter">Période</label>
-                        <select class="form-select" id="periodeFilter">
-                            <option value="all">Toutes</option>
-                            <option value="semestre1">Semestre 1</option>
-                            <option value="semestre2">Semestre 2</option>
-                        </select>
+                        <x-au-select id="periodeFilter" name="periode" label="Période" icon="fa-calendar"
+                            :placeholder-is-first-option="false" :value="'all'"
+                            :options="['all' => 'Toutes', 'semestre1' => 'Semestre 1', 'semestre2' => 'Semestre 2']" />
                     </div>
                     @can('evaluations.create')
                     <div class="nm-modal-create" style="flex-shrink: 0;">
@@ -338,6 +323,27 @@
                     </button>
                 </div>
 
+                {{-- Auto-save info --}}
+                <div class="nm-autosave-info">
+                    <i class="fas fa-info-circle"></i>
+                    @canany(['notes.create', 'notes.edit'])
+                    Les modifications restent en brouillon local pendant la saisie.
+                    <span class="fw-semibold">Cliquez sur « Valider les notes » pour enregistrer, verrouiller et actualiser la saisie finale.</span>
+                    @else
+                    Consultation des notes en lecture seule. Les documents disponibles dépendent de vos permissions individuelles.
+                    @endcanany
+                </div>
+            </div>
+            <div class="modal-footer nm-modal-footer">
+                {{-- Badge bulletin synchronisé : visible après chaque saveNote() success --}}
+                <span id="nm-sync-badge" class="badge bg-light text-success border me-auto" style="display:none; font-weight: 500; padding: .45rem .65rem;" title="Le bulletin sera mis à jour automatiquement avec cette note">
+                    <i class="fas fa-check-circle me-1"></i>Bulletin synchronisé · <span id="nm-sync-time">à l'instant</span>
+                </span>
+                @canany(['notes.feuille_vierge.export', 'notes.export_excel'])
+                <details class="nm-documents-panel">
+                    <summary class="nm-documents-trigger"><i class="fas fa-folder-open" aria-hidden="true"></i> Documents <i class="fas fa-chevron-up nm-documents-caret" aria-hidden="true"></i></summary>
+                    <div class="nm-documents-popover">
+                        <div class="nm-documents-title">Documents et exports BTS</div>
                 @can('notes.feuille_vierge.export')
                 {{-- Configuration locale du PDF : n'affecte ni les notes ni l'année globale. --}}
                 <section class="nm-blank-config" id="nm-blank-config" aria-label="Options d'impression de la feuille vierge">
@@ -364,22 +370,6 @@
                 </section>
                 @endcan
 
-                {{-- Auto-save info --}}
-                <div class="nm-autosave-info">
-                    <i class="fas fa-info-circle"></i>
-                    @canany(['notes.create', 'notes.edit'])
-                    Les modifications restent en brouillon local pendant la saisie.
-                    <span class="fw-semibold">Cliquez sur « Valider les notes » pour enregistrer, verrouiller et actualiser la saisie finale.</span>
-                    @else
-                    Consultation des notes en lecture seule. Les documents disponibles dépendent de vos permissions individuelles.
-                    @endcanany
-                </div>
-            </div>
-            <div class="modal-footer nm-modal-footer">
-                {{-- Badge bulletin synchronisé : visible après chaque saveNote() success --}}
-                <span id="nm-sync-badge" class="badge bg-light text-success border me-auto" style="display:none; font-weight: 500; padding: .45rem .65rem;" title="Le bulletin sera mis à jour automatiquement avec cette note">
-                    <i class="fas fa-check-circle me-1"></i>Bulletin synchronisé · <span id="nm-sync-time">à l'instant</span>
-                </span>
                 @can('notes.feuille_vierge.export')
                 <a href="#" class="btn btn-outline-secondary disabled" id="previewBlankPdfBtn" target="_blank" rel="noopener" aria-disabled="true" tabindex="-1" title="Aperçu PDF vierge dans un nouvel onglet">
                     <i class="fas fa-eye me-1"></i>Aperçu PDF
@@ -394,6 +384,9 @@
                     <i class="fas fa-file-excel me-1"></i>Notes Excel
                 </button>
                 @endcan
+                    </div>
+                </details>
+                @endcanany
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times me-1"></i>Fermer
                 </button>
@@ -917,10 +910,10 @@ $(document).ready(function() {
             setTimeout(function() {
                 selectClass(deepClassId, classLabel);
                 if (deepPeriode === 'semestre1' || deepPeriode === 'semestre2') {
-                    $('#periodeFilter').val(deepPeriode).trigger('change');
+                    nmSetNativeSelectValue('#periodeFilter', deepPeriode);
                 }
                 nmMatieresPret.always(function() {
-                    $('#matiereSelect').val(deepMatiereId).trigger('change');
+                    nmSetNativeSelectValue('#matiereSelect', deepMatiereId);
                 });
             }, 0);
         }
@@ -964,7 +957,7 @@ $(document).ready(function() {
     window.addEventListener('couverture:periode-change', function(event) {
         var periode = event.detail && event.detail.periode;
         var cible = periode === 'semestre1' || periode === 'semestre2' ? periode : 'all';
-        if ($('#periodeFilter').val() !== cible) { $('#periodeFilter').val(cible).trigger('change'); }
+        if ($('#periodeFilter').val() !== cible) { nmSetNativeSelectValue('#periodeFilter', cible); }
     });
 
     // Scroll shadow detection on grid wrapper (scroll doesn't bubble — attach directly)
@@ -1003,6 +996,9 @@ $(document).ready(function() {
 });
 
 
+{{-- Sélecteurs premium BTS : synchronisation des événements DOM et cycle de vie du modal. --}}
+@include('esbtp.notes.partials._modal-premium-selects-script')
+
 // Navigation interne depuis le suivi des notes : la matière est chargée dans
 // ce modal, sans changer de page ni ouvrir d'onglet.
 window.nmOpenCoverageSaisie = function(matiere) {
@@ -1026,12 +1022,12 @@ window.nmOpenCoverageSaisie = function(matiere) {
         if (!$matiere.find(`option[value="${matiereId}"]`).length) return;
 
         const periodeCible = periode === 'semestre1' || periode === 'semestre2' ? periode : 'all';
-        $('#periodeFilter').val(periodeCible).trigger('change');
-        $matiere.val(matiereId).trigger('change');
+        nmSetNativeSelectValue('#periodeFilter', periodeCible);
+        nmSetNativeSelectValue($matiere, matiereId);
 
         // La grille remplace immédiatement le contenu et conserve le contexte de
         // classe ; ce focus laisse visible que la navigation s'est bien faite.
-        $matiere.trigger('focus');
+        $matiere.closest('.au-select').find('.au-select-trigger').trigger('focus');
     });
 };
 
@@ -1074,8 +1070,10 @@ function selectClass(classId, className) {
         },
     }));
 
-    // Réinitialiser la sélection de matière, puis réduire la liste à la classe
-    $('#matiereSelect').val('');
+    // Fermer les outils de l'ancienne classe, conserver les contrats AJAX.
+    document.querySelector('#classSelectionModal .nm-documents-panel')?.removeAttribute('open');
+    // Réinitialiser la sélection de matière, puis réduire la liste à la classe.
+    nmSetNativeSelectValue('#matiereSelect', '');
     currentMatiereId = null;
     nmChargerMatieres(classId);
 

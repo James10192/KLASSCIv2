@@ -13,8 +13,12 @@ function nmChargerMatieres(classId) {
     const seq = ++nmMatieresSeq;
     const $select = $('#matiereSelect');
     const $aide = $('#nmMatiereAide');
+    // Le composant garde son <select> caché : refléter aussi le chargement
+    // sur le bouton visible pour éviter un picker qui semble actif mais ne l'est pas.
+    const $trigger = $select.closest('.au-select').find('.au-select-trigger');
     if (nmMatieresCatalogue === null) nmMatieresCatalogue = $select.html();
     $select.prop('disabled', true);
+    $trigger.prop('disabled', true).attr('aria-busy', 'true');
     nmMatieresPret = $.ajax({
         url: '{{ route("esbtp.notes.classes.matieres", ["classe" => ":classId"]) }}'.replace(':classId', classId),
         method: 'GET',
@@ -36,7 +40,9 @@ function nmChargerMatieres(classId) {
         $select.html(nmMatieresCatalogue);
         $aide.text('Liste des matières de la classe indisponible : toutes les matières restent proposées.').show();
     }).always(function() {
-        if (seq === nmMatieresSeq) $select.prop('disabled', false);
+        if (seq !== nmMatieresSeq) return;
+        $select.prop('disabled', false);
+        $trigger.prop('disabled', false).removeAttr('aria-busy');
     });
     return nmMatieresPret;
 }
