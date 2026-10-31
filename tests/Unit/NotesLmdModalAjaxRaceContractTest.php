@@ -32,6 +32,14 @@ class NotesLmdModalAjaxRaceContractTest extends TestCase
         $this->assertStringContainsString("document.getElementById('ecueSelect').addEventListener('change'", $view);
         $this->assertStringContainsString('if (!matiereId || !currentClasseId) {', $view);
         $this->assertStringContainsString('Aucune évaluation disponible en consultation', $view);
+        $this->assertStringContainsString('lmdMasquerExamensAnonymes();', $view);
+        $this->assertStringContainsString('lmdAfficherChargementNotes();', $view);
         $this->assertStringNotContainsString('window.location.reload()', $view);
+    }
+
+    public function test_anonymous_exam_panel_has_a_real_hidden_css_rule(): void
+    {
+        $style = file_get_contents(__DIR__.'/../../public/css/notes-modal-lmd-premium.css');
+        $this->assertStringContainsString('#modalNotes #notesAnonymes[hidden] { display: none !important; }', $style);
     }
 }

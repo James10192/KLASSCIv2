@@ -858,6 +858,19 @@ let currentClasseData = null;
 // Deux requêtes de classes/ECUEs peuvent répondre dans le désordre : seule la dernière sélection s'affiche.
 let lmdClasseRequestSeq = 0;
 let lmdEcueRequestSeq = 0;
+
+// Les examens anonymes, hors de la grille, ne doivent pas survivre à un changement de sélection.
+function lmdMasquerExamensAnonymes() {
+    const bloc = document.getElementById('notesAnonymes');
+    if (bloc) bloc.hidden = true;
+}
+
+function lmdAfficherChargementNotes() {
+    const loader = document.getElementById('notesLoading');
+    loader.innerHTML = '<i class="fas fa-spinner fa-spin"></i>' +
+        '<div style="margin-top:.75rem; font-size:.88rem;">Chargement des notes...</div>';
+    loader.style.display = 'block';
+}
 let currentMatiereId = null;
 let currentMatiereName = '';
 let lmdAcademicYearId = @json($anneeSelectionnee?->id);
@@ -1028,6 +1041,7 @@ async function openNotesModal(classeId, classeName) {
     const academicYearId = lmdAcademicYearId;
     currentClasseId = classeId;
     currentClasseData = null;
+    lmdMasquerExamensAnonymes();
     currentMatiereId = null;
     currentMatiereName = '';
     evaluationsData = {};
@@ -1036,7 +1050,7 @@ async function openNotesModal(classeId, classeName) {
     // Reset UI
     document.getElementById('notesModalTitle').textContent = classeName;
     document.getElementById('notesModalSubtitle').textContent = 'Chargement...';
-    document.getElementById('notesLoading').style.display = 'block';
+    lmdAfficherChargementNotes();
     document.getElementById('notesGridWrap').style.display = 'none';
     document.getElementById('notesEmpty').style.display = 'none';
     document.getElementById('autosaveInfo').style.display = 'none';
@@ -1144,6 +1158,7 @@ async function openNotesModal(classeId, classeName) {
 // ══ UE selection → populate ECUEs ══
 document.getElementById('ueSelect').addEventListener('change', function() {
     ++lmdEcueRequestSeq;
+    lmdMasquerExamensAnonymes();
     const ecueSelect = document.getElementById('ecueSelect');
     ecueSelect.innerHTML = '<option value="">— Choisir un ECUE —</option>';
     ecueSelect.disabled = true;
@@ -1178,6 +1193,7 @@ document.getElementById('ueSelect').addEventListener('change', function() {
 // ══ ECUE selection → load evaluations & build grid ══
 document.getElementById('ecueSelect').addEventListener('change', function() {
     ++lmdEcueRequestSeq;
+    lmdMasquerExamensAnonymes();
     const matiereId = this.value;
     if (!matiereId || !currentClasseId) {
         currentMatiereId = null;
@@ -1217,8 +1233,9 @@ document.getElementById('periodeFilter').addEventListener('change', function() {
 async function loadEvaluationsAndBuildGrid(classeId, matiereId) {
     const requestSeq = ++lmdEcueRequestSeq;
     const academicYearId = lmdAcademicYearId;
+    lmdMasquerExamensAnonymes();
     document.getElementById('notesEmpty').style.display = 'none';
-    document.getElementById('notesLoading').style.display = 'block';
+    lmdAfficherChargementNotes();
     document.getElementById('notesGridWrap').style.display = 'none';
     document.getElementById('autosaveInfo').style.display = 'none';
 

@@ -104,3 +104,6 @@
     }
     #modalNotes .ln-modal-fbtn { flex: 1 1 auto; justify-content: center; }
 }
+
+/* Les examens anonymes de l'ancien ECUE ne sont pas affichés. */
+#modalNotes #notesAnonymes[hidden] { display: none !important; }
