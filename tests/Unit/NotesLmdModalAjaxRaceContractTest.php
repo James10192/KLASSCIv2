@@ -8,7 +8,8 @@ class NotesLmdModalAjaxRaceContractTest extends TestCase
 {
     private function modal(): string
     {
-        return file_get_contents(__DIR__.'/../../resources/views/esbtp/lmd/notes/index.blade.php');
+        return file_get_contents(__DIR__.'/../../resources/views/esbtp/lmd/notes/index.blade.php')
+            .file_get_contents(__DIR__.'/../../resources/views/esbtp/lmd/notes/partials/_chargement-modal-script.blade.php');
     }
 
     public function test_classe_data_discard_stale_responses_and_invalidate_on_close_or_year_change(): void
