@@ -18,7 +18,11 @@ class NotesBtsModalPremiumContractTest extends TestCase
         $this->assertStringContainsString('<x-au-select id="periodeFilter"', $view);
         $this->assertStringContainsString('<details class="nm-documents-panel">', $view);
         $this->assertStringContainsString("@canany(['notes.feuille_vierge.export', 'notes.export_excel'])", $view);
-        $this->assertStringContainsString("$('#matiereSelect').val('').trigger('change');", $view);
+        $this->assertStringContainsString("nmSetNativeSelectValue('#matiereSelect', '');", $view);
+        $this->assertStringContainsString("nmSetNativeSelectValue('#periodeFilter', deepPeriode);", $view);
+        $this->assertStringContainsString('native.dispatchEvent(new Event(\'change\', { bubbles: true }));', $view);
+        $this->assertStringNotContainsString("$('#periodeFilter').val(deepPeriode).trigger('change');", $view);
+        $this->assertStringContainsString("closest('.au-select').find('.au-select-trigger').trigger('focus')", $view);
         $this->assertStringNotContainsString('window.location.reload()', $view);
     }
 

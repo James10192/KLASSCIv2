@@ -910,10 +910,10 @@ $(document).ready(function() {
             setTimeout(function() {
                 selectClass(deepClassId, classLabel);
                 if (deepPeriode === 'semestre1' || deepPeriode === 'semestre2') {
-                    $('#periodeFilter').val(deepPeriode).trigger('change');
+                    nmSetNativeSelectValue('#periodeFilter', deepPeriode);
                 }
                 nmMatieresPret.always(function() {
-                    $('#matiereSelect').val(deepMatiereId).trigger('change');
+                    nmSetNativeSelectValue('#matiereSelect', deepMatiereId);
                 });
             }, 0);
         }
@@ -957,7 +957,7 @@ $(document).ready(function() {
     window.addEventListener('couverture:periode-change', function(event) {
         var periode = event.detail && event.detail.periode;
         var cible = periode === 'semestre1' || periode === 'semestre2' ? periode : 'all';
-        if ($('#periodeFilter').val() !== cible) { $('#periodeFilter').val(cible).trigger('change'); }
+        if ($('#periodeFilter').val() !== cible) { nmSetNativeSelectValue('#periodeFilter', cible); }
     });
 
     // Scroll shadow detection on grid wrapper (scroll doesn't bubble — attach directly)
@@ -996,6 +996,17 @@ $(document).ready(function() {
 });
 
 
+// Un .trigger('change') jQuery ne prévient pas addEventListener('change') d'Alpine.
+// Les changements programmatiques doivent atteindre EN MÊME TEMPS la grille BTS
+// et la valeur affichée par <x-au-select>, sans double événement ni reload.
+function nmSetNativeSelectValue(picker, value) {
+    const native = typeof picker === 'string' ? document.querySelector(picker)
+        : (picker && picker.jquery ? picker[0] : picker);
+    if (!native) return;
+    native.value = value;
+    native.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
 // Navigation interne depuis le suivi des notes : la matière est chargée dans
 // ce modal, sans changer de page ni ouvrir d'onglet.
 window.nmOpenCoverageSaisie = function(matiere) {
@@ -1019,12 +1030,12 @@ window.nmOpenCoverageSaisie = function(matiere) {
         if (!$matiere.find(`option[value="${matiereId}"]`).length) return;
 
         const periodeCible = periode === 'semestre1' || periode === 'semestre2' ? periode : 'all';
-        $('#periodeFilter').val(periodeCible).trigger('change');
-        $matiere.val(matiereId).trigger('change');
+        nmSetNativeSelectValue('#periodeFilter', periodeCible);
+        nmSetNativeSelectValue($matiere, matiereId);
 
         // La grille remplace immédiatement le contenu et conserve le contexte de
         // classe ; ce focus laisse visible que la navigation s'est bien faite.
-        $matiere.trigger('focus');
+        $matiere.closest('.au-select').find('.au-select-trigger').trigger('focus');
     });
 };
 
@@ -1070,7 +1081,7 @@ function selectClass(classId, className) {
     // Fermer les outils de l'ancienne classe, conserver les contrats AJAX.
     document.querySelector('#classSelectionModal .nm-documents-panel')?.removeAttribute('open');
     // Réinitialiser la sélection de matière, puis réduire la liste à la classe.
-    $('#matiereSelect').val('').trigger('change');
+    nmSetNativeSelectValue('#matiereSelect', '');
     currentMatiereId = null;
     nmChargerMatieres(classId);
 
