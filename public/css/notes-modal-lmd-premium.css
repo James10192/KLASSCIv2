@@ -107,3 +107,9 @@
 
 /* Les examens anonymes de l'ancien ECUE ne sont pas affichés. */
 #modalNotes #notesAnonymes[hidden] { display: none !important; }
+
+#modalNotes .ln-modal-field .au-select-trigger:disabled {
+    opacity: .58;
+    cursor: not-allowed;
+    background: #f8fafc;
+}

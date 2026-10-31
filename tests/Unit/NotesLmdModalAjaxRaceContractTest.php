@@ -36,6 +36,9 @@ class NotesLmdModalAjaxRaceContractTest extends TestCase
         $this->assertStringContainsString("document.getElementById('notesGridWrap').style.display !== 'none'", $view);
         $this->assertStringContainsString('lmdMasquerExamensAnonymes();', $view);
         $this->assertStringContainsString('lmdAfficherChargementNotes();', $view);
+        $this->assertStringContainsString("lmdSetNativeSelectDisabled('ueSelect', true);", $view);
+        $this->assertStringContainsString("lmdSetNativeSelectDisabled('ecueSelect', false);", $view);
+        $this->assertStringContainsString("addEventListener('hide.bs.modal', lmdFermerMenusPremium)", $view);
         $this->assertStringNotContainsString('window.location.reload()', $view);
     }
 

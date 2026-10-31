@@ -29,9 +29,10 @@ async function openNotesModal(classeId, classeName) {
     // Reset selects
     const ueSelect = document.getElementById('ueSelect');
     const ecueSelect = document.getElementById('ecueSelect');
+    lmdSetNativeSelectDisabled('ueSelect', true);
     ueSelect.innerHTML = '<option value="">— Choisir une UE —</option>';
     ecueSelect.innerHTML = '<option value="">— Choisir un ECUE —</option>';
-    ecueSelect.disabled = true;
+    lmdSetNativeSelectDisabled('ecueSelect', true);
     ueSelect.dispatchEvent(new Event('change', { bubbles: false }));
     ecueSelect.dispatchEvent(new Event('change', { bubbles: false }));
 
@@ -47,6 +48,7 @@ async function openNotesModal(classeId, classeName) {
         if (requestSeq !== lmdClasseRequestSeq || String(currentClasseId) !== String(classeId)
             || String(lmdAcademicYearId) !== String(academicYearId)) return;
         currentClasseData = data;
+        lmdSetNativeSelectDisabled('ueSelect', false);
 
         // Store class semestres for dynamic period options
         classeSemestres = data.classe.semestres || [1, 2];

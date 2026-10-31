@@ -860,6 +860,27 @@ let lmdClasseRequestSeq = 0;
 let lmdEcueRequestSeq = 0;
 
 // Les examens anonymes, hors de la grille, ne doivent pas survivre à un changement de sélection.
+// Le sélecteur premium conserve un <select> natif caché ; refléter aussi
+// l'état disabled sur le bouton visible, sans transformer la logique LMD.
+function lmdSetNativeSelectDisabled(id, disabled) {
+    const native = document.getElementById(id);
+    if (!native) return;
+    native.disabled = disabled;
+    const trigger = native.closest('.au-select')?.querySelector('.au-select-trigger');
+    if (trigger) {
+        trigger.disabled = disabled;
+        trigger.setAttribute('aria-disabled', String(disabled));
+    }
+}
+
+function lmdFermerMenusPremium() {
+    if (!window.Alpine?.$data) return;
+    document.querySelectorAll('#modalNotes .au-select').forEach(function(el) {
+        const selectData = window.Alpine.$data(el);
+        if (selectData?.open && typeof selectData.fermer === 'function') selectData.fermer();
+    });
+}
+
 function lmdMasquerExamensAnonymes() {
     const bloc = document.getElementById('notesAnonymes');
     if (bloc) bloc.hidden = true;
@@ -1015,6 +1036,7 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener('DOMContentLoaded', function() {
     notesModal = new bootstrap.Modal(document.getElementById('modalNotes'));
     evalCreateModal = new bootstrap.Modal(document.getElementById('lmdEvalCreateModal'));
+    document.getElementById('modalNotes').addEventListener('hide.bs.modal', lmdFermerMenusPremium);
     document.getElementById('modalNotes').addEventListener('hidden.bs.modal', function() {
         // Une réponse réseau tardive ne doit pas repeupler une fenêtre fermée.
         ++lmdClasseRequestSeq;
@@ -1043,7 +1065,7 @@ document.getElementById('ueSelect').addEventListener('change', function() {
     lmdMasquerExamensAnonymes();
     const ecueSelect = document.getElementById('ecueSelect');
     ecueSelect.innerHTML = '<option value="">— Choisir un ECUE —</option>';
-    ecueSelect.disabled = true;
+    lmdSetNativeSelectDisabled('ecueSelect', true);
     currentMatiereId = null;
     currentMatiereName = '';
 
@@ -1068,7 +1090,7 @@ document.getElementById('ueSelect').addEventListener('change', function() {
         opt.textContent = (m.code ? m.code + ' — ' : '') + m.name;
         ecueSelect.appendChild(opt);
     });
-    ecueSelect.disabled = false;
+    lmdSetNativeSelectDisabled('ecueSelect', false);
     ecueSelect.dispatchEvent(new Event('change', { bubbles: false }));
 });
 
