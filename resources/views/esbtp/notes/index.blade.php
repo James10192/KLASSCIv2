@@ -233,17 +233,6 @@
                     </div>
                 </div>
 
-                {{-- Ce qui reste à saisir sur cette classe. C'est ici que la
-                     personne peut agir : le signal doit être sous ses yeux, pas
-                     sur une autre page. La classe lui est annoncée par
-                     `couverture:contexte` quand elle est choisie. --}}
-                @include('esbtp.partials._couverture-notes', [
-                    'classeId' => null,
-                    'anneeId' => $anneeSelectionneeId ?? null,
-                    'periode' => 'annuel',
-                    'titre' => 'Reste à saisir',
-                ])
-
                 {{-- Controls row --}}
                 <div class="nm-modal-controls">
                     <div class="nm-modal-control" style="flex: 2;">
@@ -267,6 +256,21 @@
                         </button>
                     </div>
                     @endcan
+                    {{-- Le suivi reste disponible, mais ne prive plus les étudiants de hauteur de saisie. --}}
+                    <details class="nm-followup-panel" id="nm-followup-panel">
+                        <summary class="nm-followup-trigger" title="Voir les notes manquantes et les détails du suivi">
+                            <i class="fas fa-chart-bar" aria-hidden="true"></i> Suivi
+                            <i class="fas fa-chevron-down nm-followup-caret" aria-hidden="true"></i>
+                        </summary>
+                        <div class="nm-followup-popover" role="region" aria-label="Suivi des notes BTS">
+                            @include('esbtp.partials._couverture-notes', [
+                                'classeId' => null,
+                                'anneeId' => $anneeSelectionneeId ?? null,
+                                'periode' => 'annuel',
+                                'titre' => 'Reste à saisir',
+                            ])
+                        </div>
+                    </details>
                 </div>
 
                 {{-- Table toolbar : search + stats (visible when grid is loaded) --}}
@@ -1072,6 +1076,7 @@ function selectClass(classId, className) {
 
     // Fermer les outils de l'ancienne classe, conserver les contrats AJAX.
     document.querySelector('#classSelectionModal .nm-documents-panel')?.removeAttribute('open');
+    document.getElementById('nm-followup-panel')?.removeAttribute('open');
     // Réinitialiser la sélection de matière, puis réduire la liste à la classe.
     nmSetNativeSelectValue('#matiereSelect', '');
     currentMatiereId = null;
