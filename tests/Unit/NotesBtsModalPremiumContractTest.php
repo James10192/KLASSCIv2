@@ -24,6 +24,8 @@ class NotesBtsModalPremiumContractTest extends TestCase
         $this->assertStringContainsString("nmSetNativeSelectValue('#matiereSelect', '');", $view);
         $this->assertStringContainsString("nmSetNativeSelectValue('#periodeFilter', deepPeriode);", $view);
         $this->assertStringContainsString('native.dispatchEvent(new Event(\'change\', { bubbles: true }));', $view);
+        $partial = file_get_contents(__DIR__.'/../../resources/views/esbtp/notes/partials/_modal-premium-selects-script.blade.php');
+        $this->assertStringNotContainsString('<x-au-select>', $partial);
         $this->assertStringNotContainsString("$('#periodeFilter').val(deepPeriode).trigger('change');", $view);
         $this->assertStringContainsString("closest('.au-select').find('.au-select-trigger').trigger('focus')", $view);
         $this->assertStringNotContainsString('window.location.reload()', $view);
