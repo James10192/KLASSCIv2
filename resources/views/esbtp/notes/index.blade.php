@@ -1028,6 +1028,7 @@ window.nmOpenCoverageSaisie = function(matiere) {
         const periodeCible = periode === 'semestre1' || periode === 'semestre2' ? periode : 'all';
         nmSetNativeSelectValue('#periodeFilter', periodeCible);
         nmSetNativeSelectValue($matiere, matiereId);
+        document.getElementById('nm-followup-panel')?.removeAttribute('open');
 
         // La grille remplace immédiatement le contenu et conserve le contexte de
         // classe ; ce focus laisse visible que la navigation s'est bien faite.

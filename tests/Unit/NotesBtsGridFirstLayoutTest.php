@@ -18,6 +18,8 @@ class NotesBtsGridFirstLayoutTest extends TestCase
         $this->assertTrue($start < $coverage && $coverage < $grid);
         $this->assertSame(1, substr_count($view, "@include('esbtp.partials._couverture-notes'"));
         $this->assertStringContainsString('id="nm-followup-panel"', $view);
+        $this->assertStringContainsString("nmSetNativeSelectValue($"+'matiere'+", matiereId);", $view);
+        $this->assertStringContainsString("getElementById('nm-followup-panel')?.removeAttribute('open')", $view);
         $this->assertStringContainsString('removeAttribute(\'open\')', $view);
     }
 

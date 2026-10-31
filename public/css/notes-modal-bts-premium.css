@@ -203,3 +203,15 @@
     #classSelectionModal .nm-modal-controls .au-select-trigger { min-height: 40px; }
     #classSelectionModal .nm-table-stats { font-size: .68rem; }
 }
+
+/* Tablette : deux filtres puis deux actions, sans rangée presque vide. */
+@media (min-width: 701px) and (max-width: 1050px) {
+    #classSelectionModal .nm-modal-controls {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    #classSelectionModal .nm-modal-create,
+    #classSelectionModal .nm-followup-panel {
+        grid-column: auto; grid-row: auto;
+    }
+    #classSelectionModal .nm-followup-trigger { width: 100%; }
+}
