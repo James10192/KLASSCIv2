@@ -46,20 +46,63 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
             return;
         }
 
+        // A default/absent tenant code would make the idempotency reference
+        // ambiguous across schools using a shared MailPulse organization.
+        // Fail closed BEFORE any HTTP call: no provider failure is asserted.
+        $tenant = (string) config('app.tenant_code', 'default');
+        if ($tenant === 'default' || ! preg_match('/^[a-z0-9][a-z0-9_-]{1,62}$/D', $tenant)) {
+            DB::table('esbtp_annonce_email_deliveries')
+                ->where('id', $this->deliveryId)
+                ->whereIn('status', ['pending', 'retrying'])
+                ->whereNull('submitted_at')
+                ->update([
+                    'status' => 'awaiting_dispatch',
+                    'error_code' => 'tenant_unconfigured',
+                    'updated_at' => now(),
+                ]);
+            Log::warning('Annonce : tenant manquant, aucun email soumis', [
+                'livraison_id' => $this->deliveryId,
+            ]);
+            return;
+        }
+
+        // A retry from the old rail must retain its LEGACY key; only truly
+        // untouched rows get the new school-qualified reference.
+        $reference = \App\Services\Annonces\ReferenceCourrielAnnonce::pourEnvoi($ligne, $tenant);
+        if ($reference === null) {
+            DB::table('esbtp_annonce_email_deliveries')
+                ->where('id', $this->deliveryId)
+                ->whereIn('status', ['pending', 'retrying'])
+                ->whereNull('submitted_at')
+                ->update([
+                    'status' => 'awaiting_dispatch',
+                    'error_code' => 'invalid_dispatch_contract',
+                    'updated_at' => now(),
+                ]);
+
+            return; // A mismatching previously pinned v2 key is never sent.
+        }
+
         // Un seul worker prend la ligne; la prochaine relance est permise depuis retrying.
         $pris = DB::table('esbtp_annonce_email_deliveries')
             ->where('id', $this->deliveryId)
             ->whereIn('status', ['pending', 'retrying'])
+            ->where('annonce_id', $ligne->annonce_id)
+            ->where('email', $ligne->email)
+            ->whereNull('mailpulse_message_id')
             ->whereNull('submitted_at')
             ->update([
                 'status' => 'processing', 'processing_at' => now(),
+                // Persist this key even when local pacing defers the HTTP call.
+                'mailpulse_request_id' => $reference,
                 'attempts' => DB::raw('attempts + 1'), 'updated_at' => now(),
             ]);
         if ($pris !== 1) {
             return;
         }
 
-        $reference = 'klassci-annonce-'.$annonce->id.'-courriel-'.$ligne->id;
+        // After crossing the HTTP boundary, a lost response cannot prove non-delivery.
+        $soumissionCommencee = false;
         try {
             $attente = $cadence->attenteAvantEnvoi();
             if ($attente !== null) {
@@ -82,6 +125,54 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
                 'external_reference' => $reference,
             ], fn ($v) => $v !== '');
 
+            // Même HTML que l'aperçu KLASSCI ; le texte reste un fallback.
+            $html = app(\App\Services\Annonces\CourrielAnnonce::class)
+                ->htmlPourMailPulse($annonce, $metadata);
+            if ($html !== null) {
+                $metadata['email_html'] = $html;
+            }
+
+            // Commit the uncertain state BEFORE the HTTP boundary. If a worker
+            // dies between the provider call and its response, the next queue
+            // execution MUST NOT resend; a read-only lookup will reconcile it.
+            // Also prevents a suspended worker from sending after a stale
+            // processing lease was quarantined by the scheduler.
+            $frontiere = DB::table('esbtp_annonce_email_deliveries')
+                ->where('id', $this->deliveryId)
+                ->where('status', 'processing')
+                ->where('annonce_id', $ligne->annonce_id)
+                ->where('email', $ligne->email)
+                ->where('mailpulse_request_id', $reference)
+                ->whereNull('submitted_at')
+                ->whereNull('mailpulse_message_id')
+                ->update([
+                    'status' => 'awaiting_dispatch',
+                    'error_code' => 'submission_outcome_unknown',
+                    'mailpulse_request_id' => $reference,
+                    'processing_at' => null,
+                    'updated_at' => now(),
+                ]);
+            if ($frontiere !== 1) {
+                // A recipient/reference edit while composing invalidates this
+                // worker's snapshot. Quarantine the stale lease immediately,
+                // rather than waiting for a later scheduled cleanup. Nothing
+                // has crossed the HTTP boundary yet; no provider failure claim.
+                DB::table('esbtp_annonce_email_deliveries')
+                    ->where('id', $this->deliveryId)
+                    ->where('status', 'processing')
+                    ->whereNull('submitted_at')
+                    ->whereNull('mailpulse_message_id')
+                    ->update([
+                        'status' => 'awaiting_dispatch',
+                        'error_code' => 'pre_submission_context_changed',
+                        'processing_at' => null,
+                        'updated_at' => now(),
+                    ]);
+
+                return; // a terminal webhook or another worker always wins
+            }
+
+            $soumissionCommencee = true;
             $resultat = $client->sendEmailMessage([
                 'channel' => 'email',
                 'recipient' => ['type' => 'email', 'value' => $ligne->email],
@@ -90,6 +181,30 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
             ], $reference);
 
             if (! $resultat->ok) {
+                // Timeout/5xx or an unusable successful response may have accepted
+                // the message. Do not blindly retry; reconcile the stable key first.
+                if (in_array($resultat->status, ['connection_failed', 'request_timeout', 'provider_unavailable', 'invalid_dispatch_contract'], true)) {
+                    $this->statut('awaiting_dispatch', [
+                        'error_code' => 'submission_outcome_unknown',
+                        // The pinned idempotency key must never be overwritten with an HTTP request ID.
+                        'mailpulse_message_id' => $resultat->id,
+                    ]);
+                    Log::warning('Annonce : soumission MailPulse indeterminee, relance bloquee', [
+                        'annonce_id' => $annonce->id, 'livraison_id' => $ligne->id,
+                        'statut' => $resultat->status,
+                    ]);
+                    return;
+                }
+                if (in_array($resultat->status, RefusMailPulse::CONFIGURATION, true)) {
+                    // A disabled connector, missing credentials or exhausted
+                    // quota is not proof of a provider delivery failure.
+                    // Do not release an endless job storm or claim a bounce.
+                    $this->statut('awaiting_dispatch', [
+                        'error_code' => $resultat->status,
+                        // The pinned idempotency key must never be overwritten with an HTTP request ID.
+                    ]);
+                    return;
+                }
                 if (in_array($resultat->status, RefusMailPulse::PASSAGERS, true)) {
                     $this->reporter($resultat->retryAfter ?? 60, $resultat->status);
                     return;
@@ -106,17 +221,32 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
                 return;
             }
 
-            // pending_reconciliation n'est NI soumis avec certitude NI delivre.
-            $etat = $resultat->isDispatchAccepted() ? 'submitted' : 'awaiting_dispatch';
+            // Even an accepted response needs a durable message ID for tracking.
+            $accepteAvecId = $resultat->isDispatchAccepted() && is_string($resultat->id)
+                && trim($resultat->id) !== '';
+            $etat = $accepteAvecId ? 'submitted' : 'awaiting_dispatch';
             $this->statut($etat, [
+                'error_code' => $accepteAvecId ? null : 'submission_outcome_unknown',
                 'mailpulse_message_id' => $resultat->id,
-                'mailpulse_request_id' => $resultat->requestId,
+                // Retain the original school-qualified/legacy idempotency key.
                 'dispatch_state' => $resultat->dispatchState,
-                'submitted_at' => $resultat->isDispatchAccepted() ? now() : null,
+                'submitted_at' => $accepteAvecId ? now() : null,
             ]);
         } catch (Throwable $e) {
-            $this->statut('retrying', ['error_code' => 'transport_exception']);
-            throw $e; // la queue applique son backoff et garde la cle stable
+            if ($soumissionCommencee) {
+                // Includes unexpected HTTP-client exceptions and failures while
+                // recording a successful response: do not send again on next job.
+                $this->statut('awaiting_dispatch', [
+                    'error_code' => 'submission_outcome_unknown',
+                    'mailpulse_request_id' => $reference,
+                ]);
+                Log::warning('Annonce : resultat HTTP indetermine, reemission interdite', [
+                    'livraison_id' => $this->deliveryId,
+                ]);
+                return;
+            }
+            $this->statut('retrying', ['error_code' => 'pre_submission_exception']);
+            throw $e; // no HTTP submission has started; queue backoff applies
         }
     }
 
@@ -129,6 +259,9 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
     private function statut(string $statut, array $attributs = []): void
     {
         DB::table('esbtp_annonce_email_deliveries')->where('id', $this->deliveryId)
+            ->whereIn('status', ['processing', 'retrying', 'awaiting_dispatch'])
+            ->whereNull('submitted_at')
+            ->whereNull('provider_delivered_at')
             ->update($attributs + [
                 'status' => $statut,
                 'processing_at' => null,
@@ -141,10 +274,12 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
         DB::table('esbtp_annonce_email_deliveries')->where('id', $this->deliveryId)
             ->whereIn('status', ['processing', 'retrying'])
             ->update([
-                'status' => 'failed',
-                'error_code' => 'queue_exhausted',
+                // A local timeout / exhausted worker cannot prove that the
+                // upstream provider did not accept the email. Quarantine it
+                // until reconciliation, never offer it for blind resending.
+                'status' => 'awaiting_dispatch',
+                'error_code' => 'queue_outcome_unknown',
                 'processing_at' => null,
-                'provider_failed_at' => now(),
                 'updated_at' => now(),
             ]);
     }

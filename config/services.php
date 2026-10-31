@@ -82,6 +82,8 @@ return [
 
     'mailpulse' => [
         'announcement_webhook_secret' => env('MAILPULSE_ANNOUNCEMENT_WEBHOOK_SECRET'),
+        // A crashed announcement worker is quarantined, NEVER silently resent.
+        'announcement_stale_minutes' => (int) env('MAILPULSE_ANNOUNCEMENT_STALE_MINUTES', 30),
         'enabled' => env('MAILPULSE_ENABLED', true),
         'base_url' => env('MAILPULSE_BASE_URL', 'https://mailpulse-two.vercel.app'),
         'api_key' => env('MAILPULSE_API_KEY'),
