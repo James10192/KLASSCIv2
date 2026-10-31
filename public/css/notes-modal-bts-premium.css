@@ -121,3 +121,9 @@
         padding: .7rem;
     }
 }
+
+#classSelectionModal .nm-modal-control .au-select-trigger:disabled {
+    opacity: .58;
+    cursor: wait;
+    background: #f8fafc;
+}

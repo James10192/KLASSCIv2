@@ -17,6 +17,8 @@ class NotesBtsModalPremiumContractTest extends TestCase
         $this->assertStringContainsString('<x-au-select id="matiereSelect"', $view);
         $this->assertStringContainsString('<x-au-select id="periodeFilter"', $view);
         $this->assertStringContainsString('<details class="nm-documents-panel">', $view);
+        $this->assertStringContainsString("$('#classSelectionModal').on('hide.bs.modal'", $view);
+        $this->assertStringContainsString("selectData.fermer()", $view);
         $this->assertStringContainsString("@canany(['notes.feuille_vierge.export', 'notes.export_excel'])", $view);
         $this->assertStringContainsString("nmSetNativeSelectValue('#matiereSelect', '');", $view);
         $this->assertStringContainsString("nmSetNativeSelectValue('#periodeFilter', deepPeriode);", $view);
