@@ -8,7 +8,8 @@ class NotesBtsModalPremiumContractTest extends TestCase
 {
     public function test_bts_modal_preserves_ajax_ids_and_splits_documents_from_validation(): void
     {
-        $view = file_get_contents(__DIR__.'/../../resources/views/esbtp/notes/index.blade.php');
+        $view = file_get_contents(__DIR__.'/../../resources/views/esbtp/notes/index.blade.php')
+            .file_get_contents(__DIR__.'/../../resources/views/esbtp/notes/partials/_modal-premium-selects-script.blade.php');
         foreach (['matiereSelect', 'periodeFilter', 'notesGrid', 'studentsRows',
             'nmBlankOrientation', 'nmBlankColumns', 'previewBlankPdfBtn',
             'exportBlankPdfBtn', 'exportExcelBtn', 'saveAllNotesBtn'] as $id) {
