@@ -52,7 +52,7 @@ function lmdOuvrirElement(matiereId) {
     const ecueSelect = document.getElementById('ecueSelect');
     ecueSelect.value = String(matiereId);
     ecueSelect.dispatchEvent(new Event('change'));
-    document.querySelector('#modalNotes .ln-modal-toolbar')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Les filtres restant visibles dans le modal, ne pas déplacer l'arrière-plan.
     return true;
 }
 

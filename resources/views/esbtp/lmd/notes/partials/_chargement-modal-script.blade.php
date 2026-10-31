@@ -5,6 +5,7 @@ async function openNotesModal(classeId, classeName) {
     ++lmdEcueRequestSeq;
     const academicYearId = lmdAcademicYearId;
     currentClasseId = classeId;
+    document.getElementById('ln-secondary-panel')?.removeAttribute('open');
     currentClasseData = null;
     lmdMasquerExamensAnonymes();
     currentMatiereId = null;

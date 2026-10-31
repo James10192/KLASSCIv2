@@ -681,12 +681,21 @@
                             onclick="openEvalCreateModal()">
                         <i class="fas fa-plus"></i> Créer évaluation
                     </button>
-                </div>
-
-                @include('esbtp.lmd.notes.partials._requalification')
-
-                <div class="ln-suivi">
-                    @include('esbtp.partials._couverture-notes', ['classeId' => null, 'anneeId' => $anneeSelectionnee->id ?? null, 'periode' => 'semestre1', 'titre' => 'Suivi du semestre', 'replie' => true])
+                    {{-- Outils secondaires accessibles sans réduire la grille. --}}
+                    <details class="ln-secondary-panel" id="ln-secondary-panel">
+                        <summary class="ln-secondary-trigger" title="Consulter le suivi pédagogique et les régularisations">
+                            <i class="fas fa-chart-bar" aria-hidden="true"></i>
+                            Suivi &amp; corrections
+                            <span id="ln-requal-count" class="ln-secondary-alert" hidden aria-label="Régularisations à vérifier"></span>
+                            <i class="fas fa-chevron-down ln-secondary-caret" aria-hidden="true"></i>
+                        </summary>
+                        <div class="ln-secondary-popover" role="region" aria-label="Suivi et corrections des notes LMD">
+                            @include('esbtp.lmd.notes.partials._requalification')
+                            <div class="ln-suivi">
+                                @include('esbtp.partials._couverture-notes', ['classeId' => null, 'anneeId' => $anneeSelectionnee->id ?? null, 'periode' => 'semestre1', 'titre' => 'Suivi du semestre', 'replie' => true])
+                            </div>
+                        </div>
+                    </details>
                 </div>
 
                 {{-- Loading --}}
@@ -1038,6 +1047,7 @@ document.addEventListener('DOMContentLoaded', function() {
     evalCreateModal = new bootstrap.Modal(document.getElementById('lmdEvalCreateModal'));
     document.getElementById('modalNotes').addEventListener('hide.bs.modal', lmdFermerMenusPremium);
     document.getElementById('modalNotes').addEventListener('hidden.bs.modal', function() {
+        document.getElementById('ln-secondary-panel')?.removeAttribute('open');
         // Une réponse réseau tardive ne doit pas repeupler une fenêtre fermée.
         ++lmdClasseRequestSeq;
         ++lmdEcueRequestSeq;
