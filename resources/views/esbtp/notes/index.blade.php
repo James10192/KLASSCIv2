@@ -1067,7 +1067,9 @@ function selectClass(classId, className) {
         },
     }));
 
-    // Réinitialiser la sélection de matière, puis réduire la liste à la classe
+    // Fermer les outils de l'ancienne classe, conserver les contrats AJAX.
+    document.querySelector('#classSelectionModal .nm-documents-panel')?.removeAttribute('open');
+    // Réinitialiser la sélection de matière, puis réduire la liste à la classe.
     $('#matiereSelect').val('').trigger('change');
     currentMatiereId = null;
     nmChargerMatieres(classId);
