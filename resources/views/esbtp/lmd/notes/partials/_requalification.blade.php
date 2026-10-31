@@ -59,7 +59,9 @@ let requalPeriode = null;
 
 async function chargerRequalification(classeId) {
     const banner = document.getElementById('requalBanner');
+    const badge = document.getElementById('ln-requal-count');
     banner.style.display = 'none';
+    if (badge) { badge.hidden = true; badge.textContent = ''; }
     if (!peutRequalifier) return;
     try {
         const resp = await fetch('/esbtp/lmd/notes/classe/' + classeId + '/requalification?annee_universitaire_id=' + encodeURIComponent(lmdAcademicYearId), {
@@ -67,8 +69,10 @@ async function chargerRequalification(classeId) {
         });
         if (!resp.ok || classeId !== currentClasseId) return;
         const data = await resp.json();
+        if (classeId !== currentClasseId) return;
         requalLignes = data.lignes || [];
         if (requalLignes.length === 0) return;
+        if (badge) { badge.hidden = false; badge.textContent = String(requalLignes.length); }
         const periodes = [...new Set(requalLignes.map(l => l.periode))].sort((a, b) => parseInt(a.replace(/\D/g, ''), 10) - parseInt(b.replace(/\D/g, ''), 10));
         document.getElementById('requalSemestres').innerHTML = periodes.map(p =>
             '<button type="button" class="ln-requal-chip" data-periode="' + escHtml(p) + '" onclick="choisirSemestreRequal(this.dataset.periode)">'
@@ -147,6 +151,11 @@ async function requalifierEnExamen(simulation) {
         document.getElementById('requalConfirmBtn').style.display = 'none';
         document.getElementById('requalTitre').textContent = 'Requalification faite (semestre ' + requalPeriode.replace(/\D/g, '') + ')';
         requalLignes = requalLignes.filter(l => l.periode !== requalPeriode);
+        const badge = document.getElementById('ln-requal-count');
+        if (badge) {
+            badge.hidden = requalLignes.length === 0;
+            badge.textContent = requalLignes.length ? String(requalLignes.length) : '';
+        }
         document.querySelector('#requalSemestres .ln-requal-chip--actif')?.remove();
         window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: data.message } }));
         if (currentMatiereId) loadEvaluationsAndBuildGrid(currentClasseId, currentMatiereId);
