@@ -50,6 +50,14 @@ Chaque instance a sa propre branche Git du même nom (snapshot de `presentation`
 
 ---
 
+## Règles UX — listes et interactions métier
+
+- Les opérations de filtrage, de tri, de prévisualisation et les actions de ligne utilisent **AJAX sans rechargement intégral**. Conserver une réponse HTML classique comme repli accessible si JavaScript est désactivé.
+- Les listes paginées longues (annonces, destinataires et historiques) utilisent un **défilement infini incrémental**, avec bouton accessible « Charger plus », états vide/chargement/erreur, conservation des filtres et protection contre les requêtes concurrentes. Ne jamais charger tous les destinataires en mémoire pour rendre une page.
+- Les champs de sélection complexes réutilisent les composants premium et la librairie de sélection déjà présents dans KLASSCI ; pas de nouvelle bibliothèque ni de composant maison redondant.
+- Protéger toutes les mutations par permissions effectives, CSRF, et une validation serveur. Ne pas déduire les droits du rôle affiché. Ne jamais réexpédier les messages MailPulse soumis, retardés ou délivrés sur un simple clic.
+- Préserver les variantes mobile, desktop et impression. Les états de livraison sont des faits du fournisseur, pas des estimations de l'interface.
+
 ## Design System
 
 **Classes CSS** : `dashboard-acasi`, `main-card`, `stat-card`, `btn-acasi primary/secondary/warning`, `status-badge-success/danger/warning`, `table-modern`
