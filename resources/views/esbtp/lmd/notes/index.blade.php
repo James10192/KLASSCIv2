@@ -1220,7 +1220,10 @@ document.getElementById('ecueSelect').addEventListener('change', function() {
 
 // ══ Period filter ══
 document.getElementById('periodeFilter').addEventListener('change', function() {
-    if (document.getElementById('ecueSelect').value) {
+    // Ne pas reconstruire une grille avec les évaluations de l'ECUE précédent
+    // lorsque la nouvelle lecture AJAX est encore en cours.
+    if (document.getElementById('ecueSelect').value
+        && document.getElementById('notesGridWrap').style.display !== 'none') {
         buildNotesGrid();
     }
     // Le suivi montre le semestre choisi ; « Toutes » le laisse où il est.
@@ -1233,6 +1236,9 @@ document.getElementById('periodeFilter').addEventListener('change', function() {
 async function loadEvaluationsAndBuildGrid(classeId, matiereId) {
     const requestSeq = ++lmdEcueRequestSeq;
     const academicYearId = lmdAcademicYearId;
+    evaluationsData = {};
+    notesData = {};
+    evalParamsCache = {};
     lmdMasquerExamensAnonymes();
     document.getElementById('notesEmpty').style.display = 'none';
     lmdAfficherChargementNotes();
