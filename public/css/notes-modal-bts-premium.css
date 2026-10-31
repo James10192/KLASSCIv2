@@ -127,3 +127,91 @@
     cursor: wait;
     background: #f8fafc;
 }
+
+/* Saisie prioritaire BTS : un seul scroll vertical dans la grille, pas dans toute la modal. */
+#classSelectionModal.nm-notes-modal .modal-body {
+    min-height: 0; overflow: hidden !important;
+}
+#classSelectionModal .nm-modal-controls {
+    grid-template-columns: minmax(0,2fr) minmax(135px,.85fr) auto auto;
+    position: relative; z-index: 22;
+    gap: .55rem; padding: 0 0 .3rem; margin-bottom: .35rem;
+}
+#classSelectionModal .nm-modal-controls .nm-modal-create > label { margin-bottom: .2rem; }
+#classSelectionModal .nm-modal-control .au-select-trigger { min-height: 38px; }
+#classSelectionModal .nm-create-eval-btn { min-height: 38px; }
+#classSelectionModal .nm-grid-wrapper {
+    flex: 1 1 auto !important; min-height: 0 !important;
+    max-height: none !important; overflow: auto !important;
+    overscroll-behavior: contain;
+}
+#classSelectionModal .nm-table-toolbar { flex: 0 0 auto; margin: .15rem 0 .4rem; }
+#classSelectionModal .nm-autosave-info { margin-top: .25rem; padding: .25rem .55rem; }
+#classSelectionModal .nm-followup-panel { position: relative; min-width: 0; }
+#classSelectionModal .nm-followup-trigger {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: .45rem; min-height: 38px; padding: .3rem .7rem;
+    border: 1px solid #c7d7f2; border-radius: 9px;
+    font-size: .81rem; font-weight: 700; color: #0453cb;
+    background: #f8fbff; cursor: pointer; white-space: nowrap;
+    list-style: none;
+}
+#classSelectionModal .nm-followup-trigger::-webkit-details-marker { display: none; }
+#classSelectionModal .nm-followup-trigger:focus-visible {
+    outline: 2px solid #0453cb; outline-offset: 2px;
+}
+#classSelectionModal .nm-followup-panel[open] .nm-followup-trigger { background: #eff6ff; }
+#classSelectionModal .nm-followup-panel[open] .nm-followup-caret { transform: rotate(180deg); }
+#classSelectionModal .nm-followup-popover {
+    position: absolute; right: 0; top: calc(100% + 7px);
+    width: min(880px, calc(100vw - 56px));
+    max-height: min(58dvh, 460px); overflow: auto;
+    padding: .6rem; border: 1px solid #dce3ef; border-radius: 12px;
+    background: #fff; box-shadow: 0 20px 50px rgba(15,23,42,.2);
+}
+#classSelectionModal .nm-followup-popover .cvn { margin: 0; }
+#classSelectionModal .nm-followup-popover .cvn-bloc { margin: 0; }
+@media (max-width: 1050px) {
+    #classSelectionModal .nm-modal-controls {
+        grid-template-columns: minmax(0,1.3fr) minmax(0,.8fr) auto;
+    }
+    #classSelectionModal .nm-followup-panel { grid-column: 3; }
+    #classSelectionModal .nm-modal-create { grid-column: 3; grid-row: 1; }
+    #classSelectionModal .nm-followup-panel { grid-row: 2; }
+}
+@media (max-width: 700px) {
+    #classSelectionModal .nm-modal-controls {
+        grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+        gap: .4rem;
+    }
+    #classSelectionModal .nm-modal-control { min-width: 0; }
+    #classSelectionModal .nm-modal-create,
+    #classSelectionModal .nm-followup-panel { grid-column: auto; grid-row: auto; }
+    #classSelectionModal .nm-modal-create > label { display: none; }
+    #classSelectionModal .nm-create-eval-btn,
+    #classSelectionModal .nm-followup-trigger { width: 100%; justify-content: center; }
+    #classSelectionModal .nm-grid-wrapper {
+        min-height: 0 !important; flex: 1 1 auto !important;
+    }
+    #classSelectionModal.nm-notes-modal .modal-body { overflow: hidden !important; }
+}
+@media (max-width: 400px) {
+    #classSelectionModal .nm-followup-popover {
+        width: calc(100vw - 32px);
+        right: -4px;
+    }
+    #classSelectionModal .nm-modal-controls .au-select-trigger { min-height: 40px; }
+    #classSelectionModal .nm-table-stats { font-size: .68rem; }
+}
+
+/* Tablette : deux filtres puis deux actions, sans rangée presque vide. */
+@media (min-width: 701px) and (max-width: 1050px) {
+    #classSelectionModal .nm-modal-controls {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    #classSelectionModal .nm-modal-create,
+    #classSelectionModal .nm-followup-panel {
+        grid-column: auto; grid-row: auto;
+    }
+    #classSelectionModal .nm-followup-trigger { width: 100%; }
+}
