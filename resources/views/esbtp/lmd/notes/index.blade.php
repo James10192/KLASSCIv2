@@ -855,6 +855,9 @@ let notesModal = null;
 let evalCreateModal = null;
 let currentClasseId = null;
 let currentClasseData = null;
+// Deux requêtes de classes/ECUEs peuvent répondre dans le désordre : seule la dernière sélection s'affiche.
+let lmdClasseRequestSeq = 0;
+let lmdEcueRequestSeq = 0;
 let currentMatiereId = null;
 let currentMatiereName = '';
 let lmdAcademicYearId = @json($anneeSelectionnee?->id);
@@ -923,6 +926,8 @@ document.addEventListener('DOMContentLoaded', function() {
             lmdAcademicYearId = selectedYear;
             anneeSuivi = selectedYear;
             if (previousYear !== selectedYear) {
+                ++lmdClasseRequestSeq;
+                ++lmdEcueRequestSeq;
                 currentClasseId = null;
                 currentClasseData = null;
                 currentMatiereId = null;
@@ -997,6 +1002,11 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener('DOMContentLoaded', function() {
     notesModal = new bootstrap.Modal(document.getElementById('modalNotes'));
     evalCreateModal = new bootstrap.Modal(document.getElementById('lmdEvalCreateModal'));
+    document.getElementById('modalNotes').addEventListener('hidden.bs.modal', function() {
+        // Une réponse réseau tardive ne doit pas repeupler une fenêtre fermée.
+        ++lmdClasseRequestSeq;
+        ++lmdEcueRequestSeq;
+    });
 
     // Auto-calc duration on time change
     ['evalDebut', 'evalFin'].forEach(id => {
@@ -1013,9 +1023,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ══ Open modal for a class ══
 async function openNotesModal(classeId, classeName) {
+    const requestSeq = ++lmdClasseRequestSeq;
+    ++lmdEcueRequestSeq;
+    const academicYearId = lmdAcademicYearId;
     currentClasseId = classeId;
+    currentClasseData = null;
     currentMatiereId = null;
     currentMatiereName = '';
+    evaluationsData = {};
+    notesData = {};
 
     // Reset UI
     document.getElementById('notesModalTitle').textContent = classeName;
@@ -1044,11 +1060,14 @@ async function openNotesModal(classeId, classeName) {
     chargerRequalification(classeId);
 
     try {
-        const resp = await fetch('/esbtp/lmd/notes/classe/' + classeId + '/data?annee_universitaire_id=' + encodeURIComponent(lmdAcademicYearId), {
+        const resp = await fetch('/esbtp/lmd/notes/classe/' + classeId + '/data?annee_universitaire_id=' + encodeURIComponent(academicYearId), {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         });
-        currentClasseData = await resp.json();
-        const data = currentClasseData;
+        if (!resp.ok) throw new Error('Chargement des données de classe : HTTP ' + resp.status);
+        const data = await resp.json();
+        if (requestSeq !== lmdClasseRequestSeq || String(currentClasseId) !== String(classeId)
+            || String(lmdAcademicYearId) !== String(academicYearId)) return;
+        currentClasseData = data;
 
         // Store class semestres for dynamic period options
         classeSemestres = data.classe.semestres || [1, 2];
@@ -1113,6 +1132,8 @@ async function openNotesModal(classeId, classeName) {
         document.getElementById('notesEmpty').style.display = 'block';
 
     } catch (err) {
+        if (requestSeq !== lmdClasseRequestSeq || String(currentClasseId) !== String(classeId)
+            || String(lmdAcademicYearId) !== String(academicYearId)) return;
         console.error('Error loading classe data:', err);
         document.getElementById('notesLoading').innerHTML =
             '<i class="fas fa-exclamation-triangle" style="color:#dc2626;"></i>' +
@@ -1122,6 +1143,7 @@ async function openNotesModal(classeId, classeName) {
 
 // ══ UE selection → populate ECUEs ══
 document.getElementById('ueSelect').addEventListener('change', function() {
+    ++lmdEcueRequestSeq;
     const ecueSelect = document.getElementById('ecueSelect');
     ecueSelect.innerHTML = '<option value="">— Choisir un ECUE —</option>';
     ecueSelect.disabled = true;
@@ -1155,8 +1177,22 @@ document.getElementById('ueSelect').addEventListener('change', function() {
 
 // ══ ECUE selection → load evaluations & build grid ══
 document.getElementById('ecueSelect').addEventListener('change', function() {
+    ++lmdEcueRequestSeq;
     const matiereId = this.value;
-    if (!matiereId || !currentClasseId) return;
+    if (!matiereId || !currentClasseId) {
+        currentMatiereId = null;
+        currentMatiereName = '';
+        evaluationsData = {};
+        notesData = {};
+        document.getElementById('notesGridWrap').style.display = 'none';
+        document.getElementById('createEvalBtn').style.display = 'none';
+        document.getElementById('saveAllNotesBtn').style.display = 'none';
+        document.getElementById('validateNotesBtn').style.display = 'none';
+        document.getElementById('autosaveInfo').style.display = 'none';
+        document.getElementById('notesLoading').style.display = 'none';
+        document.getElementById('notesEmpty').style.display = 'block';
+        return;
+    }
     currentMatiereId = parseInt(matiereId);
     currentMatiereName = this.options[this.selectedIndex]?.textContent || '';
 
@@ -1179,16 +1215,21 @@ document.getElementById('periodeFilter').addEventListener('change', function() {
 
 // ══ Load evaluations for class + matière (same API as BTS) ══
 async function loadEvaluationsAndBuildGrid(classeId, matiereId) {
+    const requestSeq = ++lmdEcueRequestSeq;
+    const academicYearId = lmdAcademicYearId;
     document.getElementById('notesEmpty').style.display = 'none';
     document.getElementById('notesLoading').style.display = 'block';
     document.getElementById('notesGridWrap').style.display = 'none';
     document.getElementById('autosaveInfo').style.display = 'none';
 
     try {
-        const resp = await fetch(`/esbtp/notes/api/evaluations/by-class-matiere/${classeId}/${matiereId}?annee_universitaire_id=${encodeURIComponent(lmdAcademicYearId)}`, {
+        const resp = await fetch(`/esbtp/notes/api/evaluations/by-class-matiere/${classeId}/${matiereId}?annee_universitaire_id=${encodeURIComponent(academicYearId)}`, {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         });
+        if (!resp.ok) throw new Error('Chargement des évaluations : HTTP ' + resp.status);
         const data = await resp.json();
+        if (requestSeq !== lmdEcueRequestSeq || String(currentClasseId) !== String(classeId)
+            || String(currentMatiereId) !== String(matiereId) || String(lmdAcademicYearId) !== String(academicYearId)) return;
 
         if (!data.success) throw new Error(data.message || 'Erreur');
 
@@ -1209,13 +1250,17 @@ async function loadEvaluationsAndBuildGrid(classeId, matiereId) {
             document.getElementById('notesEmpty').innerHTML =
                 '<i class="fas fa-clipboard-list" style="color:#0453cb; font-size:2.5rem; opacity:.5; display:block; margin-bottom:.75rem;"></i>' +
                 '<strong style="color:#1e293b; font-size:.95rem;">Aucune évaluation pour cet ECUE</strong><br>' +
-                '<span style="font-size:.84rem; color:#64748b;">Cliquez sur le bouton vert ci-dessus pour créer votre première évaluation.</span>';
+                (canCreateEvaluations
+                    ? '<span style="font-size:.84rem; color:#64748b;">Utilisez « Créer évaluation » ci-dessus pour ajouter la première évaluation.</span>'
+                    : '<span style="font-size:.84rem; color:#64748b;">Aucune évaluation disponible en consultation pour cet ECUE.</span>');
             return;
         }
 
         buildNotesGrid();
 
     } catch (err) {
+        if (requestSeq !== lmdEcueRequestSeq || String(currentClasseId) !== String(classeId)
+            || String(currentMatiereId) !== String(matiereId) || String(lmdAcademicYearId) !== String(academicYearId)) return;
         console.error('Error loading evaluations:', err);
         document.getElementById('notesLoading').style.display = 'none';
         document.getElementById('notesEmpty').style.display = 'block';
