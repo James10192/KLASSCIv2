@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-30 · PR à attribuer · Notes LMD : modal de saisie compact, choix UE/ECUE/période en premier, grille plus haute, réponses AJAX obsolètes ignorées lors d'un changement de classe/ECUE, anciens examens anonymes masqués, absence de grille périmée lors d'un changement de période (chargement isolé dans un partial LMD), sélecteurs premium désactivés visiblement pendant le chargement et menus fermés avec le modal et état vide adapté aux droits, sans changer les règles de calcul ni de validation. Captures avant/après et recette presentation nécessaires.
 - 2026-10-29 · Suivi MailPulse : les accusés de livraison signés vérifient le vrai identifiant de message et ne font plus régresser un état déjà définitif lors d'un replay ou d'un événement retardé ; relais fournisseur non activé.
 - 2026-10-29 · Annonces : protection des destinataires contre les doublons après réponse MailPulse ambiguë (timeout, panne réseau, 5xx) ; statut en attente de rapprochement plutôt que relance silencieuse.
 - 2026-10-29 · Annonces : filtre des destinataires avec composant Choices.js déjà partagé et pagination AJAX légère (la page entière et le HTML du mail ne sont plus rechargés à chaque tranche) ; version HTML sans JavaScript préservée.

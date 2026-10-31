@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Octobre 2026
+- **Notes LMD — modal de saisie plus lisible :** sélecteurs UE, ECUE et période mis en avant, indicateurs compacts et espace agrandi pour la grille ; les réponses AJAX obsolètes ne peuvent plus écraser la classe ou l'ECUE courant, les examens anonymes d'une ancienne sélection sont masqués, le chargeur de classe est isolé dans un partial LMD, les périodes ne reconstruisent plus une ancienne grille et l'état vide respecte les droits, le verrouillage visuel des sélecteurs et leur fermeture en même temps que le modal. Calculs, brouillons et validation LMD restent indépendants. Recette mobile et captures sur presentation requises.
 - **Annonces — anti-collision multi-établissement :** nouvelles références idempotentes tenant-qualifiées, persistées avant l'appel MailPulse et réutilisées en rapprochement ; références historiques inchangées, webhooks signés liés à la référence de la ligne, aucun envoi rétroactif.
 - **Annonces — reprise bornée :** quarantaine des workers interrompus limitée à un lot pour éviter toute mise à jour massive de campagne et préserver le budget du cron.
 - **Annonces — sécurité de configuration :** aucun e-mail soumis si `TENANT_CODE` est absent ou générique ; les refus locaux de MailPulse (clé manquante, connecteur désactivé, quota) sont conservés sans preuve artificielle d'échec fournisseur.
