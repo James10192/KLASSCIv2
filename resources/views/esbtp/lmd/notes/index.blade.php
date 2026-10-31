@@ -507,6 +507,7 @@
     @media (max-width: 900px) { .ln-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (max-width: 580px) { .ln-filter-grid { grid-template-columns: minmax(0, 1fr); } .ln-filter-bar { padding: 1rem; } #lmd-filter-count { margin-left: 0; width: 100%; } }
 </style>
+<link rel="stylesheet" href="{{ asset('css/notes-modal-lmd-premium.css') }}?v={{ @filemtime(public_path('css/notes-modal-lmd-premium.css')) ?: '1' }}">
 @endpush
 
 @section('content')
@@ -629,8 +630,8 @@
 {{-- ══════════════════════════════════════════════════════════ --}}
 {{-- ══ MODAL — Gestion des notes (pattern BTS avec UE → ECUE) ══ --}}
 {{-- ══════════════════════════════════════════════════════════ --}}
-<div class="modal fade ln-modal" id="modalNotes" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+<div class="modal fade ln-modal" id="modalNotes" tabindex="-1" aria-labelledby="notesModalHeading" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <div class="ln-modal-hero w-100">
@@ -638,7 +639,7 @@
                         <div class="ln-modal-hero-left">
                             <div class="ln-modal-icon"><i class="fas fa-edit"></i></div>
                             <div>
-                                <h5 class="ln-modal-title">Gestion des Notes — <span id="notesModalTitle">Sélectionnez une classe</span></h5>
+                                <h5 class="ln-modal-title" id="notesModalHeading">Gestion des Notes LMD — <span id="notesModalTitle">Sélectionnez une classe</span></h5>
                                 <div class="ln-modal-subtitle" id="notesModalSubtitle">Sélectionnez une UE puis un ECUE pour saisir les notes</div>
                             </div>
                         </div>
@@ -662,29 +663,30 @@
             </div>
 
             <div class="modal-body">
-                {{-- Callout intro --}}
-                <div class="ln-callout">
-                    <div class="ln-callout-icon"><i class="fas fa-edit"></i></div>
-                    <div>
-                        <div class="ln-callout-title">Saisie intelligente des notes</div>
-                        <div class="ln-callout-text">Choisissez une UE, un ECUE, créez des évaluations et saisissez les notes en temps réel.</div>
+                {{-- Les sélecteurs natifs cachés et leurs IDs restent la source de vérité des gestionnaires LMD. --}}
+                <div class="ln-modal-toolbar">
+                    <div class="ln-modal-field">
+                        <label for="ueSelect">Unité d'enseignement</label>
+                        <x-au-select id="ueSelect" placeholder="— Choisir une UE —" icon="fa-book" :searchable="true" :options="[]" />
                     </div>
+                    <div class="ln-modal-field">
+                        <label for="ecueSelect">Élément constitutif (ECUE)</label>
+                        <x-au-select id="ecueSelect" placeholder="— Choisir un ECUE —" icon="fa-book-open" :searchable="true" :options="[]" />
+                    </div>
+                    <div class="ln-modal-field">
+                        <label for="periodeFilter">Période</label>
+                        <x-au-select id="periodeFilter" :placeholder-is-first-option="false" icon="fa-calendar" :options="['all' => 'Toutes les périodes']" />
+                    </div>
+                    <button type="button" id="createEvalBtn" class="ln-modal-add-btn" style="display:none;"
+                            onclick="openEvalCreateModal()">
+                        <i class="fas fa-plus"></i> Créer évaluation
+                    </button>
                 </div>
 
                 @include('esbtp.lmd.notes.partials._requalification')
 
                 <div class="ln-suivi">
                     @include('esbtp.partials._couverture-notes', ['classeId' => null, 'anneeId' => $anneeSelectionnee->id ?? null, 'periode' => 'semestre1', 'titre' => 'Suivi du semestre', 'replie' => true])
-                </div>
-
-                <div class="ln-modal-toolbar">
-                    <x-au-select id="ueSelect" placeholder="— Choisir une UE —" icon="fa-book" :searchable="true" :options="[]" />
-                    <x-au-select id="ecueSelect" placeholder="— Choisir un ECUE —" icon="fa-book-open" :searchable="true" :options="[]" />
-                    <x-au-select id="periodeFilter" :placeholder-is-first-option="false" icon="fa-calendar" :options="['all' => 'Toutes les périodes']" />
-                    <button type="button" id="createEvalBtn" class="ln-modal-add-btn" style="display:none;"
-                            onclick="openEvalCreateModal()">
-                        <i class="fas fa-plus"></i> Créer évaluation
-                    </button>
                 </div>
 
                 {{-- Loading --}}
@@ -853,6 +855,43 @@ let notesModal = null;
 let evalCreateModal = null;
 let currentClasseId = null;
 let currentClasseData = null;
+// Deux requêtes de classes/ECUEs peuvent répondre dans le désordre : seule la dernière sélection s'affiche.
+let lmdClasseRequestSeq = 0;
+let lmdEcueRequestSeq = 0;
+
+// Les examens anonymes, hors de la grille, ne doivent pas survivre à un changement de sélection.
+// Le sélecteur premium conserve un <select> natif caché ; refléter aussi
+// l'état disabled sur le bouton visible, sans transformer la logique LMD.
+function lmdSetNativeSelectDisabled(id, disabled) {
+    const native = document.getElementById(id);
+    if (!native) return;
+    native.disabled = disabled;
+    const trigger = native.closest('.au-select')?.querySelector('.au-select-trigger');
+    if (trigger) {
+        trigger.disabled = disabled;
+        trigger.setAttribute('aria-disabled', String(disabled));
+    }
+}
+
+function lmdFermerMenusPremium() {
+    if (!window.Alpine?.$data) return;
+    document.querySelectorAll('#modalNotes .au-select').forEach(function(el) {
+        const selectData = window.Alpine.$data(el);
+        if (selectData?.open && typeof selectData.fermer === 'function') selectData.fermer();
+    });
+}
+
+function lmdMasquerExamensAnonymes() {
+    const bloc = document.getElementById('notesAnonymes');
+    if (bloc) bloc.hidden = true;
+}
+
+function lmdAfficherChargementNotes() {
+    const loader = document.getElementById('notesLoading');
+    loader.innerHTML = '<i class="fas fa-spinner fa-spin"></i>' +
+        '<div style="margin-top:.75rem; font-size:.88rem;">Chargement des notes...</div>';
+    loader.style.display = 'block';
+}
 let currentMatiereId = null;
 let currentMatiereName = '';
 let lmdAcademicYearId = @json($anneeSelectionnee?->id);
@@ -921,6 +960,8 @@ document.addEventListener('DOMContentLoaded', function() {
             lmdAcademicYearId = selectedYear;
             anneeSuivi = selectedYear;
             if (previousYear !== selectedYear) {
+                ++lmdClasseRequestSeq;
+                ++lmdEcueRequestSeq;
                 currentClasseId = null;
                 currentClasseData = null;
                 currentMatiereId = null;
@@ -995,6 +1036,12 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener('DOMContentLoaded', function() {
     notesModal = new bootstrap.Modal(document.getElementById('modalNotes'));
     evalCreateModal = new bootstrap.Modal(document.getElementById('lmdEvalCreateModal'));
+    document.getElementById('modalNotes').addEventListener('hide.bs.modal', lmdFermerMenusPremium);
+    document.getElementById('modalNotes').addEventListener('hidden.bs.modal', function() {
+        // Une réponse réseau tardive ne doit pas repeupler une fenêtre fermée.
+        ++lmdClasseRequestSeq;
+        ++lmdEcueRequestSeq;
+    });
 
     // Auto-calc duration on time change
     ['evalDebut', 'evalFin'].forEach(id => {
@@ -1009,120 +1056,16 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// ══ Open modal for a class ══
-async function openNotesModal(classeId, classeName) {
-    currentClasseId = classeId;
-    currentMatiereId = null;
-    currentMatiereName = '';
-
-    // Reset UI
-    document.getElementById('notesModalTitle').textContent = classeName;
-    document.getElementById('notesModalSubtitle').textContent = 'Chargement...';
-    document.getElementById('notesLoading').style.display = 'block';
-    document.getElementById('notesGridWrap').style.display = 'none';
-    document.getElementById('notesEmpty').style.display = 'none';
-    document.getElementById('autosaveInfo').style.display = 'none';
-    document.getElementById('createEvalBtn').style.display = 'none';
-    document.getElementById('saveAllNotesBtn').style.display = 'none';
-    document.getElementById('validateNotesBtn').style.display = 'none';
-    document.getElementById('nkpi_etudiants').textContent = '—';
-    document.getElementById('nkpi_evals').textContent = '—';
-    document.getElementById('nkpi_matieres').textContent = '—';
-
-    // Reset selects
-    const ueSelect = document.getElementById('ueSelect');
-    const ecueSelect = document.getElementById('ecueSelect');
-    ueSelect.innerHTML = '<option value="">— Choisir une UE —</option>';
-    ecueSelect.innerHTML = '<option value="">— Choisir un ECUE —</option>';
-    ecueSelect.disabled = true;
-    ueSelect.dispatchEvent(new Event('change', { bubbles: false }));
-    ecueSelect.dispatchEvent(new Event('change', { bubbles: false }));
-
-    notesModal.show();
-    chargerRequalification(classeId);
-
-    try {
-        const resp = await fetch('/esbtp/lmd/notes/classe/' + classeId + '/data?annee_universitaire_id=' + encodeURIComponent(lmdAcademicYearId), {
-            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-        });
-        currentClasseData = await resp.json();
-        const data = currentClasseData;
-
-        // Store class semestres for dynamic period options
-        classeSemestres = data.classe.semestres || [1, 2];
-        if (!document.getElementById('notesModalTitle').textContent) {
-            document.getElementById('notesModalTitle').textContent = data.classe.name || '';
-        }
-        lmdSuiviContexte(classeSemestres[0]);
-
-        // Update hero
-        const sub = [data.classe.filiere, data.classe.niveau].filter(Boolean).join(' · ');
-        document.getElementById('notesModalSubtitle').textContent = sub || 'Sélectionnez une UE puis un ECUE';
-
-        // KPIs
-        document.getElementById('nkpi_etudiants').textContent = data.etudiants.length;
-        document.getElementById('nkpi_evals').textContent = data.evaluations.length;
-        document.getElementById('nkpi_matieres').textContent = data.matieres.length;
-
-        // Build dynamic period filter options
-        const periodeFilter = document.getElementById('periodeFilter');
-        periodeFilter.innerHTML = '<option value="all">Toutes</option>';
-        classeSemestres.forEach(s => {
-            const opt = document.createElement('option');
-            opt.value = String(s);
-            opt.textContent = 'Semestre ' + s;
-            periodeFilter.appendChild(opt);
-        });
-
-        // Build UE list from matières (group by ue_code)
-        const ueMap = {};
-        data.matieres.forEach(m => {
-            const key = m.ue_code || 'SANS_UE';
-            if (!ueMap[key]) ueMap[key] = { code: m.ue_code, name: m.ue_name, ecues: [] };
-            ueMap[key].ecues.push(m);
-        });
-
-        Object.values(ueMap).forEach(ue => {
-            const opt = document.createElement('option');
-            opt.value = ue.code || '';
-            opt.textContent = (ue.code ? ue.code + ' — ' : '') + (ue.name || 'Sans UE');
-            ueSelect.appendChild(opt);
-        });
-
-        ueSelect.dispatchEvent(new Event('change', { bubbles: false }));
-        periodeFilter.dispatchEvent(new Event('change', { bubbles: false }));
-        currentClasseData._ueMap = ueMap;
-        document.getElementById('notesLoading').style.display = 'none';
-
-        // Si aucune UE liée → message explicatif
-        if (data.matieres.length === 0) {
-            document.getElementById('notesEmpty').innerHTML =
-                '<i class="fas fa-exclamation-triangle" style="color:#d97706; font-size:2rem; opacity:.7; display:block; margin-bottom:.75rem;"></i>' +
-                '<strong style="color:#1e293b;">Aucune UE liée à cette classe</strong><br>' +
-                (data.classe.parcours_id
-                    ? '<span style="font-size:.84rem;">Le parcours de cette classe n\'a aucune UE pour ses semestres.</span>' +
-                      '<div style="margin-top:.85rem;"><a class="ln-modal-fbtn ln-modal-fbtn--action" style="display:inline-flex;text-decoration:none;" href="' + data.classe.ue_url + '"><i class="fas fa-link"></i> Lier des UE à ce parcours</a></div>'
-                    : '<span style="font-size:.84rem;">Cette classe n\'est rattachée à aucun parcours.</span>' +
-                      '<div style="margin-top:.85rem;"><a class="ln-modal-fbtn ln-modal-fbtn--action" style="display:inline-flex;text-decoration:none;" href="' + data.classe.edit_url + '"><i class="fas fa-route"></i> Rattacher la classe à son parcours</a></div>');
-        } else {
-            document.getElementById('notesEmpty').innerHTML =
-                '<i class="fas fa-hand-pointer"></i>Sélectionnez une UE puis un ECUE pour afficher la grille de notes.';
-        }
-        document.getElementById('notesEmpty').style.display = 'block';
-
-    } catch (err) {
-        console.error('Error loading classe data:', err);
-        document.getElementById('notesLoading').innerHTML =
-            '<i class="fas fa-exclamation-triangle" style="color:#dc2626;"></i>' +
-            '<div style="margin-top:.75rem; color:#dc2626;">Erreur de chargement.</div>';
-    }
-}
+{{-- Chargeur autonome pour le modal LMD : HTML/JS natif, aucune dépendance BTS. --}}
+@include('esbtp.lmd.notes.partials._chargement-modal-script')
 
 // ══ UE selection → populate ECUEs ══
 document.getElementById('ueSelect').addEventListener('change', function() {
+    ++lmdEcueRequestSeq;
+    lmdMasquerExamensAnonymes();
     const ecueSelect = document.getElementById('ecueSelect');
     ecueSelect.innerHTML = '<option value="">— Choisir un ECUE —</option>';
-    ecueSelect.disabled = true;
+    lmdSetNativeSelectDisabled('ecueSelect', true);
     currentMatiereId = null;
     currentMatiereName = '';
 
@@ -1147,14 +1090,29 @@ document.getElementById('ueSelect').addEventListener('change', function() {
         opt.textContent = (m.code ? m.code + ' — ' : '') + m.name;
         ecueSelect.appendChild(opt);
     });
-    ecueSelect.disabled = false;
+    lmdSetNativeSelectDisabled('ecueSelect', false);
     ecueSelect.dispatchEvent(new Event('change', { bubbles: false }));
 });
 
 // ══ ECUE selection → load evaluations & build grid ══
 document.getElementById('ecueSelect').addEventListener('change', function() {
+    ++lmdEcueRequestSeq;
+    lmdMasquerExamensAnonymes();
     const matiereId = this.value;
-    if (!matiereId || !currentClasseId) return;
+    if (!matiereId || !currentClasseId) {
+        currentMatiereId = null;
+        currentMatiereName = '';
+        evaluationsData = {};
+        notesData = {};
+        document.getElementById('notesGridWrap').style.display = 'none';
+        document.getElementById('createEvalBtn').style.display = 'none';
+        document.getElementById('saveAllNotesBtn').style.display = 'none';
+        document.getElementById('validateNotesBtn').style.display = 'none';
+        document.getElementById('autosaveInfo').style.display = 'none';
+        document.getElementById('notesLoading').style.display = 'none';
+        document.getElementById('notesEmpty').style.display = 'block';
+        return;
+    }
     currentMatiereId = parseInt(matiereId);
     currentMatiereName = this.options[this.selectedIndex]?.textContent || '';
 
@@ -1166,7 +1124,10 @@ document.getElementById('ecueSelect').addEventListener('change', function() {
 
 // ══ Period filter ══
 document.getElementById('periodeFilter').addEventListener('change', function() {
-    if (document.getElementById('ecueSelect').value) {
+    // Ne pas reconstruire une grille avec les évaluations de l'ECUE précédent
+    // lorsque la nouvelle lecture AJAX est encore en cours.
+    if (document.getElementById('ecueSelect').value
+        && document.getElementById('notesGridWrap').style.display !== 'none') {
         buildNotesGrid();
     }
     // Le suivi montre le semestre choisi ; « Toutes » le laisse où il est.
@@ -1177,16 +1138,25 @@ document.getElementById('periodeFilter').addEventListener('change', function() {
 
 // ══ Load evaluations for class + matière (same API as BTS) ══
 async function loadEvaluationsAndBuildGrid(classeId, matiereId) {
+    const requestSeq = ++lmdEcueRequestSeq;
+    const academicYearId = lmdAcademicYearId;
+    evaluationsData = {};
+    notesData = {};
+    evalParamsCache = {};
+    lmdMasquerExamensAnonymes();
     document.getElementById('notesEmpty').style.display = 'none';
-    document.getElementById('notesLoading').style.display = 'block';
+    lmdAfficherChargementNotes();
     document.getElementById('notesGridWrap').style.display = 'none';
     document.getElementById('autosaveInfo').style.display = 'none';
 
     try {
-        const resp = await fetch(`/esbtp/notes/api/evaluations/by-class-matiere/${classeId}/${matiereId}?annee_universitaire_id=${encodeURIComponent(lmdAcademicYearId)}`, {
+        const resp = await fetch(`/esbtp/notes/api/evaluations/by-class-matiere/${classeId}/${matiereId}?annee_universitaire_id=${encodeURIComponent(academicYearId)}`, {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         });
+        if (!resp.ok) throw new Error('Chargement des évaluations : HTTP ' + resp.status);
         const data = await resp.json();
+        if (requestSeq !== lmdEcueRequestSeq || String(currentClasseId) !== String(classeId)
+            || String(currentMatiereId) !== String(matiereId) || String(lmdAcademicYearId) !== String(academicYearId)) return;
 
         if (!data.success) throw new Error(data.message || 'Erreur');
 
@@ -1207,13 +1177,17 @@ async function loadEvaluationsAndBuildGrid(classeId, matiereId) {
             document.getElementById('notesEmpty').innerHTML =
                 '<i class="fas fa-clipboard-list" style="color:#0453cb; font-size:2.5rem; opacity:.5; display:block; margin-bottom:.75rem;"></i>' +
                 '<strong style="color:#1e293b; font-size:.95rem;">Aucune évaluation pour cet ECUE</strong><br>' +
-                '<span style="font-size:.84rem; color:#64748b;">Cliquez sur le bouton vert ci-dessus pour créer votre première évaluation.</span>';
+                (canCreateEvaluations
+                    ? '<span style="font-size:.84rem; color:#64748b;">Utilisez « Créer évaluation » ci-dessus pour ajouter la première évaluation.</span>'
+                    : '<span style="font-size:.84rem; color:#64748b;">Aucune évaluation disponible en consultation pour cet ECUE.</span>');
             return;
         }
 
         buildNotesGrid();
 
     } catch (err) {
+        if (requestSeq !== lmdEcueRequestSeq || String(currentClasseId) !== String(classeId)
+            || String(currentMatiereId) !== String(matiereId) || String(lmdAcademicYearId) !== String(academicYearId)) return;
         console.error('Error loading evaluations:', err);
         document.getElementById('notesLoading').style.display = 'none';
         document.getElementById('notesEmpty').style.display = 'block';
