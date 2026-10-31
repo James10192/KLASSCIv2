@@ -13,6 +13,11 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-29 · Suivi MailPulse : les accusés de livraison signés vérifient le vrai identifiant de message et ne font plus régresser un état déjà définitif lors d'un replay ou d'un événement retardé ; relais fournisseur non activé.
+- 2026-10-29 · Annonces : protection des destinataires contre les doublons après réponse MailPulse ambiguë (timeout, panne réseau, 5xx) ; statut en attente de rapprochement plutôt que relance silencieuse.
+- 2026-10-29 · Annonces : filtre des destinataires avec composant Choices.js déjà partagé et pagination AJAX légère (la page entière et le HTML du mail ne sont plus rechargés à chaque tranche) ; version HTML sans JavaScript préservée.
+- 2026-10-29 · Suivi des annonces MailPulse : progression des livraisons confirmées, état final avec ou sans échecs, aucune relance automatique des adresses en situation ambiguë ; aperçu HTML des nouveaux e-mails et filtres AJAX progressifs.
+- 2026-10-29 · Annonces : gabarit HTML unique et aperçu de l'e-mail sur la fiche ; relance sécurisée réservée à un lot indépendant avec journal d'essais, états définitifs et contrôle des doublons ; aucune relance massive avant la validation du workflow.
 - 2026-10-30 · PR à attribuer · Notes BTS : configuration d'impression de feuille vierge ramenée à une barre compacte horizontale, options PDF premium toujours accessibles, sans réduire la grille de saisie ; disposition mobile adaptée. Capture d'écran attendue sur présentation.
 - 2026-10-30 · PR à attribuer · Notes BTS : feuille vierge personnalisable, jusqu'à 4 colonnes en A4 portrait ou 8 en A4 paysage ; choix premium depuis la fenêtre de notes, lisibilité et gabarit existant conservés. À vérifier sur présentation avec petits et grands effectifs avant propagation.
 - 2026-10-30 · PR à attribuer · Notes LMD : filtres année, recherche, filière, niveau, statut et capacité comme BTS ; sélecteurs premium dans les fenêtres, rafraîchissement AJAX sans rechargement, états d'erreur et protection contre les réponses obsolètes. Recette multi-profils et mobile sur presentation avant propagation.
@@ -142,3 +147,9 @@ Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 - 2026-10-26 · Paiements : le défilement infini charge bien toutes les tranches (la liste ne revient plus à la première page toutes les 30 s), l'aperçu PDF de l'export détaillé ne répond plus par « Service indisponible » sur les gros volumes, et un filtre « Mode de règlement » apparaît dans la liste des paiements.
 - 2026-10-26 · Paiements : le filtre « Mode de règlement » regroupe les modes saisis en code et en libellé ; l'export détaillé s'ouvre en aperçu sans erreur jusqu'à 400 lignes, au-delà il est refusé avec un message.
 - 2026-10-26 · Paiements, export détaillé : le formulaire affiche le plafond réel (400 lignes) et le récapitulatif du document imprime le libellé des modes de règlement choisis.
+
+- Sécurisation des envois d'annonces : quarantaines durables avant la requête MailPulse, reprise des workers interrompus en lecture seule et protection contre les états régressifs ; aucun mail historique renvoyé.
+
+- Les envois d'annonces sont bloqués en sécurité lorsque l'identifiant d'établissement ou les paramètres MailPulse sont manquants : aucune fausse preuve d'échec de livraison.
+
+- Les nouveaux courriels d'annonces possèdent une référence unique par établissement ; l'ancien historique reste intact et aucune relance n'est activée.
