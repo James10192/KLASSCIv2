@@ -18,6 +18,8 @@ class NotesLmdGridFirstLayoutTest extends TestCase
         $this->assertSame(1, substr_count($view, "@include('esbtp.partials._couverture-notes'"));
         $this->assertSame(1, substr_count($view, "@include('esbtp.lmd.notes.partials._requalification'"));
         $this->assertStringContainsString('id="ln-requal-count"', $view);
+        $suivi = file_get_contents(__DIR__.'/../../resources/views/esbtp/lmd/notes/partials/_suivi-script.blade.php');
+        $this->assertStringContainsString("getElementById('ln-secondary-panel')?.removeAttribute('open')", $suivi);
     }
 
     public function test_lmd_grade_entry_ajax_contracts_are_preserved(): void
