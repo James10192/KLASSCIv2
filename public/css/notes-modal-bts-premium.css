@@ -251,3 +251,23 @@ body:has(#classSelectionModal.show) .ast-launcher { display: none !important; }
 #classSelectionModal .nm-student-matricule,
 #classSelectionModal .nm-student-docs a { line-height: 1.05; }
 #classSelectionModal .nm-student-docs { margin-top: 0; }
+
+/* Le suivi s'ancre à la barre entière : sans bouton « Créer évaluation »,
+   il ne part plus hors de l'écran quand son déclencheur est à gauche. */
+#classSelectionModal .nm-followup-panel { position: static; }
+#classSelectionModal .nm-followup-popover {
+    left: auto; right: 0; width: min(880px, 100%);
+}
+/* Le corps de la fenêtre coupe ce qui dépasse : le suivi reste dans sa hauteur. */
+@media (max-width: 700px), (max-height: 520px) {
+    #classSelectionModal .nm-followup-popover { max-height: 40dvh; }
+}
+/* Brouillon à restaurer sur téléphone : le bandeau ne doit pas écraser la grille. */
+@media (max-width: 700px) {
+    #classSelectionModal.nm-notes-modal .modal-body:has(#nm-restore-banner:not([style*="none"])) {
+        overflow-y: auto !important;
+    }
+    #classSelectionModal .modal-body:has(#nm-restore-banner:not([style*="none"])) .nm-grid-wrapper {
+        min-height: 220px !important;
+    }
+}
