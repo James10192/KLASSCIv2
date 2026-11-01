@@ -246,3 +246,8 @@ body:has(#classSelectionModal.show) .ast-launcher { display: none !important; }
 #classSelectionModal .nm-eval-header-block .nm-eval-meta { flex-basis: 100%; }
 #classSelectionModal .nm-eval-header-block .nm-eval-type,
 #classSelectionModal .nm-eval-header-block .nm-eval-period { margin-top: 0; }
+#classSelectionModal .nm-eval-header-block .nm-eval-meta { flex-basis: auto; justify-content: center; }
+#classSelectionModal .nm-student-fullname,
+#classSelectionModal .nm-student-matricule,
+#classSelectionModal .nm-student-docs a { line-height: 1.05; }
+#classSelectionModal .nm-student-docs { margin-top: 0; }

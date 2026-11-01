@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-11-01 · #1742 · Notes BTS : barème et coefficient recentrés dans l'en-tête d'évaluation, lignes plus compactes pour voir quatre étudiants entiers.
 - 2026-11-01 · #1741 · Notes BTS et LMD : en-tête d'évaluation BTS plus court pour voir plus d'étudiants, liens LMD « Fiche » et « Relevé » sur une ligne, croix tactile sur téléphone, suivi qui distingue les notes complètes des matières encore sans évaluation.
 - 2026-11-01 · #1740 · Notes LMD : champs tactiles accessibles sur mobile, colonne étudiant compacte, moyenne et appréciation non fixées, croix en bout d'en-tête et Nanan masqué pendant la fenêtre ; recette sur B3 COM et captures obligatoires avant propagation.
 - 2026-11-01 · #1740 · Notes BTS : champ mobile accessible sans recouvrement des colonnes de synthèse, étudiants et documents compacts, Nanan masqué pendant la fenêtre de saisie uniquement ; captures et mesures après déploiement attendues.
