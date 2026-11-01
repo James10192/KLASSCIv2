@@ -239,3 +239,10 @@ body:has(#classSelectionModal.show) .ast-launcher { display: none !important; }
     }
     #classSelectionModal .nm-note-input { min-height: 44px; touch-action: manipulation; }
 }
+
+/* Recette notes BTS : l'en-tête d'évaluation laisse la hauteur aux étudiants. */
+#classSelectionModal .nm-eval-header-block { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: .1rem .35rem; }
+#classSelectionModal .nm-eval-header-block .nm-eval-title,
+#classSelectionModal .nm-eval-header-block .nm-eval-meta { flex-basis: 100%; }
+#classSelectionModal .nm-eval-header-block .nm-eval-type,
+#classSelectionModal .nm-eval-header-block .nm-eval-period { margin-top: 0; }

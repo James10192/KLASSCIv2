@@ -238,7 +238,11 @@ if (typeof window.couvertureNotes !== 'function') {
                             (s.evaluations_total || 0) + ' évaluation(s) de la maquette × ' +
                             (s.students_expected || 0) + ' étudiant(s) actif(s).';
                     case 'complete':
-                        return "Toutes les notes attendues sont reçues.";
+                        var sansEvaluation = ((this.donnees && this.donnees.subjects) || [])
+                            .filter(function (m) { return m.statut === 'non_evaluee'; }).length;
+                        return sansEvaluation > 0
+                            ? "Notes complètes pour les évaluations créées. " + sansEvaluation + " matière(s) de la maquette sans évaluation."
+                            : "Toutes les notes attendues sont reçues.";
                     default:
                         return (this.donnees && this.donnees.message) || "Suivi des notes indisponible.";
                 }
