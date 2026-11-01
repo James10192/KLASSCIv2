@@ -235,6 +235,10 @@ body:has(#modalNotes.show) .ast-launcher { display: none !important; }
     }
     #modalNotes .ln-grid .ln-eval-row .ln-col-avg,
     #modalNotes .ln-grid .ln-eval-row .ln-col-appr,
+    #modalNotes .ln-grid tfoot .ln-foot-avg,
+    #modalNotes .ln-grid tfoot .ln-foot-appr {
+        right: auto !important;
+    }
     #modalNotes .ln-grid tbody .ln-td-avg,
     #modalNotes .ln-grid tbody .ln-td-appr {
         position: static !important; right: auto !important;

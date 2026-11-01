@@ -12,7 +12,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Novembre 2026
 - **Notes LMD, correction de recette :** colonne étudiant compacte sur téléphone ; moyennes et appréciations défilent avec les évaluations au lieu de recouvrir les champs. Les saisies disposent de cibles tactiles de 44 px. Croix alignée en bout d'en-tête et Nanan masqué pendant cette fenêtre uniquement ; calculs et suivi académique inchangés. Mesures navigateur et captures à confirmer.
-- **Notes BTS, correction de recette :** la saisie mobile ne se retrouve plus sous les colonnes de moyenne et d'appréciation ; la colonne étudiant et ses deux liens restent accessibles. Lignes resserrées pour augmenter le nombre d'étudiants visibles ; lanceur Nanan masqué pendant la fenêtre de notes uniquement. Recette navigateur et captures à confirmer avant déploiement.
+- **Notes BTS, correction de recette :** la saisie mobile ne se retrouve plus sous les colonnes de moyenne et d'appréciation ; la colonne étudiant et ses deux liens restent accessibles. Lignes resserrées pour augmenter le nombre d'étudiants visibles ; lanceur Nanan masqué pendant la fenêtre de notes uniquement. Recette navigateur et captures à confirmer avant propagation.
 
 ## Octobre 2026
 - **Notes LMD — saisie prioritaire :** les panneaux de régularisation et de suivi du semestre restent accessibles dans « Suivi & corrections » sans réduire la hauteur de la grille. Un compteur indique les régularisations restantes ; le tableau occupe l'espace libre et défile indépendamment, y compris sur mobile. UE, ECUE, périodes, droits, brouillons, validation et calculs LMD inchangés. Recette visuelle sur presentation requise.
