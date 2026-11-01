@@ -13,7 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
-- 2026-11-01 · PR à attribuer · Notes BTS et LMD : en-tête d'évaluation BTS plus court pour voir plus d'étudiants, liens LMD « Fiche » et « Relevé » sur une ligne, croix tactile sur téléphone, suivi qui distingue les notes complètes des matières encore sans évaluation.
+- 2026-11-01 · #1741 · Notes BTS et LMD : en-tête d'évaluation BTS plus court pour voir plus d'étudiants, liens LMD « Fiche » et « Relevé » sur une ligne, croix tactile sur téléphone, suivi qui distingue les notes complètes des matières encore sans évaluation.
 - 2026-11-01 · #1740 · Notes LMD : champs tactiles accessibles sur mobile, colonne étudiant compacte, moyenne et appréciation non fixées, croix en bout d'en-tête et Nanan masqué pendant la fenêtre ; recette sur B3 COM et captures obligatoires avant propagation.
 - 2026-11-01 · #1740 · Notes BTS : champ mobile accessible sans recouvrement des colonnes de synthèse, étudiants et documents compacts, Nanan masqué pendant la fenêtre de saisie uniquement ; captures et mesures après déploiement attendues.
 - 2026-10-31 · PR à attribuer · Notes LMD : grille de saisie prioritaire avec hauteur libre, régularisations et suivi du semestre dans un panneau secondaire accessible, badge des régularisations à vérifier, fermeture du panneau après navigation vers l'ECUE, sélecteurs premium UE/ECUE/période et logique AJAX conservés ; recette responsive et captures sur presentation nécessaires.
