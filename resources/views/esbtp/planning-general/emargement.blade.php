@@ -264,9 +264,11 @@
                             </button>
                         </form>
                         @endcan
+                        @can('planning.manage')
                         <button type="button" class="em-action-btn em-action-btn--secondary" data-bs-toggle="modal" data-bs-target="#codeModal">
                             <i class="fas fa-cogs"></i>Personnalisé
                         </button>
+                        @endcan
                         <a href="{{ route('esbtp.attendance-codes.index') }}" class="em-action-btn em-action-btn--secondary">
                             <i class="fas fa-external-link-alt"></i>Interface complète
                         </a>

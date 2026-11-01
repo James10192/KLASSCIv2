@@ -53,6 +53,13 @@ class PlanningGeneralAutorisationsTest extends TestCase
         $this->assertNotSame(403, $reponse->getStatusCode());
     }
 
+    public function test_gerer_les_enseignants_exige_planning_manage(): void
+    {
+        $middleware = Route::getRoutes()->getByName('esbtp.planning-general.manage-teachers')->gatherMiddleware();
+
+        $this->assertContains('permission:planning.manage', $middleware);
+    }
+
     public function test_la_route_de_test_du_planning_n_existe_plus(): void
     {
         $this->assertFalse(Route::has('esbtp.planning-general.test'));
