@@ -312,9 +312,7 @@ class ESBTPEvaluationController extends Controller
         $enseignants = collect();
         $currentUser = \Auth::user();
         if (! $currentUser->can('identity.teach')) {
-            $enseignants = User::whereHas('roles', function ($query) {
-                $query->whereIn('name', ['teacher', 'enseignant']);
-            })->with('roles:id,name')->orderBy('name')->get();
+            $enseignants = User::permission('identity.teach')->with('roles:id,name')->orderBy('name')->get();
         }
 
         // Prepare subjects for JavaScript

@@ -1850,16 +1850,6 @@ class ESBTPEmploiTempsController extends Controller
                 'emploi_temps_id' => $id,
             ]);
 
-            // Pour debug - afficher l'erreur complète temporairement
-            if (config('app.debug')) {
-                return response()->json([
-                    'error' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'trace' => config('app.debug') ? $e->getTraceAsString() : null,
-                ], 500);
-            }
-
             return redirect()->back()
                 ->with('error', 'Une erreur est survenue lors de la génération du PDF.');
         }

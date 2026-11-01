@@ -1147,11 +1147,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 // celle-ci ne repondait jamais. Elle a ete retiree plutot que
                 // documentee : tant qu'elle existait, supprimer un jour l'autre
                 // bloc l'aurait fait revivre en silence, avec d'autres gardes.
-                Route::get('/test', [ESBTPPlanningGeneralController::class, 'indexTest'])->name('test');
-                Route::post('/planification', [ESBTPPlanningGeneralController::class, 'storePlanification'])->name('store-planification');
-                Route::delete('/planification/{id}', [ESBTPPlanningGeneralController::class, 'destroyPlanification'])->name('destroy-planification');
-                Route::post('/planification/{id}/valider', [ESBTPPlanningGeneralController::class, 'validerPlanification'])->name('valider-planification');
-                Route::post('/configure-rapide', [\App\Http\Controllers\ESBTPPlanningConfigController::class, 'configureRapide'])->name('configure-rapide');
+                Route::post('/planification', [ESBTPPlanningGeneralController::class, 'storePlanification'])->name('store-planification')
+                    ->middleware('permission:planning.manage');
+                Route::delete('/planification/{id}', [ESBTPPlanningGeneralController::class, 'destroyPlanification'])->name('destroy-planification')
+                    ->middleware('permission:planning.manage');
+                Route::post('/planification/{id}/valider', [ESBTPPlanningGeneralController::class, 'validerPlanification'])->name('valider-planification')
+                    ->middleware('permission:planning.manage');
+                Route::post('/configure-rapide', [\App\Http\Controllers\ESBTPPlanningConfigController::class, 'configureRapide'])->name('configure-rapide')
+                    ->middleware('permission:planning.manage');
                 Route::get('/annuel', [ESBTPPlanningGeneralController::class, 'annuel'])->name('annuel');
                 Route::get('/repartition-matieres', [ESBTPPlanningGeneralController::class, 'repartitionMatieres'])->name('repartition-matieres');
                 Route::get('/coordinateur', [ESBTPPlanningGeneralController::class, 'coordinateur'])->name('coordinateur')
@@ -3291,7 +3294,7 @@ Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|iden
     Route::get('/planning-general/emargement', [\App\Http\Controllers\ESBTPPlanningGeneralController::class, 'emargement'])->name('planning-general.emargement')
         ->middleware('permission:planning.manage|timetables.view_all');
     Route::post('/planning-general/emargement/generer-code', [\App\Http\Controllers\ESBTPPlanningGeneralController::class, 'genererCodeEmargement'])->name('planning-general.generer-code-emargement')
-        ->middleware('permission:planning.manage|timetables.view_all');
+        ->middleware('permission:planning.manage');
 
     // Routes AJAX pour la configuration des volumes horaires
     Route::get('/planning-general/get-matieres-configuration', [\App\Http\Controllers\ESBTPPlanningConfigController::class, 'getMatieresPourConfiguration'])
@@ -3299,11 +3302,13 @@ Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|iden
         ->middleware('permission:planning.manage|timetables.view_all');
     Route::post('/planning-general/save-volume-configuration', [\App\Http\Controllers\ESBTPPlanningConfigController::class, 'saveVolumeConfiguration'])
         ->name('planning-general.save-volume-configuration')
-        ->middleware('permission:planning.manage|timetables.view_all');
+        ->middleware('permission:planning.manage');
     Route::get('/planning-general/planifications/{planification}/teachers', [\App\Http\Controllers\ESBTPPlanningConfigController::class, 'getTeachersForManagement'])
-        ->name('planning-general.get-teachers');
+        ->name('planning-general.get-teachers')
+        ->middleware('permission:planning.manage|timetables.view_all');
     Route::post('/planning-general/planifications/{planification}/manage-teachers', [\App\Http\Controllers\ESBTPPlanningConfigController::class, 'manageTeachers'])
-        ->name('planning-general.manage-teachers');
+        ->name('planning-general.manage-teachers')
+        ->middleware('permission:planning.manage');
 });
 
 // Routes pour les Ã©vÃ©nements acadÃ©miques
