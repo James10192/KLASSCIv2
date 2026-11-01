@@ -23,6 +23,17 @@ return [
     'titre' => 'Octobre 2026',
     'entrees' => [
         [
+            'titre' => 'Plus d’étudiants à l’écran pendant la saisie des notes',
+            'icone' => 'fa-table',
+            'texte' => 'La fenêtre des notes laisse la place aux étudiants : en BTS, l’en-tête d’une évaluation tient sur une ligne et les lignes sont plus compactes. Le suivi et les documents se déplient à la demande, et le suivi se referme quand il ouvre une saisie. Sur téléphone, les champs de note restent accessibles, « Fiche » et « Relevé » tiennent sur une ligne, et Nanan s’efface tant que la fenêtre est ouverte. Le suivi distingue aussi les notes complètes des matières sans évaluation.',
+            'permissions' => ['notes.create', 'notes.edit', 'lmd.notes.manage'],
+            'captures' => [
+                'apres' => 'images/nouveautes/2026-10/notes-bts-bureau-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'Sur un petit écran d’ordinateur, les cinq étudiants de la classe sont visibles sans défiler.',
+            ],
+        ],
+        [
             'titre' => 'Des régularisations qui étaient des notes d’examen',
             'si' => 'requalification_examen',
             'icone' => 'fa-exchange-alt',
