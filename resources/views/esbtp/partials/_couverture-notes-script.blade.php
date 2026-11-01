@@ -238,7 +238,20 @@ if (typeof window.couvertureNotes !== 'function') {
                             (s.evaluations_total || 0) + ' évaluation(s) de la maquette × ' +
                             (s.students_expected || 0) + ' étudiant(s) actif(s).';
                     case 'complete':
-                        return "Toutes les notes attendues sont reçues.";
+                        var matieres = (this.donnees && this.donnees.subjects) || [];
+                        var compter = function (statut) {
+                            return matieres.filter(function (m) { return m.statut === statut; }).length;
+                        };
+                        var enAttente = [];
+                        if (compter('non_evaluee') > 0) {
+                            enAttente.push(compter('non_evaluee') + " matière(s) de la maquette sans évaluation");
+                        }
+                        if (compter('programmee') > 0) {
+                            enAttente.push(compter('programmee') + " matière(s) avec une évaluation programmée");
+                        }
+                        return enAttente.length
+                            ? "Notes complètes pour les évaluations créées. " + enAttente.join(", ") + "."
+                            : "Toutes les notes attendues sont reçues.";
                     default:
                         return (this.donnees && this.donnees.message) || "Suivi des notes indisponible.";
                 }

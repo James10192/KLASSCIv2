@@ -35,7 +35,7 @@ class AcademicDocumentsNavigationTest extends TestCase
         $lmdReleveScript = $this->source('resources/views/esbtp/lmd/notes/partials/_releve-etudiant-script.blade.php');
 
         $this->assertStringContainsString("orWhere('systeme_academique', '!=', 'LMD')", $btsNotesController);
-        $this->assertStringContainsString('Fiche · Relevé', $lmdNotes);
+        $this->assertStringContainsString('Fiche ↗', $lmdNotes);
         $this->assertStringContainsString('students.view', $lmdNotes);
         $this->assertStringContainsString('data-lmd-releve', $lmdNotes);
         $this->assertStringContainsString('lmdReleveStatusTemplate', $lmdReleveScript);

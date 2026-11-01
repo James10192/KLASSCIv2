@@ -1307,10 +1307,10 @@ function buildNotesGrid() {
             ${canViewStudentFiche ? `<a class="ln-student-doc-link"
                 href="${escHtml(ficheRoute.replace('__ETUDIANT__', encodeURIComponent(stu.id)))}"
                 target="_blank" rel="noopener" title="Ouvrir les documents et le relevé individuel LMD">
-                <i class="fas fa-file-pdf" aria-hidden="true"></i>Fiche · Relevé ↗</a>` : ''}
+                <i class="fas fa-file-pdf" aria-hidden="true"></i>Fiche ↗</a>` : ''}
             ${canViewReleveLmd ? `<button type="button" class="ln-student-doc-link"
                 data-lmd-releve="${stu.id}" title="Vérifier ou émettre le relevé individuel LMD">
-                <i class="fas fa-file-pdf" aria-hidden="true"></i>Relevé LMD ↗</button>` : ''}</div>
+                <i class="fas fa-file-pdf" aria-hidden="true"></i>Relevé ↗</button>` : ''}</div>
         </div></td>`;
 
         evals.forEach(ev => {

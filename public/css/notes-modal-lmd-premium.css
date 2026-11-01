@@ -245,3 +245,12 @@ body:has(#modalNotes.show) .ast-launcher { display: none !important; }
     }
     #modalNotes .ln-note-input { min-height: 44px; touch-action: manipulation; }
 }
+
+/* Recette LMD : liens d'une ligne et croix tactile sur téléphone. */
+#modalNotes .ln-student-doc-link { margin-right: .4rem; }
+#modalNotes button.ln-student-doc-link { background: none; border: 0; padding: 0; }
+@media (max-width: 700px) {
+    #modalNotes .ln-modal-hero > .btn-close {
+        box-sizing: border-box; width: 44px; height: 44px; padding: 0; background-position: center;
+    }
+}
