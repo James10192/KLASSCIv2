@@ -11,6 +11,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Novembre 2026
+- **Notes LMD sur téléphone :** liens « Fiche » et « Relevé » sur une seule ligne.
 - **Notes BTS, en-tête recentré :** barème et coefficient reviennent au centre de la colonne, sur la ligne du type et du semestre ; quatre étudiants entiers tiennent à l'écran sur un ordinateur portable.
 - **Notes BTS et LMD, finitions de recette :** en-tête d'évaluation BTS plus court, liens LMD « Fiche » et « Relevé » sur une ligne, croix de 44 px sur téléphone. Le suivi n'annonce plus « toutes les notes reçues » quand des matières de la maquette n'ont pas d'évaluation ou attendent une évaluation programmée ; le pourcentage et les calculs sont inchangés.
 - **Notes LMD, correction de recette :** colonne étudiant compacte sur téléphone ; moyennes et appréciations défilent avec les évaluations au lieu de recouvrir les champs. Les saisies disposent de cibles tactiles de 44 px. Croix alignée en bout d'en-tête et Nanan masqué pendant cette fenêtre uniquement ; calculs et suivi académique inchangés. Mesures navigateur et captures à confirmer.
