@@ -643,7 +643,6 @@
                                 <div class="ln-modal-subtitle" id="notesModalSubtitle">Sélectionnez une UE puis un ECUE pour saisir les notes</div>
                             </div>
                         </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="ln-modal-kpis">
                         <div class="ln-modal-kpi">
@@ -659,6 +658,7 @@
                             <span class="ln-modal-kpi-lbl">ECUEs</span>
                         </div>
                     </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
                 </div>
             </div>
 

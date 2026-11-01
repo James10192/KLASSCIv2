@@ -215,3 +215,27 @@
     }
     #classSelectionModal .nm-followup-trigger { width: 100%; }
 }
+
+/* Recette notes BTS : la synthèse ne masque plus une évaluation sur téléphone. */
+body:has(#classSelectionModal.show) .ast-launcher { display: none !important; }
+#classSelectionModal .nm-student-docs { flex-wrap: nowrap; gap: .4rem; margin-top: 2px; }
+#classSelectionModal .nm-student-docs a { line-height: 1.2; }
+#classSelectionModal .nm-student-matricule { line-height: 1.1; }
+#classSelectionModal .nm-student-fullname { line-height: 1.15; }
+#classSelectionModal .nm-grid-table tbody td { padding-top: .2rem !important; padding-bottom: .2rem !important; }
+@media (max-width: 700px) {
+    #classSelectionModal .nm-grid-table .notes-student-col {
+        width: 128px; min-width: 128px; max-width: 128px;
+    }
+    #classSelectionModal .nm-student-avatar { display: none; }
+    #classSelectionModal .nm-student-fullname { max-width: 112px; }
+    #classSelectionModal .nm-student-matricule { max-width: 112px; overflow: hidden; text-overflow: ellipsis; }
+    #classSelectionModal .nm-student-docs { gap: .25rem; }
+    #classSelectionModal .nm-grid-table .notes-average-col,
+    #classSelectionModal .nm-grid-table .notes-appreciation-col { right: auto !important; }
+    #classSelectionModal .nm-grid-table tbody .notes-average-col,
+    #classSelectionModal .nm-grid-table tbody .notes-appreciation-col {
+        position: static !important;
+    }
+    #classSelectionModal .nm-note-input { min-height: 44px; touch-action: manipulation; }
+}
