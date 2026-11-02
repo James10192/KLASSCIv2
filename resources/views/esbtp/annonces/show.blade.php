@@ -526,6 +526,25 @@
 .aps-email-filter-picker .au-select-trigger{width:100%}
 @media(max-width:800px){#aps-email-scroll .aps-deliveries-table{min-width:720px}}
 @media(prefers-reduced-motion:reduce){.aps-recipient-chevron{transition:none}.aps-chip--urgent{animation:none}}
+
+.aps-retry-panel{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:14px 16px;border:1px solid #d0e0f5;border-radius:13px;background:#f5f9ff}
+.aps-retry-panel>div{display:grid;gap:4px;color:#19416d}
+.aps-retry-panel strong{font-size:.86rem}
+.aps-retry-panel small{font-size:.73rem;color:#627994}
+.aps-retry-modal{width:min(94vw,600px);max-height:90vh;overflow:auto;padding:24px;border:0;border-radius:18px;background:white;color:#183250;box-shadow:0 24px 80px rgba(18,42,79,.28)}
+.aps-retry-modal::backdrop{background:rgba(11,28,52,.55)}
+.aps-retry-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.aps-retry-top h2{font-size:1.1rem;font-weight:750;margin:6px 0}
+.aps-retry-eyebrow{color:#0758b8;font-size:.66rem;font-weight:750;letter-spacing:.08em;text-transform:uppercase;margin:0}
+.aps-retry-explain{font-size:.79rem;color:#617691;line-height:1.5}
+.aps-retry-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0}
+.aps-retry-grid>div{display:grid;gap:4px;padding:14px;border:1px solid #dfebf9;border-radius:11px;background:#f8fbff}
+.aps-retry-grid strong{color:#0d53a3;font-size:1.3rem;font-variant-numeric:tabular-nums}
+.aps-retry-grid small{font-size:.72rem;color:#617691}
+.aps-retry-guidance{font-size:.79rem;line-height:1.5;color:#5d718b;margin:12px 0}
+.aps-retry-confirm{display:flex;align-items:flex-start;gap:9px;margin:12px 0;font-size:.78rem}
+.aps-retry-modal button{margin-right:8px}
+@media(max-width:580px){.aps-retry-grid{grid-template-columns:1fr}.aps-retry-panel>button{width:100%}.aps-retry-modal{padding:18px}}
 </style>
 @endsection
 
@@ -761,6 +780,19 @@
                                     <p class="small text-muted mb-0">Ne relancez pas les adresses rejetées sans analyser le code et rapprocher les événements MailPulse.</p>
                                 @endif
                             </div>
+                            <div class="aps-retry-panel mt-3" aria-label="Relances des courriels">
+                                <div>
+                                    <strong><i class="fas fa-shield-alt" aria-hidden="true"></i> Relances sécurisées</strong>
+                                    <small>Seuls les échecs antérieurs à tout envoi fournisseur peuvent être repris. Les rebonds restent exclus.</small>
+                                </div>
+                                <button type="button" class="aps-btn aps-btn--white" id="aps-retry-open"
+                                    data-diagnostic="{{ route('esbtp.annonces.relance.diagnostic', $annonce) }}"
+                                    data-post="{{ route('esbtp.annonces.relance.executer', $annonce) }}"
+                                    data-token="{{ csrf_token() }}">
+                                    <i class="fas fa-rotate" aria-hidden="true"></i> Examiner les échecs
+                                </button>
+                            </div>
+                            <p id="aps-retry-notice" aria-live="polite" class="small mt-2 mb-0"></p>
                             <div class="alert alert-info mt-3 mb-0" role="note">
                                 <strong>Un courriel soumis n'est pas nécessairement délivré.</strong>
                                 Les confirmations et retards du fournisseur nécessitent le rapprochement sécurisé MailPulse.
@@ -1056,6 +1088,38 @@
             @method('DELETE')
         </form>
 
+        <dialog id="aps-retry-modal" class="aps-retry-modal" aria-labelledby="aps-retry-heading">
+            <div class="aps-retry-top">
+                <div>
+                    <p class="aps-retry-eyebrow">Contrôle MailPulse</p>
+                    <h2 id="aps-retry-heading">Réexaminer les e-mails en échec</h2>
+                </div>
+                <button id="aps-retry-dismiss" type="button" class="aps-btn aps-btn--white" aria-label="Fermer">
+                    <i class="fas fa-times" aria-hidden="true"></i>
+                </button>
+            </div>
+            <p class="aps-retry-explain">Aucun message déjà accepté, retardé, délivré, supprimé ou rebondi ne sera renvoyé.</p>
+            <div class="aps-retry-grid">
+                <div><strong id="aps-retry-bounce">—</strong><small>Rebonds exclus</small></div>
+                <div><strong id="aps-retry-other">—</strong><small>Autres échecs exclus</small></div>
+                <div><strong id="aps-retry-candidates">—</strong><small>Candidats à vérifier</small></div>
+                <div><strong id="aps-retry-limit">—</strong><small>Maximum par opération</small></div>
+            </div>
+            <p id="aps-retry-explanation" class="aps-retry-guidance" role="status" aria-live="polite"></p>
+            @can('annonces.email_retry')
+                <label class="aps-retry-confirm">
+                    <input type="checkbox" id="aps-retry-checkbox">
+                    Je confirme la réémission uniquement des adresses validées par MailPulse.
+                </label>
+                <button class="aps-btn aps-btn--primary" id="aps-retry-send" disabled type="button">
+                    <i class="fas fa-lock" aria-hidden="true"></i> Relance indisponible
+                </button>
+            @else
+                <p class="aps-retry-guidance">Vous pouvez consulter le diagnostic, mais la permission de relance vous manque.</p>
+            @endcan
+            <button type="button" class="aps-btn aps-btn--white" id="aps-retry-cancel">Fermer</button>
+        </dialog>
+
         {{-- =================== MODAL DELETE =================== --}}
         <div class="modal fade aps-modal" id="apsDeleteModal" tabindex="-1"
              aria-labelledby="apsDeleteModalLabel" aria-hidden="true" data-bs-backdrop="static">
@@ -1216,6 +1280,89 @@
                 observer?.disconnect();
             }, {once: true});
         }
+
+
+        // Retry controls use only JSON endpoints, no navigation, no page reload.
+        const retryOpen = document.getElementById('aps-retry-open');
+        const retryDialog = document.getElementById('aps-retry-modal');
+        const retryButton = document.getElementById('aps-retry-send');
+        const retryCheckbox = document.getElementById('aps-retry-checkbox');
+        const retryNotice = document.getElementById('aps-retry-notice');
+        const retryText = document.getElementById('aps-retry-explanation');
+        let retryCandidateIds = [];
+        let retryEnabled = false;
+        let retryRequestToken = null;
+        const closeRetry = () => retryDialog?.close();
+        document.getElementById('aps-retry-dismiss')?.addEventListener('click', closeRetry);
+        document.getElementById('aps-retry-cancel')?.addEventListener('click', closeRetry);
+        retryDialog?.addEventListener('click', event => { if (event.target === retryDialog) closeRetry(); });
+        function retryButtonState() {
+            if (!retryButton) return;
+            const enabled = retryEnabled && retryCandidateIds.length > 0 && retryCheckbox?.checked;
+            retryButton.disabled = !enabled;
+            retryButton.innerHTML = enabled
+                ? '<i class="fas fa-paper-plane" aria-hidden="true"></i> Confirmer le lot'
+                : '<i class="fas fa-lock" aria-hidden="true"></i> Relance indisponible';
+        }
+        retryCheckbox?.addEventListener('change', retryButtonState);
+        retryOpen?.addEventListener('click', async () => {
+            if (retryOpen.disabled) return;
+            retryOpen.disabled = true;
+            if (retryNotice) retryNotice.textContent = 'Analyse en cours…';
+            try {
+                const response = await fetch(retryOpen.dataset.diagnostic, {
+                    credentials: 'same-origin',
+                    headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Diagnostic indisponible');
+                for (const [id, key] of [
+                    ['aps-retry-bounce', 'rebonds'], ['aps-retry-other', 'autres_echecs'],
+                    ['aps-retry-candidates', 'candidats_count'], ['aps-retry-limit', 'limite']
+                ]) {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = Number(data[key] || 0).toLocaleString('fr-FR');
+                }
+                retryCandidateIds = data.candidats || [];
+                retryEnabled = !!data.autorisee;
+                retryRequestToken = crypto.randomUUID();
+                if (retryCheckbox) retryCheckbox.checked = false;
+                retryButtonState();
+                if (retryText) retryText.textContent = !retryEnabled
+                    ? 'Relance désactivée pour cet établissement. Le diagnostic reste consultable.'
+                    : data.info;
+                if (retryNotice) retryNotice.textContent = 'Diagnostic actualisé. Aucun courriel envoyé.';
+                retryDialog?.showModal();
+            } catch (error) {
+                if (retryNotice) retryNotice.textContent = error.message;
+            } finally {
+                retryOpen.disabled = false;
+            }
+        });
+        retryButton?.addEventListener('click', async () => {
+            if (retryButton.disabled || !retryRequestToken || !retryCheckbox?.checked) return;
+            retryButton.disabled = true;
+            if (retryText) retryText.textContent = 'Vérification des preuves chez MailPulse…';
+            try {
+                const response = await fetch(retryOpen.dataset.post, {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: {'Content-Type': 'application/json', 'Accept': 'application/json',
+                        'X-CSRF-TOKEN': retryOpen.dataset.token, 'X-Requested-With': 'XMLHttpRequest'},
+                    body: JSON.stringify({ delivery_ids: retryCandidateIds,
+                        request_token: retryRequestToken, confirmation: true })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Relance bloquée');
+                if (retryText) retryText.textContent = data.message
+                    + ' ' + data.bilan.exclus + ' exclu(s), ' + data.bilan.dupliques + ' déjà traité(s).';
+                if (retryNotice) retryNotice.textContent = data.message;
+                retryEnabled = false;
+                retryButtonState();
+            } catch (error) {
+                if (retryText) retryText.textContent = error.message;
+                retryButtonState();
+            }
+        });
 
         const openBtn = document.getElementById('aps-open-delete');
         const modalEl = document.getElementById('apsDeleteModal');

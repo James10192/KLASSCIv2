@@ -50,6 +50,12 @@ class MailPulseAnnonceEvenementController extends Controller
             ]);
         }
         $reference = (string) $valide['external_reference'];
+        $tenant = trim((string) config('app.tenant_code', ''));
+        $tentativeV3 = ReferenceCourrielAnnonce::extraireTentative($reference, $tenant);
+        if ($tentativeV3 !== null) {
+            $this->appliquerEvenementTentative($tentativeV3, $reference, $valide);
+            return response()->json(['ok' => true], 202);
+        }
         $referenceLue = ReferenceCourrielAnnonce::extraire(
             $reference, trim((string) config('app.tenant_code', ''))
         );
@@ -113,6 +119,71 @@ class MailPulseAnnonceEvenementController extends Controller
         }
 
         return response()->json(['ok' => true]);
+    }
+
+    /**
+     * v3 callbacks settle only the exact attempt and parent snapshot. The
+     * previous v2/legacy callbacks cannot overwrite a newer v3 reference.
+     * Events form an append-only audit trail.
+     *
+     * @param array{annonce_id:int,livraison_id:int,tentative:int} $ids
+     */
+    private function appliquerEvenementTentative(array $ids, string $reference, array $event): void
+    {
+        DB::transaction(function () use ($ids, $reference, $event): void {
+            $essai = DB::table('esbtp_annonce_email_attempts')
+                ->where('annonce_id', $ids['annonce_id'])
+                ->where('delivery_id', $ids['livraison_id'])
+                ->where('attempt_number', $ids['tentative'])
+                ->where('external_reference', $reference)
+                ->where('provider_message_id', $event['message_id'])
+                ->lockForUpdate()->first();
+            if (! $essai || ! in_array($essai->status, ['submitted', 'awaiting_dispatch', 'delayed'], true)) return;
+            if (isset($event['recipient_email'])
+                && strtolower(trim($event['recipient_email'])) !== $essai->recipient_email) return;
+
+            $ligne = DB::table('esbtp_annonce_email_deliveries')
+                ->where('id', $essai->delivery_id)
+                ->where('annonce_id', $essai->annonce_id)
+                ->where('email', $essai->recipient_email)
+                ->where('mailpulse_request_id', $reference)
+                ->where('mailpulse_message_id', $event['message_id'])
+                ->whereIn('status', ['submitted', 'awaiting_dispatch', 'delayed']);
+            if (! (clone $ligne)->exists()) return;
+
+            $state = $event['state'];
+            $date = isset($event['occurred_at'])
+                ? \Illuminate\Support\Carbon::parse($event['occurred_at'])
+                    ->setTimezone(config('app.timezone', 'UTC'))->format('Y-m-d H:i:s')
+                : now();
+            $nouveau = $state === 'delivered' ? 'delivered'
+                : ($state === 'delivery_delayed' ? 'delayed' : 'failed');
+            $attributs = ['status' => $nouveau, 'updated_at' => now()];
+            $parent = $attributs;
+            if ($nouveau === 'delivered') {
+                $attributs['delivered_at'] = $date;
+                $parent['provider_delivered_at'] = $date;
+                $parent['error_code'] = null;
+            } elseif ($nouveau === 'failed') {
+                $attributs['failed_at'] = $date;
+                $attributs['error_code'] = $state;
+                $parent['provider_failed_at'] = $date;
+                $parent['error_code'] = $state;
+            } else {
+                $parent['provider_delayed_at'] = $date;
+                $parent['error_code'] = null;
+            }
+            if ($ligne->update($parent) !== 1) return;
+            DB::table('esbtp_annonce_email_attempts')
+                ->where('id', $essai->id)
+                ->whereIn('status', ['submitted', 'awaiting_dispatch', 'delayed'])
+                ->update($attributs);
+            DB::table('esbtp_annonce_email_attempt_events')->insert([
+                'attempt_id' => $essai->id,
+                'event' => $state,
+                'created_at' => now(),
+            ]);
+        }, 3);
     }
 
     /** Standard MailPulse v1 webhook; no outgoing email is ever dispatched here.

@@ -55,7 +55,8 @@ class MailPulseStatutsMessages
      */
     public function lireParReference(string $reference, string $tenant): array|string
     {
-        if (\App\Services\Annonces\ReferenceCourrielAnnonce::extraire($reference, $tenant) === null
+        if ((\App\Services\Annonces\ReferenceCourrielAnnonce::extraire($reference, $tenant) === null
+                && \App\Services\Annonces\ReferenceCourrielAnnonce::extraireTentative($reference, $tenant) === null)
             || trim($tenant) === '' || $tenant === 'default') {
             return 'invalid_dispatch_contract';
         }

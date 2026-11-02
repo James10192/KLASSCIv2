@@ -323,7 +323,8 @@ jobs:
             tests/Unit/Mail/GabaritRecuDesAvisParentsTest.php \
             tests/Unit/Mail/CourrielAnnonceHtmlTest.php \
             tests/Unit/Mail/GabaritPrincipalCourrielsTest.php \
-            tests/Unit/Annonces/JournalCourrielsAnnonceBladeTest.php
+            tests/Unit/Annonces/JournalCourrielsAnnonceBladeTest.php \
+            tests/Unit/Annonces/ReferenceCourrielTentativeTest.php
           do
             echo "::group::$chemin"
             php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
