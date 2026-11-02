@@ -12,6 +12,11 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Novembre 2026
 
+### Corrections du 2 novembre — annonces et courriels
+- **Annonces (index)** : tous les sélecteurs premium remplissent la largeur de leur cellule ; l'espace inutile entre la barre KLASSCI et le bandeau de la page est réduit sur ordinateur et mobile.
+- **Annonces (fiche)** : la pagination numérique n'est plus visible quand le défilement progressif fonctionne ; repli HTML conservé sans JavaScript et tableau des destinataires aligné et lisible sur petit écran.
+- **Courriels** : l'habillage de l'alerte « Encaissements en retard » (gabarit « Reçu ») devient le format commun pour les annonces, les avis administratifs et le support. L'ancien en-tête reste consultable comme `esbtp.emails.layout-ancien`. Les notifications de bulletins, rapports et demandes de démonstration utilisent également l'habillage « Reçu » ; contenus, destinataires et cadence d'envoi inchangés.
+
 ### Évolutions
 - **Annonces — index et fiche (02/11/2026)** : recherche serveur sur titre et contenu, filtres combinables (statut, priorité, public, e-mail, pièce jointe, auteur, dates) et tri stable, actualisation AJAX et défilement infini sur mobile/desktop. La fiche conserve l'aperçu du courriel au-dessus des historiques ; les destinataires sont consultables dans un panneau repliable à défilement interne, avec recherche par e-mail. Permissions effectives préservées, aucune expédition ou relance effectuée.
 

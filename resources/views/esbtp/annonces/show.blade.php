@@ -486,6 +486,28 @@
 .aps-email-scroll:focus-visible{outline:2px solid #0453cb;outline-offset:2px}
 .aps-email-scroll .table-responsive{margin:0}
 .aps-email-scroll table{font-size:.78rem}
+.aps-email-scroll .table-responsive{overflow-x:auto}
+.aps-email-scroll #aps-email-table{width:100%;min-width:720px;table-layout:fixed;border-collapse:separate;border-spacing:0;margin:0}
+.aps-email-scroll .aps-col-address{width:32%}
+.aps-email-scroll .aps-col-state{width:17%}
+.aps-email-scroll .aps-col-attempts{width:10%}
+.aps-email-scroll .aps-col-updated{width:19%}
+.aps-email-scroll .aps-col-code{width:22%}
+.aps-email-scroll #aps-email-table th{font-size:.68rem;font-weight:700;letter-spacing:.025em;text-transform:uppercase;color:#62758f;background:#f5f8fd;border-bottom:1px solid #dfe8f4}
+.aps-email-scroll #aps-email-table td{line-height:1.45;border-bottom:1px solid #eaf0f8;vertical-align:middle;overflow-wrap:anywhere;word-break:normal;color:#27405d}
+.aps-email-scroll #aps-email-table tbody tr:nth-child(even){background:#fafcff}
+.aps-email-scroll #aps-email-table tbody tr:hover{background:#edf5ff}
+.aps-email-scroll #aps-email-table tbody tr:last-child td{border-bottom:0}
+.aps-email-scroll .aps-delivery-address{font-weight:600;color:#19385f!important}
+.aps-email-scroll .aps-delivery-date{font-variant-numeric:tabular-nums}
+.aps-email-scroll .aps-delivery-date span{display:block;color:#73849b;font-size:.72rem}
+.aps-email-scroll .aps-delivery-attempts{text-align:center;font-variant-numeric:tabular-nums}
+.aps-email-scroll .aps-delivery-code small{font-size:.73rem;color:#516987}
+.aps-email-scroll .badge{border-radius:999px;white-space:normal;line-height:1.3;padding:.38rem .6rem}
+#aps-email-more[hidden]{display:none!important}
+#aps-email-pages.aps-email-pages-hidden{display:none!important}
+@media(max-width:768px){.aps-email-scroll #aps-email-table{min-width:680px}}
+
 .aps-email-scroll table thead{position:sticky;top:0;z-index:1;background:#f5f8fe}
 .aps-email-scroll table th{padding:12px;white-space:nowrap}
 .aps-email-scroll table td{padding:11px 12px}
@@ -1155,6 +1177,9 @@
 
         if (emailFilter && emailTable && emailPages && emailMore) {
             updateNextLink();
+            // Le bouton/IntersectionObserver sont les seuls contrôles JS de
+            // pagination. Les liens Laravel ne restent visibles qu'en repli.
+            emailPages.classList.add('aps-email-pages-hidden');
             emailFilter.addEventListener('change', function (event) {
                 if (event.target.name === 'courriels_statut') emailFilter.requestSubmit();
             });

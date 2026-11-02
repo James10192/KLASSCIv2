@@ -651,6 +651,23 @@
 @media(max-width:768px){.announcements-page .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.announcements-page .stat-card{flex-direction:row;text-align:left;padding:12px;gap:10px}.announcements-page .stat-icon{width:36px;height:36px;min-width:36px}.ann-workspace .ann-table-wrap{display:none}.ann-workspace .annonces-grid{display:grid}.ann-workspace-heading{padding:18px 16px}.ann-filter-primary{padding:0 16px 14px}.ann-advanced{margin:0 16px}.ann-filter-bottom{padding:12px 16px}.ann-result-heading{padding:12px 16px}.ann-result-hint{display:none}}
 @media(min-width:769px){.ann-workspace .annonces-grid{display:none}}
 @media(max-width:540px){.ann-filter-primary{grid-template-columns:1fr}.ann-search-field{grid-column:auto}.ann-advanced-grid{grid-template-columns:1fr}.ann-workspace .annonce-card-info{grid-template-columns:repeat(2,minmax(0,1fr))}.ann-filter-bottom>span{display:none}.announcements-page .stat-content h3{font-size:1.2rem}.announcements-page .stat-content p{font-size:.69rem}}
+
+/* Les selecteurs premium doivent remplir leur cellule de grille.
+   x-au-select est inline-flex par defaut : son intrinsic size raccourcissait
+   les champs, laissant de grandes zones vides. Ne pas modifier le composant global. */
+#ann-filter-form .ann-filter-select{display:flex;flex-direction:column;min-width:0;align-items:stretch}
+#ann-filter-form .ann-filter-select>.au-select{display:flex;width:100%;min-width:0;flex:0 0 auto}
+#ann-filter-form .ann-filter-select .au-select-trigger{width:100%;min-width:0;min-height:44px}
+#ann-filter-form .ann-filter-select .au-select-menu{min-width:0}
+#ann-filter-form .ann-advanced-grid .ann-date-field{min-width:0}
+/* Le shell nextadmin apporte deja un espacement au contenu. Ne pas
+   empiler une deuxieme grande marge au-dessus du hero. */
+.nextadmin-content:has(> .announcements-page){padding-top:12px!important}
+.announcements-page>.main-content{padding-top:0!important}
+@media(max-width:768px){
+  .nextadmin-content:has(> .announcements-page){padding-top:8px!important}
+  .announcements-page>.main-content{padding-top:0!important}
+}
 @media(prefers-reduced-motion:reduce){.announcements-page *, .ann-workspace *{animation:none!important;transition:none!important}}
 </style>
 @endsection
