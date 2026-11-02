@@ -18,7 +18,12 @@ class PlanningGeneralAutorisationsTest extends TestCase
     {
         parent::setUp();
 
-        $this->withoutMiddleware(\App\Http\Middleware\PaywallMiddleware::class);
+        // Sans instance installee, CheckInstalled redirige avant les gardes testees.
+        $this->withoutMiddleware([
+            \App\Http\Middleware\CheckInstalled::class,
+            \App\Http\Middleware\EnsureInstalled::class,
+            \App\Http\Middleware\PaywallMiddleware::class,
+        ]);
     }
 
     /** @return array<string, array{string, string, array<string, int>}> */
@@ -50,7 +55,8 @@ class PlanningGeneralAutorisationsTest extends TestCase
 
         $reponse = $this->call($methode, route($route, $parametres), [], [], [], ['HTTP_ACCEPT' => 'application/json']);
 
-        $this->assertNotSame(403, $reponse->getStatusCode());
+        // Une redirection prouverait qu'un autre middleware a repondu avant la garde.
+        $this->assertNotContains($reponse->getStatusCode(), [302, 403]);
     }
 
     public function test_gerer_les_enseignants_exige_planning_manage(): void
