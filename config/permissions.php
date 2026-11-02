@@ -1971,6 +1971,13 @@ return [
             'icon' => 'fa-edit',
             'aliases' => ['edit_annonces'],
         ],
+        'annonces.email_retry' => [
+            'label' => 'Autoriser la relance sécurisée des e-mails d\'annonces',
+            'group' => 'Communication',
+            'icon' => 'fa-rotate',
+            'description' => 'Permission sensible assignable aux rôles personnalisés : réémission uniquement après preuve fournisseur et journal immuable des tentatives.',
+            'aliases' => [],
+        ],
         'mailpulse.view' => [
             'label' => 'Voir l\'état MailPulse',
             'group' => 'Communication',
