@@ -1108,4 +1108,46 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertSame('retrying', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
         Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
     }
+
+    public function test_la_reprise_insere_un_vrai_job_database_sans_emettre_de_courriel(): void
+    {
+        // Contrairement à Bus::fake, ce cas vérifie la file SQL réelle.
+        config(['queue.default' => 'database', 'queue.connections.database.after_commit' => false]);
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'queue-reelle@etudiants.test',
+            'status' => 'retrying', 'error_code' => 'local_rate_limit',
+            'attempts' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->update([
+            'mailpulse_request_id' => \App\Services\Annonces\ReferenceCourrielAnnonce::nouvelle(
+                'presentation', $annonce->id, $id
+            ),
+        ]);
+        $avant = DB::table('jobs')->where('queue', 'annonces')->count();
+
+        $this->artisan('annonces:recuperer-file', [
+            '--annonce' => $annonce->id, '--tenant' => 'presentation',
+            '--execute' => true, '--limit' => 1,
+        ])->assertExitCode(0);
+
+        $this->assertSame('pending', DB::table('esbtp_annonce_email_deliveries')
+            ->where('id', $id)->value('status'));
+        $this->assertSame($avant + 1, DB::table('jobs')->where('queue', 'annonces')->count());
+        $this->assertNull(DB::table('esbtp_annonce_email_deliveries')
+            ->where('id', $id)->value('submitted_at'));
+    }
+
+    public function test_la_reprise_refuse_une_file_database_sur_une_autre_connexion(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        $annonce = $this->annonce();
+        config(['queue.connections.database.connection' => 'base-autre-instance']);
+
+        $this->artisan('annonces:recuperer-file', [
+            '--annonce' => $annonce->id, '--tenant' => 'presentation',
+            '--execute' => true,
+        ])->assertExitCode(1);
+        Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
+    }
 }
