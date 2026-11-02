@@ -18,12 +18,13 @@ return new class extends Migration
             $table->unsignedBigInteger('delivery_id');
             $table->unsignedInteger('attempt_number');
             $table->string('external_reference', 191)->unique();
-            $table->string('previous_reference', 191);
+            $table->string('previous_reference', 191)->nullable();
             $table->string('recipient_email', 254);
             $table->string('status', 32)->default('queued');
             $table->string('provider_message_id', 191)->nullable();
             $table->string('error_code', 64)->nullable();
-            $table->unsignedBigInteger('requested_by');
+            $table->unsignedBigInteger('requested_by')->nullable();
+            $table->uuid('request_token')->nullable();
             $table->timestamp('dispatch_started_at')->nullable();
             $table->timestamp('submitted_at')->nullable();
             $table->timestamp('failed_at')->nullable();
@@ -31,6 +32,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['delivery_id', 'attempt_number'], 'annonce_attempt_delivery_number_uq');
+            $table->unique(['delivery_id', 'request_token'], 'annonce_attempt_delivery_request_uq');
             $table->index(['annonce_id', 'status', 'created_at'], 'annonce_attempt_campaign_status_idx');
             $table->foreign('delivery_id', 'annonce_attempt_delivery_fk')
                 ->references('id')->on('esbtp_annonce_email_deliveries')->cascadeOnDelete();
