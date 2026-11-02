@@ -1133,6 +1133,8 @@
                     tbody?.append(...rows);
                 } else {
                     emailTable.querySelector('tbody')?.replaceChildren(...Array.from(incomingRows.children));
+                    // Le filtre repart en haut de sa zone, sans déplacer la page ni l'aperçu.
+                    if (emailScroll) emailScroll.scrollTop = 0;
                 }
                 emailPages.innerHTML = incomingPages.innerHTML;
                 updateNextLink();
