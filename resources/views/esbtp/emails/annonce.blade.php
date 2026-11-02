@@ -1,3 +1,9 @@
+@php
+    $statutTon = $annonce->priorite == 2 ? 'danger' : 'info';
+    $statutTexte = $annonce->priorite == 2 ? 'Communication urgente' : 'Communication';
+    $service = 'Vie scolaire · annonces';
+    $raison = "Message diffusé par votre établissement depuis KLASSCI.";
+@endphp
 @extends('esbtp.emails.layout', ['emailTitle' => $annonce->titre])
 
 @section('preheader', \Illuminate\Support\Str::limit($annonce->titre, 120))
@@ -9,9 +15,6 @@
     @if($annonce->priorite == 2)
         <p style="color:#9a3412;font-size:13px;font-weight:700;margin:0 0 14px;">INFORMATION IMPORTANTE</p>
     @endif
-    <h1 style="font-size:22px;line-height:1.35;color:#0f172a;margin:0 0 20px;">
-        {{ $annonce->titre }}
-    </h1>
     <div style="font-size:15px;line-height:1.75;color:#334155;white-space:pre-line;overflow-wrap:anywhere;">{{ trim($annonce->contenu) }}</div>
     @include('esbtp.emails.partials.bouton', [
         'url' => $lien,

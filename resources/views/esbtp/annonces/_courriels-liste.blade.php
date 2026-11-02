@@ -1,5 +1,5 @@
 <div class="table-responsive">
-    <table id="aps-email-table" class="table table-sm table-hover align-middle">
+    <table id="aps-email-table" class="aps-deliveries-table table align-middle">
         <thead><tr>
             <th scope="col">Destinataire</th>
             <th scope="col">État</th>
@@ -22,11 +22,11 @@
                 };
             @endphp
             <tr data-livraison-id="{{ $livraison->id }}">
-                <td class="text-break">{{ $livraison->email }}</td>
-                <td><span class="badge bg-{{ $couleur }}">{{ $etatTexte }}</span></td>
+                <td class="aps-deliveries-email">{{ $livraison->email }}</td>
+                <td><span class="aps-delivery-status aps-delivery-status--{{ $couleur }}">{{ $etatTexte }}</span></td>
                 <td>{{ (int) $livraison->attempts }}</td>
                 <td class="text-nowrap">{{ \Illuminate\Support\Carbon::parse($livraison->updated_at)->format('d/m/Y H:i') }}</td>
-                <td class="text-break"><small>{{ $livraison->error_code === 'local_rate_limit' ? 'Quota local temporaire' : ($livraison->error_code ?: '—') }}</small></td>
+                <td class="aps-deliveries-code"><small>{{ $livraison->error_code === 'local_rate_limit' ? 'Quota local temporaire' : ($livraison->error_code ?: '—') }}</small></td>
             </tr>
         @empty
             <tr><td colspan="5" class="text-muted py-3 text-center">
@@ -36,7 +36,10 @@
         </tbody>
     </table>
 </div>
-<div id="aps-email-pages" class="mt-2">{{ $destinataires->links() }}</div>
+{{-- Le paginateur sert UNIQUEMENT de métadonnée aux fetch AJAX.
+     Aucun numéro de page visible si JavaScript fonctionne. --}}
+<div id="aps-email-pages" hidden style="display:none!important" aria-hidden="true">{{ $destinataires->links() }}</div>
+<noscript><nav class="aps-email-pagination-fallback" aria-label="Pages des destinataires">{{ $destinataires->links() }}</nav></noscript>
 <div class="d-flex justify-content-center mt-2">
     <button type="button" id="aps-email-more" class="btn btn-outline-primary btn-sm" hidden>Charger plus de destinataires</button>
 </div>

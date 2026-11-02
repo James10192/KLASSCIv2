@@ -63,11 +63,16 @@ u + .body .gm-diff { background: #000; mix-blend-mode: difference; }
 </tr></table>
 </td></tr>
 <tr><td class="kp" style="padding:28px 36px 8px;font-size:15px;line-height:1.6;">
+@if(! empty($statutTexte))
 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
 <td style="padding-right:8px;font-size:0;line-height:0;"><div style="width:8px;height:8px;border-radius:8px;background:{{ $pointStatut }};background-image:linear-gradient({{ $pointStatut }},{{ $pointStatut }});"></div></td>
-<td style="font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:{{ $texteStatut }};">{{ $statutTexte ?? '' }}</td>
+<td style="font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:{{ $texteStatut }};">{{ $statutTexte }}</td>
 </tr></table>
+@endif
 <h1 style="margin:12px 0 10px;font-size:22px;line-height:1.3;font-weight:700;color:#0f172a;">@yield('titre')</h1>
+@hasSection('subtitle')
+<p style="margin:0 0 18px;font-size:14px;line-height:1.6;color:#64748b;">@yield('subtitle')</p>
+@endif
 @yield('content')
 </td></tr>
 <tr><td class="kp" style="padding:8px 36px 28px;">
@@ -78,7 +83,7 @@ u + .body .gm-diff { background: #000; mix-blend-mode: difference; }
 @if($telephone !== '')<a href="tel:{{ $telephone }}" style="color:{{ $emailPrimaryColor }};text-decoration:none;white-space:nowrap;">{{ $schoolPhone }}</a>@endif
 @if($telephone !== '' && ! empty($schoolEmail)) &middot; @endif
 @if(! empty($schoolEmail))<a href="mailto:{{ $schoolEmail }}" style="color:{{ $emailPrimaryColor }};text-decoration:none;">{{ $schoolEmail }}</a>@endif
-<div style="margin-top:12px;font-size:12px;color:#64748b;">{{ $raison ?? "Message automatique envoyé au contact parent. Pour toute question, contactez l'établissement." }} Merci de ne pas répondre à ce courriel.</div>
+<div style="margin-top:12px;font-size:12px;color:#64748b;">@hasSection('mention')@yield('mention')@else{{ $raison ?? "Message automatique envoyé au contact parent. Pour toute question, contactez l'établissement." }} Merci de ne pas répondre à ce courriel.@endif</div>
 </td></tr></table>
 </td></tr>
 </table>

@@ -493,6 +493,38 @@
 .aps-message{white-space:normal}
 #aps-apercu iframe{min-height:500px!important}
 @media(max-width:768px){.aps-recipient-details>summary{padding:14px;flex-wrap:wrap}.aps-recipient-details-count{margin-left:auto}.aps-email-scroll{max-height:340px}#aps-apercu iframe{min-height:400px!important}}
+
+/* Le conteneur du tableau est aussi le viewport du défilement infini.
+   Pas de scroll horizontal interne concurrent qui casse l'en-tête sticky. */
+#aps-email-scroll{max-width:100%;overflow:auto;scrollbar-gutter:stable;overscroll-behavior:contain}
+#aps-email-scroll .table-responsive{overflow:visible!important}
+#aps-email-scroll .aps-deliveries-table{width:100%;min-width:790px;table-layout:fixed;border-spacing:0;border-collapse:separate;margin:0;background:#fff;font-size:.79rem}
+#aps-email-scroll .aps-deliveries-table th,
+#aps-email-scroll .aps-deliveries-table td{box-sizing:border-box;padding:12px 14px!important;line-height:1.45;text-align:left;vertical-align:middle;border:0;border-bottom:1px solid #e8eef7;background:transparent}
+#aps-email-scroll .aps-deliveries-table thead{position:sticky;top:0;z-index:3}
+#aps-email-scroll .aps-deliveries-table thead th{background:#eaf2ff!important;color:#164177!important;font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.025em;white-space:normal;border-bottom:1px solid #c9d9f0}
+#aps-email-scroll .aps-deliveries-table thead th:nth-child(1){width:28%}
+#aps-email-scroll .aps-deliveries-table thead th:nth-child(2){width:20%}
+#aps-email-scroll .aps-deliveries-table thead th:nth-child(3){width:12%}
+#aps-email-scroll .aps-deliveries-table thead th:nth-child(4){width:20%}
+#aps-email-scroll .aps-deliveries-table thead th:nth-child(5){width:20%}
+#aps-email-scroll .aps-deliveries-table tbody tr:nth-child(even){background:#f8fbff}
+#aps-email-scroll .aps-deliveries-table tbody tr:hover{background:#eff6ff}
+#aps-email-scroll .aps-deliveries-table .aps-deliveries-email{overflow-wrap:anywhere;color:#243c5d;font-weight:500}
+#aps-email-scroll .aps-deliveries-table .aps-deliveries-code{overflow-wrap:anywhere;color:#53677f}
+#aps-email-scroll .aps-deliveries-table td:nth-child(3){font-variant-numeric:tabular-nums}
+#aps-email-scroll .aps-deliveries-table td:nth-child(4){white-space:nowrap;font-variant-numeric:tabular-nums;font-size:.74rem}
+#aps-email-scroll .aps-delivery-status{display:inline-flex;align-items:center;max-width:100%;white-space:normal;padding:5px 8px;border-radius:7px;font-size:.68rem;font-weight:700;line-height:1.4}
+#aps-email-scroll .aps-delivery-status--success{background:#dcfce7;color:#166534}
+#aps-email-scroll .aps-delivery-status--danger{background:#fee2e2;color:#991b1b}
+#aps-email-scroll .aps-delivery-status--warning{background:#fff4d6;color:#995500}
+#aps-email-scroll .aps-delivery-status--secondary{background:#eaf2ff;color:#264e80}
+#aps-email-scroll #aps-email-pages{display:none!important}
+#aps-email-scroll #aps-email-more{min-height:40px;margin:8px 0 4px;border-radius:10px}
+.aps-email-filter-picker{display:flex;flex-direction:column;align-items:stretch;min-width:0}
+.aps-email-filter-picker > .au-select{display:flex;width:100%;flex:1 1 auto;min-width:0}
+.aps-email-filter-picker .au-select-trigger{width:100%}
+@media(max-width:800px){#aps-email-scroll .aps-deliveries-table{min-width:720px}}
 @media(prefers-reduced-motion:reduce){.aps-recipient-chevron{transition:none}.aps-chip--urgent{animation:none}}
 </style>
 @endsection
