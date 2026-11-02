@@ -12,6 +12,11 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Novembre 2026
 
+### Réinscriptions BTS et règles académiques — 2 novembre
+- **Passage cohérent avec le conseil BTS :** quand le mode de décision automatique par seuil est actif, le passage en classe supérieure utilise le même seuil que le bulletin, sans classement contradictoire par la règle de réinscription historique ; les compteurs sont alignés.
+- **Affectation à la réinscription :** pour un passage proposé, la classe de l'année précédente n'est plus préremplie aveuglément ; une classe de niveau supérieur est présélectionnée seulement quand elle est unique et disponible, sinon la scolarité choisit. Le serveur refuse un passage BTS vers le même niveau.
+- **Règles académiques :** interface premium responsive, sélecteurs KLASSCI, formulaire unique et opérations créer / modifier / supprimer en AJAX sans rechargement. Validation et permissions serveur conservées. Recette visuelle, revue et tests sur `presentation` indispensables avant diffusion aux écoles.
+
 ### Communication — 2 novembre
 - **Annonces index :** choix premium pleine largeur, suppression du double espace supérieur dans la mise en page.
 - **Annonces show :** navigation par pages invisible en mode défilement infini (mais conservée pour les liens AJAX et sans JavaScript) ; tableau des destinataires aligné, lisible, en-tête fixe, défilement autonome.
