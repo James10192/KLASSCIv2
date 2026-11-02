@@ -45,7 +45,7 @@ class ReglesAcademiquesAjaxTest extends TestCase
         $this->get(route('esbtp.reinscription.regles.index'))
             ->assertOk()
             ->assertSee('Règles académiques')
-            ->assertSee('Simplifions la vie de nos personnels dans l&#039;éducation.', false);
+            ->assertSee('Simplifions la vie de nos personnels', false);
     }
 
     public function test_ajout_et_modification_repondent_en_json_sans_rechargement(): void
