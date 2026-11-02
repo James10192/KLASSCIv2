@@ -319,7 +319,11 @@ jobs:
             tests/Unit/Photos \
             tests/Unit/Services/Master \
             tests/Unit/Services/BtsProvisionalTranscriptTest.php \
-            tests/Unit/Views/AcademicDocumentsNavigationTest.php
+            tests/Unit/Views/AcademicDocumentsNavigationTest.php \
+            tests/Unit/Mail/GabaritRecuDesAvisParentsTest.php \
+            tests/Unit/Mail/CourrielAnnonceHtmlTest.php \
+            tests/Unit/Mail/GabaritPrincipalCourrielsTest.php \
+            tests/Unit/Annonces/JournalCourrielsAnnonceBladeTest.php
           do
             echo "::group::$chemin"
             php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
