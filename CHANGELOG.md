@@ -12,6 +12,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Novembre 2026
 
+### Évolutions
+- **Annonces — index et fiche (02/11/2026)** : recherche serveur sur titre et contenu, filtres combinables (statut, priorité, public, e-mail, pièce jointe, auteur, dates) et tri stable, actualisation AJAX et défilement infini sur mobile/desktop. La fiche conserve l'aperçu du courriel au-dessus des historiques ; les destinataires sont consultables dans un panneau repliable à défilement interne, avec recherche par e-mail. Permissions effectives préservées, aucune expédition ou relance effectuée.
+
 ### Sécurité
 - Planning général : enregistrer, supprimer, valider, configurer et générer un code d'émargement exigent `planning.manage`, plus une simple permission de lecture ; boutons masqués en conséquence. Trace technique retirée de l'erreur PDF de l'emploi du temps. Route `/esbtp/planning-general/test` et vues `index-test`, `index-improved` retirées.
 
