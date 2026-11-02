@@ -48,6 +48,18 @@ class AnnonceMailPulseTest extends TestCase
         ]);
     }
 
+    public function test_une_nouvelle_campagne_ne_samorce_pas_avec_la_queue_sync(): void
+    {
+        \Illuminate\Support\Facades\Bus::fake([EnvoyerAnnonceCourriel::class]);
+        config(['queue.default' => 'sync']);
+        $annonce = $this->annonce();
+
+        (new DiffuserAnnonceParCourriel($annonce->id))->handle();
+
+        $this->assertSame(0, DB::table('esbtp_annonce_email_deliveries')->count());
+        Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
+    }
+
     public function test_brouillon_et_case_decochee_n_envoient_rien(): void
     {
         Bus::fake([EnvoyerAnnonceCourriel::class]);
