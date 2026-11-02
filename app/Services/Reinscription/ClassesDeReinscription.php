@@ -212,11 +212,17 @@ class ClassesDeReinscription
             ->where('is_active', 1)
             ->whereHas('niveau', fn (Builder $q) => $q->where('year', $annee + 1)->where('type', $type)));
 
-        return $suivantes->isNotEmpty()
-            ? $suivantes
-            : $this->avecRelations(ESBTPClasse::where('filiere_id', $quittee->filiere_id)
-                ->where('is_active', 1)
-                ->whereHas('niveau', fn (Builder $q) => $q->where('year', 1)->where('type', '!=', $type)));
+        // BTS 1 : ne jamais remplacer silencieusement la seconde annee
+        // manquante par une Licence 1. La passerelle preexistante BTS 2
+        // vers un autre cycle, elle, est preservee (contrat de tests).
+        if (($quittee->isBTS() && $annee === 1) || $suivantes->isNotEmpty()) {
+            return $suivantes;
+        }
+
+        // Compatibilite des autres parcours et de la sortie du BTS 2.
+        return $this->avecRelations(ESBTPClasse::where('filiere_id', $quittee->filiere_id)
+            ->where('is_active', 1)
+            ->whereHas('niveau', fn (Builder $q) => $q->where('year', 1)->where('type', '!=', $type)));
     }
 
     /** La mention d'une classe LMD : par son parcours, sinon par le reflet de sa filiere. */

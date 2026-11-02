@@ -121,6 +121,23 @@ class ClassesProposeesAuPassageTest extends TestCase
         $this->assertNull(app(ClassesDeReinscription::class)->inscriptionQuittee($etudiant->id));
     }
 
+    public function test_bts_1_ne_propose_pas_une_licence_1_si_la_deuxieme_annee_manque(): void
+    {
+        $bts1 = $this->classe('BTS', 1);
+        $this->classe('Licence', 1);
+
+        $this->assertSame([], $this->proposees($this->etudiantEn($bts1)));
+    }
+
+    public function test_bts_1_propose_bien_la_deuxieme_annee_de_sa_filiere(): void
+    {
+        $bts1 = $this->classe('BTS', 1);
+        $bts2 = $this->classe('BTS', 2);
+        $this->classe('Licence', 1);
+
+        $this->assertSame([$bts2->id], $this->proposees($this->etudiantEn($bts1)));
+    }
+
     public function test_le_bts_garde_son_repli_vers_une_premiere_annee_d_un_autre_type(): void
     {
         // Comportement anterieur, que ce correctif ne doit pas toucher.
