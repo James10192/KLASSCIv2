@@ -290,13 +290,16 @@ class ESBTPAnnonceController extends Controller
         $statuts = ['pending', 'processing', 'retrying', 'awaiting_dispatch',
             'submitted', 'delayed', 'delivered', 'failed'];
         $filtre = is_string($filtre) && in_array($filtre, $statuts, true) ? $filtre : null;
+        $courrielsQ = request()->query('courriels_q');
+        $courrielsQ = is_string($courrielsQ) ? trim(mb_substr($courrielsQ, 0, 150)) : '';
         $destinataires = DB::table('esbtp_annonce_email_deliveries')
             ->where('annonce_id', $annonce->id)
             ->when($filtre, fn ($q) => $q->where('status', $filtre))
-            ->select(['email', 'status', 'attempts', 'submitted_at',
+            ->when($courrielsQ !== '', fn ($q) => $q->where('email', 'like', '%' . $courrielsQ . '%'))
+            ->select(['id', 'email', 'status', 'attempts', 'submitted_at',
                 'provider_delivered_at', 'provider_delayed_at',
                 'provider_failed_at', 'error_code', 'updated_at'])
-            ->orderByDesc('updated_at')->paginate(25, ['*'], 'courriels_page')
+            ->orderByDesc('id')->paginate(25, ['*'], 'courriels_page')
             ->withQueryString();
         // Un filtre ou le défilement infini ne doivent pas recalculer le
         // gabarit HTML ni les statistiques scolaires de toute la page.
@@ -313,7 +316,7 @@ class ESBTPAnnonceController extends Controller
             ? app(\App\Services\Annonces\CourrielAnnonce::class)->html($annonce)
             : null;
         return view('esbtp.annonces.show', compact('annonce', 'courriels',
-            'destinataires', 'nombreEligibles', 'filtre', 'anneeCourriels', 'apercuCourriel', 'etatCampagneCourriels'));
+            'destinataires', 'nombreEligibles', 'filtre', 'courrielsQ', 'anneeCourriels', 'apercuCourriel', 'etatCampagneCourriels'));
     }
 
     /**
