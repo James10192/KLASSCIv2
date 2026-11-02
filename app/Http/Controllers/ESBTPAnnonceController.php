@@ -119,9 +119,15 @@ class ESBTPAnnonceController extends Controller
             'piece_jointe' => 'nullable|in:oui,non',
             'auteur' => 'nullable|integer|min:1',
             'created_from' => 'nullable|date_format:Y-m-d',
-            'created_to' => 'nullable|date_format:Y-m-d|after_or_equal:created_from',
+            'created_to' => 'nullable|date_format:Y-m-d',
             'tri' => 'nullable|in:recent,ancien,priorite,expiration',
         ]);
+        if (!empty($f['created_from']) && !empty($f['created_to'])
+            && $f['created_to'] < $f['created_from']) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'created_to' => 'La date de fin doit suivre la date de début.',
+            ]);
+        }
         $query = ESBTPAnnonce::query()->with('user:id,name');
         $term = trim($f['q'] ?? '');
         if ($term !== '') {
