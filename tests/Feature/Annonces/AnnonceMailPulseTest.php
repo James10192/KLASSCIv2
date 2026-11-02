@@ -31,7 +31,7 @@ class AnnonceMailPulseTest extends TestCase
     {
         parent::setUp();
         Cache::flush();
-        config(['app.tenant_code' => 'presentation']);
+        config(['app.tenant_code' => 'presentation', 'queue.default' => 'database']);
     }
 
     private function annonce(string $type = 'general', bool $courriel = true): ESBTPAnnonce
