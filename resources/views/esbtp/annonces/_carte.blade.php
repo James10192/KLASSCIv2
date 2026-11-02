@@ -65,6 +65,7 @@
         <a href="{{ route('esbtp.annonces.show', $annonce) }}" class="btn-action primary" title="Voir">
             <i class="fas fa-eye"></i>
         </a>
+        @canany(['annonces.edit', 'edit_annonces'])
         @if($canEdit)
             <a href="{{ route('esbtp.annonces.edit', $annonce) }}" class="btn-action secondary" title="Modifier">
                 <i class="fas fa-edit"></i>
@@ -77,5 +78,6 @@
         <button type="button" class="btn-action danger" onclick="deleteAnnonce({{ $annonce->id }})" title="Supprimer">
             <i class="fas fa-trash"></i>
         </button>
+        @endcanany
     </div>
 </div>
