@@ -651,6 +651,16 @@
 @media(max-width:768px){.announcements-page .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.announcements-page .stat-card{flex-direction:row;text-align:left;padding:12px;gap:10px}.announcements-page .stat-icon{width:36px;height:36px;min-width:36px}.ann-workspace .ann-table-wrap{display:none}.ann-workspace .annonces-grid{display:grid}.ann-workspace-heading{padding:18px 16px}.ann-filter-primary{padding:0 16px 14px}.ann-advanced{margin:0 16px}.ann-filter-bottom{padding:12px 16px}.ann-result-heading{padding:12px 16px}.ann-result-hint{display:none}}
 @media(min-width:769px){.ann-workspace .annonces-grid{display:none}}
 @media(max-width:540px){.ann-filter-primary{grid-template-columns:1fr}.ann-search-field{grid-column:auto}.ann-advanced-grid{grid-template-columns:1fr}.ann-workspace .annonce-card-info{grid-template-columns:repeat(2,minmax(0,1fr))}.ann-filter-bottom>span{display:none}.announcements-page .stat-content h3{font-size:1.2rem}.announcements-page .stat-content p{font-size:.69rem}}
+/* L'index ne doit pas hériter d'un second espace en haut du shell. */
+.nextadmin-content:has(> .announcements-page){padding-top:12px!important}
+.announcements-page{min-height:0}
+.announcements-page > .main-content{padding-top:0!important;margin-top:0!important}
+/* Le composant premium est inline-flex/flex:1 par défaut : dans une grille il
+   suit la largeur de son libellé sans cette contrainte sur le wrapper entier. */
+.ann-workspace .ann-filter-select{display:flex;flex-direction:column;align-items:stretch;width:100%;min-width:0}
+.ann-workspace .ann-filter-select > .au-select{display:flex;flex:1 1 auto;width:100%;min-width:0;max-width:100%;align-self:stretch}
+.ann-workspace .ann-filter-select .au-select-trigger{width:100%;min-width:0;min-height:44px}
+.ann-workspace .ann-filter-select .au-select-value{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(prefers-reduced-motion:reduce){.announcements-page *, .ann-workspace *{animation:none!important;transition:none!important}}
 </style>
 @endsection
