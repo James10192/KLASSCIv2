@@ -331,6 +331,49 @@ class ESBTPAnnonceController extends Controller
     }
 
     /**
+     * AJAX only: inspect eligibility without scheduling anything.
+     * Dedicated send permission is required for the POST endpoint below.
+     */
+    public function diagnosticRelance(
+        ESBTPAnnonce $annonce,
+        \App\Services\Annonces\RelanceCourrielsAnnonce $relance
+    ): \Illuminate\Http\JsonResponse {
+        if (! $annonce->is_published || ! $annonce->email_notification_enabled) {
+            return response()->json(['message' => 'Cette annonce ne contient aucune campagne publiée.'], 422);
+        }
+        return response()->json($relance->candidats($annonce));
+    }
+
+    public function relancerCourriels(
+        Request $request,
+        ESBTPAnnonce $annonce,
+        \App\Services\Annonces\RelanceCourrielsAnnonce $relance
+    ): \Illuminate\Http\JsonResponse {
+        $donnees = $request->validate([
+            'delivery_ids' => ['required', 'array', 'min:1', 'max:50'],
+            'delivery_ids.*' => ['required', 'integer', 'distinct', 'min:1'],
+            'request_token' => ['required', 'uuid'],
+            'confirmation' => ['required', 'accepted'],
+        ]);
+        $bilan = $relance->programmer(
+            $annonce, $donnees['delivery_ids'],
+            (int) $request->user()->getKey(), $donnees['request_token']
+        );
+        if ($bilan['motif'] !== null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Relance bloquée : '.$bilan['motif'],
+                'bilan' => $bilan,
+            ], 409);
+        }
+        return response()->json([
+            'success' => true,
+            'message' => $bilan['acceptes'].' nouvelle(s) tentative(s) enregistrée(s), sans envoi dans la requête.',
+            'bilan' => $bilan,
+        ], 202);
+    }
+
+    /**
      * Vérifie si une annonce peut encore être modifiée (< 15 min après publication)
      */
     private function canEditAnnonce($annonce)
