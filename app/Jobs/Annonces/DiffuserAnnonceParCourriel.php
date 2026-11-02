@@ -28,6 +28,14 @@ class DiffuserAnnonceParCourriel implements ShouldQueue
 
     public function handle(?CiblageCourrielsAnnonce $ciblage = null): void
     {
+        // Delayed jobs run inline with the sync driver, and a release() cannot
+        // retain them for a later attempt. Never create an orphan campaign.
+        if (config('queue.default') === 'sync') {
+            \Illuminate\Support\Facades\Log::error('Campagne annonce bloquée : queue sync non persistante', [
+                'annonce_id' => $this->annonceId,
+            ]);
+            return;
+        }
         $ciblage ??= app(CiblageCourrielsAnnonce::class);
         $annonce = ESBTPAnnonce::find($this->annonceId);
         if (! $annonce || ! $annonce->is_published || ! $annonce->email_notification_enabled
