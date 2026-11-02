@@ -32,7 +32,10 @@ final class ReferenceCourrielAnnonce
      */
     public static function tentative(string $tenant, int $annonceId, int $livraisonId, int $numero): ?string
     {
-        if (! self::tenantValide($tenant) || $annonceId < 1 || $livraisonId < 1 || $numero < 2) {
+        // MailPulse's JS parser rejects integers beyond Number.MAX_SAFE_INTEGER.
+        if (! self::tenantValide($tenant) || $annonceId < 1 || $livraisonId < 1 || $numero < 2
+            || $annonceId > 9007199254740991 || $livraisonId > 9007199254740991
+            || $numero > 9007199254740991) {
             return null;
         }
 
@@ -49,7 +52,10 @@ final class ReferenceCourrielAnnonce
             || ! preg_match('/^klassci-v3-([a-z0-9][a-z0-9_-]{1,62})-annonce-([1-9][0-9]*)-courriel-([1-9][0-9]*)-essai-([2-9]|[1-9][0-9]+)$/D', $reference, $match)
             || ! hash_equals($tenant, $match[1])
             || ! self::identifiantsValides($match[2], $match[3])
-            || ! self::identifiantsValides($match[4], $match[4])) {
+            || ! self::identifiantsValides($match[4], $match[4])
+            || (int) $match[2] > 9007199254740991
+            || (int) $match[3] > 9007199254740991
+            || (int) $match[4] > 9007199254740991) {
             return null;
         }
 
