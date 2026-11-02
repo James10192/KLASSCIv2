@@ -77,6 +77,11 @@ final class ReferenceCourrielAnnonce
             return null;
         }
         $stockee = (string) ($ligne->mailpulse_request_id ?? '');
+        // A v3 attempt may only be dispatched by EnvoyerTentativeAnnonceCourriel,
+        // never through the historical delivery job.
+        if (str_starts_with($stockee, 'klassci-v3-')) {
+            return null;
+        }
         if (str_starts_with($stockee, 'klassci-v2-')) {
             return hash_equals($nouvelle, $stockee) ? $stockee : null;
         }
@@ -91,6 +96,13 @@ final class ReferenceCourrielAnnonce
     public static function pourRapprochement(object $ligne, string $tenant): ?string
     {
         $stockee = (string) ($ligne->mailpulse_request_id ?? '');
+        if (str_starts_with($stockee, 'klassci-v3-')) {
+            $essai = self::extraireTentative($stockee, $tenant);
+
+            return $essai !== null
+                && $essai['annonce_id'] === (int) $ligne->annonce_id
+                && $essai['livraison_id'] === (int) $ligne->id ? $stockee : null;
+        }
         if (str_starts_with($stockee, 'klassci-v2-')) {
             $attendue = self::nouvelle($tenant, (int) $ligne->annonce_id, (int) $ligne->id);
 
