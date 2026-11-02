@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Services\ReeinscriptionService;
 use App\Services\FuzzyNameMatcher;
 use App\Services\EnrollmentAmountVisibility;
-use App\Models\ESBTPRegleAcademique;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPNiveauEtude;
@@ -947,81 +946,6 @@ class ESBTPReinscriptionController extends Controller
             return $request->expectsJson()
                 ? response()->json(['message' => $message], 500)
                 : back()->withInput()->withErrors(['error' => $message]);
-        }
-    }
-
-    public function regles()
-    {
-        $regles = ESBTPRegleAcademique::all();
-        $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
-        $filieres = ESBTPFiliere::where('is_active', true)->get();
-        
-        return view('esbtp.reinscription.regles', compact('regles', 'niveaux', 'filieres'));
-    }
-
-    public function storeRegle(Request $request)
-    {
-        // Capturer les données validées pour éviter la vulnérabilité mass assignment
-        $validated = $request->validate([
-            'niveau' => 'required|string',
-            'filiere' => 'required|string',
-            'moyenne_passage' => 'required|numeric|min:0|max:20',
-            'moyenne_rattrapage' => 'required|numeric|min:0|max:20',
-            'max_matieres_rattrapage' => 'required|integer|min:1',
-            'autoriser_redoublement' => 'boolean',
-            'max_redoublements' => 'required|integer|min:1',
-            'conditions_speciales' => 'nullable|string'
-        ]);
-
-        try {
-            // Utiliser uniquement les données validées
-            ESBTPRegleAcademique::updateOrCreate(
-                [
-                    'niveau' => $validated['niveau'],
-                    'filiere' => $validated['filiere']
-                ],
-                $validated
-            );
-
-            return back()->with('success', 'Règle académique enregistrée avec succès');
-        } catch (\Exception $e) {
-            return back()->withErrors(['error' => 'Erreur lors de l\'enregistrement: ' . $e->getMessage()]);
-        }
-    }
-
-    public function updateRegle(Request $request, $id)
-    {
-        // Capturer les données validées pour éviter la vulnérabilité mass assignment
-        $validated = $request->validate([
-            'moyenne_passage' => 'required|numeric|min:0|max:20',
-            'moyenne_rattrapage' => 'required|numeric|min:0|max:20',
-            'max_matieres_rattrapage' => 'required|integer|min:1',
-            'autoriser_redoublement' => 'boolean',
-            'max_redoublements' => 'required|integer|min:1',
-            'conditions_speciales' => 'nullable|string',
-            'actif' => 'boolean'
-        ]);
-
-        try {
-            $regle = ESBTPRegleAcademique::findOrFail($id);
-            // Utiliser uniquement les données validées
-            $regle->update($validated);
-
-            return back()->with('success', 'Règle académique mise à jour avec succès');
-        } catch (\Exception $e) {
-            return back()->withErrors(['error' => 'Erreur lors de la mise à jour: ' . $e->getMessage()]);
-        }
-    }
-
-    public function destroyRegle($id)
-    {
-        try {
-            $regle = ESBTPRegleAcademique::findOrFail($id);
-            $regle->delete();
-
-            return back()->with('success', 'Règle académique supprimée avec succès');
-        } catch (\Exception $e) {
-            return back()->withErrors(['error' => 'Erreur lors de la suppression: ' . $e->getMessage()]);
         }
     }
 
