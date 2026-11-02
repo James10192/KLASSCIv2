@@ -156,7 +156,7 @@
          x-on:keydown.escape.window="dismiss()" x-trap.noscroll="confirmDelete">
         <div class="arp-dialog arp-dialog--small" role="alertdialog" aria-modal="true" aria-labelledby="arp-delete-title">
             <div class="arp-dialog-head"><div><div class="arp-eyebrow">Confirmation</div><h2 id="arp-delete-title">Supprimer cette règle ?</h2><p>La règle ne sera plus utilisée pour les prochaines décisions.</p></div></div>
-            <div class="arp-dialog-body"><strong x-text="(selected?.niveau || '')+' · '+(selected?.filiere || '')"></strong></div>
+            <div class="arp-dialog-body"><strong x-text="(selected?.niveau || '')+' · '+(selected?.filiere || '')"></strong><p class="arp-error" role="alert" x-show="fieldError('general')" x-text="fieldError('general')"></p></div>
             <div class="arp-dialog-foot">
                 <button type="button" class="arp-button arp-button--neutral" x-on:click="dismiss()">Conserver</button>
                 <button type="button" class="arp-button arp-button--danger" :disabled="loading" x-on:click="destroy()"><i class="fas fa-trash-alt" aria-hidden="true"></i><span x-text="loading ? 'Suppression…' : 'Supprimer'"></span></button>
