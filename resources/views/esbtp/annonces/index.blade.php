@@ -664,10 +664,6 @@
                 <p class="header-subtitle">Diffusez des informations aux classes et aux étudiants.</p>
             </div>
             <div class="header-actions">
-                <button class="btn-modern secondary" onclick="window.location.reload()">
-                    <i class="fas fa-sync-alt"></i>
-                    Actualiser
-                </button>
                 @if(auth()->user()->can('annonces.create'))
                 <a href="{{ route('esbtp.annonces.create') }}" class="btn-modern primary">
                     <i class="fas fa-plus"></i>
@@ -855,8 +851,6 @@
             </div>
         </div>
     </div>
-
-    </div>
 </div>
 @endsection
 
@@ -870,6 +864,7 @@
     const search = document.getElementById('searchInput');
     let controller = null;
     let debounce = null;
+    let resetting = false;
 
     async function filter(url) {
         controller?.abort();
@@ -912,13 +907,25 @@
     }
     form.addEventListener('submit', apply);
     form.addEventListener('change', event => {
-        if (event.target !== search) apply();
+        if (!resetting && event.target !== search) apply();
     });
     search.addEventListener('input', () => {
         clearTimeout(debounce);
         debounce = setTimeout(apply, 350);
     });
-    // La réinitialisation navigue vers la route GET, repli fiable si JS absent.
+    document.getElementById('ann-reset-filters').addEventListener('click', event => {
+        event.preventDefault();
+        resetting = true;
+        clearTimeout(debounce);
+        search.value = '';
+        form.querySelectorAll('input[type="date"]').forEach(input => { input.value = ''; });
+        form.querySelectorAll('select[name]').forEach(select => {
+            select.value = '';
+            select.dispatchEvent(new Event('change', {bubbles: true}));
+        });
+        resetting = false;
+        apply();
+    });
 })();
 
 // Fonction de suppression d'annonce via modal Bootstrap
