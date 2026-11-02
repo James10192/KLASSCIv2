@@ -53,7 +53,8 @@ class CorbeilleDemandesTest extends TestCase
         Cache::flush();
 
         $filiere = ESBTPFiliere::factory()->create();
-        $niveau = ESBTPNiveauEtude::factory()->create();
+        $niveau = ESBTPNiveauEtude::factory()->create(['year' => 1, 'type' => 'BTS']);
+        $niveauSuivant = ESBTPNiveauEtude::factory()->create(['year' => 2, 'type' => 'BTS']);
 
         $anneePassee = ESBTPAnneeUniversitaire::factory()->create([
             'name' => '2024-2025', 'start_date' => '2024-09-01', 'end_date' => '2025-07-31', 'is_current' => false,
@@ -66,7 +67,7 @@ class CorbeilleDemandesTest extends TestCase
             'name' => 'BTS1 A', 'filiere_id' => $filiere->id, 'niveau_etude_id' => $niveau->id, 'is_active' => true,
         ]);
         $this->classeCible = ESBTPClasse::factory()->create([
-            'name' => 'BTS2 A', 'filiere_id' => $filiere->id, 'niveau_etude_id' => $niveau->id, 'is_active' => true,
+            'name' => 'BTS2 A', 'filiere_id' => $filiere->id, 'niveau_etude_id' => $niveauSuivant->id, 'is_active' => true,
         ]);
 
         $this->etudiant = ESBTPEtudiant::factory()->create(['matricule' => 'DEMO-0002']);
@@ -124,6 +125,17 @@ class CorbeilleDemandesTest extends TestCase
         $this->convertir()->assertSessionHas('error');
 
         $this->assertSame($apresPremiere, $this->inscriptionsSurAnneeCible());
+    }
+
+    public function test_un_passage_bts_ne_peut_pas_reinscrire_dans_la_classe_quittee(): void
+    {
+        $this->post(route('esbtp.reinscription-demandes.convertir', $this->demande), [
+            'classe_id' => $this->demande->classe_souhaitee_id,
+            'decision' => 'passage',
+        ])->assertSessionHas('error');
+
+        $this->assertSame(0, $this->inscriptionsSurAnneeCible());
+        $this->assertSame(ESBTPReinscriptionDemande::STATUT_EN_ATTENTE, $this->demande->fresh()->statut);
     }
 
     public function test_un_etudiant_deja_inscrit_sur_l_annee_cible_ne_se_convertit_pas(): void

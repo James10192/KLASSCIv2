@@ -135,11 +135,18 @@ final class ReinscriptionDashboardStats
                             ->values();
 
                         [$moyenne, $nbEchecs] = $this->moyenneEtEchecs($notes, (float) $regle->moyenne_passage);
-                        $moyenne = $this->moyennesAnnuelles->decision(
+                        $analyse = $this->moyennesAnnuelles->decision(
                             $inscription, $classe, $annuelles[(int) $inscription->id] ?? null, $moyenne, $notes->isEmpty()
-                        )['moyenne'];
+                        );
+                        $moyenne = $analyse['moyenne'];
+                        $seuilConseil = $analyse['semestres']['seuil_conseil'] ?? null;
 
-                        if ($regle->peutPasser($moyenne)) {
+                        if ($moyenne === null) {
+                            $stats['errors']++;
+                        } elseif ($seuilConseil !== null) {
+                            // Même décision automatique BTS que la fiche, sans repli à 12/20.
+                            $stats[(float) $moyenne >= (float) $seuilConseil ? 'passages' : 'redoublements']++;
+                        } elseif ($regle->peutPasser($moyenne)) {
                             $stats['passages']++;
                         } elseif ($regle->peutRattraper($moyenne) && $nbEchecs <= (int) $regle->max_matieres_rattrapage) {
                             $stats['rattrapages']++;
