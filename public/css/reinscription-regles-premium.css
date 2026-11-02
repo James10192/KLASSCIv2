@@ -20,6 +20,9 @@
 .arp-metrics{display:flex;gap:.8rem;flex-wrap:wrap;margin-top:1.4rem}
 .arp-metric{display:flex;align-items:center;gap:.65rem;flex:1;min-width:130px;border-radius:12px;padding:.75rem 1rem;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2)}
 .arp-metric i{font-size:1.1rem}.arp-metric strong{display:block;font-size:1.3rem;line-height:1.15;color:#fff;font-variant-numeric:tabular-nums}.arp-metric span{font-size:.75rem;color:rgba(255,255,255,.83)}
+.arp-policy{display:flex;align-items:flex-start;gap:.85rem;margin-bottom:1.1rem;padding:.95rem 1.15rem;border:1px solid #bfdbfe;border-radius:13px;background:#f3f8ff;color:#1e3a8a;font-size:.8rem}
+.arp-policy>i{margin-top:.2rem;font-size:1rem}.arp-policy>div{flex:1;min-width:0}.arp-policy strong{display:block;font-size:.86rem;margin-bottom:.2rem}.arp-policy span{display:block;line-height:1.45}.arp-policy a{color:#0346a9;font-weight:700;white-space:nowrap}
+@media(max-width:610px){.arp-policy{flex-wrap:wrap}.arp-policy a{margin-left:1.8rem}}
 .arp-panel{border:1px solid var(--arp-border);border-radius:17px;background:#fff;box-shadow:0 4px 20px rgba(15,23,42,.04);overflow:hidden}
 .arp-panel-top{padding:1.15rem 1.35rem;border-bottom:1px solid var(--arp-border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem}
 .arp-panel-top h2{font-size:1.05rem;font-weight:730;letter-spacing:-.01em;margin:0}
