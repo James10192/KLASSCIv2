@@ -127,6 +127,17 @@ class CorbeilleDemandesTest extends TestCase
         $this->assertSame($apresPremiere, $this->inscriptionsSurAnneeCible());
     }
 
+    public function test_un_passage_bts_ne_peut_pas_reinscrire_dans_la_classe_quittee(): void
+    {
+        $this->post(route('esbtp.reinscription-demandes.convertir', $this->demande), [
+            'classe_id' => $this->demande->classe_souhaitee_id,
+            'decision' => 'passage',
+        ])->assertSessionHas('error');
+
+        $this->assertSame(0, $this->inscriptionsSurAnneeCible());
+        $this->assertSame(ESBTPReinscriptionDemande::STATUT_EN_ATTENTE, $this->demande->fresh()->statut);
+    }
+
     public function test_un_etudiant_deja_inscrit_sur_l_annee_cible_ne_se_convertit_pas(): void
     {
         // Cas reel : l'ecole a inscrit l'etudiant au guichet entre le depot de
