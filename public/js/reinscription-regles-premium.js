@@ -49,7 +49,7 @@ window.reglesPremium = function (element) {
                 const data=await this.request(endpoint+'/'+encodeURIComponent(id),'DELETE');
                 this.rules=this.rules.filter(rule=>rule.id!==id);
                 this.confirmDelete=false;this.feedback=data.message||'Règle supprimée.';
-            }catch(error){this.errors.general=[error.message];this.confirmDelete=false;this.open=true;}
+            }catch(error){this.errors.general=[error.message];}
             finally{this.loading=false;}
         }
     };
