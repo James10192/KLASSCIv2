@@ -590,6 +590,16 @@ class ReeinscriptionService
             }
 
             $nouvelleClasse = ESBTPClasse::findOrFail($nouvelleClasseId);
+            // Pas de passage BTS vers le même niveau ou un niveau inférieur.
+            // La protection serveur complète la proposition AJAX : une requête
+            // forgée ne doit pas transformer un admis en redoublant.
+            $ancienneClasse = $inscriptionActuelle->classe;
+            if ($decision === 'passage' && $ancienneClasse?->isBTS() && $nouvelleClasse->isBTS()
+                && (int) ($nouvelleClasse->niveau?->year ?? 0) <= (int) ($ancienneClasse->niveau?->year ?? 0)) {
+                throw new \App\Exceptions\ReinscriptionRefuseeException(
+                    "La décision « Passage » exige une classe BTS de niveau supérieur. Choisissez une classe adaptée."
+                );
+            }
 
             // Le redoublement se juge par rapport a l'annee QUITTEE, pas a la
             // derniere inscription creee : un etudiant accumule des inscriptions
