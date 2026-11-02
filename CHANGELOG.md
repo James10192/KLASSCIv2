@@ -12,6 +12,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Novembre 2026
 
+### Améliorations
+- **Suivi des annonces — diagnostic de relance en AJAX :** depuis la fiche, distinguer adresses rebondies, supprimées, autres échecs et e-mails encore en traitement sans recharger la page ni réexpédier de messages. Les relances restent bloquées tant que les essais immuables, la confirmation MailPulse et les permissions d'envoi ne sont pas prêts.
+
 ### Communication — 2 novembre
 - **Annonces index :** choix premium pleine largeur, suppression du double espace supérieur dans la mise en page.
 - **Annonces show :** navigation par pages invisible en mode défilement infini (mais conservée pour les liens AJAX et sans JavaScript) ; tableau des destinataires aligné, lisible, en-tête fixe, défilement autonome.
