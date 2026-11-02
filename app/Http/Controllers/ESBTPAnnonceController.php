@@ -146,8 +146,13 @@ class ESBTPAnnonceController extends Controller
                 : $query->where(fn ($q) => $q->whereNull('piece_jointe')->orWhere('piece_jointe', ''));
         }
         if (!empty($f['auteur'])) $query->where('created_by', (int) $f['auteur']);
-        if (!empty($f['created_from'])) $query->whereDate('created_at', '>=', $f['created_from']);
-        if (!empty($f['created_to'])) $query->whereDate('created_at', '<=', $f['created_to']);
+        // Bornes indexables, sans fonction SQL sur created_at.
+        if (!empty($f['created_from'])) {
+            $query->where('created_at', '>=', \Illuminate\Support\Carbon::parse($f['created_from'])->startOfDay());
+        }
+        if (!empty($f['created_to'])) {
+            $query->where('created_at', '<', \Illuminate\Support\Carbon::parse($f['created_to'])->addDay()->startOfDay());
+        }
         switch ($f['tri'] ?? 'recent') {
             case 'ancien': $query->orderBy('created_at'); break;
             case 'priorite': $query->orderByDesc('priorite')->orderByDesc('created_at'); break;
