@@ -33,6 +33,32 @@ final class RelanceCourrielsAnnonce
         return max(1, min(50, (int) Setting::get('annonces_email_retry_max_batch', '10')));
     }
 
+    /** Simple bounded read-only diagnosis. Remote proofs are checked on POST. */
+    public function candidats(ESBTPAnnonce $annonce): array
+    {
+        $base = DB::table('esbtp_annonce_email_deliveries')->where('annonce_id', $annonce->id);
+        $bounces = (clone $base)->where('status', 'failed')
+            ->whereIn('error_code', self::SUPPRESSIONS)->count();
+        $autres = (clone $base)->where('status', 'failed')
+            ->whereNotIn('error_code', array_merge(self::SUPPRESSIONS, self::REFUS_AVANT_FOURNISSEUR))->count();
+        $candidats = (clone $base)->where('status', 'failed')
+            ->whereIn('error_code', self::REFUS_AVANT_FOURNISSEUR)
+            ->whereNotNull('mailpulse_message_id')
+            ->whereNotNull('mailpulse_request_id')
+            ->orderBy('id')->limit($this->limite())->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        return [
+            'autorisee' => $this->autorisee(),
+            'limite' => $this->limite(),
+            'candidats' => $candidats,
+            'candidats_count' => (clone $base)->where('status', 'failed')
+                ->whereIn('error_code', self::REFUS_AVANT_FOURNISSEUR)->count(),
+            'rebonds' => $bounces,
+            'autres_echecs' => $autres,
+            'info' => 'Les candidats ne seront relancés que si MailPulse prouve un échec avant tout appel fournisseur.',
+        ];
+    }
+
     /** @return array{acceptes:int,exclus:int,dupliques:int,motif:string|null} */
     public function programmer(ESBTPAnnonce $annonce, array $ids, int $auteur, string $requete): array
     {
