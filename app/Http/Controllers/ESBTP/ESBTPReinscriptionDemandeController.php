@@ -73,6 +73,11 @@ class ESBTPReinscriptionDemandeController extends Controller
             $analyse = [];
         }
         $decision = $analyse['decision'] ?? null;
+        // Le voeu conserve l'ancienne classe : un passage doit proposer les
+        // classes du niveau suivant, sans choisir arbitrairement entre elles.
+        $classesPourPassage = $decision === 'passage' && $quittee->classe
+            ? $classes->pour($quittee->classe, 'passage')->pluck('id')->values()->all()
+            : [];
         $statut = ESBTPEcheancierRule::normalizeStatus($quittee->affectation_status ?: ESBTPInscription::DEFAULT_AFFECTATION_STATUS);
 
         return response()->json([
@@ -81,6 +86,7 @@ class ESBTPReinscriptionDemandeController extends Controller
             'affectation_status' => $statut === ESBTPEcheancierRule::STATUS_ALL ? ESBTPInscription::DEFAULT_AFFECTATION_STATUS : $statut,
             'annee_quittee' => (string) $quittee->anneeUniversitaire?->name,
             'classe_quittee' => (string) $quittee->classe?->name,
+            'classes_pour_passage' => $classesPourPassage,
             'niveau_avant' => $niveauAvant,
         ]);
     }

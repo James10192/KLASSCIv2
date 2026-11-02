@@ -319,6 +319,41 @@ class AnalyseDecisionsReinscriptionTest extends TestCase
         $this->assertTrue($analyse['doit_redoubler']);
     }
 
+
+    public function test_seuil_bts_10_prevoit_passage_meme_si_regle_de_reinscription_reste_a_12(): void
+    {
+        [$etudiant, $inscription] = $this->eleveAvecBulletins(10.0, 10.0, noteBrute: 8.0);
+        SettingsHelper::setOrCreate('bulletin_bts1_council_mode', 'threshold');
+        SettingsHelper::setOrCreate('bulletin_bts1_council_average_source', 'annual');
+        SettingsHelper::setOrCreate('bulletin_bts1_council_threshold', '10');
+        ESBTPRegleAcademique::where('niveau', $inscription->classe->niveau->name)
+            ->where('filiere', $inscription->classe->filiere->name)
+            ->update(['moyenne_passage' => 12, 'max_matieres_rattrapage' => 0]);
+
+        $analyse = app(ReeinscriptionService::class)->analyserSituationEtudiantParInscription($inscription);
+        $this->assertSame('passage', $analyse['decision']);
+        $this->assertTrue($analyse['peut_passer']);
+        $this->assertFalse($analyse['doit_redoubler']);
+
+        $liste = app(ReeinscriptionService::class)->getEtudiantsParDecision('2025-2026');
+        $this->assertContains($etudiant->id, collect($liste['passages'])->pluck('etudiant.id')->all());
+    }
+
+    public function test_moyenne_sous_seuil_bts_ne_passe_pas_meme_si_regle_reinscription_plus_basse(): void
+    {
+        [, $inscription] = $this->eleveAvecBulletins(9.99, 9.99, noteBrute: 17.0);
+        SettingsHelper::setOrCreate('bulletin_bts1_council_mode', 'threshold');
+        SettingsHelper::setOrCreate('bulletin_bts1_council_average_source', 'annual');
+        SettingsHelper::setOrCreate('bulletin_bts1_council_threshold', '10');
+        ESBTPRegleAcademique::where('niveau', $inscription->classe->niveau->name)
+            ->where('filiere', $inscription->classe->filiere->name)
+            ->update(['moyenne_passage' => 8]);
+
+        $analyse = app(ReeinscriptionService::class)->analyserSituationEtudiantParInscription($inscription);
+        $this->assertSame('redoublement', $analyse['decision']);
+        $this->assertFalse($analyse['peut_passer']);
+    }
+
     /**
      * @return array{0: ESBTPEtudiant, 1: ESBTPInscription}
      */

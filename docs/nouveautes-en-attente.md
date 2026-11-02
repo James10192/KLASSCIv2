@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-11-02 · PR à attribuer · Réinscription BTS : décision de conseil automatique et proposition de passage alignées dès le seuil configuré ; page Règles académiques repensée en premium, création/modification/suppression AJAX sans rechargement, sélecteurs premium et adaptation mobile. Tester sur présentation avant diffusion aux établissements.
 - 2026-11-02 · #1756 · Annonces : selects pleine largeur, en-tête compact, journal de diffusion en défilement infini sans pagination visible ; courriels harmonisés avec le style clair « Encaissements en retard » (ancien modèle conservé).
 - 2026-11-02 · #1752 · Annonces : recherche globale et filtres avancés sans rechargement, listes incrémentales, aperçu e-mail stable et destinataires consultables dans un espace compact sur téléphone comme ordinateur.
 - 2026-11-01 · Planning général : les boutons de configuration et de code d'émargement n'apparaissent plus sans la permission de gestion ; enseignants à rôle personnalisé proposés à la création d'évaluation

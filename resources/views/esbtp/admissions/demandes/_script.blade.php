@@ -327,6 +327,7 @@ window.demandesInscription = function () {
             if (this.reins.annee_id === annee.id) return;
             this.reins.annee_id = annee.id;
             this.reins.annee_echue_confirmee = false;
+            this.reins.classe_id = this.dossier?.classe || null;
             // La proposition de l'ancienne annee ne vaut plus : la question attend la nouvelle.
             this.reins.proposition = null;
             // La reponse portait sur la proposition de l'autre annee.
@@ -352,9 +353,26 @@ window.demandesInscription = function () {
                 this.reins.proposition = d;
                 if (!this.reins.decisionTouchee && d.decision) this.reins.decision = d.decision;
                 if (!this.reins.affectationTouchee && d.affectation_status) this.reins.affectation_status = d.affectation_status;
+                this.preselectionnerClasseDePassage();
             } catch (e) { /* La proposition est une aide : sans elle, l'agent choisit. */ }
         },
-        choisirDecisionReins(valeur) { this.reins.decision = valeur; this.reins.decisionTouchee = true; },
+        choisirDecisionReins(valeur) { this.reins.decision = valeur; this.reins.decisionTouchee = true; this.preselectionnerClasseDePassage(); },
+        // Une demande garde historiquement la classe quittée. Quand le conseil
+        // propose le passage, on ne la conserve pas par défaut en BTS 1.
+        preselectionnerClasseDePassage() {
+            if (!this.reins.proposition || this.reins.decision !== 'passage') return;
+            const admissibles = (this.reins.proposition.classes_pour_passage || []).map(String);
+            const actuel = this.reins.classe_id;
+            const initial = this.dossier?.classe;
+            const candidates = (this.reins.classes || this.classes || []).filter(
+                classe => admissibles.includes(String(classe.id)) && !classe.complete
+            );
+            const estChoixInitial = actuel == null || String(actuel) === String(initial);
+            if (!estChoixInitial && admissibles.includes(String(actuel))) return;
+            // Plusieurs classes possibles : l'école choisit, on ne tranche pas à sa place.
+            this.reins.classe_id = candidates.length === 1 ? candidates[0].id : null;
+            this.reins.redo = { valeur: '', motif: '' };
+        },
         choisirAffectationReins(valeur) { this.reins.affectation_status = valeur; this.reins.affectationTouchee = true; },
         /* Les places se recomptent sur l'annee choisie ; une reponse perimee est ignoree. */
         async chargerClassesReins(anneeId) {
@@ -364,7 +382,10 @@ window.demandesInscription = function () {
             this.reins.placesErreur = false;
             try {
                 const d = await this.appeler(this.cfg.classesParAnnee + '?annee=' + encodeURIComponent(anneeId));
-                if (jeton === this.jetonPlacesReins && d.annee_universitaire_id === this.reins.annee_id) this.reins.classes = d.classes || [];
+                if (jeton === this.jetonPlacesReins && d.annee_universitaire_id === this.reins.annee_id) {
+                    this.reins.classes = d.classes || [];
+                    this.preselectionnerClasseDePassage();
+                }
             } catch (e) {
                 if (jeton !== this.jetonPlacesReins) return;
                 this.reins.placesErreur = true;
