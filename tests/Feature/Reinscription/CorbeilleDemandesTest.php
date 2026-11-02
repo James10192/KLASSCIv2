@@ -53,7 +53,8 @@ class CorbeilleDemandesTest extends TestCase
         Cache::flush();
 
         $filiere = ESBTPFiliere::factory()->create();
-        $niveau = ESBTPNiveauEtude::factory()->create();
+        $niveau = ESBTPNiveauEtude::factory()->create(['year' => 1, 'type' => 'BTS']);
+        $niveauSuivant = ESBTPNiveauEtude::factory()->create(['year' => 2, 'type' => 'BTS']);
 
         $anneePassee = ESBTPAnneeUniversitaire::factory()->create([
             'name' => '2024-2025', 'start_date' => '2024-09-01', 'end_date' => '2025-07-31', 'is_current' => false,
@@ -66,7 +67,7 @@ class CorbeilleDemandesTest extends TestCase
             'name' => 'BTS1 A', 'filiere_id' => $filiere->id, 'niveau_etude_id' => $niveau->id, 'is_active' => true,
         ]);
         $this->classeCible = ESBTPClasse::factory()->create([
-            'name' => 'BTS2 A', 'filiere_id' => $filiere->id, 'niveau_etude_id' => $niveau->id, 'is_active' => true,
+            'name' => 'BTS2 A', 'filiere_id' => $filiere->id, 'niveau_etude_id' => $niveauSuivant->id, 'is_active' => true,
         ]);
 
         $this->etudiant = ESBTPEtudiant::factory()->create(['matricule' => 'DEMO-0002']);
