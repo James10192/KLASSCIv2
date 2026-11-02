@@ -7,7 +7,7 @@
     $service = 'Prospection · KLASSCI';
     $raison = "Message interne généré à partir du formulaire de demande de démonstration KLASSCI.";
 @endphp
-@extends('esbtp.emails.parents.recu', ['schoolName' => 'KLASSCI', 'schoolAddress' => null, 'schoolPhone' => null, 'schoolEmail' => null])
+@extends('esbtp.emails.parents.recu', ['schoolName' => 'KLASSCI', 'schoolAddress' => '', 'schoolPhone' => '', 'schoolEmail' => '', 'schoolLogoUrl' => '', 'emailPrimaryColor' => '#0453cb'])
 
 @section('preheader')Demande de démonstration reçue le {{ $date_demande }} de {{ $etablissement }}.
 @endsection
@@ -36,6 +36,7 @@
 @include('esbtp.emails.parents.partials.citation', [
     'titre' => 'Message du prospect',
     'texte' => $message,
+    'ton' => '#0453cb',
 ])
 @endif
 @include('esbtp.emails.parents.partials.intertitre', ['texte' => "Informations techniques"])
