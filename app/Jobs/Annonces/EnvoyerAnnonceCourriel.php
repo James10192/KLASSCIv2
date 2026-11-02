@@ -84,24 +84,7 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
             return; // A mismatching previously pinned v2 key is never sent.
         }
 
-        // Un hard-bounce, une plainte ou une suppression antérieure sur cette
-        // instance bloque l'adresse AVANT la moindre soumission HTTP.
-        if (SuppressionCourrielAnnonce::estBloquee((string) $ligne->email)) {
-            DB::table('esbtp_annonce_email_deliveries')
-                ->where('id', $this->deliveryId)
-                ->whereIn('status', ['pending', 'retrying'])
-                ->whereNull('submitted_at')
-                ->whereNull('mailpulse_message_id')
-                ->whereNull('provider_delivered_at')
-                ->update([
-                    'status' => 'failed',
-                    'error_code' => 'suppressed_by_history',
-                    'processing_at' => null,
-                    'updated_at' => now(),
-                ]);
-            Log::notice('Annonce : adresse bloquee par historique local de delivrabilite', [
-                'livraison_id' => $this->deliveryId,
-            ]);
+        if ($this->bloquerAdresseSupprimee($ligne)) {
             return;
         }
 
@@ -270,6 +253,35 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
             $this->statut('retrying', ['error_code' => 'pre_submission_exception']);
             throw $e; // no HTTP submission has started; queue backoff applies
         }
+    }
+
+    /**
+     * Les signaux terminaux de délivrabilité de cette instance interdisent
+     * une nouvelle soumission, même sur une annonce différente.
+     * La liste de suppression fournisseur doit rester un garde additionnel.
+     */
+    private function bloquerAdresseSupprimee(object $ligne): bool
+    {
+        if (! SuppressionCourrielAnnonce::estBloquee((string) $ligne->email)) {
+            return false;
+        }
+        DB::table('esbtp_annonce_email_deliveries')
+            ->where('id', $this->deliveryId)
+            ->whereIn('status', ['pending', 'retrying'])
+            ->whereNull('submitted_at')
+            ->whereNull('mailpulse_message_id')
+            ->whereNull('provider_delivered_at')
+            ->update([
+                'status' => 'failed',
+                'error_code' => 'suppressed_by_history',
+                'processing_at' => null,
+                'updated_at' => now(),
+            ]);
+        Log::notice('Annonce : adresse bloquee par historique local de delivrabilite', [
+            'livraison_id' => $this->deliveryId,
+        ]);
+
+        return true;
     }
 
     private function reporter(int $attente, string $code): void
