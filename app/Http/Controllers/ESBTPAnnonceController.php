@@ -109,28 +109,80 @@ class ESBTPAnnonceController extends Controller
      */
     public function index(Request $request)
     {
-        $annonces = ESBTPAnnonce::with(['classes', 'etudiants', 'user'])
-            ->orderBy('created_at', 'desc')
-            // Departage stable : la liste se charge par tranches.
-            ->orderBy('id', 'desc')
-            ->paginate(10);
-
-        // La suite : en lignes de tableau sur ordinateur, en cartes sur telephone.
+        // Les filtres s'appliquent en SQL AVANT la pagination et le chargement infini.
+        $f = $request->validate([
+            'q' => 'nullable|string|max:150',
+            'statut' => 'nullable|in:active,publiee,brouillon,expiree',
+            'type' => 'nullable|in:general,classe,etudiant',
+            'priorite' => 'nullable|in:0,1,2',
+            'email' => 'nullable|in:oui,non',
+            'piece_jointe' => 'nullable|in:oui,non',
+            'auteur' => 'nullable|integer|min:1',
+            'created_from' => 'nullable|date_format:Y-m-d',
+            'created_to' => 'nullable|date_format:Y-m-d',
+            'tri' => 'nullable|in:recent,ancien,priorite,expiration',
+        ]);
+        if (!empty($f['created_from']) && !empty($f['created_to'])
+            && $f['created_to'] < $f['created_from']) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'created_to' => 'La date de fin doit suivre la date de début.',
+            ]);
+        }
+        $query = ESBTPAnnonce::query()->with('user:id,name');
+        $term = trim($f['q'] ?? '');
+        if ($term !== '') {
+            $query->where(fn ($q) => $q->where('titre', 'like', '%' . $term . '%')
+                ->orWhere('contenu', 'like', '%' . $term . '%'));
+        }
+        switch ($f['statut'] ?? '') {
+            case 'active': $query->actives(); break;
+            case 'publiee': $query->where('is_published', true); break;
+            case 'brouillon': $query->where('is_published', false); break;
+            case 'expiree': $query->whereNotNull('date_expiration')->where('date_expiration', '<', now()); break;
+        }
+        foreach (['type', 'priorite'] as $column) {
+            if (isset($f[$column]) && $f[$column] !== '') $query->where($column, $f[$column]);
+        }
+        if (isset($f['email']) && $f['email'] !== '') {
+            $query->where('email_notification_enabled', $f['email'] === 'oui');
+        }
+        if (isset($f['piece_jointe']) && $f['piece_jointe'] !== '') {
+            $f['piece_jointe'] === 'oui'
+                ? $query->whereNotNull('piece_jointe')->where('piece_jointe', '<>', '')
+                : $query->where(fn ($q) => $q->whereNull('piece_jointe')->orWhere('piece_jointe', ''));
+        }
+        if (!empty($f['auteur'])) $query->where('created_by', (int) $f['auteur']);
+        // Bornes indexables, sans fonction SQL sur created_at.
+        if (!empty($f['created_from'])) {
+            $query->where('created_at', '>=', \Illuminate\Support\Carbon::parse($f['created_from'])->startOfDay());
+        }
+        if (!empty($f['created_to'])) {
+            $query->where('created_at', '<', \Illuminate\Support\Carbon::parse($f['created_to'])->addDay()->startOfDay());
+        }
+        switch ($f['tri'] ?? 'recent') {
+            case 'ancien': $query->orderBy('created_at'); break;
+            case 'priorite': $query->orderByDesc('priorite')->orderByDesc('created_at'); break;
+            case 'expiration': $query->orderByRaw('date_expiration IS NULL ASC')->orderBy('date_expiration'); break;
+            default: $query->orderByDesc('created_at');
+        }
+        $annonces = $query->orderByDesc('id')->paginate(12)->withQueryString();
         if (ListeInfinie::demandee($request)) {
             $vue = $request->input('vue') === 'grille' ? 'esbtp.annonces._carte' : 'esbtp.annonces._ligne';
-
             return ListeInfinie::reponse($annonces, fn ($annonce) => view($vue, compact('annonce'))->render());
         }
-
-        // Préparation des statistiques
+        if ($request->ajax() && $request->input('mode') === 'filtered') {
+            return view('esbtp.annonces._resultats', compact('annonces'));
+        }
         $stats = [
             'total' => ESBTPAnnonce::count(),
             'published' => ESBTPAnnonce::where('is_published', true)->count(),
             'pending' => ESBTPAnnonce::where('is_published', false)->count(),
-            'urgent' => ESBTPAnnonce::where('priorite', 2)->count()
+            'urgent' => ESBTPAnnonce::where('priorite', 2)->count(),
         ];
-
-        return view('esbtp.annonces.index', compact('annonces', 'stats'));
+        $auteurs = \App\Models\User::query()
+            ->whereIn('id', ESBTPAnnonce::query()->whereNotNull('created_by')->select('created_by'))
+            ->orderBy('name')->get(['id', 'name']);
+        return view('esbtp.annonces.index', compact('annonces', 'stats', 'auteurs'));
     }
 
     /**
@@ -249,13 +301,16 @@ class ESBTPAnnonceController extends Controller
         $statuts = ['pending', 'processing', 'retrying', 'awaiting_dispatch',
             'submitted', 'delayed', 'delivered', 'failed'];
         $filtre = is_string($filtre) && in_array($filtre, $statuts, true) ? $filtre : null;
+        $courrielsQ = request()->query('courriels_q');
+        $courrielsQ = is_string($courrielsQ) ? trim(mb_substr($courrielsQ, 0, 150)) : '';
         $destinataires = DB::table('esbtp_annonce_email_deliveries')
             ->where('annonce_id', $annonce->id)
             ->when($filtre, fn ($q) => $q->where('status', $filtre))
-            ->select(['email', 'status', 'attempts', 'submitted_at',
+            ->when($courrielsQ !== '', fn ($q) => $q->where('email', 'like', '%' . $courrielsQ . '%'))
+            ->select(['id', 'email', 'status', 'attempts', 'submitted_at',
                 'provider_delivered_at', 'provider_delayed_at',
                 'provider_failed_at', 'error_code', 'updated_at'])
-            ->orderByDesc('updated_at')->paginate(25, ['*'], 'courriels_page')
+            ->orderByDesc('id')->paginate(25, ['*'], 'courriels_page')
             ->withQueryString();
         // Un filtre ou le défilement infini ne doivent pas recalculer le
         // gabarit HTML ni les statistiques scolaires de toute la page.
@@ -272,7 +327,7 @@ class ESBTPAnnonceController extends Controller
             ? app(\App\Services\Annonces\CourrielAnnonce::class)->html($annonce)
             : null;
         return view('esbtp.annonces.show', compact('annonce', 'courriels',
-            'destinataires', 'nombreEligibles', 'filtre', 'anneeCourriels', 'apercuCourriel', 'etatCampagneCourriels'));
+            'destinataires', 'nombreEligibles', 'filtre', 'courrielsQ', 'anneeCourriels', 'apercuCourriel', 'etatCampagneCourriels'));
     }
 
     /**

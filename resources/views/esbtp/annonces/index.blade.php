@@ -595,6 +595,63 @@
         justify-content: center;
     }
 }
+
+/* Skill Apple Design appliqué au système graphique KLASSCI. */
+.announcements-page .main-content{max-width:1600px;margin:auto;padding:clamp(12px,2.2vw,30px)!important}
+.announcements-page .announcement-header{padding:clamp(20px,2.2vw,32px);border-radius:20px;margin-bottom:18px;box-shadow:0 10px 26px rgba(4,83,203,.14)}
+.announcements-page .announcement-header h1{font-size:clamp(1.35rem,1.8vw,1.85rem);letter-spacing:-.035em;text-shadow:none}
+.announcements-page .stats-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.announcements-page .stat-card{padding:15px 16px;border-radius:16px;gap:12px;box-shadow:0 3px 13px rgba(15,23,42,.035)}
+.announcements-page .stat-card:hover{transform:none;box-shadow:0 7px 20px rgba(4,83,203,.07)}
+.announcements-page .stat-icon{width:40px;height:40px;min-width:40px;border-radius:12px;font-size:1rem;box-shadow:none}
+.announcements-page .stat-content h3{font-size:1.45rem;letter-spacing:-.04em}
+.announcements-page .stat-content p{font-size:.74rem}
+.ann-workspace{border-radius:20px;box-shadow:0 4px 24px rgba(15,23,42,.04);border:1px solid #e4eaf4}
+.ann-workspace-heading{padding:22px 24px 14px}
+.ann-eyebrow{font-size:.66rem;letter-spacing:.12em;font-weight:700;color:#4c7ac2;margin:0 0 6px}
+.ann-workspace-heading h2{font-size:1.15rem;font-weight:750;letter-spacing:-.025em;margin:0;color:#142744}
+.ann-workspace-heading>p:last-child{font-size:.8rem;color:#64748b;margin:4px 0 0}
+.ann-filter-primary{display:grid;grid-template-columns:minmax(210px,2fr) minmax(150px,1fr) minmax(150px,1fr) auto;gap:12px;align-items:end;padding:0 24px 14px}
+.ann-filter-primary>div,.ann-advanced-grid>div{min-width:0}
+.ann-search-field label,.ann-filter-select>label,.ann-date-field>label{display:block;margin:0 0 6px;font-size:.72rem;font-weight:700;color:#49617f}
+.ann-search-field .search-container{max-width:none;width:100%}
+.ann-search-field .search-input,.ann-date-field input{height:44px;min-width:0;width:100%;border:1px solid #dbe4f2;border-radius:11px;background:#fff;padding:0 12px;font-size:.82rem;color:#142744}
+.ann-search-field .search-input{padding-left:36px}
+.ann-search-field .search-input:focus,.ann-date-field input:focus{outline:2px solid rgba(4,83,203,.18);border-color:#0453cb}
+.ann-apply{min-height:44px;border:0;border-radius:11px;background:#0453cb;color:#fff;font-size:.81rem;font-weight:700;padding:0 17px;box-shadow:0 4px 12px rgba(4,83,203,.15);display:flex;gap:8px;align-items:center;justify-content:center}
+.ann-apply:hover{background:#124cb2}
+.ann-advanced{border-top:1px solid #edf2f9;margin:0 24px}
+.ann-advanced>summary{display:flex;align-items:center;gap:8px;padding:13px 0;cursor:pointer;font-size:.79rem;color:#0453cb;font-weight:700;list-style:none}
+.ann-advanced>summary::-webkit-details-marker{display:none}
+.ann-chevron{font-size:.65rem;transition:transform .2s}
+.ann-advanced[open] .ann-chevron{transform:rotate(180deg)}
+.ann-advanced-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;padding:8px 0 22px}
+.ann-filter-bottom{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 24px;border-top:1px solid #edf2f9;color:#718198;font-size:.73rem}
+.ann-filter-bottom a{color:#0453cb;text-decoration:none;font-weight:700;white-space:nowrap}
+.ann-result-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 24px;background:#f6f9fe;border-top:1px solid #edf2f9;border-bottom:1px solid #edf2f9}
+.ann-result-heading strong{color:#12345d;font-size:.85rem}.ann-result-heading span{color:#718198;font-size:.75rem}
+.ann-table-wrap{overflow-x:auto}
+.ann-workspace .modern-table{border-spacing:0;padding:0;margin:0;min-width:800px}
+.ann-workspace .modern-table thead th{padding:14px 18px;font-size:.69rem;letter-spacing:.04em;background:#f9fbff;border-bottom:1px solid #e8eef7;color:#61718b;white-space:nowrap}
+.ann-workspace .modern-table tbody td{padding:16px 18px;border:0;border-bottom:1px solid #eef2f8;border-radius:0;font-size:.81rem}
+.ann-workspace .modern-table tbody tr:hover{transform:none;box-shadow:none;background:#f7faff}
+.ann-workspace .modern-table tbody tr:hover td{background:#f7faff}
+.ann-workspace .table-title{font-size:.83rem;line-height:1.45;max-width:400px}
+.ann-workspace .status-badge,.ann-workspace .priority-badge,.ann-workspace .type-badge{border-radius:999px;padding:5px 10px;font-size:.68rem;letter-spacing:0;text-transform:none}
+.ann-workspace .action-buttons{gap:6px}.ann-workspace .btn-action{width:34px;height:34px;border-radius:10px}
+.ann-empty{display:flex;align-items:center;justify-content:center;gap:8px;flex-direction:column;padding:45px 16px;color:#7b8ba5;text-align:center}
+.ann-empty strong{color:#334155}
+.ann-workspace .annonces-grid{padding:14px;gap:12px}
+.ann-workspace .annonce-card{border-radius:14px;box-shadow:none;padding:16px}
+.ann-workspace .annonce-card:hover{transform:none;box-shadow:0 4px 14px rgba(4,83,203,.08)}
+.ann-workspace .annonce-card-info{background:#f6f9fd;border-radius:10px}
+.ann-request-status{font-size:.77rem;color:#64748b;padding:0 24px;margin:0}
+.ann-workspace [aria-busy="true"]{opacity:.62;transition:opacity .15s}
+@media(max-width:1100px){.ann-filter-primary{grid-template-columns:repeat(2,minmax(0,1fr))}.ann-search-field{grid-column:span 2}.ann-advanced-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:768px){.announcements-page .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.announcements-page .stat-card{flex-direction:row;text-align:left;padding:12px;gap:10px}.announcements-page .stat-icon{width:36px;height:36px;min-width:36px}.ann-workspace .ann-table-wrap{display:none}.ann-workspace .annonces-grid{display:grid}.ann-workspace-heading{padding:18px 16px}.ann-filter-primary{padding:0 16px 14px}.ann-advanced{margin:0 16px}.ann-filter-bottom{padding:12px 16px}.ann-result-heading{padding:12px 16px}.ann-result-hint{display:none}}
+@media(min-width:769px){.ann-workspace .annonces-grid{display:none}}
+@media(max-width:540px){.ann-filter-primary{grid-template-columns:1fr}.ann-search-field{grid-column:auto}.ann-advanced-grid{grid-template-columns:1fr}.ann-workspace .annonce-card-info{grid-template-columns:repeat(2,minmax(0,1fr))}.ann-filter-bottom>span{display:none}.announcements-page .stat-content h3{font-size:1.2rem}.announcements-page .stat-content p{font-size:.69rem}}
+@media(prefers-reduced-motion:reduce){.announcements-page *, .ann-workspace *{animation:none!important;transition:none!important}}
 </style>
 @endsection
 
@@ -607,10 +664,6 @@
                 <p class="header-subtitle">Diffusez des informations aux classes et aux étudiants.</p>
             </div>
             <div class="header-actions">
-                <button class="btn-modern secondary" onclick="window.location.reload()">
-                    <i class="fas fa-sync-alt"></i>
-                    Actualiser
-                </button>
                 @if(auth()->user()->can('annonces.create'))
                 <a href="{{ route('esbtp.annonces.create') }}" class="btn-modern primary">
                     <i class="fas fa-plus"></i>
@@ -677,71 +730,100 @@
             </div>
         @endif
 
-        <!-- Contenu principal -->
-        <div class="content-card">
-            <div class="card-header">
-                <h2 class="card-title">
-                    <i class="fas fa-list"></i>
-                    Liste des annonces
-                </h2>
-                <div class="search-container">
-                    <input type="text" id="searchInput" class="search-input" placeholder="Rechercher une annonce...">
-                    <i class="fas fa-search search-icon"></i>
-                </div>
+        <section class="content-card ann-workspace" aria-labelledby="ann-workspace-title">
+            <div class="ann-workspace-heading">
+                <p class="ann-eyebrow">CENTRE DE DIFFUSION</p>
+                <h2 id="ann-workspace-title">Explorer les annonces</h2>
+                <p>Retrouvez et suivez les communications de l'établissement.</p>
             </div>
-            <!-- Vue tableau (desktop) -->
-            <div class="table-responsive">
-                <table class="modern-table" id="annoncesTable">
-                        <thead>
-                            <tr>
-                                <th>Titre</th>
-                                <th>Statut</th>
-                                <th>Priorité</th>
-                                <th>Type</th>
-                                <th>Date création</th>
-                                <th>Expiration</th>
-                                <th class="actions-col">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="ann-tbody">
-                            @forelse($annonces as $annonce)
-                                @include('esbtp.annonces._ligne')
-                            @empty
-                                <tr>
-                                    <td colspan="7" class="text-center py-4">
-                                        <div class="empty-state">
-                                            <i class="fas fa-bullhorn fa-3x text-muted mb-3"></i>
-                                            <h5 class="text-muted">Aucune annonce trouvée</h5>
-                                            <p class="text-muted">Commencez par créer votre première annonce.</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                </table>
-            </div>
-
-            <!-- Vue grille (mobile) -->
-            <div class="annonces-grid" id="annoncesGrid">
-                @forelse($annonces as $annonce)
-                    @include('esbtp.annonces._carte')
-                @empty
-                    <div class="empty-state" style="grid-column: 1; padding: 3rem 1rem;">
-                        <i class="fas fa-bullhorn fa-3x mb-3"></i>
-                        <h5>Aucune annonce trouvée</h5>
-                        <p>Commencez par créer votre première annonce.</p>
+            <form id="ann-filter-form" action="{{ route('esbtp.annonces.index') }}" method="GET" role="search">
+                <div class="ann-filter-primary">
+                    <div class="ann-search-field">
+                        <label for="searchInput">Recherche</label>
+                        <div class="search-container">
+                            <i class="fas fa-search search-icon" aria-hidden="true"></i>
+                            <input id="searchInput" name="q" type="search" maxlength="150"
+                                   class="search-input" value="{{ request('q') }}"
+                                   placeholder="Titre ou contenu…" autocomplete="off">
+                        </div>
                     </div>
-                @endforelse
+                    <div class="ann-filter-select">
+                        <label>Statut</label>
+                        <x-au-select name="statut" :value="request('statut')" icon="fa-circle-check"
+                            placeholder="Tous les statuts" :options="[
+                                'active' => 'Actives', 'publiee' => 'Publiées',
+                                'brouillon' => 'Brouillons', 'expiree' => 'Expirées'
+                            ]" />
+                    </div>
+                    <div class="ann-filter-select">
+                        <label>Priorité</label>
+                        <x-au-select name="priorite" :value="request('priorite')" icon="fa-flag"
+                            placeholder="Toutes les priorités" :options="[
+                                '0' => 'Normale', '1' => 'Importante', '2' => 'Urgente'
+                            ]" />
+                    </div>
+                    <button class="ann-apply" type="submit">
+                        <i class="fas fa-filter" aria-hidden="true"></i> Appliquer
+                    </button>
+                </div>
+                <details class="ann-advanced" @if(request()->hasAny(['type', 'email', 'piece_jointe', 'auteur', 'created_from', 'created_to', 'tri'])) open @endif>
+                    <summary><i class="fas fa-sliders" aria-hidden="true"></i> Filtres avancés
+                        <i class="fas fa-chevron-down ann-chevron" aria-hidden="true"></i></summary>
+                    <div class="ann-advanced-grid">
+                        <div class="ann-filter-select">
+                            <label>Destinataires</label>
+                            <x-au-select name="type" :value="request('type')" icon="fa-users"
+                                placeholder="Tous les publics" :options="[
+                                    'general' => 'Annonce générale', 'classe' => 'Classes ciblées',
+                                    'etudiant' => 'Étudiants ciblés'
+                                ]" />
+                        </div>
+                        <div class="ann-filter-select">
+                            <label>Notification par e-mail</label>
+                            <x-au-select name="email" :value="request('email')" icon="fa-envelope"
+                                placeholder="Tous les envois" :options="['oui' => 'Activée', 'non' => 'Désactivée']" />
+                        </div>
+                        <div class="ann-filter-select">
+                            <label>Pièce jointe</label>
+                            <x-au-select name="piece_jointe" :value="request('piece_jointe')" icon="fa-paperclip"
+                                placeholder="Toutes" :options="['oui' => 'Avec pièce jointe', 'non' => 'Sans pièce jointe']" />
+                        </div>
+                        <div class="ann-filter-select">
+                            <label>Auteur</label>
+                            <x-au-select name="auteur" :value="request('auteur')" icon="fa-user"
+                                placeholder="Tous les auteurs" :searchable="true"
+                                :options="$auteurs->pluck('name', 'id')->all()" />
+                        </div>
+                        <div class="ann-date-field">
+                            <label for="ann-from">Créée à partir du</label>
+                            <input id="ann-from" type="date" name="created_from" value="{{ request('created_from') }}">
+                        </div>
+                        <div class="ann-date-field">
+                            <label for="ann-to">Créée jusqu'au</label>
+                            <input id="ann-to" type="date" name="created_to" value="{{ request('created_to') }}">
+                        </div>
+                        <div class="ann-filter-select">
+                            <label>Trier les annonces</label>
+                            <x-au-select name="tri" :value="request('tri')" icon="fa-arrow-down-wide-short"
+                                placeholder="Plus récentes" :options="[
+                                    'recent' => 'Plus récentes', 'ancien' => 'Plus anciennes',
+                                    'priorite' => 'Priorité décroissante', 'expiration' => 'Expiration proche'
+                                ]" />
+                        </div>
+                    </div>
+                </details>
+                <div class="ann-filter-bottom">
+                    <span>Filtrage sur toutes les annonces, même celles non encore chargées.</span>
+                    <a href="{{ route('esbtp.annonces.index') }}" id="ann-reset-filters">Effacer les filtres</a>
+                </div>
+            </form>
+            <div id="ann-results" aria-live="polite" aria-busy="false">
+                @include('esbtp.annonces._resultats')
             </div>
-        </div>
-        
-        {{-- Deux bas de liste : le tableau sur ordinateur, la grille sur telephone.
-             Seul celui qui est affiche charge la suite. --}}
-        <x-liste-infinie class="ann-bas-tableau" :paginateur="$annonces" cible="#ann-tbody" libelle="annonces" />
-        <x-liste-infinie class="ann-bas-grille" :paginateur="$annonces" cible="#annoncesGrid" libelle="annonces"
-                         :url="route('esbtp.annonces.index', ['vue' => 'grille'])" />
+            <p class="ann-request-status" id="ann-request-status" role="status" aria-live="polite"></p>
+        </section>
     </div>
-    
+
     {{-- Modal de confirmation de suppression --}}
     <div class="modal fade" id="deleteAnnonceModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
@@ -769,47 +851,82 @@
             </div>
         </div>
     </div>
-
-    </div>
 </div>
 @endsection
 
 @push('scripts')
 <script>
-// Fonction de recherche en temps réel (table + grille)
-// La recherche ne filtre que les annonces affichees : elle se rejoue donc sur
-// chaque tranche chargee au defilement, sans quoi la suite reviendrait
-// entiere sous un filtre saisi.
-function filtrerAnnonces() {
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+// Filtrage SQL sans rechargement : requêtes annulables, résultat de la même route.
+(function () {
+    const form = document.getElementById('ann-filter-form');
+    const results = document.getElementById('ann-results');
+    const status = document.getElementById('ann-request-status');
+    const search = document.getElementById('searchInput');
+    let controller = null;
+    let debounce = null;
+    let resetting = false;
 
-    // Recherche dans le tableau (desktop)
-    const table = document.getElementById('annoncesTable');
-    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
-    for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        const titleCell = row.cells[0];
-        if (titleCell && titleCell.textContent.toLowerCase().includes(searchTerm)) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
+    async function filter(url) {
+        controller?.abort();
+        const current = new AbortController();
+        controller = current;
+        results.setAttribute('aria-busy', 'true');
+        status.textContent = 'Actualisation des annonces…';
+        try {
+            const ajax = new URL(url, location.href);
+            ajax.searchParams.set('mode', 'filtered');
+            const response = await fetch(ajax.toString(), {
+                credentials: 'same-origin',
+                headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json, text/html'},
+                signal: current.signal
+            });
+            if (!response.ok) throw Error('HTTP ' + response.status);
+            const html = await response.text();
+            if (current.signal.aborted) return;
+            results.innerHTML = html;
+            status.textContent = '';
+            const final = new URL(url, location.href);
+            final.searchParams.delete('mode');
+            history.replaceState(null, '', final.toString());
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                status.textContent = 'La recherche a échoué. Vous pouvez réessayer.';
+            }
+        } finally {
+            if (controller === current) {
+                controller = null;
+                results.setAttribute('aria-busy', 'false');
+            }
         }
     }
 
-    // Recherche dans la grille (mobile)
-    const grid = document.getElementById('annoncesGrid');
-    const cards = grid.querySelectorAll('.annonce-card');
-    cards.forEach(card => {
-        const title = card.getAttribute('data-title');
-        if (title && title.includes(searchTerm)) {
-            card.style.display = '';
-        } else {
-            card.style.display = 'none';
-        }
+    function apply(event) {
+        event?.preventDefault();
+        const params = new URLSearchParams(new FormData(form));
+        filter(form.action + '?' + params.toString());
+    }
+    form.addEventListener('submit', apply);
+    form.addEventListener('change', event => {
+        if (!resetting && event.target !== search) apply();
     });
-}
-document.getElementById('searchInput').addEventListener('input', filtrerAnnonces);
-document.addEventListener('liste-infinie:ajout', filtrerAnnonces);
+    search.addEventListener('input', () => {
+        clearTimeout(debounce);
+        debounce = setTimeout(apply, 350);
+    });
+    document.getElementById('ann-reset-filters').addEventListener('click', event => {
+        event.preventDefault();
+        resetting = true;
+        clearTimeout(debounce);
+        search.value = '';
+        form.querySelectorAll('input[type="date"]').forEach(input => { input.value = ''; });
+        form.querySelectorAll('select[name]').forEach(select => {
+            select.value = '';
+            select.dispatchEvent(new Event('change', {bubbles: true}));
+        });
+        resetting = false;
+        apply();
+    });
+})();
 
 // Fonction de suppression d'annonce via modal Bootstrap
 let pendingDeleteId = null;

@@ -194,6 +194,54 @@ class ListesLot2DefilementTest extends TestCase
         $this->assertStringStartsWith('<tr', trim(preg_replace('/\{\{--.*?--\}\}/s', '', $tableau)));
     }
 
+    public function test_annonces_les_filtres_sql_traversent_les_tranches_et_le_rendu_ajax(): void
+    {
+        $unique = 'ANN-UX-' . uniqid();
+        for ($i = 0; $i < 14; $i++) {
+            \App\Models\ESBTPAnnonce::create([
+                'titre' => $unique . ' #' . $i,
+                'contenu' => 'Recherche globale',
+                'type' => 'general',
+                'date_publication' => now()->subDay(),
+                'priorite' => $i === 0 ? 2 : 0,
+                'is_published' => true,
+                'email_notification_enabled' => $i === 0,
+                'created_by' => auth()->id(),
+            ]);
+        }
+        \App\Models\ESBTPAnnonce::create([
+            'titre' => 'Autre annonce indépendante', 'contenu' => 'Ne pas retourner',
+            'type' => 'general', 'date_publication' => now()->subDay(),
+            'priorite' => 0, 'is_published' => false, 'created_by' => auth()->id(),
+        ]);
+
+        $page = $this->get(route('esbtp.annonces.index', ['q' => $unique, 'statut' => 'publiee']))
+            ->assertOk()->viewData('annonces');
+        $this->assertSame(14, $page->total());
+
+        $secondPage = $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->getJson(route('esbtp.annonces.index', [
+                'q' => $unique, 'statut' => 'publiee',
+                'page' => 2, 'mode' => 'rows', 'vue' => 'grille',
+            ]))
+            ->assertOk()->assertJsonPath('pagination.total', 14)->json('rows_html');
+        $this->assertSame(2, substr_count($secondPage, 'data-li-cle='));
+        $this->assertStringContainsString($unique, $secondPage);
+        $this->assertStringNotContainsString('Autre annonce indépendante', $secondPage);
+
+        $filtre = $this->get(route('esbtp.annonces.index', [
+            'q' => $unique, 'statut' => 'publiee',
+            'priorite' => '2', 'email' => 'oui',
+        ]))->assertOk()->viewData('annonces');
+        $this->assertSame(1, $filtre->total());
+
+        $ajax = $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest', 'Accept' => 'text/html'])
+            ->get(route('esbtp.annonces.index', ['q' => $unique, 'mode' => 'filtered']))
+            ->assertOk();
+        $ajax->assertSee('ann-table-wrap', false)
+            ->assertDontSee('ann-filter-form', false);
+    }
+
     public function test_activite_une_tranche_ouverte_sur_un_jour_deja_affiche_porte_sa_cle(): void
     {
         // 51 actions du meme jour : la tranche 2 (50 par tranche) commence au

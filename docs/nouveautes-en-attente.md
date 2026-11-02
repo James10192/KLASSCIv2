@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-11-02 · #1752 · Annonces : recherche globale et filtres avancés sans rechargement, listes incrémentales, aperçu e-mail stable et destinataires consultables dans un espace compact sur téléphone comme ordinateur.
 - 2026-11-01 · Planning général : les boutons de configuration et de code d'émargement n'apparaissent plus sans la permission de gestion ; enseignants à rôle personnalisé proposés à la création d'évaluation
 - 2026-10-29 · Suivi MailPulse : les accusés de livraison signés vérifient le vrai identifiant de message et ne font plus régresser un état déjà définitif lors d'un replay ou d'un événement retardé ; relais fournisseur non activé.
 - 2026-10-29 · Annonces : protection des destinataires contre les doublons après réponse MailPulse ambiguë (timeout, panne réseau, 5xx) ; statut en attente de rapprochement plutôt que relance silencieuse.
