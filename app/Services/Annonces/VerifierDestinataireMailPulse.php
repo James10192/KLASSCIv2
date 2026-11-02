@@ -4,7 +4,7 @@ namespace App\Services\Annonces;
 
 use App\Services\MailPulse\MailPulseApi;
 
-final class VerifierDestinataireMailPulse
+class VerifierDestinataireMailPulse
 {
     public function __construct(private readonly MailPulseApi $api) {}
 
