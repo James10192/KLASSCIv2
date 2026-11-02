@@ -877,7 +877,7 @@
             ajax.searchParams.set('mode', 'filtered');
             const response = await fetch(ajax.toString(), {
                 credentials: 'same-origin',
-                headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html'},
+                headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json, text/html'},
                 signal: current.signal
             });
             if (!response.ok) throw Error('HTTP ' + response.status);
