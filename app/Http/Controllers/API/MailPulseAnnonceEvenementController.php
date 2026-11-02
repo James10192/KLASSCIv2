@@ -90,26 +90,43 @@ class MailPulseAnnonceEvenementController extends Controller
         // cannot regress a delivered/failed message or overwrite its timestamp.
         $mutable = (clone $base)->whereIn('status', ['submitted', 'awaiting_dispatch', 'delayed']);
         if ($valide['state'] === 'delivered') {
-            $mutable->update([
+            $modifications = $mutable->update([
                 'status' => 'delivered',
                 'provider_delivered_at' => $dateEvenement,
                 'error_code' => null,
                 'updated_at' => now(),
             ]);
         } elseif ($valide['state'] === 'delivery_delayed') {
-            $mutable->update([
+            $modifications = $mutable->update([
                 'status' => 'delayed',
                 'provider_delayed_at' => $dateEvenement,
                 'error_code' => null,
                 'updated_at' => now(),
             ]);
         } else {
-            $mutable->update([
+            $modifications = $mutable->update([
                 'status' => 'failed',
                 'error_code' => $valide['state'],
                 'provider_failed_at' => $dateEvenement,
                 'updated_at' => now(),
             ]);
+        }
+
+        if (($modifications ?? 0) === 1 && str_starts_with($reference, 'klassci-v3-')) {
+            $livraison = DB::table('esbtp_annonce_email_deliveries')
+                ->where('id', $referenceLue['livraison_id'])
+                ->where('mailpulse_request_id', $reference)->first();
+            if ($livraison) {
+                DB::table('esbtp_annonce_email_attempts')
+                    ->where('delivery_id', $livraison->id)
+                    ->where('idempotency_key', $reference)
+                    ->update([
+                        'state' => $livraison->status,
+                        'provider_message_id' => $livraison->mailpulse_message_id,
+                        'failure_code' => $livraison->error_code,
+                        'updated_at' => now(),
+                    ]);
+            }
         }
 
         return response()->json(['ok' => true]);

@@ -62,3 +62,10 @@ Les envois **jamais tentés** utilisent `klassci-v2-<TENANT_CODE>-annonce-<annon
 Les envois historiques déjà tentés et sans repère v2 gardent `klassci-annonce-<annonce_id>-courriel-<delivery_id>`. Aucun renumérotage des idempotency keys, aucun `POST` de récupération. Un repère v2 ne correspondant pas à `TENANT_CODE` produit une quarantaine sans envoi ni consultation sous l'autre identité.
 
 La réception HMAC de l'événement accepte les deux formats. Sur un événement v2 elle exige le code tenant de l'instance **et** que la ligne possède exactement `mailpulse_request_id = external_reference`. Un callback legacy ne peut pas modifier une livraison déjà estampillée v2. Ce contrat suppose l'API MailPulse compatible ([PR #65](https://github.com/James10192/mailpulse/pull/65)) déployée avant l'activation. Ce changement n'active toujours aucune relance effective ; le journal immuable d'essais reste à créer avec Artisan.
+
+## Tentatives correctives v3 (2026-11-02)
+
+MailPulse doit déployer la PR #66 avant la bascule. Nouvelle référence : `klassci-v3-<tenant>-annonce-<id>-courriel-<new_delivery_id>-essai-2`. Anciennes références immuables. Nouveau service GET `/api/v1/messages/recipient-eligibility` : contrôle read-only des suppressions Resend. Tout état incertain bloque le POST. Le flag `MAILPULSE_ANNOUNCEMENT_RETRIES_ENABLED` est désactivé par défaut. La migration Artisan `2026_11_02_163718_create_esbtp_annonce_email_attempts_table.php` crée le journal d'essais. Permissions effectives `annonces.email_retry`, CSRF et audit obligatoires. 
+
+### Historique
+- 2026-11-02 : référence corrective v3, activation explicite, aucune rediffusion automatique des rebonds.

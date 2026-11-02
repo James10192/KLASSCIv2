@@ -90,6 +90,17 @@ final class SynchroniserCourrielsAnnonce
             if ($ligne->update($correction) !== 1) {
                 continue;
             }
+            if (str_starts_with((string) $cible->mailpulse_request_id, 'klassci-v3-')) {
+                DB::table('esbtp_annonce_email_attempts')
+                    ->where('delivery_id', $cible->id)
+                    ->where('idempotency_key', $cible->mailpulse_request_id)
+                    ->update([
+                        'state' => $correction['status'] ?? $cible->status,
+                        'failure_code' => $correction['error_code'] ?? null,
+                        'provider_message_id' => $cible->mailpulse_message_id,
+                        'updated_at' => now(),
+                    ]);
+            }
             if (($correction['status'] ?? null) === 'delivered') {
                 $bilan['delivrees']++;
             } elseif (($correction['status'] ?? null) === 'failed') {
