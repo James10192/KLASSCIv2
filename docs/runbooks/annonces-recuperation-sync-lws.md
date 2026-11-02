@@ -14,7 +14,7 @@
 
     php artisan tinker --execute='dump(\Illuminate\Support\Facades\DB::table("esbtp_annonce_email_deliveries")->where("annonce_id",2)->select("status","error_code")->selectRaw("COUNT(*) AS total")->groupBy("status","error_code")->get());'
 
-4. Contrôler que les lignes à récupérer sont retrying + local_rate_limit, sans submitted_at, mailpulse_message_id, provider_failed_at ni provider_delivered_at.
+4. Contrôler que les lignes à récupérer sont retrying + local_rate_limit, sans submitted_at, mailpulse_message_id, provider_failed_at ni provider_delivered_at. **La référence idempotente v2 déjà enregistrée doit appartenir au tenant et à la livraison** ; les clés anciennes/absentes sont refusées.
 5. Simulation : php artisan annonces:recuperer-file --annonce=2
 
 ## Configurer la queue persistante et le worker
@@ -33,7 +33,7 @@ Utiliser les chemins réels et vérifier que l'hébergeur autorise ce cron. Le w
 
     php artisan annonces:recuperer-file --annonce=2 --tenant=esbtp-abidjan --limit=10 --execute
 
-La commande ne fait aucun HTTP MailPulse. Elle ne récupère que retrying + local_rate_limit, avec absence de preuve d'envoi, et confirme la clé idempotente de l'établissement. Dans une même transaction database, elle marque pending et enfile EnvoyerAnnonceCourriel sur annonces. Réexécuter ne réinsère pas les mêmes lignes.
+La commande ne fait aucun HTTP MailPulse. Elle ne récupère que retrying + local_rate_limit, avec absence de preuve d'envoi, et exige une clé v2 valide, déjà enregistrée et propre à l'établissement ; les références legacy ou absentes restent en quarantaine manuelle. Dans une même transaction database, elle marque pending et enfile EnvoyerAnnonceCourriel sur annonces. Réexécuter ne réinsère pas les mêmes lignes.
 
 Contrôler les événements MailPulse et Resend, le statut des lignes, les logs du worker et les quotas. Répéter sur petits lots si les preuves sont conformes. Stopper si refus, bounce, 429 ou quota.
 
