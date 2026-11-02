@@ -1,0 +1,26 @@
+name: Scaffold announcement retry migration (temporary)
+on:
+  push:
+    branches:
+      - 'chore/scaffold-annonce-retry-migration-20261102'
+permissions:
+  contents: read
+jobs:
+  scaffold:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql
+          coverage: none
+      - run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Generate migration with Artisan and print scaffold
+        run: |
+          php artisan make:migration create_esbtp_annonce_email_attempts_table
+          FILE="$(find database/migrations -maxdepth 1 -name '*create_esbtp_annonce_email_attempts_table.php' | head -1)"
+          if [ -z "$FILE" ]; then exit 1; fi
+          echo "MIGRATION_FILE_START:$FILE"
+          cat "$FILE"
+          echo "MIGRATION_FILE_END"
