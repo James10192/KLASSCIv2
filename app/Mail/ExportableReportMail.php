@@ -38,7 +38,7 @@ class ExportableReportMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.exportable-report',
+            view: 'esbtp.emails.exportable-report',
             with: [
                 'reportTitle' => $this->reportTitle,
                 'reportSubtitle' => $this->reportSubtitle,
