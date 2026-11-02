@@ -252,6 +252,7 @@
                 </div>
                 <div class="em-card-body">
                     <div class="em-actions" style="margin-bottom:1rem;">
+                        @can('planning.manage')
                         <form method="POST" action="{{ route('esbtp.planning-general.generer-code-emargement') }}" style="display:contents;">
                             @csrf
                             <input type="hidden" name="annee_id" value="{{ $anneeSelectionnee?->id }}">
@@ -262,9 +263,12 @@
                                 <i class="fas fa-sun"></i>Code Journée
                             </button>
                         </form>
+                        @endcan
+                        @can('planning.manage')
                         <button type="button" class="em-action-btn em-action-btn--secondary" data-bs-toggle="modal" data-bs-target="#codeModal">
                             <i class="fas fa-cogs"></i>Personnalisé
                         </button>
+                        @endcan
                         <a href="{{ route('esbtp.attendance-codes.index') }}" class="em-action-btn em-action-btn--secondary">
                             <i class="fas fa-external-link-alt"></i>Interface complète
                         </a>
@@ -289,6 +293,7 @@
                             <i class="fas fa-calendar-plus" style="color:#0453cb;"></i> Séances disponibles ({{ $vraiSeancesAVenir->count() }})
                         </div>
                         @foreach($vraiSeancesAVenir->take(5) as $seance)
+                            @can('planning.manage')
                             <form method="POST" action="{{ route('esbtp.planning-general.generer-code-emargement') }}" style="display:contents;">
                                 @csrf
                                 <input type="hidden" name="annee_id" value="{{ $anneeSelectionnee?->id }}">
@@ -310,6 +315,7 @@
                                     <div class="em-seance-action"><i class="fas fa-plus-circle" style="font-size:.6rem;"></i> Code</div>
                                 </button>
                             </form>
+                            @endcan
                         @endforeach
                         @endif
                     @endif
@@ -355,6 +361,7 @@
         <div class="modal fade" id="codeModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content" style="border:none; border-radius:16px; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,.15);">
+                    @can('planning.manage')
                     <form method="POST" action="{{ route('esbtp.planning-general.generer-code-emargement') }}">
                         @csrf
                         <input type="hidden" name="annee_id" value="{{ $anneeSelectionnee?->id }}">
@@ -439,6 +446,7 @@
                             </button>
                         </div>
                     </form>
+                    @endcan
                 </div>
             </div>
         </div>

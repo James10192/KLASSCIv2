@@ -1162,9 +1162,11 @@
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">
                     <i class="fas fa-times me-1"></i>Annuler
                 </button>
+                @can('planning.manage')
                 <button type="button" class="btn btn-primary" id="save-volume-config">
                     <i class="fas fa-save me-1"></i>Sauvegarder
                 </button>
+                @endcan
             </div>
         </div>
     </div>

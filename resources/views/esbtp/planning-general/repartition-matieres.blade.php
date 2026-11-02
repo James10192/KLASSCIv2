@@ -817,6 +817,7 @@
                                                                 <div class="text-muted mb-2" style="font-size:.8rem;">
                                                                     Aucune planification horaire définie pour {{ $filiereName }} - {{ $niveauName }}.
                                                                 </div>
+                                                                @can('planning.manage')
                                                                 <button type="button" class="btn btn-sm btn-warning configure-btn"
                                                                         data-bs-toggle="modal"
                                                                         data-bs-target="#configureModal"
@@ -831,6 +832,7 @@
                                                                         data-classe-name="{{ $classe->name }}">
                                                                     <i class="fas fa-cog me-1"></i>Configurer
                                                                 </button>
+                                                                @endcan
                                                             @endif
                                                         </div>
                                                     @endif

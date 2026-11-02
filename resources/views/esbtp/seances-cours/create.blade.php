@@ -664,9 +664,11 @@
                                                 <i class="fas fa-user-plus me-1"></i>Créer un enseignant
                                             </button>
                                             @endcan
+                                            @can('planning.manage')
                                             <button type="button" class="btn btn-outline-secondary btn-sm" id="openManageTeachersBtn">
                                                 <i class="fas fa-cogs me-1"></i>Gérer les enseignants
                                             </button>
+                                            @endcan
                                         </div>
                                     </div>
                                     @endif

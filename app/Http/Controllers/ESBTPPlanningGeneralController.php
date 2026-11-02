@@ -45,18 +45,6 @@ class ESBTPPlanningGeneralController extends Controller
     }
 
     /**
-     * Interface de test pour planification académique
-     */
-    public function indexTest(Request $request)
-    {
-        // Utilise la même logique que index() mais force la vue de test
-        $result = $this->index($request);
-        $data = $result->getData();
-
-        return view("esbtp.planning-general.index-test", $data);
-    }
-
-    /**
      * Interface principale de planification académique
      */
     public function index(Request $request)

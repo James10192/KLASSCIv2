@@ -1594,6 +1594,7 @@
 
                                 <!-- Footer avec bouton de configuration -->
                                 <div class="card-footer-section">
+                                    @can('planning.manage')
                                     @if($combinaison['total_matieres'] == 0)
                                         <!-- Bouton pour ajouter des matières à une combinaison vide -->
                                         <button class="btn-configure-modern add-subjects-btn"
@@ -1630,6 +1631,7 @@
                                             </button>
                                         </div>
                                     @endif
+                                    @endcan
                                 </div>
                             </div>
                         @endforeach

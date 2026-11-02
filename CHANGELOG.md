@@ -11,6 +11,12 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ---
 
 ## Novembre 2026
+
+### Sécurité
+- Planning général : enregistrer, supprimer, valider, configurer et générer un code d'émargement exigent `planning.manage`, plus une simple permission de lecture ; boutons masqués en conséquence. Trace technique retirée de l'erreur PDF de l'emploi du temps. Route `/esbtp/planning-general/test` et vues `index-test`, `index-improved` retirées.
+
+### Corrections
+- Création d'évaluation : la liste d'enseignants suit la permission `identity.teach`, donc inclut les rôles personnalisés.
 - **Notes BTS, suivi sans droit de création :** le panneau de suivi reste entièrement à l'écran sur téléphone et tablette pour les rôles qui n'ont pas le bouton « Créer évaluation ». Hauteur du suivi bornée sur petit écran, grille préservée quand un brouillon est à restaurer. Retrait de deux tests qui lisaient le code source sans l'exécuter.
 - **Notes LMD sur téléphone :** liens « Fiche » et « Relevé » sur une seule ligne.
 - **Notes BTS, en-tête recentré :** barème et coefficient reviennent au centre de la colonne, sur la ligne du type et du semestre ; quatre étudiants entiers tiennent à l'écran sur un ordinateur portable.
