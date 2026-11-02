@@ -914,4 +914,81 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertNull($ligne->provider_failed_at);
     }
 
+
+    public function test_la_reprise_de_queue_sync_est_une_simulation_par_defaut(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        config(['queue.default' => 'database']);
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'locale@etudiants.test',
+            'status' => 'retrying', 'error_code' => 'local_rate_limit',
+            'attempts' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->artisan('annonces:recuperer-file', ['--annonce' => $annonce->id])
+            ->assertExitCode(0);
+        $this->assertSame('retrying', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
+        Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
+    }
+
+    public function test_la_reprise_est_bornee_et_ne_remet_pas_en_file_les_messages_incertain_ou_rebondis(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        config(['queue.default' => 'database', 'app.tenant_code' => 'presentation']);
+        $annonce = $this->annonce();
+        $ids = [];
+        foreach ([
+            ['email' => 'a@etudiants.test', 'status' => 'retrying', 'error_code' => 'local_rate_limit'],
+            ['email' => 'b@etudiants.test', 'status' => 'retrying', 'error_code' => 'local_rate_limit'],
+            ['email' => 'c@etudiants.test', 'status' => 'retrying', 'error_code' => 'local_rate_limit'],
+            ['email' => 'd@etudiants.test', 'status' => 'retrying', 'error_code' => 'pre_submission_exception'],
+            ['email' => 'e@etudiants.test', 'status' => 'failed', 'error_code' => 'email_bounced'],
+            ['email' => 'f@etudiants.test', 'status' => 'awaiting_dispatch', 'error_code' => 'submission_outcome_unknown'],
+        ] as $row) {
+            $ids[] = DB::table('esbtp_annonce_email_deliveries')->insertGetId($row + [
+                'annonce_id' => $annonce->id, 'attempts' => 1,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+
+        $this->artisan('annonces:recuperer-file', [
+            '--annonce' => $annonce->id, '--tenant' => 'presentation',
+            '--execute' => true, '--limit' => 2,
+        ])->assertExitCode(0);
+        $this->assertSame('pending', DB::table('esbtp_annonce_email_deliveries')->where('id', $ids[0])->value('status'));
+        $this->assertSame('pending', DB::table('esbtp_annonce_email_deliveries')->where('id', $ids[1])->value('status'));
+        $this->assertSame('retrying', DB::table('esbtp_annonce_email_deliveries')->where('id', $ids[2])->value('status'));
+        $this->assertSame('retrying', DB::table('esbtp_annonce_email_deliveries')->where('id', $ids[3])->value('status'));
+        $this->assertSame('failed', DB::table('esbtp_annonce_email_deliveries')->where('id', $ids[4])->value('status'));
+        $this->assertSame('awaiting_dispatch', DB::table('esbtp_annonce_email_deliveries')->where('id', $ids[5])->value('status'));
+        Bus::assertDispatchedTimes(EnvoyerAnnonceCourriel::class, 2);
+
+        $this->artisan('annonces:recuperer-file', [
+            '--annonce' => $annonce->id, '--tenant' => 'presentation',
+            '--execute' => true, '--limit' => 2,
+        ])->assertExitCode(0);
+        Bus::assertDispatchedTimes(EnvoyerAnnonceCourriel::class, 3);
+    }
+
+    public function test_la_reprise_refuse_une_queue_sync_ou_un_autre_tenant(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        $annonce = $this->annonce();
+        DB::table('esbtp_annonce_email_deliveries')->insert([
+            'annonce_id' => $annonce->id, 'email' => 'locale@etudiants.test',
+            'status' => 'retrying', 'error_code' => 'local_rate_limit',
+            'attempts' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        config(['queue.default' => 'sync']);
+        $this->artisan('annonces:recuperer-file', [
+            '--annonce' => $annonce->id, '--tenant' => 'presentation', '--execute' => true,
+        ])->assertExitCode(1);
+        config(['queue.default' => 'database']);
+        $this->artisan('annonces:recuperer-file', [
+            '--annonce' => $annonce->id, '--tenant' => 'esbtp-abidjan', '--execute' => true,
+        ])->assertExitCode(1);
+        Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
+    }
+
 }
