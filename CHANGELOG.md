@@ -12,6 +12,12 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Novembre 2026
 
+### Communication — 2 novembre
+- **Annonces index :** choix premium pleine largeur, suppression du double espace supérieur dans la mise en page.
+- **Annonces show :** navigation par pages invisible en mode défilement infini (mais conservée pour les liens AJAX et sans JavaScript) ; tableau des destinataires aligné, lisible, en-tête fixe, défilement autonome.
+- **Courriels KLASSCI :** l'interface claire de l'avis « Encaissements en retard » devient le rendu par défaut du layout commun ; ses avis parents étaient déjà sur ce design. Ancien template `esbtp.emails.layout-legacy` conservé. Les flux d'envoi restent inchangés.
+
+
 ### Évolutions
 - **Annonces — index et fiche (02/11/2026)** : recherche serveur sur titre et contenu, filtres combinables (statut, priorité, public, e-mail, pièce jointe, auteur, dates) et tri stable, actualisation AJAX et défilement infini sur mobile/desktop. La fiche conserve l'aperçu du courriel au-dessus des historiques ; les destinataires sont consultables dans un panneau repliable à défilement interne, avec recherche par e-mail. Permissions effectives préservées, aucune expédition ou relance effectuée.
 
