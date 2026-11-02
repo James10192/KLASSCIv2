@@ -964,6 +964,14 @@ class AnnonceMailPulseTest extends TestCase
             ]);
         }
 
+        foreach (array_slice($ids, 0, 3) as $idLivraison) {
+            DB::table('esbtp_annonce_email_deliveries')->where('id', $idLivraison)->update([
+                'mailpulse_request_id' => \App\Services\Annonces\ReferenceCourrielAnnonce::nouvelle(
+                    'presentation', $annonce->id, $idLivraison
+                ),
+            ]);
+        }
+
         $this->artisan('annonces:recuperer-file', [
             '--annonce' => $annonce->id, '--tenant' => 'presentation',
             '--execute' => true, '--limit' => 2,
