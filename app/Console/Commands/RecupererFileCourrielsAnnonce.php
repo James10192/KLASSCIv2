@@ -1,0 +1,140 @@
+<?php
+
+namespace App\Console\Commands;
+
+use App\Jobs\Annonces\EnvoyerAnnonceCourriel;
+use App\Models\ESBTPAnnonce;
+use App\Services\Annonces\ReferenceCourrielAnnonce;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+/**
+ * Recovery for jobs lost with QUEUE_CONNECTION=sync.
+ *
+ * Strictly limited to the local_rate_limit decision, which occurs in
+ * EnvoyerAnnonceCourriel BEFORE the HTTP submission boundary.
+ * The existing immutable reference is retained. All other statuses require
+ * provider reconciliation or a separate audited attempt workflow.
+ */
+final class RecupererFileCourrielsAnnonce extends Command
+{
+    protected $signature = 'annonces:recuperer-file
+        {--annonce= : Identifiant de la campagne}
+        {--tenant= : Code de l\'établissement, confirmation obligatoire lors de l\'exécution}
+        {--limit=10 : Nombre maximal de livraisons à réenfiler par passage, 1 à 60}
+        {--execute : Autoriser la réinsertion contrôlée en file database (sinon simulation)}';
+
+    protected $description = 'Diagnostiquer et récupérer par petits lots les relances locales perdues par la queue sync.';
+
+    public function handle(): int
+    {
+        $id = filter_var($this->option('annonce'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($id === false) {
+            $this->error('Précisez --annonce=<id> (entier positif).');
+            return self::FAILURE;
+        }
+
+        $limite = filter_var($this->option('limit'), FILTER_VALIDATE_INT, ['options' => [
+            'min_range' => 1, 'max_range' => 60,
+        ]]);
+        if ($limite === false) {
+            $this->error('--limit doit être compris entre 1 et 60.');
+            return self::FAILURE;
+        }
+
+        $annonce = ESBTPAnnonce::find((int) $id);
+        if (! $annonce || ! $annonce->is_published || ! $annonce->email_notification_enabled
+            || $annonce->date_publication?->isFuture() || $annonce->isExpired()) {
+            $this->error('Annonce absente, non publiée, non éligible aux e-mails ou expirée.');
+            return self::FAILURE;
+        }
+
+        $tenant = (string) config('app.tenant_code', '');
+        $operation = (bool) $this->option('execute');
+
+        if ($operation) {
+            if (config('queue.default') !== 'database' || ! Schema::hasTable('jobs')) {
+                $this->error('ARRÊT : QUEUE_CONNECTION=database et table jobs requises. Aucun envoi.');
+                return self::FAILURE;
+            }
+            if ($tenant === '' || $tenant === 'default'
+                || ! preg_match('/^[a-z0-9][a-z0-9_-]{1,62}$/D', $tenant)
+                || ! hash_equals($tenant, (string) $this->option('tenant'))) {
+                $this->error('ARRÊT : --tenant doit être égal au TENANT_CODE réel de cette instance.');
+                return self::FAILURE;
+            }
+        }
+
+        $base = DB::table('esbtp_annonce_email_deliveries')
+            ->where('annonce_id', $annonce->id)
+            ->where('status', 'retrying')
+            ->where('error_code', 'local_rate_limit')
+            ->whereNull('mailpulse_message_id')
+            ->whereNull('submitted_at')
+            ->whereNull('provider_failed_at')
+            ->whereNull('provider_delivered_at');
+
+        $eligibles = (clone $base)->count();
+        $this->info(sprintf(
+            'Annonce %d · tenant %s · %d livraisons avec reprise locale prouvée avant transport · %s.',
+            $annonce->id, $tenant ?: '?', $eligibles, $operation ? 'EXECUTION' : 'SIMULATION'
+        ));
+
+        if (! $operation) {
+            $this->line('Vérifiez QUEUE_CONNECTION=database, le worker, le quota MailPulse et les sauvegardes AVANT --execute.');
+            $this->line('Les autres motifs (bounce, failed, awaiting_dispatch, submitted, delayed) ne sont jamais repris ici.');
+            return self::SUCCESS;
+        }
+
+        // No new recipient collection or bulk resubmission. Small fixed-size
+        // tranche; subsequent calls see only still-eligible records.
+        $ids = (clone $base)->orderBy('id')->limit($limite)->pluck('id');
+        $reprogrammes = 0;
+        $ignores = 0;
+        foreach ($ids as $idLivraison) {
+            $ok = DB::transaction(function () use ($idLivraison, $annonce, $tenant, &$reprogrammes): bool {
+                $ligne = DB::table('esbtp_annonce_email_deliveries')
+                    ->where('id', $idLivraison)
+                    ->where('annonce_id', $annonce->id)
+                    ->lockForUpdate()->first();
+
+                if (! $ligne || $ligne->status !== 'retrying'
+                    || $ligne->error_code !== 'local_rate_limit'
+                    || $ligne->submitted_at !== null || $ligne->mailpulse_message_id !== null
+                    || $ligne->provider_delivered_at !== null || $ligne->provider_failed_at !== null
+                    || ReferenceCourrielAnnonce::pourEnvoi($ligne, $tenant) === null) {
+                    return false;
+                }
+
+                // Atomic with inserting the database queue job on the SAME DB
+                // connection. On failure, rollback BOTH the state and the job.
+                $changed = DB::table('esbtp_annonce_email_deliveries')
+                    ->where('id', $ligne->id)
+                    ->where('status', 'retrying')
+                    ->where('error_code', 'local_rate_limit')
+                    ->whereNull('submitted_at')
+                    ->whereNull('mailpulse_message_id')
+                    ->update([
+                        'status' => 'pending',
+                        'error_code' => 'recovered_from_sync',
+                        'processing_at' => null,
+                        'updated_at' => now(),
+                    ]);
+                if ($changed !== 1) return false;
+
+                EnvoyerAnnonceCourriel::dispatch((int) $ligne->id)
+                    ->onConnection('database')
+                    ->onQueue('annonces')
+                    ->delay(now()->addSeconds(intdiv($reprogrammes, 10) * 60));
+                $reprogrammes++;
+                return true;
+            }, 3);
+            if (! $ok) $ignores++;
+        }
+
+        $this->info("Réenfilés : {$reprogrammes} · ignorés (modifiés ou non prouvés) : {$ignores}.");
+        $this->warn('Aucun courriel émis par cette commande. Seul le worker --queue=annonces réalisera les soumissions.');
+        return self::SUCCESS;
+    }
+}
