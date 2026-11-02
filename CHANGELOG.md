@@ -12,6 +12,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Novembre 2026
 
+### Préparatifs
+- **Annonces — références de nouvelles tentatives :** ajout du contrat v3 tenant-qualifié et de la permission personnalisable `annonces.email_retry`. Aucun envoi ou réémission automatique n'est activé avant journal immuable généré avec Artisan et validation MailPulse.
+
 ### Corrections
 - **Annonces — file sync bloquée :** refuser les nouvelles campagnes quand la file est synchrone, et fournir une commande de simulation/récupération transactionnelle par petits lots réservée aux limitations locales prouvées avant transport ; aucune reprise des échecs fournisseurs ou des résultats incertains.
 
