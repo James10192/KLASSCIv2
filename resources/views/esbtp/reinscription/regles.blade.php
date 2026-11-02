@@ -95,8 +95,8 @@
     </div>
 
     <div class="arp-scrim" x-show="open" x-transition.opacity x-cloak
-         x-on:keydown.escape.window="dismiss()" x-trap.noscroll="open" role="presentation">
-        <div class="arp-dialog" role="dialog" aria-modal="true" aria-labelledby="arp-modal-title" x-on:click.outside="dismiss()">
+         x-on:keydown.escape.window="dismiss()" x-on:click.self="dismiss()" role="presentation">
+        <div class="arp-dialog" role="dialog" aria-modal="true" aria-labelledby="arp-modal-title">
             <div class="arp-dialog-head">
                 <div>
                     <div class="arp-eyebrow">Configuration académique</div>
