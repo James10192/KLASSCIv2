@@ -76,10 +76,14 @@ final class RecupererFileCourrielsAnnonce extends Command
             ->whereNull('provider_delivered_at');
 
         $eligibles = (clone $base)->count();
+        $v2 = (clone $base)->where('mailpulse_request_id', 'like',
+            'klassci-v2-'.$tenant.'-annonce-'.$annonce->id.'-courriel-%')->count();
         $this->info(sprintf(
             'Annonce %d · tenant %s · %d livraisons avec reprise locale prouvée avant transport · %s.',
             $annonce->id, $tenant ?: '?', $eligibles, $operation ? 'EXECUTION' : 'SIMULATION'
         ));
+
+        $this->line(sprintf('Références tenant v2 présentes : %d / %d candidats ; les références anciennes ou manquantes seront écartées.', $v2, $eligibles));
 
         if (! $operation) {
             $this->line('Vérifiez QUEUE_CONNECTION=database, le worker, le quota MailPulse et les sauvegardes AVANT --execute.');
@@ -103,7 +107,14 @@ final class RecupererFileCourrielsAnnonce extends Command
                     || $ligne->error_code !== 'local_rate_limit'
                     || $ligne->submitted_at !== null || $ligne->mailpulse_message_id !== null
                     || $ligne->provider_delivered_at !== null || $ligne->provider_failed_at !== null
-                    || ReferenceCourrielAnnonce::pourEnvoi($ligne, $tenant) === null) {
+                    || ! is_string($ligne->mailpulse_request_id)
+                    || ! str_starts_with($ligne->mailpulse_request_id, 'klassci-v2-')
+                    || ! hash_equals(
+                        $ligne->mailpulse_request_id,
+                        ReferenceCourrielAnnonce::nouvelle(
+                            $tenant, (int) $ligne->annonce_id, (int) $ligne->id
+                        ) ?? ''
+                    )) {
                     return false;
                 }
 
