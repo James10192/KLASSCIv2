@@ -82,6 +82,8 @@ return [
 
     'mailpulse' => [
         'announcement_webhook_secret' => env('MAILPULSE_ANNOUNCEMENT_WEBHOOK_SECRET'),
+        // Activate only AFTER MailPulse #66 and the Artisan migration are deployed.
+        'announcement_retries_enabled' => env('MAILPULSE_ANNOUNCEMENT_RETRIES_ENABLED', false),
         // A crashed announcement worker is quarantined, NEVER silently resent.
         'announcement_stale_minutes' => (int) env('MAILPULSE_ANNOUNCEMENT_STALE_MINUTES', 30),
         'enabled' => env('MAILPULSE_ENABLED', true),

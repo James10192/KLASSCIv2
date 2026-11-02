@@ -606,7 +606,9 @@ jobs:
           restore-keys: ${{ runner.os }}-composer-
       - run: composer install --no-interaction --prefer-dist --no-progress
       - name: Annonces étudiants ciblées par MailPulse
-        run: php vendor/bin/phpunit tests/Feature/Annonces/AnnonceMailPulseTest.php --no-coverage
+        run: |
+          php vendor/bin/phpunit tests/Feature/Annonces/AnnonceMailPulseTest.php --no-coverage
+          php vendor/bin/phpunit tests/Feature/Annonces/CorrigerCourrielAnnonceTest.php --no-coverage
 
   schema:
     name: Le schéma se crée entièrement (${{ matrix.moteur.nom }})

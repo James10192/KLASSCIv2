@@ -12,6 +12,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Novembre 2026
 
+### Courriels d'annonces — 2 novembre
+- **Relance contrôlée après rebond :** permission personnalisable, vérification de la suppression Resend, adresse étudiant corrigée et confirmée, justification, nouveau journal d'essais et clé v3 distincte ; interface AJAX sans rechargement. Aucune réémission vers l'adresse rejetée ; activation OFF avant déploiement coordonné.
+
 ### Corrections
 - **Annonces — file sync bloquée :** refuser les nouvelles campagnes quand la file est synchrone, et fournir une commande de simulation/récupération transactionnelle par petits lots réservée aux limitations locales prouvées avant transport ; aucune reprise des échecs fournisseurs ou des résultats incertains.
 

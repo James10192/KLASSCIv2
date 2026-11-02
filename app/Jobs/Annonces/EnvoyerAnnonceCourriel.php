@@ -101,6 +101,17 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
             return;
         }
 
+        // Every corrective send is rechecked just before crossing the HTTP
+        // boundary. Provider outages and suppressions both fail CLOSED.
+        if (str_starts_with($reference, 'klassci-v3-')) {
+            if (! config('services.mailpulse.announcement_retries_enabled', false)
+                || ! app(\App\Services\Annonces\VerifierDestinataireMailPulse::class)
+                    ->estAutorise(strtolower($ligne->email), $tenant)) {
+                $this->statut('awaiting_dispatch', ['error_code' => 'retry_eligibility_unconfirmed']);
+                return;
+            }
+        }
+
         // After crossing the HTTP boundary, a lost response cannot prove non-delivery.
         $soumissionCommencee = false;
         try {
@@ -258,7 +269,7 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
 
     private function statut(string $statut, array $attributs = []): void
     {
-        DB::table('esbtp_annonce_email_deliveries')->where('id', $this->deliveryId)
+        $updated = DB::table('esbtp_annonce_email_deliveries')->where('id', $this->deliveryId)
             ->whereIn('status', ['processing', 'retrying', 'awaiting_dispatch'])
             ->whereNull('submitted_at')
             ->whereNull('provider_delivered_at')
@@ -267,6 +278,21 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
                 'processing_at' => null,
                 'updated_at' => now(),
             ]);
+        if ($updated === 1) {
+            $livraison = DB::table('esbtp_annonce_email_deliveries')->where('id', $this->deliveryId)->first();
+            if ($livraison && str_starts_with((string) $livraison->mailpulse_request_id, 'klassci-v3-')) {
+                DB::table('esbtp_annonce_email_attempts')
+                    ->where('delivery_id', $this->deliveryId)
+                    ->where('idempotency_key', $livraison->mailpulse_request_id)
+                    ->update([
+                        'state' => $statut,
+                        'provider_message_id' => $livraison->mailpulse_message_id,
+                        'failure_code' => $livraison->error_code,
+                        'submitted_at' => $livraison->submitted_at,
+                        'updated_at' => now(),
+                    ]);
+            }
+        }
     }
 
     public function failed(Throwable $exception): void

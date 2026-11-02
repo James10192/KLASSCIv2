@@ -1046,6 +1046,15 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // noms (create_annonces…) restent acceptés pour les rôles d'avant.
             Route::resource('annonces', ESBTPAnnonceController::class)->only(['create', 'store'])
                 ->middleware(['permission:annonces.create|create_annonces']);
+            Route::get('annonces/{annonce}/relance/diagnostic', [ESBTPAnnonceController::class, 'diagnosticRelance'])
+                ->name('annonces.relance.diagnostic')
+                ->middleware(['permission:annonces.edit|edit_annonces', 'throttle:12,1']);
+            Route::get('annonces/{annonce}/relance/etudiants', [ESBTPAnnonceController::class, 'chercherEtudiantsRelance'])
+                ->name('annonces.relance.etudiants')
+                ->middleware(['permission:annonces.email_retry', 'throttle:20,1']);
+            Route::post('annonces/{annonce}/relance/corriger', [ESBTPAnnonceController::class, 'corrigerCourrielRelance'])
+                ->name('annonces.relance.corriger')
+                ->middleware(['permission:annonces.email_retry', 'throttle:5,1']);
             Route::resource('annonces', ESBTPAnnonceController::class)->only(['edit', 'update', 'destroy'])
                 ->middleware(['permission:annonces.edit|edit_annonces']);
             Route::resource('annonces', ESBTPAnnonceController::class)->only(['index', 'show'])

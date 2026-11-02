@@ -1971,6 +1971,11 @@ return [
             'icon' => 'fa-edit',
             'aliases' => ['edit_annonces'],
         ],
+        'annonces.email_retry' => [
+            'label' => 'Renvoyer une annonce à une adresse corrigée après rebond',
+            'group' => 'Communication',
+            'icon' => 'fa-rotate',
+        ],
         'mailpulse.view' => [
             'label' => 'Voir l\'état MailPulse',
             'group' => 'Communication',

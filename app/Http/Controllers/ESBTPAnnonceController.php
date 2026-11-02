@@ -330,6 +330,57 @@ class ESBTPAnnonceController extends Controller
             'destinataires', 'nombreEligibles', 'filtre', 'courrielsQ', 'anneeCourriels', 'apercuCourriel', 'etatCampagneCourriels'));
     }
 
+    /** Diagnostic lecture seule, sans appel MailPulse sortant ni retry. */
+    public function diagnosticRelance(ESBTPAnnonce $annonce,
+        \App\Services\Annonces\DiagnosticRelanceAnnonce $diagnostic): \Illuminate\Http\JsonResponse
+    {
+        if (! $annonce->is_published || ! $annonce->email_notification_enabled) {
+            return response()->json(['message' => 'Aucune campagne e-mail publiée.'], 422);
+        }
+        return response()->json(['success' => true, 'diagnostic' => $diagnostic->pour($annonce)]);
+    }
+
+    /** Recherche de destinataires toujours dans le PUBLIC original de l'annonce. */
+    public function chercherEtudiantsRelance(Request $request, ESBTPAnnonce $annonce,
+        \App\Services\Annonces\CiblageCourrielsAnnonce $ciblage): \Illuminate\Http\JsonResponse
+    {
+        $valide = $request->validate(['q' => ['required', 'string', 'min:2', 'max:100']]);
+        $terme = trim($valide['q']);
+        $etudiants = $ciblage->etudiants($annonce)
+            ->addSelect(['esbtp_etudiants.nom', 'esbtp_etudiants.prenoms'])
+            ->where(function ($query) use ($terme) {
+                $query->where('esbtp_etudiants.nom', 'like', '%'.$terme.'%')
+                    ->orWhere('esbtp_etudiants.prenoms', 'like', '%'.$terme.'%')
+                    ->orWhere('esbtp_etudiants.email', 'like', '%'.$terme.'%')
+                    ->orWhere('esbtp_etudiants.email_personnel', 'like', '%'.$terme.'%');
+            })->limit(12)->get();
+        return response()->json(['students' => $etudiants->map(fn ($e) => [
+            'id' => $e->id, 'label' => trim($e->nom.' '.$e->prenoms),
+            'email' => \App\Services\Annonces\CiblageCourrielsAnnonce::adresse($e),
+        ])->values()]);
+    }
+
+    /** Corrective send: separate delivery and immutable v3 attempt; never replay a bounce. */
+    public function corrigerCourrielRelance(Request $request, ESBTPAnnonce $annonce,
+        \App\Services\Annonces\CorrigerCourrielAnnonce $corriger): \Illuminate\Http\JsonResponse
+    {
+        $valide = $request->validate([
+            'origin_delivery_id' => ['required', 'integer', 'min:1'],
+            'student_id' => ['required', 'integer', 'min:1'],
+            'confirmation_email' => ['required', 'email', 'max:254'],
+            'reason' => ['required', 'string', 'min:8', 'max:500'],
+        ]);
+        $nouvelle = $corriger->executer(
+            $annonce, (int) $valide['origin_delivery_id'], (int) $valide['student_id'],
+            (string) $valide['confirmation_email'], (string) $valide['reason'],
+            (int) auth()->id()
+        );
+        return response()->json([
+            'success' => true, 'message' => 'Adresse corrigée : nouvelle livraison placée en file, sans modifier le rebond initial.',
+            'delivery_id' => $nouvelle['delivery_id'], 'email' => $nouvelle['email'],
+        ], 201);
+    }
+
     /**
      * Vérifie si une annonce peut encore être modifiée (< 15 min après publication)
      */
