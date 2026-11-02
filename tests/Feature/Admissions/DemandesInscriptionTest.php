@@ -46,6 +46,8 @@ class DemandesInscriptionTest extends TestCase
 
     private ESBTPNiveauEtude $niveau;
 
+    private ESBTPNiveauEtude $niveauBts2;
+
     private int $numero = 0;
 
     protected function setUp(): void
@@ -72,7 +74,8 @@ class DemandesInscriptionTest extends TestCase
         $this->annee = ESBTPAnneeUniversitaire::factory()->create(['name' => '2026-2027', 'is_current' => true,
             'start_date' => '2026-09-01', 'end_date' => '2027-07-31']);
         $this->filiere = ESBTPFiliere::factory()->create(['name' => 'Génie civil']);
-        $this->niveau = ESBTPNiveauEtude::factory()->create(['name' => 'BTS 1', 'year' => 1]);
+        $this->niveau = ESBTPNiveauEtude::factory()->create(['name' => 'BTS 1', 'type' => 'BTS', 'year' => 1]);
+        $this->niveauBts2 = ESBTPNiveauEtude::factory()->create(['name' => 'BTS 2', 'type' => 'BTS', 'year' => 2]);
     }
 
     protected function tearDown(): void
@@ -419,7 +422,7 @@ class DemandesInscriptionTest extends TestCase
             'filiere_id' => $this->filiere->id, 'niveau_id' => $this->niveau->id,
             'annee_universitaire_id' => $passee->id, 'status' => 'active',
         ]);
-        $cible = $this->classe('2A BTS', 30);
+        $cible = $this->classe('2A BTS', 30, niveau: $this->niveauBts2);
         $rdv = ESBTPRdvReservation::create([
             'creneau_id' => $this->creneau(0)->id, 'reinscription_demande_id' => $demande->id, 'statut' => 'confirmee',
             'nom' => 'YAO', 'prenoms' => 'Serge', 'telephone' => '+2250700000000', 'date_naissance' => '2006-01-01',
@@ -449,7 +452,7 @@ class DemandesInscriptionTest extends TestCase
             'filiere_id' => $this->filiere->id, 'niveau_id' => $this->niveau->id,
             'annee_universitaire_id' => $avant->id, 'status' => 'active',
         ]);
-        $cible = $this->classe('2A BTS', 30);
+        $cible = $this->classe('2A BTS', 30, niveau: $this->niveauBts2);
         $convertir = fn (array $champs) => $this->actingAs($this->agent)->postJson(
             route('esbtp.reinscription-demandes.convertir', $demande),
             ['classe_id' => $cible->id, 'decision' => 'passage', 'annee_universitaire_id' => $terminee->id] + $champs
@@ -486,7 +489,7 @@ class DemandesInscriptionTest extends TestCase
         ]);
 
         $this->actingAs($this->agent)->postJson(route('esbtp.reinscription-demandes.convertir', $demande), [
-            'classe_id' => $this->classe('2A BTS', 30)->id, 'decision' => 'passage',
+            'classe_id' => $this->classe('2A BTS', 30, niveau: $this->niveauBts2)->id, 'decision' => 'passage',
             'annee_universitaire_id' => $terminee->id, 'annee_echue_confirmee' => true,
         ])->assertStatus(422)->assertJsonPath('ok', false);
 
@@ -515,7 +518,7 @@ class DemandesInscriptionTest extends TestCase
 
         // L'agent change le statut : c'est celui-la qui est enregistre.
         $this->actingAs($this->agent)->postJson(route('esbtp.reinscription-demandes.convertir', $demande), [
-            'classe_id' => $this->classe('2A BTS', 30)->id, 'decision' => 'passage',
+            'classe_id' => $this->classe('2A BTS', 30, niveau: $this->niveauBts2)->id, 'decision' => 'passage',
             'annee_universitaire_id' => $this->annee->id, 'affectation_status' => 'réaffecté',
         ])->assertOk();
         $inscription = \App\Models\ESBTPInscription::findOrFail($demande->fresh()->inscription_id);
@@ -538,7 +541,7 @@ class DemandesInscriptionTest extends TestCase
         }
 
         $reponse = $this->actingAs($this->agent)->postJson(route('esbtp.reinscription-demandes.convertir', $demande), [
-            'classe_id' => $this->classe('2A BTS', 30)->id, 'decision' => 'passage', 'annee_universitaire_id' => $this->annee->id,
+            'classe_id' => $this->classe('2A BTS', 30, niveau: $this->niveauBts2)->id, 'decision' => 'passage', 'annee_universitaire_id' => $this->annee->id,
         ])->assertStatus(422);
 
         $this->assertStringContainsString('postérieure', (string) $reponse->json('message'));
@@ -600,10 +603,10 @@ class DemandesInscriptionTest extends TestCase
         ]);
     }
 
-    private function classe(string $nom, int $places, ?int $filiere = null): ESBTPClasse
+    private function classe(string $nom, int $places, ?int $filiere = null, ?ESBTPNiveauEtude $niveau = null): ESBTPClasse
     {
         return ESBTPClasse::factory()->create([
-            'name' => $nom, 'filiere_id' => $filiere ?? $this->filiere->id, 'niveau_etude_id' => $this->niveau->id,
+            'name' => $nom, 'filiere_id' => $filiere ?? $this->filiere->id, 'niveau_etude_id' => ($niveau ?? $this->niveau)->id,
             'annee_universitaire_id' => $this->annee->id, 'places_totales' => $places, 'is_active' => true,
         ]);
     }
