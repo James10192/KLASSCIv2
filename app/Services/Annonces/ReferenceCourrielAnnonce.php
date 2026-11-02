@@ -24,6 +24,14 @@ final class ReferenceCourrielAnnonce
         return 'klassci-v2-'.$tenant.'-annonce-'.$annonceId.'-courriel-'.$livraisonId;
     }
 
+    /** Separate immutable reference for a corrected recipient, never reusing a bounced key. */
+    public static function tentative(string $tenant, int $annonceId, int $livraisonId, int $essai): ?string
+    {
+        if (! self::tenantValide($tenant) || $annonceId < 1 || $livraisonId < 1 || $essai < 2) return null;
+        $key = 'klassci-v3-'.$tenant.'-annonce-'.$annonceId.'-courriel-'.$livraisonId.'-essai-'.$essai;
+        return strlen($key) <= 191 ? $key : null;
+    }
+
     /**
      * Les anciennes tentatives retrying gardent leur clé ancienne : les
      * renommer provoquerait un deuxième envoi chez MailPulse.
@@ -35,6 +43,11 @@ final class ReferenceCourrielAnnonce
             return null;
         }
         $stockee = (string) ($ligne->mailpulse_request_id ?? '');
+        if (str_starts_with($stockee, 'klassci-v3-')) {
+            $m = self::extraire($stockee, $tenant);
+            return $m !== null && $m['annonce_id'] === (int) $ligne->annonce_id
+                && $m['livraison_id'] === (int) $ligne->id ? $stockee : null;
+        }
         if (str_starts_with($stockee, 'klassci-v2-')) {
             return hash_equals($nouvelle, $stockee) ? $stockee : null;
         }
@@ -49,6 +62,11 @@ final class ReferenceCourrielAnnonce
     public static function pourRapprochement(object $ligne, string $tenant): ?string
     {
         $stockee = (string) ($ligne->mailpulse_request_id ?? '');
+        if (str_starts_with($stockee, 'klassci-v3-')) {
+            $m = self::extraire($stockee, $tenant);
+            return $m !== null && $m['annonce_id'] === (int) $ligne->annonce_id
+                && $m['livraison_id'] === (int) $ligne->id ? $stockee : null;
+        }
         if (str_starts_with($stockee, 'klassci-v2-')) {
             $attendue = self::nouvelle($tenant, (int) $ligne->annonce_id, (int) $ligne->id);
 
@@ -63,6 +81,11 @@ final class ReferenceCourrielAnnonce
     {
         if (! self::tenantValide($tenant) || strlen($reference) > 191) {
             return null;
+        }
+        if (preg_match('/^klassci-v3-([a-z0-9][a-z0-9_-]{1,62})-annonce-([1-9][0-9]*)-courriel-([1-9][0-9]*)-essai-([1-9][0-9]*)$/D', $reference, $m)) {
+            if (! hash_equals($tenant, $m[1]) || ! self::identifiantsValides($m[2], $m[3])
+                || (string) (int) $m[4] !== $m[4] || (int) $m[4] < 2) return null;
+            return ['annonce_id' => (int) $m[2], 'livraison_id' => (int) $m[3], 'v2' => true, 'attempt_number' => (int) $m[4]];
         }
         if (preg_match('/^klassci-v2-([a-z0-9][a-z0-9_-]{1,62})-annonce-([1-9][0-9]*)-courriel-([1-9][0-9]*)$/D', $reference, $m)) {
             if (! hash_equals($tenant, $m[1]) || ! self::identifiantsValides($m[2], $m[3])) {
