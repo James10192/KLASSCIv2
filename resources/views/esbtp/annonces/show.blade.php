@@ -5,7 +5,7 @@
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
+
 <style>
 /* ============================================================
    /esbtp/annonces/{id} — Namespace aps-* (Annonce Premium Show)
@@ -463,6 +463,34 @@
     .aps-card-body { padding: 1rem; }
     .aps-stats { grid-template-columns: 1fr 1fr; }
 }
+
+/* Skill Apple Design : hiérarchie discrète, gestes cohérents et stabilité spatiale. */
+.aps-recipient-details{border-top:1px solid #e6edf8}
+.aps-recipient-details>summary{display:flex;align-items:center;gap:12px;padding:17px 20px;cursor:pointer;list-style:none;background:#f7faff;color:#17375e}
+.aps-recipient-details>summary::-webkit-details-marker{display:none}
+.aps-recipient-details-title{display:grid;gap:3px;min-width:0;flex:1}
+.aps-recipient-details-title strong{font-size:.86rem;font-weight:700}
+.aps-recipient-details-title small{font-size:.73rem;color:#64748b;line-height:1.45}
+.aps-recipient-details-icon{width:38px;height:38px;display:grid;place-items:center;background:#eaf2ff;color:#0453cb;border-radius:11px;flex:none}
+.aps-recipient-details-count{font-size:.74rem;font-weight:700;color:#0453cb;white-space:nowrap}
+.aps-recipient-chevron{color:#7996bd;font-size:.7rem;transition:transform .2s}
+.aps-recipient-details[open] .aps-recipient-chevron{transform:rotate(180deg)}
+.aps-recipient-details-content{border-top:1px solid #e8eef7}
+.aps-email-filter-picker{width:min(100%,290px)}
+.aps-filter-label{display:block;margin-bottom:6px;font-size:.73rem;font-weight:700;color:#506884}
+.aps-email-filter-submit{border:1px solid #cbdbf1!important;background:#f6faff!important;min-height:42px}
+.aps-email-scroll{margin-top:14px;max-height:390px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;border:1px solid #e3ebf7;border-radius:12px}
+.aps-email-scroll:focus-visible{outline:2px solid #0453cb;outline-offset:2px}
+.aps-email-scroll .table-responsive{margin:0}
+.aps-email-scroll table{font-size:.78rem}
+.aps-email-scroll table thead{position:sticky;top:0;z-index:1;background:#f5f8fe}
+.aps-email-scroll table th{padding:12px;white-space:nowrap}
+.aps-email-scroll table td{padding:11px 12px}
+.aps-email-scroll #aps-email-pages,.aps-email-scroll #aps-email-ajax-status{padding:0 12px}
+.aps-message{white-space:normal}
+#aps-apercu iframe{min-height:500px!important}
+@media(max-width:768px){.aps-recipient-details>summary{padding:14px;flex-wrap:wrap}.aps-recipient-details-count{margin-left:auto}.aps-email-scroll{max-height:340px}#aps-apercu iframe{min-height:400px!important}}
+@media(prefers-reduced-motion:reduce){.aps-recipient-chevron{transition:none}.aps-chip--urgent{animation:none}}
 </style>
 @endsection
 
@@ -616,6 +644,32 @@
                 </div>
 
 
+                @if($apercuCourriel)
+                    <section class="aps-card" id="aps-apercu" aria-label="Prévisualisation du courriel">
+                        <div class="aps-card-head">
+                            <span class="aps-card-icon"><i class="fas fa-at"></i></span>
+                            <div>
+                                <div class="aps-card-title">Aperçu du courriel envoyé aux étudiants</div>
+                                <div class="aps-card-sub">Même modèle d'établissement que les autres notifications KLASSCI.</div>
+                            </div>
+                        </div>
+                        <div class="aps-card-body">
+                            <iframe
+                                title="Aperçu du courriel de cette annonce"
+                                sandbox=""
+                                loading="lazy"
+                                referrerpolicy="no-referrer"
+                                style="display:block;width:100%;min-height:580px;border:1px solid #dbe3f0;border-radius:12px;background:white;"
+                                srcdoc="{{ $apercuCourriel }}">
+                            </iframe>
+                            <p class="text-muted small mt-2 mb-0">
+                                Aperçu du modèle courant. Les courriels déjà expédiés ne changent pas rétroactivement.
+                            </p>
+                        </div>
+                    </section>
+                @endif
+
+
                 {{-- Les chiffres de transport ne prouvent pas la reception en boite. --}}
                 @if($annonce->email_notification_enabled)
                     @php
@@ -629,7 +683,7 @@
                         $retardes = (int) ($courriels['delayed'] ?? 0);
                         $echoues = (int) ($courriels['failed'] ?? 0);
                     @endphp
-                    <section class="aps-card" aria-label="Suivi des envois par e-mail">
+                    <section class="aps-card" id="aps-suivi" aria-label="Suivi des envois par e-mail">
                         <div class="aps-card-head">
                             <span class="aps-card-icon"><i class="fas fa-envelope-open-text"></i></span>
                             <div>
@@ -691,52 +745,37 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="aps-card-body" style="border-top:1px solid var(--bs-border-color,#dbe3f0)">
-                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                                <div>
-                                    <strong>Destinataires et état individuel</strong>
-                                    <div class="text-muted small">Une ligne par adresse unique ; les statuts sont ceux de MailPulse.</div>
-                                </div>
-                                <form id="aps-email-filter" method="GET" action="{{ route('esbtp.annonces.show', $annonce) }}" class="d-flex gap-2 flex-wrap">
-                                    <label for="courriels-statut" class="visually-hidden">Filtrer les états des e-mails</label>
-                                    <select id="courriels-statut" class="form-select form-select-sm" name="courriels_statut" style="max-width:220px">
-                                        <option value="">Tous les états</option>
-                                        @foreach(['pending'=>'En attente', 'processing'=>'Traitement', 'retrying'=>'Nouvel essai',
-                                            'awaiting_dispatch'=>'À confirmer', 'submitted'=>'Soumis',
-                                            'delayed'=>'Retardé', 'delivered'=>'Délivré', 'failed'=>'Échec'] as $code => $libelle)
-                                            <option value="{{ $code }}" {{ $filtre === $code ? 'selected' : '' }}>{{ $libelle }}</option>
-                                        @endforeach
-                                    </select>
-                                    <button class="btn btn-sm btn-outline-primary" type="submit">Filtrer</button>
+                        <details class="aps-recipient-details" id="aps-recipient-details">
+                            <summary>
+                                <span class="aps-recipient-details-icon"><i class="fas fa-users" aria-hidden="true"></i></span>
+                                <span class="aps-recipient-details-title">
+                                    <strong>Destinataires et suivi individuel</strong>
+                                    <small>Voir les adresses et leur état sans allonger la page</small>
+                                </span>
+                                <span class="aps-recipient-details-count">{{ number_format($totalMail, 0, ',', ' ') }} adresses</span>
+                                <i class="fas fa-chevron-down aps-recipient-chevron" aria-hidden="true"></i>
+                            </summary>
+                            <div class="aps-card-body aps-recipient-details-content">
+                                <form id="aps-email-filter" method="GET" action="{{ route('esbtp.annonces.show', $annonce) }}" class="d-flex gap-2 flex-wrap align-items-end">
+                                    <div class="aps-email-filter-picker">
+                                        <label class="aps-filter-label">Statut des courriels</label>
+                                        <x-au-select name="courriels_statut" :value="$filtre" icon="fa-envelope" placeholder="Tous les états"
+                                            :options="[
+                                                'pending' => 'En attente', 'processing' => 'Traitement',
+                                                'retrying' => 'Nouvel essai', 'awaiting_dispatch' => 'À confirmer',
+                                                'submitted' => 'Soumis', 'delayed' => 'Retardé',
+                                                'delivered' => 'Délivré', 'failed' => 'Échec'
+                                            ]" />
+                                    </div>
+                                    <button class="aps-btn aps-btn--white aps-email-filter-submit" type="submit">
+                                        <i class="fas fa-filter" aria-hidden="true"></i> Filtrer
+                                    </button>
                                 </form>
+                                <div id="aps-email-scroll" class="aps-email-scroll" tabindex="0" aria-label="Destinataires — liste défilante">
+                                    @include('esbtp.annonces._courriels-liste')
+                                </div>
                             </div>
-                            @include('esbtp.annonces._courriels-liste')
-                        </div>
-                    </section>
-                @endif
-
-                @if($apercuCourriel)
-                    <section class="aps-card" aria-label="Prévisualisation du courriel">
-                        <div class="aps-card-head">
-                            <span class="aps-card-icon"><i class="fas fa-at"></i></span>
-                            <div>
-                                <div class="aps-card-title">Aperçu du courriel envoyé aux étudiants</div>
-                                <div class="aps-card-sub">Même modèle d'établissement que les autres notifications KLASSCI.</div>
-                            </div>
-                        </div>
-                        <div class="aps-card-body">
-                            <iframe
-                                title="Aperçu du courriel de cette annonce"
-                                sandbox=""
-                                loading="lazy"
-                                referrerpolicy="no-referrer"
-                                style="display:block;width:100%;min-height:580px;border:1px solid #dbe3f0;border-radius:12px;background:white;"
-                                srcdoc="{{ $apercuCourriel }}">
-                            </iframe>
-                            <p class="text-muted small mt-2 mb-0">
-                                Aperçu du modèle courant. Les courriels déjà expédiés ne changent pas rétroactivement.
-                            </p>
-                        </div>
+                        </details>
                     </section>
                 @endif
 
@@ -1022,7 +1061,7 @@
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
 <script>
 (function () {
     'use strict';
@@ -1030,25 +1069,13 @@
     document.addEventListener('DOMContentLoaded', function () {
         // Filtrage et pagination incrémentale sans recharger la fiche.
         // Le formulaire GET et les liens Laravel restent utilisables sans JS.
-        // Composant Choices.js déjà employé dans la création/modification
-        // des annonces ; sans bibliothèque ou design custom concurrent.
-        const emailSelect = document.getElementById('courriels-statut');
-        if (emailSelect && typeof window.Choices === 'function') {
-            new window.Choices(emailSelect, {
-                searchEnabled: true,
-                shouldSort: false,
-                itemSelectText: '',
-                allowHTML: false,
-                searchResultLimit: 12,
-                position: 'bottom',
-                placeholder: false
-            });
-        }
+        // Réutilisation du select premium KLASSCI, sans bibliothèque concurrente.
         const emailFilter = document.getElementById('aps-email-filter');
         const emailTable = document.getElementById('aps-email-table');
         const emailPages = document.getElementById('aps-email-pages');
         const emailMore = document.getElementById('aps-email-more');
         const emailStatus = document.getElementById('aps-email-ajax-status');
+        const emailScroll = document.getElementById('aps-email-scroll');
         let nextEmailUrl = null;
         let emailRequest = null;
         let emailBusy = false;
@@ -1105,6 +1132,7 @@
 
         if (emailFilter && emailTable && emailPages && emailMore) {
             updateNextLink();
+            emailFilter.addEventListener('change', function () { emailFilter.requestSubmit(); });
             emailFilter.addEventListener('submit', function (event) {
                 event.preventDefault();
                 const url = new URL(emailFilter.action);
@@ -1119,7 +1147,7 @@
                 if (entries.some(entry => entry.isIntersecting) && nextEmailUrl && !emailBusy) {
                     loadEmailPage(nextEmailUrl, true);
                 }
-            }, {rootMargin: '120px'}) : null;
+            }, {root: emailScroll, rootMargin: '120px'}) : null;
             observer?.observe(emailMore);
             window.addEventListener('pagehide', () => {
                 emailRequest?.abort();
