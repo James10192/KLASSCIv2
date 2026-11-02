@@ -45,6 +45,21 @@
         @if(session('success'))
             <div class="arp-feedback" role="status">{{ session('success') }}</div>
         @endif
+        <aside class="arp-policy" role="note">
+            <i class="fas fa-scale-balanced" aria-hidden="true"></i>
+            <div>
+                @if($conseilBts1['mode'] === 'threshold')
+                    <strong>Conseil BTS 1 : seuil de {{ $conseilBts1['seuil'] }}/20 prioritaire</strong>
+                    <span>La décision du bulletin utilise {{ $conseilBts1['source'] === 'annual' ? 'la moyenne annuelle' : ($conseilBts1['source'] === 'semestre2' ? 'la moyenne du semestre 2' : 'les deux moyennes') }}. Cette politique prime sur les seuils historiques de réinscription.</span>
+                @else
+                    <strong>Conseil BTS 1 : décision manuelle</strong>
+                    <span>Les seuils ci-dessous servent aux propositions automatiques en l'absence d'une décision de conseil normalisée. Vérifiez les admissions avant la réinscription.</span>
+                @endif
+            </div>
+            @can('bulletins.edit')
+                <a href="{{ route('esbtp.bulletins.configuration') }}">Configurer le bulletin <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+            @endcan
+        </aside>
         <div class="arp-panel">
             <div class="arp-panel-top">
                 <div><h2>Politiques de passage et de rattrapage</h2><p>Chaque règle s'applique à un niveau et une filière de cet établissement.</p></div>
