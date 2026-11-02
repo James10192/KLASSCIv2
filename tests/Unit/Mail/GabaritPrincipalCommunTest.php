@@ -66,6 +66,28 @@ class GabaritPrincipalCommunTest extends TestCase
         $this->assertStringContainsString('Travail terminé', $tache);
     }
 
+    public function test_la_demande_de_demo_utilise_la_marque_klassci_et_preserve_les_champs(): void
+    {
+        $html = view('emails.demo-request', [
+            'date_demande' => '02/11/2026',
+            'nom' => 'Contact commercial',
+            'email' => 'contact@example.test',
+            'telephone' => '+225 0000000000',
+            'etablissement' => 'École pilote',
+            'type_etablissement' => 'Collège',
+            'nombre_etudiants' => '100 - 500',
+            'message' => '<script>alert("x")</script>',
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'Navigateur de test',
+        ])->render();
+
+        $this->assertStringContainsString('Nouvelle demande de démonstration', $html);
+        $this->assertStringContainsString('École pilote', $html);
+        $this->assertStringContainsString('contact@example.test', $html);
+        $this->assertStringContainsString('&lt;script&gt;', $html);
+        $this->assertStringNotContainsString('<script>alert', $html);
+    }
+
     public function test_la_messagerie_legacy_reste_disponible(): void
     {
         $this->assertTrue(view()->exists('esbtp.emails.layout-ancien'));
