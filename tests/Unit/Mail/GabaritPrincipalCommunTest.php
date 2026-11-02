@@ -36,6 +36,7 @@ class GabaritPrincipalCommunTest extends TestCase
         $this->assertStringContainsString('border-radius:16px', $html);
         $this->assertStringContainsString('height:4px', $html);
         $this->assertStringContainsString('Consulter mon espace KLASSCI', $html);
+        $this->assertSame(1, substr_count($html, '<h1 '), 'Un seul titre principal par e-mail.');
         $this->assertStringContainsString('&lt;script&gt;danger()&lt;/script&gt;', $html);
         $this->assertStringNotContainsString('<script>danger()</script>', $html);
     }
