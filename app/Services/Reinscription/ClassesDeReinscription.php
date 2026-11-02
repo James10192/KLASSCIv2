@@ -212,14 +212,14 @@ class ClassesDeReinscription
             ->where('is_active', 1)
             ->whereHas('niveau', fn (Builder $q) => $q->where('year', $annee + 1)->where('type', $type)));
 
-        // L'absence de BTS 2 n'autorise jamais un passage silencieux en
-        // premiere annee d'un autre cycle : l'agent doit d'abord ouvrir
-        // une vraie classe BTS du niveau suivant.
-        if ($quittee->isBTS() || $suivantes->isNotEmpty()) {
+        // BTS 1 : ne jamais remplacer silencieusement la seconde annee
+        // manquante par une Licence 1. La passerelle preexistante BTS 2
+        // vers un autre cycle, elle, est preservee (contrat de tests).
+        if (($quittee->isBTS() && $annee === 1) || $suivantes->isNotEmpty()) {
             return $suivantes;
         }
 
-        // Compatibilite des autres cycles hors LMD : ne pas changer leur politique.
+        // Compatibilite des autres parcours et de la sortie du BTS 2.
         return $this->avecRelations(ESBTPClasse::where('filiere_id', $quittee->filiere_id)
             ->where('is_active', 1)
             ->whereHas('niveau', fn (Builder $q) => $q->where('year', 1)->where('type', '!=', $type)));
