@@ -246,6 +246,13 @@ jobs:
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Services/MailPulse/MailPulseStalePaymentTest.php --stop-on-failure
 
+      - name: Rendu des courriels premium KLASSCI et compatibilité MailPulse
+        if: github.event_name == 'pull_request'
+        run: |
+          php artisan test tests/Unit/Mail/GabaritPrincipalCommunTest.php --stop-on-failure
+          php artisan test tests/Unit/Mail/CourrielAnnonceHtmlTest.php --stop-on-failure
+          php artisan test tests/Unit/Mail/GabaritRecuDesAvisParentsTest.php --stop-on-failure
+
       - name: Test chaque chemin de test CI est exécute explicitement
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/Workflows/LaravelCIPathCoverageTest.php --stop-on-failure
