@@ -498,7 +498,7 @@
    Pas de scroll horizontal interne concurrent qui casse l'en-tête sticky. */
 #aps-email-scroll{max-width:100%;overflow:auto;scrollbar-gutter:stable;overscroll-behavior:contain}
 #aps-email-scroll .table-responsive{overflow:visible!important}
-#aps-email-scroll .aps-deliveries-table{width:100%;min-width:790px;table-layout:fixed;border-spacing:0;border-collapse:separate;margin:0;background:#fff;font-size:.79rem}
+#aps-email-scroll .aps-deliveries-table{width:100%;min-width:950px;table-layout:fixed;border-spacing:0;border-collapse:separate;margin:0;background:#fff;font-size:.79rem}
 #aps-email-scroll .aps-deliveries-table th,
 #aps-email-scroll .aps-deliveries-table td{box-sizing:border-box;padding:12px 14px!important;line-height:1.45;text-align:left;vertical-align:middle;border:0;border-bottom:1px solid #e8eef7;background:transparent}
 #aps-email-scroll .aps-deliveries-table thead{position:sticky;top:0;z-index:3}
@@ -1460,7 +1460,7 @@
                 const total = document.getElementById('aps-total-mail');
                 const pending = document.getElementById('aps-total-pending');
                 for (const element of [total,pending]) if (element) {
-                    element.textContent = (Number(element.textContent.replace(/\\s/g,'')) + 1).toLocaleString('fr-FR');
+                    element.textContent = (Number(element.textContent.replace(/\s/g,'')) + 1).toLocaleString('fr-FR');
                 }
                 const originalButton = emailTable?.querySelector('[data-aps-retry-id="'+originId+'"]');
                 if (originalButton) {originalButton.disabled = true;originalButton.textContent = 'Corrigé';}

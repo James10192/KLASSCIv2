@@ -347,6 +347,7 @@ class ESBTPAnnonceController extends Controller
         $valide = $request->validate(['q' => ['required', 'string', 'min:2', 'max:100']]);
         $terme = trim($valide['q']);
         $etudiants = $ciblage->etudiants($annonce)
+            ->addSelect(['esbtp_etudiants.nom', 'esbtp_etudiants.prenoms'])
             ->where(function ($query) use ($terme) {
                 $query->where('esbtp_etudiants.nom', 'like', '%'.$terme.'%')
                     ->orWhere('esbtp_etudiants.prenoms', 'like', '%'.$terme.'%')
