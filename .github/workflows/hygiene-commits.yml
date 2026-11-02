@@ -445,6 +445,7 @@ jobs:
             tests/Feature/Bulletin/BtsBulletinConfigurationHttpTest.php \
             tests/Feature/Reinscription/AnalyseDecisionsReinscriptionTest.php \
             tests/Feature/Reinscription/ReglesAcademiquesAjaxTest.php \
+            tests/Feature/Reinscription/ReglesAcademiquesAccesTest.php \
             tests/Feature/Reinscription/CorbeilleDemandesTest.php \
             tests/Feature/Reinscription/ClassesProposeesAuPassageTest.php \
             tests/Feature/Bts/StudentAcademicTroncCommunTest.php \
