@@ -6,6 +6,7 @@
             <th scope="col">Tentatives</th>
             <th scope="col">Dernière mise à jour</th>
             <th scope="col">Motif / code</th>
+            @can('annonces.email_retry')<th scope="col">Correction</th>@endcan
         </tr></thead>
         <tbody>
         @forelse($destinataires as $livraison)
@@ -27,9 +28,23 @@
                 <td>{{ (int) $livraison->attempts }}</td>
                 <td class="text-nowrap">{{ \Illuminate\Support\Carbon::parse($livraison->updated_at)->format('d/m/Y H:i') }}</td>
                 <td class="aps-deliveries-code"><small>{{ $livraison->error_code === 'local_rate_limit' ? 'Quota local temporaire' : ($livraison->error_code ?: '—') }}</small></td>
+                @can('annonces.email_retry')
+                    <td>
+                        @if($livraison->status === 'failed' && in_array($livraison->error_code, ['email_bounced','bounced'], true))
+                            <button type="button" class="aps-btn aps-btn--white"
+                                data-aps-retry-id="{{ $livraison->id }}" data-aps-retry-email="{{ $livraison->email }}"
+                                aria-label="Préparer une correction de l’adresse {{ $livraison->email }}"
+                                {{ config('services.mailpulse.announcement_retries_enabled', false) ? '' : 'disabled' }}>
+                                <i class="fas fa-envelope" aria-hidden="true"></i>Corriger
+                            </button>
+                        @else
+                            <span class="text-muted">—</span>
+                        @endif
+                    </td>
+                @endcan
             </tr>
         @empty
-            <tr><td colspan="5" class="text-muted py-3 text-center">
+            <tr><td colspan="{{ auth()->user()?->can('annonces.email_retry') ? 6 : 5 }}" class="text-muted py-3 text-center">
                 Aucune adresse pour ce filtre. Vérifiez le traitement de la file.
             </td></tr>
         @endforelse

@@ -526,6 +526,33 @@
 .aps-email-filter-picker .au-select-trigger{width:100%}
 @media(max-width:800px){#aps-email-scroll .aps-deliveries-table{min-width:720px}}
 @media(prefers-reduced-motion:reduce){.aps-recipient-chevron{transition:none}.aps-chip--urgent{animation:none}}
+
+/* Diagnostic de campagne : aucun bouton ne réémet des courriels par inadvertance. */
+.aps-retry-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:1px solid #cbdaf3;border-radius:13px;background:#f5f9ff;color:#23476e}
+.aps-retry-actions strong{font-size:.88rem}
+.aps-retry-actions p{font-size:.75rem;margin:4px 0 0;color:#5e728c}
+.aps-retry-dialog{border:0;border-radius:18px;padding:24px;box-shadow:0 20px 70px rgba(15,35,65,.25);width:min(92vw,570px);max-height:85vh;overflow:auto;background:#fff;color:#152d4e}
+.aps-retry-dialog::backdrop{background:rgba(9,25,53,.5);backdrop-filter:blur(3px)}
+.aps-retry-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.aps-retry-dialog-head h2{font-size:1.1rem;margin:4px 0 0}
+.aps-retry-kicker{margin:0;color:#0453cb;font-size:.68rem;font-weight:750;letter-spacing:.1em}
+.aps-retry-intro{font-size:.82rem;color:#62758c;margin:14px 0}
+.aps-retry-diagnostics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.aps-retry-diagnostics>div{display:grid;gap:3px;padding:13px;border:1px solid #e1eaf8;border-radius:11px;background:#f8fbff}
+.aps-retry-diagnostics strong{font-size:1.25rem;font-variant-numeric:tabular-nums;color:#0453cb}
+.aps-retry-diagnostics span{font-size:.72rem;color:#66778e}
+.aps-retry-warning{background:#fff7e9;border-left:3px solid #e3a13b;padding:12px 14px;border-radius:8px;color:#745423;font-size:.8rem;line-height:1.5;margin:15px 0}
+.aps-retry-footer{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:8px}
+.aps-retry-footer .aps-btn--disabled{cursor:not-allowed;opacity:.7}
+.aps-retry-correction{margin:18px 0;border-top:1px solid #dce6f6;padding-top:18px}
+.aps-retry-correction h3{font-size:.92rem;font-weight:750;color:#193b67;margin:0 0 8px}
+.aps-retry-correction .aps-filter-label{display:block;margin:10px 0 5px}
+.aps-retry-students{display:grid;gap:5px;max-height:190px;overflow-y:auto;margin-top:8px}
+.aps-retry-students button{border:1px solid #e0e9f6;border-radius:9px;background:#f8fbff;padding:10px;text-align:left;font-size:.78rem;color:#234b77}
+.aps-retry-students button:hover,.aps-retry-students button:focus-visible{border-color:#0453cb;background:#eff6ff}
+#aps-retry-send:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:540px){.aps-retry-dialog{padding:18px}.aps-retry-diagnostics{grid-template-columns:1fr}.aps-retry-actions>button{width:100%;justify-content:center}}
+@media(prefers-reduced-motion:reduce){.aps-retry-dialog::backdrop{backdrop-filter:none}}
 </style>
 @endsection
 
@@ -728,8 +755,8 @@
                         </div>
                         <div class="aps-card-body">
                             <div class="aps-stats" style="grid-template-columns:repeat(auto-fit,minmax(125px,1fr));">
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $totalMail }}</div><div class="aps-stat-label">Adresses retenues</div></div>
-                                <div class="aps-stat"><div class="aps-stat-value">{{ $enAttente }}</div><div class="aps-stat-label">En file / tentatives</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" id="aps-total-mail">{{ $totalMail }}</div><div class="aps-stat-label">Adresses retenues</div></div>
+                                <div class="aps-stat"><div class="aps-stat-value" id="aps-total-pending">{{ $enAttente }}</div><div class="aps-stat-label">En file / tentatives</div></div>
                                 <div class="aps-stat"><div class="aps-stat-value">{{ $soumis }}</div><div class="aps-stat-label">Acceptés, non confirmés</div></div>
                                 <div class="aps-stat"><div class="aps-stat-value">{{ $enConfirmation }}</div><div class="aps-stat-label">MailPulse à confirmer</div></div>
                                 <div class="aps-stat"><div class="aps-stat-value">{{ $livres }}</div><div class="aps-stat-label">Livraisons confirmées</div></div>
@@ -761,6 +788,21 @@
                                     <p class="small text-muted mb-0">Ne relancez pas les adresses rejetées sans analyser le code et rapprocher les événements MailPulse.</p>
                                 @endif
                             </div>
+                            @canany(['annonces.edit', 'edit_annonces'])
+                                @if($echoues > 0)
+                                    <div class="aps-retry-actions mt-3">
+                                        <div>
+                                            <strong>{{ number_format($echoues, 0, ',', ' ') }} échec(s) à examiner</strong>
+                                            <p>Analysez les rebonds et suppressions avant toute nouvelle soumission. Les autres messages restent intouchés.</p>
+                                        </div>
+                                        <button type="button" id="aps-retry-open" class="aps-btn aps-btn--white"
+                                            data-diagnostic-url="{{ route('esbtp.annonces.relance.diagnostic', $annonce) }}">
+                                            <i class="fas fa-rotate" aria-hidden="true"></i>Préparer une relance
+                                        </button>
+                                    </div>
+                                    <div id="aps-retry-status" aria-live="polite" role="status" class="small mt-2"></div>
+                                @endif
+                            @endcanany
                             <div class="alert alert-info mt-3 mb-0" role="note">
                                 <strong>Un courriel soumis n'est pas nécessairement délivré.</strong>
                                 Les confirmations et retards du fournisseur nécessitent le rapprochement sécurisé MailPulse.
@@ -1056,6 +1098,66 @@
             @method('DELETE')
         </form>
 
+        @canany(['annonces.edit', 'edit_annonces', 'annonces.email_retry'])
+        @if($annonce->email_notification_enabled && $annonce->is_published)
+            <dialog id="aps-retry-dialog" class="aps-retry-dialog" aria-labelledby="aps-retry-title">
+                <div class="aps-retry-dialog-head">
+                    <div>
+                        <p class="aps-retry-kicker">SÉCURITÉ MAILPULSE</p>
+                        <h2 id="aps-retry-title">Préparer une relance</h2>
+                    </div>
+                    <button type="button" id="aps-retry-close" aria-label="Fermer le diagnostic" class="aps-modal-close">
+                        <i class="fas fa-times" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <p class="aps-retry-intro">Le diagnostic vérifie les statuts sans envoyer de nouveau courrier.</p>
+                <div class="aps-retry-diagnostics" aria-live="polite">
+                    <div><strong id="aps-retry-bounces">—</strong><span>Adresses en rebond</span></div>
+                    <div><strong id="aps-retry-suppressed">—</strong><span>Adresses supprimées / plaintes</span></div>
+                    <div><strong id="aps-retry-other">—</strong><span>Autres échecs à vérifier</span></div>
+                    <div><strong id="aps-retry-running">—</strong><span>Déjà en cours, à ne pas relancer</span></div>
+                </div>
+                <p class="aps-retry-warning" id="aps-retry-warning"></p>
+                @can('annonces.email_retry')
+                <section class="aps-retry-correction" id="aps-retry-correction"
+                    data-student-url="{{ route('esbtp.annonces.relance.etudiants', $annonce) }}"
+                    data-submit-url="{{ route('esbtp.annonces.relance.corriger', $annonce) }}"
+                    data-enabled="{{ config('services.mailpulse.announcement_retries_enabled', false) ? '1' : '0' }}">
+                    <h3>Nouvelle adresse après correction</h3>
+                    <p class="small mb-2">La livraison rejetée reste conservée. Corrigez d'abord l'adresse personnelle dans la fiche de l'étudiant, puis sélectionnez son nom ici.</p>
+                    <p id="aps-retry-origin-label" class="aps-retry-warning">Sélectionnez un rebond dans la liste des destinataires.</p>
+                    <label class="aps-filter-label" for="aps-retry-student-query">Rechercher l'étudiant concerné</label>
+                    <input id="aps-retry-student-query" type="search" class="aps-filter-search-input w-100"
+                        placeholder="Nom, prénom ou adresse…" autocomplete="off" minlength="2" maxlength="100">
+                    <div id="aps-retry-students" class="aps-retry-students" role="listbox" aria-label="Étudiants éligibles"></div>
+                    <p id="aps-retry-student-selected" class="small text-muted mt-2" aria-live="polite"></p>
+                    <label for="aps-retry-confirmation" class="aps-filter-label">Confirmer la nouvelle adresse</label>
+                    <input id="aps-retry-confirmation" type="email" class="aps-filter-search-input w-100" maxlength="254"
+                        autocomplete="off" placeholder="Adresse personnelle corrigée">
+                    <label for="aps-retry-reason" class="aps-filter-label mt-2">Justification de la correction</label>
+                    <textarea id="aps-retry-reason" class="aps-filter-search-input w-100" rows="2"
+                        minlength="8" maxlength="500" placeholder="Ex. : adresse personnelle corrigée par la scolarité"></textarea>
+                    <div id="aps-retry-action-state" class="small mt-2" role="status" aria-live="polite"></div>
+                    <button type="button" id="aps-retry-send" class="aps-btn aps-btn--white mt-3"
+                        {{ config('services.mailpulse.announcement_retries_enabled', false) ? '' : 'disabled' }}>
+                        <i class="fas fa-shield-alt" aria-hidden="true"></i>Valider la nouvelle tentative
+                    </button>
+                    @unless(config('services.mailpulse.announcement_retries_enabled', false))
+                    <p class="small text-muted mt-2">Activation technique requise après déploiement de MailPulse v3 et vérification de la file.</p>
+                    @endunless
+                </section>
+                @endcan
+                <div class="aps-retry-footer">
+                    <button type="button" id="aps-retry-cancel" class="aps-btn aps-btn--white">Fermer</button>
+                    <button type="button" class="aps-btn aps-btn--disabled" disabled
+                        title="La relance demande un journal d'essais immuable et une preuve MailPulse de non-soumission.">
+                        <i class="fas fa-lock" aria-hidden="true"></i>Relance non autorisée
+                    </button>
+                </div>
+            </dialog>
+        @endif
+        @endcanany
+
         {{-- =================== MODAL DELETE =================== --}}
         <div class="modal fade aps-modal" id="apsDeleteModal" tabindex="-1"
              aria-labelledby="apsDeleteModalLabel" aria-hidden="true" data-bs-backdrop="static">
@@ -1216,6 +1318,162 @@
                 observer?.disconnect();
             }, {once: true});
         }
+
+
+        // Diagnostic de relance sans transport réseau MailPulse et sans reload.
+        const retryOpen = document.getElementById('aps-retry-open');
+        const retryDialog = document.getElementById('aps-retry-dialog');
+        const retryStatus = document.getElementById('aps-retry-status');
+        const closeRetry = () => retryDialog?.close();
+        document.getElementById('aps-retry-close')?.addEventListener('click', closeRetry);
+        document.getElementById('aps-retry-cancel')?.addEventListener('click', closeRetry);
+        retryDialog?.addEventListener('click', event => {
+            if (event.target === retryDialog) closeRetry();
+        });
+        retryOpen?.addEventListener('click', async () => {
+            if (retryOpen.disabled) return;
+            retryOpen.disabled = true;
+            if (retryStatus) retryStatus.textContent = 'Analyse des échecs en cours…';
+            try {
+                const res = await fetch(retryOpen.dataset.diagnosticUrl, {
+                    credentials: 'same-origin',
+                    headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'}
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) throw new Error(data.message || 'Diagnostic indisponible.');
+                const d = data.diagnostic;
+                for (const [key, value] of Object.entries({
+                    'aps-retry-bounces': d.rebonds,
+                    'aps-retry-suppressed': d.supprimees,
+                    'aps-retry-other': d.autres_echecs,
+                    'aps-retry-running': d.en_cours
+                })) {
+                    const el = document.getElementById(key);
+                    if (el) el.textContent = Number(value).toLocaleString('fr-FR');
+                }
+                const warning = document.getElementById('aps-retry-warning');
+                if (warning) warning.textContent = d.motif_blocage;
+                if (retryStatus) retryStatus.textContent = 'Diagnostic consulté. Aucun message réexpédié.';
+                retryDialog?.showModal();
+            } catch (error) {
+                if (retryStatus) retryStatus.textContent = error.message;
+                window.dispatchEvent(new CustomEvent('toast', {
+                    detail: {type: 'error', message: error.message}
+                }));
+            } finally {
+                retryOpen.disabled = false;
+            }
+        });
+
+        const correction = document.getElementById('aps-retry-correction');
+        const studentQuery = document.getElementById('aps-retry-student-query');
+        const studentChoices = document.getElementById('aps-retry-students');
+        const state = document.getElementById('aps-retry-action-state');
+        const send = document.getElementById('aps-retry-send');
+        let originId = null;
+        let selectedStudent = null;
+        let studentAbort = null;
+        let studentTimeout = null;
+        function notice(type, message) {
+            window.dispatchEvent(new CustomEvent('toast', {detail:{type, message}}));
+        }
+        emailScroll?.addEventListener('click', async event => {
+            const target = event.target.closest('[data-aps-retry-id]');
+            if (!target) return;
+            originId = Number(target.dataset.apsRetryId);
+            selectedStudent = null;
+            const originLabel = document.getElementById('aps-retry-origin-label');
+            if (originLabel) originLabel.textContent = 'Adresse en rebond : ' + target.dataset.apsRetryEmail;
+            if (studentQuery) studentQuery.value = '';
+            if (studentChoices) studentChoices.replaceChildren();
+            const selected = document.getElementById('aps-retry-student-selected');
+            if (selected) selected.textContent = '';
+            retryDialog?.showModal();
+        });
+
+        studentQuery?.addEventListener('input', () => {
+            clearTimeout(studentTimeout);
+            studentAbort?.abort();
+            selectedStudent = null;
+            if (studentChoices) studentChoices.replaceChildren();
+            const q = studentQuery.value.trim();
+            if (q.length < 2 || !correction) return;
+            studentTimeout = setTimeout(async () => {
+                studentAbort = new AbortController();
+                try {
+                    const url = new URL(correction.dataset.studentUrl);
+                    url.searchParams.set('q', q);
+                    const response = await fetch(url, {credentials:'same-origin',
+                        headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'},
+                        signal:studentAbort.signal});
+                    if (!response.ok) throw new Error('Recherche indisponible.');
+                    const data = await response.json();
+                    if (studentChoices) studentChoices.replaceChildren();
+                    for (const person of (data.students || [])) {
+                        if (!person.email) continue;
+                        const btn = document.createElement('button');
+                        btn.type = 'button'; btn.setAttribute('role','option');
+                        btn.textContent = person.label + ' — ' + person.email;
+                        btn.addEventListener('click', () => {
+                            selectedStudent = person;
+                            if (studentChoices) studentChoices.replaceChildren();
+                            const selected = document.getElementById('aps-retry-student-selected');
+                            if (selected) selected.textContent = 'Étudiant sélectionné : ' + person.label + ' — ' + person.email;
+                        });
+                        studentChoices?.appendChild(btn);
+                    }
+                } catch (error) {
+                    if (error.name !== 'AbortError') notice('error', error.message);
+                }
+            }, 300);
+        });
+
+        send?.addEventListener('click', async () => {
+            if (send.disabled || correction?.dataset.enabled !== '1') return;
+            if (!originId || !selectedStudent) {
+                if (state) state.textContent = 'Sélectionnez un rebond puis son étudiant.';
+                return;
+            }
+            const confirmed = document.getElementById('aps-retry-confirmation')?.value.trim() || '';
+            const reason = document.getElementById('aps-retry-reason')?.value.trim() || '';
+            if (confirmed.toLowerCase() !== String(selectedStudent.email).toLowerCase() || reason.length < 8) {
+                if (state) state.textContent = 'Confirmez exactement la nouvelle adresse et justifiez la correction.';
+                return;
+            }
+            send.disabled = true;
+            if (state) state.textContent = 'Vérification MailPulse et enregistrement…';
+            try {
+                const response = await fetch(correction.dataset.submitUrl, {method:'POST',credentials:'same-origin',
+                    headers:{'Accept':'application/json','Content-Type':'application/json',
+                        'X-Requested-With':'XMLHttpRequest',
+                        'X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content},
+                    body:JSON.stringify({origin_delivery_id:originId,student_id:selectedStudent.id,
+                        confirmation_email:confirmed,reason})});
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    const first = Object.values(data.errors || {})[0];
+                    throw new Error((Array.isArray(first) && first[0]) || data.message || 'Correction refusée.');
+                }
+                if (state) state.textContent = data.message;
+                notice('success',data.message);
+                retryDialog?.close();
+                const total = document.getElementById('aps-total-mail');
+                const pending = document.getElementById('aps-total-pending');
+                for (const element of [total,pending]) if (element) {
+                    element.textContent = (Number(element.textContent.replace(/\\s/g,'')) + 1).toLocaleString('fr-FR');
+                }
+                const originalButton = emailTable?.querySelector('[data-aps-retry-id="'+originId+'"]');
+                if (originalButton) {originalButton.disabled = true;originalButton.textContent = 'Corrigé';}
+                if (emailFilter) {
+                    const url = new URL(emailFilter.action);
+                    for (const [key,value] of new FormData(emailFilter)) if (value) url.searchParams.set(key,String(value));
+                    loadEmailPage(url.toString(),false);
+                }
+            } catch (error) {
+                if (state) state.textContent = error.message;
+                notice('error',error.message);
+            } finally {send.disabled = correction?.dataset.enabled !== '1';}
+        });
 
         const openBtn = document.getElementById('aps-open-delete');
         const modalEl = document.getElementById('apsDeleteModal');
