@@ -444,6 +444,9 @@ jobs:
             tests/Unit/Services/BtsBulletinPolicyTest.php \
             tests/Feature/Bulletin/BtsBulletinConfigurationHttpTest.php \
             tests/Feature/Reinscription/AnalyseDecisionsReinscriptionTest.php \
+            tests/Feature/Reinscription/ReglesAcademiquesAjaxTest.php \
+            tests/Feature/Reinscription/CorbeilleDemandesTest.php \
+            tests/Feature/Reinscription/ClassesProposeesAuPassageTest.php \
             tests/Feature/Bts/StudentAcademicTroncCommunTest.php \
             tests/Feature/Bulletin/RangAnnuelPariteTroncCommunTest.php \
             tests/Feature/Settings/BtsRangAnnuelClasseEnregistrementTest.php
