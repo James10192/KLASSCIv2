@@ -597,7 +597,7 @@
 }
 
 /* Skill Apple Design appliqué au système graphique KLASSCI. */
-.announcements-page .main-content{max-width:1600px;margin:auto;padding:clamp(12px,2.2vw,30px)!important}
+.announcements-page .main-content{max-width:1600px;margin:0 auto;padding:clamp(12px,2.2vw,30px)!important}
 .announcements-page .announcement-header{padding:clamp(20px,2.2vw,32px);border-radius:20px;margin-bottom:18px;box-shadow:0 10px 26px rgba(4,83,203,.14)}
 .announcements-page .announcement-header h1{font-size:clamp(1.35rem,1.8vw,1.85rem);letter-spacing:-.035em;text-shadow:none}
 .announcements-page .stats-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
