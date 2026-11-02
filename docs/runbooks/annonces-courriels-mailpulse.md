@@ -98,3 +98,26 @@ Les lignes bloquées sont isolées par lots bornés (`min(60, --max)`), dans l'o
 D'abord déployer l'acceptation des références v2 côté MailPulse ([PR #65](https://github.com/James10192/mailpulse/pull/65)), puis l'adaptation KLASSCI. Une nouvelle ligne `pending` non encore tentée reçoit `klassci-v2-<tenant>-annonce-<id>-courriel-<id>`, persistée dans `mailpulse_request_id` à la première prise en charge, y compris si la limitation locale fait reporter le premier HTTP. Une ligne `retrying` créée sous l'ancienne version conserve **l'ancienne clé** ; jamais changer la clé d'un envoi déjà potentiellement soumis. Le journal des événements et les rapports ne doivent pas confondre ce repère de déduplication avec un identifiant de requête HTTP.
 
 Le GET de rapprochement retrouve la référence effectivement utilisée (v2 stockée ou legacy) et vérifie le destinataire exact. Les callbacks signés vérifient la référence v2 stockée, l'instance et le message MailPulse. Ne jamais activer des reprises de campagne ou des relances automatiques dans ce déploiement : migration Artisan, journal des tentatives et recette multi-établissements sont des étapes distinctes.
+
+
+## Préparation de relance AJAX (2 novembre 2026)
+
+Le bouton **« Préparer une relance »** de la fiche annonce fournit un diagnostic
+lecture seule via `GET /esbtp/annonces/{annonce}/relance/diagnostic`, réservé
+à la permission effective `annonces.edit` (ancien alias `edit_annonces`).
+Il classe les échecs selon `error_code`, sans exposer d'adresse et sans lancer
+un job. Il distingue les messages déjà en file de ceux soumis ou délivrés.
+Le panneau est une modale native, sans rechargement de la fiche ni perte du scroll.
+
+**Ne pas confondre diagnostic et relance :** le bouton de réémission est
+volontairement désactivé. Pour permettre un vrai réenvoi après correction, il faut
+d'abord un journal d'essais immuable créé avec Artisan, un contrat MailPulse
+référençant le numéro d'essai sans perdre la preuve de la précédente soumission,
+un contrôle de suppression/bounce et une permission d'envoi dédiée. Le chemin
+historique `annonce_id + email` est unique et ne peut pas être réutilisé comme
+une nouvelle campagne sans modification du contrat.
+
+Recette requise : statuts `failed`, `retrying`, `awaiting_dispatch`,
+`submitted`, `delayed`, `delivered`; absence de `EnvoyerAnnonceCourriel`
+lors du diagnostic ; rôles de lecture seule refusés ; plusieurs utilisateurs
+en parallèle ; responsive mobile ; aucun envoi réel.
