@@ -476,7 +476,10 @@
 .aps-recipient-chevron{color:#7996bd;font-size:.7rem;transition:transform .2s}
 .aps-recipient-details[open] .aps-recipient-chevron{transform:rotate(180deg)}
 .aps-recipient-details-content{border-top:1px solid #e8eef7}
-.aps-email-filter-picker{width:min(100%,290px)}
+.aps-email-filter-picker{width:min(100%,250px)}
+.aps-email-filter-search{width:min(100%,300px)}
+.aps-filter-search-input{height:43px;width:100%;padding:0 12px;border:1px solid #dbe4f2;border-radius:10px;font-size:.82rem;color:#142744}
+.aps-filter-search-input:focus{outline:2px solid rgba(4,83,203,.18);border-color:#0453cb}
 .aps-filter-label{display:block;margin-bottom:6px;font-size:.73rem;font-weight:700;color:#506884}
 .aps-email-filter-submit{border:1px solid #cbdbf1!important;background:#f6faff!important;min-height:42px}
 .aps-email-scroll{margin-top:14px;max-height:390px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;border:1px solid #e3ebf7;border-radius:12px}
@@ -757,6 +760,12 @@
                             </summary>
                             <div class="aps-card-body aps-recipient-details-content">
                                 <form id="aps-email-filter" method="GET" action="{{ route('esbtp.annonces.show', $annonce) }}" class="d-flex gap-2 flex-wrap align-items-end">
+                                    <div class="aps-email-filter-search">
+                                        <label for="aps-email-query" class="aps-filter-label">Rechercher une adresse</label>
+                                        <input id="aps-email-query" name="courriels_q" type="search" maxlength="150"
+                                            value="{{ $courrielsQ }}" placeholder="nom@domaine…" autocomplete="off"
+                                            class="aps-filter-search-input">
+                                    </div>
                                     <div class="aps-email-filter-picker">
                                         <label class="aps-filter-label">Statut des courriels</label>
                                         <x-au-select name="courriels_statut" :value="$filtre" icon="fa-envelope" placeholder="Tous les états"
@@ -1079,6 +1088,7 @@
         let nextEmailUrl = null;
         let emailRequest = null;
         let emailBusy = false;
+        let emailDebounce = null;
 
         function updateNextLink() {
             nextEmailUrl = emailPages?.querySelector('a[rel="next"]')?.href ?? null;
@@ -1132,12 +1142,19 @@
 
         if (emailFilter && emailTable && emailPages && emailMore) {
             updateNextLink();
-            emailFilter.addEventListener('change', function () { emailFilter.requestSubmit(); });
+            emailFilter.addEventListener('change', function (event) {
+                if (event.target.name === 'courriels_statut') emailFilter.requestSubmit();
+            });
+            emailFilter.querySelector('#aps-email-query')?.addEventListener('input', function () {
+                clearTimeout(emailDebounce);
+                emailDebounce = setTimeout(() => emailFilter.requestSubmit(), 350);
+            });
             emailFilter.addEventListener('submit', function (event) {
                 event.preventDefault();
                 const url = new URL(emailFilter.action);
-                const selected = new FormData(emailFilter).get('courriels_statut');
-                if (selected) url.searchParams.set('courriels_statut', String(selected));
+                for (const [key, value] of new FormData(emailFilter)) {
+                    if (value) url.searchParams.set(key, String(value));
+                }
                 loadEmailPage(url.toString(), false);
             });
             emailMore.addEventListener('click', function () {
