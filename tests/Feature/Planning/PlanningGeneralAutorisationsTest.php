@@ -22,7 +22,7 @@ class PlanningGeneralAutorisationsTest extends TestCase
     }
 
     /** @return array<string, array{string, string, array<string, int>}> */
-    public function ecrituresDuPlanning(): array
+    public static function ecrituresDuPlanning(): array
     {
         return [
             'enregistrer' => ['POST', 'esbtp.planning-general.store-planification', []],

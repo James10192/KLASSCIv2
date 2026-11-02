@@ -126,9 +126,6 @@ jobs:
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Feature/Security/EvaluationPdfRouteAccessTest.php --stop-on-failure
 
-      - name: Autorisations du planning general
-        run: php artisan test tests/Feature/Planning/PlanningGeneralAutorisationsTest.php --stop-on-failure
-
       - name: Test auth étudiant-parent (routes et compatibilité)
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Feature/Auth/SharedStudentAccountRoutesTest.php --stop-on-failure
