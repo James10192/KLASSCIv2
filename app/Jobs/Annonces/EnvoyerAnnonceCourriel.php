@@ -5,6 +5,7 @@ namespace App\Jobs\Annonces;
 use App\Mail\Transport\CadenceMailPulse;
 use App\Models\ESBTPAnnonce;
 use App\Models\Setting;
+use App\Services\Annonces\SuppressionCourrielAnnonce;
 use App\Services\MailPulse\MailPulseClient;
 use App\Services\MailPulse\RefusMailPulse;
 use Illuminate\Bus\Queueable;
@@ -81,6 +82,27 @@ class EnvoyerAnnonceCourriel implements ShouldQueue
                 ]);
 
             return; // A mismatching previously pinned v2 key is never sent.
+        }
+
+        // Un hard-bounce, une plainte ou une suppression antérieure sur cette
+        // instance bloque l'adresse AVANT la moindre soumission HTTP.
+        if (SuppressionCourrielAnnonce::estBloquee((string) $ligne->email)) {
+            DB::table('esbtp_annonce_email_deliveries')
+                ->where('id', $this->deliveryId)
+                ->whereIn('status', ['pending', 'retrying'])
+                ->whereNull('submitted_at')
+                ->whereNull('mailpulse_message_id')
+                ->whereNull('provider_delivered_at')
+                ->update([
+                    'status' => 'failed',
+                    'error_code' => 'suppressed_by_history',
+                    'processing_at' => null,
+                    'updated_at' => now(),
+                ]);
+            Log::notice('Annonce : adresse bloquee par historique local de delivrabilite', [
+                'livraison_id' => $this->deliveryId,
+            ]);
+            return;
         }
 
         // Un seul worker prend la ligne; la prochaine relance est permise depuis retrying.

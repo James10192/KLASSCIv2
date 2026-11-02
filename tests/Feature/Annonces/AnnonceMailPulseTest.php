@@ -1011,4 +1011,101 @@ class AnnonceMailPulseTest extends TestCase
         Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
     }
 
+
+    public function test_la_reprise_ignore_une_mauvaise_reference_v2_en_tete_de_lot(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        $annonce = $this->annonce();
+        $premier = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'mauvais@etudiants.test',
+            'status' => 'retrying', 'error_code' => 'local_rate_limit',
+            'attempts' => 1, 'mailpulse_request_id' => 'klassci-v2-autre-ecole-annonce-1-courriel-1',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $second = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'bon@etudiants.test',
+            'status' => 'retrying', 'error_code' => 'local_rate_limit',
+            'attempts' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('esbtp_annonce_email_deliveries')->where('id', $second)->update([
+            'mailpulse_request_id' => \App\Services\Annonces\ReferenceCourrielAnnonce::nouvelle(
+                'presentation', $annonce->id, $second
+            ),
+        ]);
+
+        $this->artisan('annonces:recuperer-file', ['--annonce' => $annonce->id])
+            ->expectsOutputToContain('1 strictement récupérables')
+            ->assertExitCode(0);
+        $this->artisan('annonces:recuperer-file', [
+            '--annonce' => $annonce->id, '--tenant' => 'presentation',
+            '--execute' => true, '--limit' => 1,
+        ])->assertExitCode(0);
+        $this->assertSame('retrying', DB::table('esbtp_annonce_email_deliveries')->where('id', $premier)->value('status'));
+        $this->assertSame('pending', DB::table('esbtp_annonce_email_deliveries')->where('id', $second)->value('status'));
+        Bus::assertDispatchedTimes(EnvoyerAnnonceCourriel::class, 1);
+    }
+
+    public function test_la_reprise_refuse_un_dispatch_differe_apres_commit(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        config(['queue.connections.database.after_commit' => true]);
+        $annonce = $this->annonce();
+
+        $this->artisan('annonces:recuperer-file', [
+            '--annonce' => $annonce->id, '--tenant' => 'presentation',
+            '--execute' => true,
+        ])->assertExitCode(1);
+        Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
+    }
+
+    public function test_un_rebond_precedent_bloque_le_nouvel_envoi_sans_http(): void
+    {
+        $ancienne = $this->annonce();
+        DB::table('esbtp_annonce_email_deliveries')->insert([
+            'annonce_id' => $ancienne->id, 'email' => 'rebond@etudiants.test',
+            'status' => 'failed', 'error_code' => 'email_bounced',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $nouvelle = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $nouvelle->id, 'email' => 'rebond@etudiants.test',
+            'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $client = Mockery::mock(MailPulseClient::class);
+        $client->shouldNotReceive('sendEmailMessage');
+        (new EnvoyerAnnonceCourriel($id))->handle($client, new CadenceMailPulse);
+
+        $ligne = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
+        $this->assertSame('failed', $ligne->status);
+        $this->assertSame('suppressed_by_history', $ligne->error_code);
+        $this->assertNull($ligne->provider_failed_at);
+    }
+
+    public function test_la_reprise_exclut_une_adresse_deja_rebondie_sur_une_autre_annonce(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        $ancienne = $this->annonce();
+        DB::table('esbtp_annonce_email_deliveries')->insert([
+            'annonce_id' => $ancienne->id, 'email' => 'historique@etudiants.test',
+            'status' => 'failed', 'error_code' => 'email_bounced',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'historique@etudiants.test',
+            'status' => 'retrying', 'error_code' => 'local_rate_limit',
+            'attempts' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->update([
+            'mailpulse_request_id' => \App\Services\Annonces\ReferenceCourrielAnnonce::nouvelle(
+                'presentation', $annonce->id, $id
+            ),
+        ]);
+        $this->artisan('annonces:recuperer-file', [
+            '--annonce' => $annonce->id, '--tenant' => 'presentation',
+            '--execute' => true,
+        ])->assertExitCode(0);
+        $this->assertSame('retrying', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
+        Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
+    }
 }

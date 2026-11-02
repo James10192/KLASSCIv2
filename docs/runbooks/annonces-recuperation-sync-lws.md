@@ -15,7 +15,9 @@
     php artisan tinker --execute='dump(\Illuminate\Support\Facades\DB::table("esbtp_annonce_email_deliveries")->where("annonce_id",2)->select("status","error_code")->selectRaw("COUNT(*) AS total")->groupBy("status","error_code")->get());'
 
 4. Contrôler que les lignes à récupérer sont retrying + local_rate_limit, sans submitted_at, mailpulse_message_id, provider_failed_at ni provider_delivered_at. **La référence idempotente v2 déjà enregistrée doit appartenir au tenant et à la livraison** ; les clés anciennes/absentes sont refusées.
-5. Simulation : php artisan annonces:recuperer-file --annonce=2
+5. Simulation : php artisan annonces:recuperer-file --annonce=2. Le nombre **strictement récupérable** applique désormais la correspondance v2 complète et l'exclusion des antécédents locaux de rebond/plainte/suppression ; ne pas déduire ce nombre du seul préfixe SQL.
+6. Avant `--execute`, prouver que la connexion `database` utilise **la même base** que les livraisons, avec `after_commit=false`. Un dispatch différé après commit détruirait l'atomicité statut/job.
+7. Valider le statut MailPulse/Resend, la liste de suppression fournisseur, l'état des DNS SPF/DKIM/DMARC et la capacité SMTP autorisée. La protection locale ne voit pas les suppressions externes non synchronisées.
 
 ## Configurer la queue persistante et le worker
 
@@ -23,9 +25,9 @@ Dans l'environnement de cette seule instance (et après sauvegarde) : QUEUE_CONN
 Puis : php artisan optimize:clear ; vérifier la configuration avec tinker et Schema::hasTable("jobs").
 Si jobs n'existe pas, vérifier les migrations existantes et sauvegarder avant toute migration. Ne jamais migrer à l'aveugle.
 
-Sur LWS/cPanel, prévoir un cron de worker borné toutes les minutes, après vérification des chemins PHP et flock, avec un verrou non bloquant :
+Sur LWS/cPanel, tester d'abord un cron borné et **non chevauchant**. LWS déconseille explicitement l'exécution toutes les minutes sur mutualisé : choisir 5 minutes par défaut si l'offre et la latence opérationnelle l'imposent, puis mesurer. Vérifier les chemins réels de PHP/CLI, la disponibilité de `flock`, l'extension `pcntl` (timeouts), les limites de processus et de cron. Ne pas supposer ces capacités disponibles. Exemple à adapter après validation :
 
-    * * * * * cd /home/COMPTE/public_html/esbtp-abidjan && /usr/bin/flock -n /home/COMPTE/annonces-queue.lock /CHEMIN/PHP artisan queue:work database --queue=annonces --stop-when-empty --max-jobs=15 --max-time=45 --timeout=35 --sleep=1 --tries=12 >> /home/COMPTE/annonces-queue.log 2>&1
+    */5 * * * * cd /home/COMPTE/public_html/esbtp-abidjan && /usr/bin/flock -n /home/COMPTE/annonces-queue.lock /CHEMIN/PHP artisan queue:work database --queue=annonces --stop-when-empty --max-jobs=15 --max-time=45 --timeout=35 --sleep=1 --tries=12 >> /home/COMPTE/annonces-queue.log 2>&1
 
 Utiliser les chemins réels et vérifier que l'hébergeur autorise ce cron. Le worker est distinct du planificateur schedule:run ; default et les autres queues demandent leurs propres consommateurs.
 
@@ -44,3 +46,14 @@ Les états failed, awaiting_dispatch, submitted, delayed et delivered ne sont ja
 ## Anti-régression
 
 Le contrôleur refuse la création de nouvelles campagnes e-mail sur queue sync, et le job fanout bloque avant d'insérer le registre en sync.
+
+## Vérifications complémentaires avant le premier vrai lot
+
+- Faire tourner **un job de test sans courriel** dans un environnement isolé avec le même utilisateur PHP/cron, puis constater son traitement et l'absence de chevauchement. La seule présence de `jobs` ne prouve pas que le worker fonctionne.
+- Confirmer `queue.connections.database.retry_after > timeout du worker` ; les 90 s actuelles doivent rester supérieures au timeout choisi. Confirmer les connexions SQL et le cache des workers.
+- Relever `jobs` par file (`annonces`, `default`, `high`, `low`, etc.), `failed_jobs`, espace disque et logs. Un worker `--queue=annonces` ne traite aucune autre file.
+- Les lots doivent utiliser la cadence `services.mailpulse.mail_per_minute`, **pas** une valeur fixe. Les envois sortants doivent rester arrêtés si le quota global ou la suppression fournisseur est inconnu.
+- L'exclusion locale des adresses rebondies concerne les **annonces de cette instance seulement**. Le chantier #1758 doit ajouter un registre global d'exclusions et de tentatives, compatible avec le fournisseur et les autres modules, avant toute relance d'un échec.
+- Ne jamais faire `queue:retry all` ou `queue:flush` comme moyen de récupérer cet incident : ces commandes ignorent les garanties métier d'idempotence.
+
+Références officielles : https://laravel.com/docs/12.x/queues ; https://aide.lws.fr/base/cPanel/Fonctions-supplementaires/programmer-une-tache-Cron-dans-cPanel ; https://aide.lws.fr/base/Hebergement-web-mutualise/Outils-web/Comment-creer-une-tache-cron-LWS-Panel ; https://resend.com/changelog/suppression-list-support

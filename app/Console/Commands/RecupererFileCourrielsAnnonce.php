@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Jobs\Annonces\EnvoyerAnnonceCourriel;
 use App\Models\ESBTPAnnonce;
 use App\Services\Annonces\ReferenceCourrielAnnonce;
+use App\Services\Annonces\SuppressionCourrielAnnonce;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -58,6 +59,14 @@ final class RecupererFileCourrielsAnnonce extends Command
                 $this->error('ARRÊT : QUEUE_CONNECTION=database et table jobs requises. Aucun envoi.');
                 return self::FAILURE;
             }
+            // Cette reprise exige que changement de statut et insertion dans
+            // jobs partagent la MEME transaction et le MEME moteur de DB.
+            if (config('queue.connections.database.after_commit') !== false
+                || ($connexionQueue = config('queue.connections.database.connection'))
+                    && $connexionQueue !== DB::getDefaultConnection()) {
+                $this->error('ARRÊT : la queue database doit utiliser la connexion DB courante avec after_commit=false.');
+                return self::FAILURE;
+            }
             if ($tenant === '' || $tenant === 'default'
                 || ! preg_match('/^[a-z0-9][a-z0-9_-]{1,62}$/D', $tenant)
                 || ! hash_equals($tenant, (string) $this->option('tenant'))) {
@@ -75,15 +84,42 @@ final class RecupererFileCourrielsAnnonce extends Command
             ->whereNull('provider_failed_at')
             ->whereNull('provider_delivered_at');
 
-        $eligibles = (clone $base)->count();
-        $v2 = (clone $base)->where('mailpulse_request_id', 'like',
-            'klassci-v2-'.$tenant.'-annonce-'.$annonce->id.'-courriel-%')->count();
+        $candidats = (clone $base)->count();
+        $referencementsValides = 0;
+        $sansReferenceValide = 0;
+        $supprimes = 0;
+        $ids = [];
+        $bloquees = SuppressionCourrielAnnonce::adressesBloquees();
+        // La simulation et la sélection du lot appliquent LES MEMES règles
+        // exactes ; un premier candidat invalide ne bloque plus les suivants.
+        (clone $base)->orderBy('id')->chunkById(200, function ($lignes) use (
+            $tenant, $limite, &$referencementsValides, &$sansReferenceValide, &$supprimes,
+            &$ids, $bloquees
+        ): void {
+            foreach ($lignes as $ligne) {
+                if (! $this->referenceValide($ligne, $tenant)) {
+                    $sansReferenceValide++;
+                    continue;
+                }
+                if (isset($bloquees[strtolower(trim((string) $ligne->email))])) {
+                    $supprimes++;
+                    continue;
+                }
+                $referencementsValides++;
+                if (count($ids) < $limite) {
+                    $ids[] = (int) $ligne->id;
+                }
+            }
+        });
         $this->info(sprintf(
-            'Annonce %d · tenant %s · %d livraisons avec reprise locale prouvée avant transport · %s.',
-            $annonce->id, $tenant ?: '?', $eligibles, $operation ? 'EXECUTION' : 'SIMULATION'
+            'Annonce %d · tenant %s · %d candidats locaux · %d strictement récupérables · %s.',
+            $annonce->id, $tenant ?: '?', $candidats,
+            $referencementsValides, $operation ? 'EXECUTION' : 'SIMULATION'
         ));
-
-        $this->line(sprintf('Références tenant v2 présentes : %d / %d candidats ; les références anciennes ou manquantes seront écartées.', $v2, $eligibles));
+        $this->line(sprintf(
+            'Références v2 invalides/absentes : %d ; adresses déjà rebondies, supprimées ou en plainte : %d.',
+            $sansReferenceValide, $supprimes
+        ));
 
         if (! $operation) {
             $this->line('Vérifiez QUEUE_CONNECTION=database, le worker, le quota MailPulse et les sauvegardes AVANT --execute.');
@@ -91,13 +127,13 @@ final class RecupererFileCourrielsAnnonce extends Command
             return self::SUCCESS;
         }
 
-        // No new recipient collection or bulk resubmission. Small fixed-size
-        // tranche; subsequent calls see only still-eligible records.
-        $ids = (clone $base)->orderBy('id')->limit($limite)->pluck('id');
+        // Aucun nouveau destinataire. Sélection bornée sur les références
+        // réellement valides, même si les premiers IDs sont en quarantaine.
+        $cadence = max(1, (int) config('services.mailpulse.mail_per_minute', 30));
         $reprogrammes = 0;
         $ignores = 0;
         foreach ($ids as $idLivraison) {
-            $ok = DB::transaction(function () use ($idLivraison, $annonce, $tenant, &$reprogrammes): bool {
+            $ok = DB::transaction(function () use ($idLivraison, $annonce, $tenant, $cadence, &$reprogrammes): bool {
                 $ligne = DB::table('esbtp_annonce_email_deliveries')
                     ->where('id', $idLivraison)
                     ->where('annonce_id', $annonce->id)
@@ -107,14 +143,8 @@ final class RecupererFileCourrielsAnnonce extends Command
                     || $ligne->error_code !== 'local_rate_limit'
                     || $ligne->submitted_at !== null || $ligne->mailpulse_message_id !== null
                     || $ligne->provider_delivered_at !== null || $ligne->provider_failed_at !== null
-                    || ! is_string($ligne->mailpulse_request_id)
-                    || ! str_starts_with($ligne->mailpulse_request_id, 'klassci-v2-')
-                    || ! hash_equals(
-                        $ligne->mailpulse_request_id,
-                        ReferenceCourrielAnnonce::nouvelle(
-                            $tenant, (int) $ligne->annonce_id, (int) $ligne->id
-                        ) ?? ''
-                    )) {
+                    || ! $this->referenceValide($ligne, $tenant)
+                    || SuppressionCourrielAnnonce::estBloquee((string) $ligne->email)) {
                     return false;
                 }
 
@@ -137,7 +167,7 @@ final class RecupererFileCourrielsAnnonce extends Command
                 EnvoyerAnnonceCourriel::dispatch((int) $ligne->id)
                     ->onConnection('database')
                     ->onQueue('annonces')
-                    ->delay(now()->addSeconds(intdiv($reprogrammes, 10) * 60));
+                    ->delay(now()->addSeconds(intdiv($reprogrammes, $cadence) * 60));
                 $reprogrammes++;
                 return true;
             }, 3);
@@ -147,5 +177,16 @@ final class RecupererFileCourrielsAnnonce extends Command
         $this->info("Réenfilés : {$reprogrammes} · ignorés (modifiés ou non prouvés) : {$ignores}.");
         $this->warn('Aucun courriel émis par cette commande. Seul le worker --queue=annonces réalisera les soumissions.');
         return self::SUCCESS;
+    }
+
+    private function referenceValide(object $ligne, string $tenant): bool
+    {
+        $attendue = ReferenceCourrielAnnonce::nouvelle(
+            $tenant, (int) $ligne->annonce_id, (int) $ligne->id
+        );
+
+        return $attendue !== null
+            && is_string($ligne->mailpulse_request_id)
+            && hash_equals($attendue, $ligne->mailpulse_request_id);
     }
 }
