@@ -710,10 +710,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
                     // Routes pour la gestion des rÃ¨gles acadÃ©miques
                     Route::prefix('regles')->name('regles.')->group(function () {
-                        Route::get('/', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'regles'])->name('index');
-                        Route::post('/', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'storeRegle'])->name('store');
-                        Route::put('{id}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'updateRegle'])->name('update');
-                        Route::delete('{id}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'destroyRegle'])->name('destroy');
+                        Route::get('/', [\App\Http\Controllers\ESBTP\ReglesAcademiquesController::class, 'index'])->name('index');
+                        Route::post('/', [\App\Http\Controllers\ESBTP\ReglesAcademiquesController::class, 'store'])->name('store');
+                        Route::put('{id}', [\App\Http\Controllers\ESBTP\ReglesAcademiquesController::class, 'update'])->name('update');
+                        Route::delete('{id}', [\App\Http\Controllers\ESBTP\ReglesAcademiquesController::class, 'destroy'])->name('destroy');
                     });
 
                     // Routes pour la gestion des abandons
