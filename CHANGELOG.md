@@ -12,6 +12,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Novembre 2026
 
+### Corrections
+- **Annonces — file sync bloquée :** refuser les nouvelles campagnes quand la file est synchrone, et fournir une commande de simulation/récupération transactionnelle par petits lots réservée aux limitations locales prouvées avant transport ; aucune reprise des échecs fournisseurs ou des résultats incertains.
+
 ### Communication — 2 novembre
 - **Annonces index :** choix premium pleine largeur, suppression du double espace supérieur dans la mise en page.
 - **Annonces show :** navigation par pages invisible en mode défilement infini (mais conservée pour les liens AJAX et sans JavaScript) ; tableau des destinataires aligné, lisible, en-tête fixe, défilement autonome.

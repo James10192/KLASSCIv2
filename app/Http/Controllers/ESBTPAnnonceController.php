@@ -835,6 +835,12 @@ class ESBTPAnnonceController extends Controller
      */
     private function verifierAnneeDesCourriels(Request $request, bool $publication): void
     {
+        if ($publication && $request->boolean('send_email') && config('queue.default') === 'sync') {
+            throw ValidationException::withMessages([
+                'send_email' => "L'envoi en masse exige une file asynchrone active. Contactez le service technique pour activer QUEUE_CONNECTION=database et ses workers.",
+            ]);
+        }
+
         if ($publication && $request->boolean('send_email')
             && $request->input('email_audience_scope', CiblageCourrielsAnnonce::ACTIVES_ANNEE) === CiblageCourrielsAnnonce::ACTIVES_ANNEE
             && ! ESBTPAnneeUniversitaire::getCurrent()) {
