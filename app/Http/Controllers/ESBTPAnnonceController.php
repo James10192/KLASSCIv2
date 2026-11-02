@@ -331,6 +331,26 @@ class ESBTPAnnonceController extends Controller
     }
 
     /**
+     * Diagnostic AJAX de relance : lecture seule, aucune émission MailPulse.
+     * Route protégée par la permission effective annonces.edit.
+     */
+    public function diagnosticRelance(
+        ESBTPAnnonce $annonce,
+        \App\Services\Annonces\DiagnosticRelanceAnnonce $diagnostic
+    ): \Illuminate\Http\JsonResponse {
+        if (! $annonce->is_published || ! $annonce->email_notification_enabled) {
+            return response()->json([
+                'message' => 'Aucune campagne e-mail publiée à examiner.',
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'diagnostic' => $diagnostic->pour($annonce),
+        ]);
+    }
+
+    /**
      * Vérifie si une annonce peut encore être modifiée (< 15 min après publication)
      */
     private function canEditAnnonce($annonce)

@@ -914,4 +914,37 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertNull($ligne->provider_failed_at);
     }
 
+
+    public function test_diagnostic_ajax_distingue_rebonds_suppressions_et_messages_deja_en_cours_sans_reenvoyer(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        $annonce = $this->annonce();
+        foreach ([
+            ['email' => 'a@test.example', 'status' => 'failed', 'error_code' => 'email_bounced'],
+            ['email' => 'b@test.example', 'status' => 'failed', 'error_code' => 'email_suppressed'],
+            ['email' => 'c@test.example', 'status' => 'failed', 'error_code' => 'provider_rejected'],
+            ['email' => 'd@test.example', 'status' => 'retrying', 'error_code' => 'local_rate_limit'],
+            ['email' => 'e@test.example', 'status' => 'pending', 'error_code' => null],
+            ['email' => 'f@test.example', 'status' => 'submitted', 'error_code' => null],
+            ['email' => 'g@test.example', 'status' => 'delivered', 'error_code' => null],
+        ] as $ligne) {
+            DB::table('esbtp_annonce_email_deliveries')->insert($ligne + [
+                'annonce_id' => $annonce->id, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        $avant = DB::table('esbtp_annonce_email_deliveries')->get();
+        $bilan = app(\App\Services\Annonces\DiagnosticRelanceAnnonce::class)->pour($annonce);
+        $this->assertSame(7, $bilan['total']);
+        $this->assertSame(3, $bilan['echoues']);
+        $this->assertSame(1, $bilan['rebonds']);
+        $this->assertSame(1, $bilan['supprimees']);
+        $this->assertSame(1, $bilan['autres_echecs']);
+        $this->assertSame(2, $bilan['en_cours']);
+        $this->assertSame(1, $bilan['a_rapprocher']);
+        $this->assertSame(1, $bilan['delivres']);
+        $this->assertFalse($bilan['relance_autorisee']);
+        $this->assertEquals($avant, DB::table('esbtp_annonce_email_deliveries')->get());
+        Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
+    }
+
 }
