@@ -25,6 +25,42 @@ final class ReferenceCourrielAnnonce
     }
 
     /**
+     * Reference d'une NOUVELLE tentative explicitement autorisee.
+     * La presence de cette valeur n'autorise jamais a envoyer : le journal
+     * immutable, la permission effective et la preuve fournisseur decident.
+     * Une tentative #1 reste en v2, pour proteger les historiques.
+     */
+    public static function tentative(string $tenant, int $annonceId, int $livraisonId, int $numero): ?string
+    {
+        if (! self::tenantValide($tenant) || $annonceId < 1 || $livraisonId < 1 || $numero < 2) {
+            return null;
+        }
+
+        $reference = 'klassci-v3-'.$tenant.'-annonce-'.$annonceId
+            .'-courriel-'.$livraisonId.'-essai-'.$numero;
+
+        return strlen($reference) <= 191 ? $reference : null;
+    }
+
+    /** @return array{annonce_id:int,livraison_id:int,tentative:int}|null */
+    public static function extraireTentative(string $reference, string $tenant): ?array
+    {
+        if (! self::tenantValide($tenant) || strlen($reference) > 191
+            || ! preg_match('/^klassci-v3-([a-z0-9][a-z0-9_-]{1,62})-annonce-([1-9][0-9]*)-courriel-([1-9][0-9]*)-essai-([2-9]|[1-9][0-9]+)$/D', $reference, $match)
+            || ! hash_equals($tenant, $match[1])
+            || ! self::identifiantsValides($match[2], $match[3])
+            || ! self::identifiantsValides($match[4], $match[4])) {
+            return null;
+        }
+
+        return [
+            'annonce_id' => (int) $match[2],
+            'livraison_id' => (int) $match[3],
+            'tentative' => (int) $match[4],
+        ];
+    }
+
+    /**
      * Les anciennes tentatives retrying gardent leur clé ancienne : les
      * renommer provoquerait un deuxième envoi chez MailPulse.
      */
