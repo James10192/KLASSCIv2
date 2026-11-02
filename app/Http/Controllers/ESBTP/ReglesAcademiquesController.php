@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\ESBTP;
 
 use App\Http\Controllers\Controller;
+use App\Helpers\SettingsHelper;
+use App\Services\BtsBulletinPolicy;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPRegleAcademique;
@@ -14,10 +16,18 @@ class ReglesAcademiquesController extends Controller
 {
     public function index()
     {
+        $definitions = BtsBulletinPolicy::defaultSettings();
+        $conseilBts1 = [
+            'mode' => SettingsHelper::get('bulletin_bts1_council_mode', $definitions['bulletin_bts1_council_mode']),
+            'source' => SettingsHelper::get('bulletin_bts1_council_average_source', $definitions['bulletin_bts1_council_average_source']),
+            'seuil' => SettingsHelper::get('bulletin_bts1_council_threshold', $definitions['bulletin_bts1_council_threshold']),
+        ];
+
         return view('esbtp.reinscription.regles', [
             'regles' => ESBTPRegleAcademique::query()->orderBy('niveau')->orderBy('filiere')->get(),
             'niveaux' => ESBTPNiveauEtude::query()->where('is_active', true)->orderBy('name')->get(),
             'filieres' => ESBTPFiliere::query()->where('is_active', true)->orderBy('name')->get(),
+            'conseilBts1' => $conseilBts1,
         ]);
     }
 
