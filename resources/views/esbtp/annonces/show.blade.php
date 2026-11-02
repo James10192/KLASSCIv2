@@ -1119,7 +1119,18 @@
                 const incomingPages = fragment.querySelector('#aps-email-pages');
                 if (!incomingRows || !incomingPages) throw new Error('Réponse de pagination incomplète.');
                 if (append) {
-                    emailTable.querySelector('tbody')?.append(...Array.from(incomingRows.children));
+                    const tbody = emailTable.querySelector('tbody');
+                    const seen = new Set(Array.from(tbody?.querySelectorAll('[data-livraison-id]') || [])
+                        .map(row => row.dataset.livraisonId));
+                    const rows = Array.from(incomingRows.children).filter(row => {
+                        const id = row.dataset.livraisonId;
+                        if (!id || !seen.has(id)) {
+                            if (id) seen.add(id);
+                            return true;
+                        }
+                        return false;
+                    });
+                    tbody?.append(...rows);
                 } else {
                     emailTable.querySelector('tbody')?.replaceChildren(...Array.from(incomingRows.children));
                 }
