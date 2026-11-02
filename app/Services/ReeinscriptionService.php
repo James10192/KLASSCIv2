@@ -595,8 +595,9 @@ class ReeinscriptionService
             // forgée ne doit pas transformer un admis en redoublant.
             $ancienneClasse = $inscriptionActuelle->classe;
             if ($decision === 'passage' && $ancienneClasse?->isBTS()
-                && (! $nouvelleClasse->isBTS()
-                    || (int) ($nouvelleClasse->niveau?->year ?? 0) <= (int) ($ancienneClasse->niveau?->year ?? 0))) {
+                && (($nouvelleClasse->isBTS()
+                    && (int) ($nouvelleClasse->niveau?->year ?? 0) <= (int) ($ancienneClasse->niveau?->year ?? 0))
+                    || ((int) ($ancienneClasse->niveau?->year ?? 0) === 1 && ! $nouvelleClasse->isBTS()))) {
                 throw new \App\Exceptions\ReinscriptionRefuseeException(
                     "La décision « Passage » exige une classe BTS de niveau supérieur. Choisissez une classe adaptée."
                 );
