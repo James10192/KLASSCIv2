@@ -34,3 +34,9 @@
 <x-liste-infinie class="ann-bas-tableau" :paginateur="$annonces" cible="#ann-tbody" libelle="annonces" />
 <x-liste-infinie class="ann-bas-grille" :paginateur="$annonces" cible="#annoncesGrid"
     libelle="annonces" :url="route('esbtp.annonces.index', ['vue' => 'grille'])" />
+
+<noscript>
+    <nav class="ann-nojs-pagination" aria-label="Pagination sans JavaScript">
+        {{ $annonces->links() }}
+    </nav>
+</noscript>
