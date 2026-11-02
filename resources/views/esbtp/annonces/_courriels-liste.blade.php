@@ -5,7 +5,7 @@
             <th scope="col">État</th>
             <th scope="col">Tentatives</th>
             <th scope="col">Dernière mise à jour</th>
-            <th scope="col">Code fournisseur</th>
+            <th scope="col">Motif / code</th>
         </tr></thead>
         <tbody>
         @forelse($destinataires as $livraison)
@@ -21,12 +21,12 @@
                     'delayed', 'retrying' => 'warning', default => 'secondary'
                 };
             @endphp
-            <tr>
+            <tr data-livraison-id="{{ $livraison->id }}">
                 <td class="text-break">{{ $livraison->email }}</td>
                 <td><span class="badge bg-{{ $couleur }}">{{ $etatTexte }}</span></td>
                 <td>{{ (int) $livraison->attempts }}</td>
                 <td class="text-nowrap">{{ \Illuminate\Support\Carbon::parse($livraison->updated_at)->format('d/m/Y H:i') }}</td>
-                <td class="text-break"><small>{{ $livraison->error_code ?: '—' }}</small></td>
+                <td class="text-break"><small>{{ $livraison->error_code === 'local_rate_limit' ? 'Quota local temporaire' : ($livraison->error_code ?: '—') }}</small></td>
             </tr>
         @empty
             <tr><td colspan="5" class="text-muted py-3 text-center">
