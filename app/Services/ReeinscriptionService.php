@@ -68,8 +68,13 @@ class ReeinscriptionService
         $moyenne = $this->moyennePourDecision($inscriptionQuittee, $classe, $notes);
         $moyenneGenerale = $moyenne['moyenne'];
         $seuilConseil = $moyenne['semestres']['seuil_conseil'] ?? null;
-        $refusConseil = $moyenneGenerale !== null && $seuilConseil !== null
-            && (float) $moyenneGenerale < (float) $seuilConseil;
+        // En mode « selon un seuil », la même décision que sur le bulletin
+        // s'applique DANS LES DEUX SENS : un 10/20 admis au bulletin ne doit
+        // pas tomber en redoublement à cause d'un repli académique à 12/20.
+        $decisionConseilAutomatique = $moyenneGenerale !== null && $seuilConseil !== null
+            ? ((float) $moyenneGenerale >= (float) $seuilConseil ? 'passage' : 'redoublement')
+            : null;
+        $refusConseil = $decisionConseilAutomatique === 'redoublement';
         $matieresEchouees = $this->getMatieresEchouees($notes, $regle->moyenne_passage);
 
         return [
@@ -80,10 +85,10 @@ class ReeinscriptionService
             'moyennes_semestres' => $moyenne['semestres'],
             'notes' => $notes,
             'matieres_echouees' => $matieresEchouees,
-            'decision' => $moyenneGenerale === null ? 'a_verifier' : ($refusConseil ? 'redoublement' : $this->determinerDecision($moyenneGenerale, $matieresEchouees, $regle)),
-            'peut_passer' => $moyenneGenerale !== null && ! $refusConseil && $regle->peutPasser($moyenneGenerale),
-            'peut_rattraper' => $moyenneGenerale !== null && ! $refusConseil && $regle->peutRattraper($moyenneGenerale),
-            'doit_redoubler' => $moyenneGenerale !== null && ($refusConseil || $regle->doitRedoubler($moyenneGenerale))
+            'decision' => $moyenneGenerale === null ? 'a_verifier' : ($decisionConseilAutomatique ?? $this->determinerDecision($moyenneGenerale, $matieresEchouees, $regle)),
+            'peut_passer' => $moyenneGenerale !== null && ($decisionConseilAutomatique === 'passage' || ($decisionConseilAutomatique === null && $regle->peutPasser($moyenneGenerale))),
+            'peut_rattraper' => $moyenneGenerale !== null && $decisionConseilAutomatique === null && $regle->peutRattraper($moyenneGenerale),
+            'doit_redoubler' => $moyenneGenerale !== null && ($refusConseil || ($decisionConseilAutomatique === null && $regle->doitRedoubler($moyenneGenerale)))
         ];
     }
     
@@ -123,8 +128,13 @@ class ReeinscriptionService
         $moyenne = $this->moyennePourDecision($inscription, $classe, $notes);
         $moyenneGenerale = $moyenne['moyenne'];
         $seuilConseil = $moyenne['semestres']['seuil_conseil'] ?? null;
-        $refusConseil = $moyenneGenerale !== null && $seuilConseil !== null
-            && (float) $moyenneGenerale < (float) $seuilConseil;
+        // En mode « selon un seuil », la même décision que sur le bulletin
+        // s'applique DANS LES DEUX SENS : un 10/20 admis au bulletin ne doit
+        // pas tomber en redoublement à cause d'un repli académique à 12/20.
+        $decisionConseilAutomatique = $moyenneGenerale !== null && $seuilConseil !== null
+            ? ((float) $moyenneGenerale >= (float) $seuilConseil ? 'passage' : 'redoublement')
+            : null;
+        $refusConseil = $decisionConseilAutomatique === 'redoublement';
         $matieresEchouees = $this->getMatieresEchouees($notes, $regle->moyenne_passage);
 
         // Vérification de sécurité: s'assurer que l'étudiant n'est pas null
@@ -152,10 +162,10 @@ class ReeinscriptionService
             'moyennes_semestres' => $moyenne['semestres'],
             'notes' => $notes,
             'matieres_echouees' => $matieresEchouees,
-            'decision' => $moyenneGenerale === null ? 'a_verifier' : ($refusConseil ? 'redoublement' : $this->determinerDecision($moyenneGenerale, $matieresEchouees, $regle)),
-            'peut_passer' => $moyenneGenerale !== null && ! $refusConseil && $regle->peutPasser($moyenneGenerale),
-            'peut_rattraper' => $moyenneGenerale !== null && ! $refusConseil && $regle->peutRattraper($moyenneGenerale),
-            'doit_redoubler' => $moyenneGenerale !== null && ($refusConseil || $regle->doitRedoubler($moyenneGenerale))
+            'decision' => $moyenneGenerale === null ? 'a_verifier' : ($decisionConseilAutomatique ?? $this->determinerDecision($moyenneGenerale, $matieresEchouees, $regle)),
+            'peut_passer' => $moyenneGenerale !== null && ($decisionConseilAutomatique === 'passage' || ($decisionConseilAutomatique === null && $regle->peutPasser($moyenneGenerale))),
+            'peut_rattraper' => $moyenneGenerale !== null && $decisionConseilAutomatique === null && $regle->peutRattraper($moyenneGenerale),
+            'doit_redoubler' => $moyenneGenerale !== null && ($refusConseil || ($decisionConseilAutomatique === null && $regle->doitRedoubler($moyenneGenerale)))
         ];
     }
 
