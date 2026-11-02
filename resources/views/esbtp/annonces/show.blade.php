@@ -526,6 +526,26 @@
 .aps-email-filter-picker .au-select-trigger{width:100%}
 @media(max-width:800px){#aps-email-scroll .aps-deliveries-table{min-width:720px}}
 @media(prefers-reduced-motion:reduce){.aps-recipient-chevron{transition:none}.aps-chip--urgent{animation:none}}
+
+/* Diagnostic de campagne : aucun bouton ne réémet des courriels par inadvertance. */
+.aps-retry-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:1px solid #cbdaf3;border-radius:13px;background:#f5f9ff;color:#23476e}
+.aps-retry-actions strong{font-size:.88rem}
+.aps-retry-actions p{font-size:.75rem;margin:4px 0 0;color:#5e728c}
+.aps-retry-dialog{border:0;border-radius:18px;padding:24px;box-shadow:0 20px 70px rgba(15,35,65,.25);width:min(92vw,570px);max-height:85vh;overflow:auto;background:#fff;color:#152d4e}
+.aps-retry-dialog::backdrop{background:rgba(9,25,53,.5);backdrop-filter:blur(3px)}
+.aps-retry-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.aps-retry-dialog-head h2{font-size:1.1rem;margin:4px 0 0}
+.aps-retry-kicker{margin:0;color:#0453cb;font-size:.68rem;font-weight:750;letter-spacing:.1em}
+.aps-retry-intro{font-size:.82rem;color:#62758c;margin:14px 0}
+.aps-retry-diagnostics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.aps-retry-diagnostics>div{display:grid;gap:3px;padding:13px;border:1px solid #e1eaf8;border-radius:11px;background:#f8fbff}
+.aps-retry-diagnostics strong{font-size:1.25rem;font-variant-numeric:tabular-nums;color:#0453cb}
+.aps-retry-diagnostics span{font-size:.72rem;color:#66778e}
+.aps-retry-warning{background:#fff7e9;border-left:3px solid #e3a13b;padding:12px 14px;border-radius:8px;color:#745423;font-size:.8rem;line-height:1.5;margin:15px 0}
+.aps-retry-footer{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:8px}
+.aps-retry-footer .aps-btn--disabled{cursor:not-allowed;opacity:.7}
+@media(max-width:540px){.aps-retry-dialog{padding:18px}.aps-retry-diagnostics{grid-template-columns:1fr}.aps-retry-actions>button{width:100%;justify-content:center}}
+@media(prefers-reduced-motion:reduce){.aps-retry-dialog::backdrop{backdrop-filter:none}}
 </style>
 @endsection
 
@@ -761,6 +781,21 @@
                                     <p class="small text-muted mb-0">Ne relancez pas les adresses rejetées sans analyser le code et rapprocher les événements MailPulse.</p>
                                 @endif
                             </div>
+                            @canany(['annonces.edit', 'edit_annonces'])
+                                @if($echoues > 0)
+                                    <div class="aps-retry-actions mt-3">
+                                        <div>
+                                            <strong>{{ number_format($echoues, 0, ',', ' ') }} échec(s) à examiner</strong>
+                                            <p>Analysez les rebonds et suppressions avant toute nouvelle soumission. Les autres messages restent intouchés.</p>
+                                        </div>
+                                        <button type="button" id="aps-retry-open" class="aps-btn aps-btn--white"
+                                            data-diagnostic-url="{{ route('esbtp.annonces.relance.diagnostic', $annonce) }}">
+                                            <i class="fas fa-rotate" aria-hidden="true"></i>Préparer une relance
+                                        </button>
+                                    </div>
+                                    <div id="aps-retry-status" aria-live="polite" role="status" class="small mt-2"></div>
+                                @endif
+                            @endcanany
                             <div class="alert alert-info mt-3 mb-0" role="note">
                                 <strong>Un courriel soumis n'est pas nécessairement délivré.</strong>
                                 Les confirmations et retards du fournisseur nécessitent le rapprochement sécurisé MailPulse.
@@ -1056,6 +1091,37 @@
             @method('DELETE')
         </form>
 
+        @canany(['annonces.edit', 'edit_annonces'])
+        @if($annonce->email_notification_enabled && $annonce->is_published)
+            <dialog id="aps-retry-dialog" class="aps-retry-dialog" aria-labelledby="aps-retry-title">
+                <div class="aps-retry-dialog-head">
+                    <div>
+                        <p class="aps-retry-kicker">SÉCURITÉ MAILPULSE</p>
+                        <h2 id="aps-retry-title">Préparer une relance</h2>
+                    </div>
+                    <button type="button" id="aps-retry-close" aria-label="Fermer le diagnostic" class="aps-modal-close">
+                        <i class="fas fa-times" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <p class="aps-retry-intro">Le diagnostic vérifie les statuts sans envoyer de nouveau courrier.</p>
+                <div class="aps-retry-diagnostics" aria-live="polite">
+                    <div><strong id="aps-retry-bounces">—</strong><span>Adresses en rebond</span></div>
+                    <div><strong id="aps-retry-suppressed">—</strong><span>Adresses supprimées / plaintes</span></div>
+                    <div><strong id="aps-retry-other">—</strong><span>Autres échecs à vérifier</span></div>
+                    <div><strong id="aps-retry-running">—</strong><span>Déjà en cours, à ne pas relancer</span></div>
+                </div>
+                <p class="aps-retry-warning" id="aps-retry-warning"></p>
+                <div class="aps-retry-footer">
+                    <button type="button" id="aps-retry-cancel" class="aps-btn aps-btn--white">Fermer</button>
+                    <button type="button" class="aps-btn aps-btn--disabled" disabled
+                        title="La relance demande un journal d'essais immuable et une preuve MailPulse de non-soumission.">
+                        <i class="fas fa-lock" aria-hidden="true"></i>Relance non autorisée
+                    </button>
+                </div>
+            </dialog>
+        @endif
+        @endcanany
+
         {{-- =================== MODAL DELETE =================== --}}
         <div class="modal fade aps-modal" id="apsDeleteModal" tabindex="-1"
              aria-labelledby="apsDeleteModalLabel" aria-hidden="true" data-bs-backdrop="static">
@@ -1216,6 +1282,52 @@
                 observer?.disconnect();
             }, {once: true});
         }
+
+
+        // Diagnostic de relance sans transport réseau MailPulse et sans reload.
+        const retryOpen = document.getElementById('aps-retry-open');
+        const retryDialog = document.getElementById('aps-retry-dialog');
+        const retryStatus = document.getElementById('aps-retry-status');
+        const closeRetry = () => retryDialog?.close();
+        document.getElementById('aps-retry-close')?.addEventListener('click', closeRetry);
+        document.getElementById('aps-retry-cancel')?.addEventListener('click', closeRetry);
+        retryDialog?.addEventListener('click', event => {
+            if (event.target === retryDialog) closeRetry();
+        });
+        retryOpen?.addEventListener('click', async () => {
+            if (retryOpen.disabled) return;
+            retryOpen.disabled = true;
+            if (retryStatus) retryStatus.textContent = 'Analyse des échecs en cours…';
+            try {
+                const res = await fetch(retryOpen.dataset.diagnosticUrl, {
+                    credentials: 'same-origin',
+                    headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'}
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) throw new Error(data.message || 'Diagnostic indisponible.');
+                const d = data.diagnostic;
+                for (const [key, value] of Object.entries({
+                    'aps-retry-bounces': d.rebonds,
+                    'aps-retry-suppressed': d.supprimees,
+                    'aps-retry-other': d.autres_echecs,
+                    'aps-retry-running': d.en_cours
+                })) {
+                    const el = document.getElementById(key);
+                    if (el) el.textContent = Number(value).toLocaleString('fr-FR');
+                }
+                const warning = document.getElementById('aps-retry-warning');
+                if (warning) warning.textContent = d.motif_blocage;
+                if (retryStatus) retryStatus.textContent = 'Diagnostic consulté. Aucun message réexpédié.';
+                retryDialog?.showModal();
+            } catch (error) {
+                if (retryStatus) retryStatus.textContent = error.message;
+                window.dispatchEvent(new CustomEvent('toast', {
+                    detail: {type: 'error', message: error.message}
+                }));
+            } finally {
+                retryOpen.disabled = false;
+            }
+        });
 
         const openBtn = document.getElementById('aps-open-delete');
         const modalEl = document.getElementById('apsDeleteModal');
