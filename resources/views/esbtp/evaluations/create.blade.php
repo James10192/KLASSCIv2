@@ -36,7 +36,7 @@
                             {{ $anneeUniversitaire->name }}
                         </span>
                     @endif
-                    @if(auth()->check() && !auth()->user()->can('identity.teach'))
+                    @if($assigneUnEnseignant)
                         <a href="{{ route('esbtp.evaluations.index', ['annee_universitaire_id' => $anneeUniversitaire?->id]) }}" class="ec-btn ec-btn--glass">
                             <i class="fas fa-arrow-left"></i> Retour à la liste
                         </a>
@@ -188,6 +188,14 @@
                             'anneeId' => optional($anneeUniversitaire ?? null)->id,
                         ])
 
+                        @if($classesLmdEcartees > 0)
+                            <div class="ec-hint" role="note">
+                                <i class="fas fa-info-circle"></i>
+                                {{ $classesLmdEcartees }} {{ $classesLmdEcartees > 1 ? 'classes LMD ne sont pas proposées ici' : 'classe LMD n\'est pas proposée ici' }} :
+                                leurs évaluations se créent depuis <a href="{{ route('esbtp.lmd.notes.index') }}">les notes LMD</a>.
+                            </div>
+                        @endif
+
                         <div class="ec-grid">
                             <div class="ec-field">
                                 <label class="ec-label">Classe <span class="ec-required">*</span></label>
@@ -322,7 +330,7 @@
                 </div>
 
                 {{-- Section 4 : Assignation enseignant (non-enseignants uniquement) --}}
-                @if(auth()->check() && !auth()->user()->can('identity.teach'))
+                @if($assigneUnEnseignant)
                 <div class="ec-card">
                     <div class="ec-card-header">
                         <div class="ec-section-icon"><i class="fas fa-user-tie"></i></div>

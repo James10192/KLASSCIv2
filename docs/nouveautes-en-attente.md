@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-11-03 · Création d'évaluation : la direction choisit l'enseignant ; les classes LMD renvoient aux notes LMD
 - 2026-11-02 · PR à attribuer · Annonces : nouvelle campagne e-mail refusée si queue sync ; récupération encadrée, par petits lots, des messages bloqués par la limite locale avant toute soumission MailPulse.
 - 2026-11-02 · #1756 · Annonces : selects pleine largeur, en-tête compact, journal de diffusion en défilement infini sans pagination visible ; courriels harmonisés avec le style clair « Encaissements en retard » (ancien modèle conservé).
 - 2026-11-02 · #1752 · Annonces : recherche globale et filtres avancés sans rechargement, listes incrémentales, aperçu e-mail stable et destinataires consultables dans un espace compact sur téléphone comme ordinateur.

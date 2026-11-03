@@ -174,9 +174,11 @@
             <a href="{{ route('esbtp.planning-general.coordinateur', ['annee_id' => $anneeSelectionnee?->id]) }}" class="ph-btn ph-btn--glass">
                 <i class="fas fa-cogs"></i>Gestion Planning
             </a>
+            @can('module.enseignants.access')
             <a href="{{ route('esbtp.enseignants.index') }}" class="ph-btn ph-btn--white">
                 <i class="fas fa-users"></i>Enseignants
             </a>
+            @endcan
             @endcanany
         </div>
     </div>
