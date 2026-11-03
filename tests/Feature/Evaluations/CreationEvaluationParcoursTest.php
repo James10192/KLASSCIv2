@@ -3,6 +3,7 @@
 namespace Tests\Feature\Evaluations;
 
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPNiveauEtude;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Spatie\Permission\Models\Permission;
@@ -56,7 +57,7 @@ class CreationEvaluationParcoursTest extends TestCase
     public function test_les_classes_lmd_ne_sont_pas_proposees_dans_le_formulaire_bts(): void
     {
         $bts = ESBTPClasse::factory()->create(['systeme_academique' => 'BTS', 'is_active' => true]);
-        $lmd = ESBTPClasse::factory()->create(['systeme_academique' => 'LMD', 'is_active' => true]);
+        $lmd = $this->classeLmd();
 
         $reponse = $this->actingAs($this->superAdministrateur())->get(route('esbtp.evaluations.create'));
 
@@ -68,12 +69,22 @@ class CreationEvaluationParcoursTest extends TestCase
 
     public function test_une_classe_lmd_choisie_reste_proposee(): void
     {
-        $lmd = ESBTPClasse::factory()->create(['systeme_academique' => 'LMD', 'is_active' => true]);
+        $lmd = $this->classeLmd();
 
         $reponse = $this->actingAs($this->superAdministrateur())->get(route('esbtp.evaluations.create', ['classe_id' => $lmd->id]));
 
         $reponse->assertOk();
         $reponse->assertViewHas('classes', fn ($classes) => $classes->contains('id', $lmd->id));
+    }
+
+    /** Le modele deduit le systeme du niveau a l'enregistrement : il faut un niveau Licence. */
+    private function classeLmd(): ESBTPClasse
+    {
+        $licence = ESBTPNiveauEtude::factory()->create(['type' => 'Licence', 'name' => 'Licence 1', 'year' => 1]);
+        $classe = ESBTPClasse::factory()->create(['niveau_etude_id' => $licence->id, 'is_active' => true]);
+        $this->assertSame('LMD', $classe->fresh()->systeme_academique);
+
+        return $classe;
     }
 
     private function superAdministrateur(): User
