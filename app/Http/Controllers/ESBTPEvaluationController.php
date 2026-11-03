@@ -330,7 +330,11 @@ class ESBTPEvaluationController extends Controller
         $currentUser = \Auth::user();
         $assigneUnEnseignant = ! $this->estEnseignantSansCoordination($currentUser);
         if ($assigneUnEnseignant) {
-            $enseignants = User::permission('identity.teach')->with('roles:id,name')->orderBy('name')->get();
+            // User::permission() leve une exception si la permission n'existe pas encore
+            // en base (instance ou permissions:fix n'a pas tourne) : une liste vide vaut mieux qu'une page en erreur.
+            if (\Spatie\Permission\Models\Permission::where('name', 'identity.teach')->where('guard_name', 'web')->exists()) {
+                $enseignants = User::permission('identity.teach')->with('roles:id,name')->orderBy('name')->get();
+            }
         }
 
         // Une evaluation de deux heures au premier creneau de l'ecole.
