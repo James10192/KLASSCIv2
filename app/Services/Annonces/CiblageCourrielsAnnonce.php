@@ -62,7 +62,9 @@ final class CiblageCourrielsAnnonce
     {
         foreach ([$etudiant->email_personnel, $etudiant->email, $etudiant->user?->email] as $candidate) {
             $email = strtolower(trim((string) $candidate));
-            if (strlen($email) <= 254 && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            // Domaine fabrique (`esbtp.edu`, liste centrale) : candidat suivant.
+            if (strlen($email) <= 254 && filter_var($email, FILTER_VALIDATE_EMAIL)
+                && ! SuppressionCourrielAnnonce::estFactice($email)) {
                 return $email;
             }
         }

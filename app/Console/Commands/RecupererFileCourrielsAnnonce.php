@@ -73,7 +73,7 @@ final class RecupererFileCourrielsAnnonce extends Command
             $annonce->id, $tenant ?: '?', $candidats, $stricts, $operation ? 'EXECUTION' : 'SIMULATION'
         ));
         $this->line(sprintf(
-            'Références v2 invalides/absentes : %d ; adresses déjà rebondies, supprimées ou en plainte : %d.',
+            'Références v2 invalides/absentes : %d ; adresses factices, déjà rebondies, supprimées ou en plainte : %d.',
             $invalides, $supprimes
         ));
         if (! $operation) {
@@ -141,7 +141,8 @@ final class RecupererFileCourrielsAnnonce extends Command
                     $invalides++;
                     continue;
                 }
-                if (isset($bloquees[strtolower(trim((string) $ligne->email))])) {
+                $email = strtolower(trim((string) $ligne->email));
+                if (isset($bloquees[$email]) || SuppressionCourrielAnnonce::estFactice($email)) {
                     $supprimes++;
                     continue;
                 }

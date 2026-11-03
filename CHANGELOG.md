@@ -13,7 +13,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ## Novembre 2026
 
 ### Corrections
-- **Annonces — reprise sécurisée :** décompte de simulation sur clés v2 exactes, exclusions des antécédents de rebond/plainte/suppression dans l'instance, sélection de lots sans blocage par références invalides, cadence configurable, arrêt si la queue n'assure pas une transaction SQL atomique.
+- **Annonces — reprise sécurisée :** décompte de simulation sur clés v2 exactes, exclusions des antécédents de rebond/plainte/suppression dans l'instance et des domaines factices de la liste centrale (`esbtp.edu`…, aussi au ciblage et à l'envoi), sélection de lots sans blocage par références invalides, cadence configurable, arrêt si la queue n'assure pas une transaction SQL atomique.
 - **Annonces — file sync bloquée :** refuser les nouvelles campagnes quand la file est synchrone, et fournir une commande de simulation/récupération transactionnelle par petits lots réservée aux limitations locales prouvées avant transport ; aucune reprise des échecs fournisseurs ou des résultats incertains.
 
 ### Communication — 2 novembre

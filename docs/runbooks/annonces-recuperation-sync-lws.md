@@ -15,7 +15,7 @@
     php artisan tinker --execute='dump(\Illuminate\Support\Facades\DB::table("esbtp_annonce_email_deliveries")->where("annonce_id",2)->select("status","error_code")->selectRaw("COUNT(*) AS total")->groupBy("status","error_code")->get());'
 
 4. Contrôler que les lignes à récupérer sont retrying + local_rate_limit, sans submitted_at, mailpulse_message_id, provider_failed_at ni provider_delivered_at. **La référence idempotente v2 déjà enregistrée doit appartenir au tenant et à la livraison** ; les clés anciennes/absentes sont refusées.
-5. Simulation : php artisan annonces:recuperer-file --annonce=2. Le nombre **strictement récupérable** applique désormais la correspondance v2 complète et l'exclusion des antécédents locaux de rebond/plainte/suppression ; ne pas déduire ce nombre du seul préfixe SQL.
+5. Simulation : php artisan annonces:recuperer-file --annonce=2. Le nombre **strictement récupérable** applique désormais la correspondance v2 complète, l'exclusion des domaines factices de `resources/data/domaines-suspects.json` (`esbtp.edu`, extensions réservées) et celle des antécédents locaux de rebond/plainte/suppression ; ne pas déduire ce nombre du seul préfixe SQL.
 6. Avant `--execute`, prouver que la connexion `database` utilise **la même base** que les livraisons, avec `after_commit=false`. Un dispatch différé après commit détruirait l'atomicité statut/job.
 7. Valider le statut MailPulse/Resend, la liste de suppression fournisseur, l'état des DNS SPF/DKIM/DMARC et la capacité SMTP autorisée. La protection locale ne voit pas les suppressions externes non synchronisées.
 

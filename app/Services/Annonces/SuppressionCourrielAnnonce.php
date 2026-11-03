@@ -2,6 +2,7 @@
 
 namespace App\Services\Annonces;
 
+use App\Services\Emails\AnalyseurEmail;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -18,10 +19,19 @@ final class SuppressionCourrielAnnonce
         'bounced', 'complained', 'suppressed',
     ];
 
+    /** Domaine fabrique par KLASSCI, d'apres la liste centrale `DomainesSuspects`. */
+    public static function estFactice(string $email): bool
+    {
+        $arobase = strrpos($email, '@');
+
+        return $arobase !== false && app(AnalyseurEmail::class)
+            ->estFactice(mb_strtolower(trim(substr($email, $arobase + 1))));
+    }
+
     public static function estBloquee(string $email): bool
     {
         $email = strtolower(trim($email));
-        if ($email === '') {
+        if ($email === '' || self::estFactice($email)) {
             return true;
         }
 
