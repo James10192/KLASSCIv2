@@ -2032,6 +2032,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" style="filter:brightness(0) invert(1); opacity:.7;"></button>
             </div>
             <div class="modal-body" style="padding:1.25rem 1.5rem; background:#f8fafc;">
+                <div id="am-erreur" class="alert alert-danger py-2 px-3 mb-3" role="alert" hidden></div>
                 <form id="configureLiaisonsForm">
                     @csrf
                     <input type="hidden" id="modal-matiere-id" name="matiere_id">
@@ -3399,16 +3400,19 @@ $(function() {
             });
 
             if (selectedMatieres.length === 0) {
-                showAlert('error', 'Sélectionnez au moins une matière.');
+                // Affiché dans la fenêtre : un message posé dans la page resterait derrière son fond.
+                $('#am-erreur').text('Sélectionnez au moins une matière.').prop('hidden', false);
                 return;
             }
 
             if (combinations.length === 0) {
-                showAlert('error', 'Sélectionnez au moins une combinaison filière et niveau.');
+                // Affiché dans la fenêtre : un message posé dans la page resterait derrière son fond.
+                $('#am-erreur').text('Sélectionnez au moins une combinaison filière et niveau.').prop('hidden', false);
                 return;
             }
 
             // Désactiver le bouton pendant la sauvegarde
+            $('#am-erreur').prop('hidden', true);
             saveBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Ajout en cours...');
 
             fetch('/esbtp/matieres/add-to-combination', {
