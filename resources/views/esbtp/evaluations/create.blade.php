@@ -671,6 +671,18 @@ textarea.ec-input { resize: vertical; min-height: 90px; }
     margin-top: .5rem;
 }
 
+/* Sur ordinateur, le bouton d'enregistrement restait sous la ligne de flottaison :
+   la barre suit le defilement. Pas sur telephone, ou la barre de navigation du bas occupe deja ce bord. */
+@media (min-width: 992px) {
+    .ec-actions {
+        position: sticky; bottom: 0; z-index: 5;
+        background: rgba(248,250,252,.96);
+        border-top: 1px solid #e2e8f0;
+        padding: .75rem 1rem;
+        margin: .5rem -1rem 0;
+    }
+}
+
 .ec-toast-container {
     position: fixed;
     top: 20px; right: 20px;
