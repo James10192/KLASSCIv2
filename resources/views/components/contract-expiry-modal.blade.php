@@ -69,7 +69,7 @@
 @endif
 
 {{-- Overlay principal --}}
-<div class="ce-overlay" id="contractExpiryModal" role="dialog" aria-modal="true" aria-labelledby="ce-title">
+<div class="ce-overlay" id="contractExpiryModal" data-fenetre-prioritaire role="dialog" aria-modal="true" aria-labelledby="ce-title">
     <div class="ce-card">
 
         {{-- Header coloré --}}
