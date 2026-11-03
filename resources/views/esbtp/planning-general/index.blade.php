@@ -3399,12 +3399,12 @@ $(function() {
             });
 
             if (selectedMatieres.length === 0) {
-                alert('Veuillez sélectionner au moins une matière.');
+                showAlert('error', 'Sélectionnez au moins une matière.');
                 return;
             }
 
             if (combinations.length === 0) {
-                alert('Veuillez sélectionner au moins une combinaison filière/niveau.');
+                showAlert('error', 'Sélectionnez au moins une combinaison filière et niveau.');
                 return;
             }
 

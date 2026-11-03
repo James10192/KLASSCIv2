@@ -900,8 +900,12 @@ class ESBTPEmploiTempsController extends Controller
         $totalHeuresPlanifiees = $planificationData['heures_totales'] ?? 0;
         $heuresRestantes = $planificationData['heures_restantes'] ?? 0;
         $pourcentageRestant = $totalHeuresPlanifiees > 0
-            ? round(($heuresRestantes / $totalHeuresPlanifiees) * 100)
+            ? ($heuresRestantes / $totalHeuresPlanifiees) * 100
             : 0;
+        // Arrondir 99,9 % a 100 % laissait croire que rien n'etait fait.
+        $pourcentageRestant = $pourcentageRestant > 99 && $pourcentageRestant < 100
+            ? floor($pourcentageRestant * 10) / 10
+            : round($pourcentageRestant);
         $enseignantsIds = $emploi_temp->seances
             ->pluck('teacher_id')
             ->filter()

@@ -284,6 +284,7 @@
 </div>
 @endcanany
 
+<x-confirmation-dialog />
 @endsection
 
 @push('styles')
@@ -1764,7 +1765,7 @@ function initializeEvaluations() {
         }
     }
 
-    function handleAction(button) {
+    async function handleAction(button) {
         const action = button.getAttribute('data-evaluation-action');
         const url = button.getAttribute('data-url');
         const method = button.getAttribute('data-method') || 'POST';
@@ -1772,8 +1773,10 @@ function initializeEvaluations() {
         const evaluationId = row ? Number(row.getAttribute('data-evaluation-id')) : null;
         if (!action || !url || !evaluationId || bulkProcessing || processingIds.has(evaluationId)) return;
 
-        if (action === 'delete' && !window.confirm('Confirmez-vous la suppression de cette évaluation ?')) return;
-        if (action === 'cancel' && !window.confirm("Confirmez-vous l'annulation de cette évaluation ?")) return;
+        if (action === 'delete' && !(await window.klassciConfirmer('Les notes déjà saisies pour cette évaluation ne compteront plus.', { titre: 'Supprimer cette évaluation ?', libelle: 'Supprimer', danger: true }))) return;
+        if (action === 'cancel' && !(await window.klassciConfirmer('Elle sera retirée du calcul des moyennes. Vous pourrez la réactiver.', { titre: 'Annuler cette évaluation ?', libelle: "Annuler l'évaluation", danger: true }))) return;
+        // Pendant la fenêtre, un autre traitement a pu démarrer.
+        if (bulkProcessing || processingIds.has(evaluationId)) return;
 
         const meta = getRowMeta(evaluationId);
         const payload = action === 'toggle-notes' ? { notes_published: !meta.notesPublished } : null;
@@ -1796,10 +1799,17 @@ function initializeEvaluations() {
         if (!ids.length) return;
 
         if (['delete', 'cancel'].includes(actionKey)) {
-            const message = actionKey === 'delete'
-                ? 'Confirmez-vous la suppression des évaluations sélectionnées ?'
-                : "Confirmez-vous l'annulation des évaluations sélectionnées ?";
-            if (!window.confirm(message)) return;
+            const confirme = await window.klassciConfirmer(
+                actionKey === 'delete'
+                    ? 'Les notes déjà saisies pour ces évaluations ne compteront plus.'
+                    : 'Elles seront retirées du calcul des moyennes. Vous pourrez les réactiver.',
+                {
+                    titre: (actionKey === 'delete' ? 'Supprimer ' : 'Annuler ') + ids.length + (ids.length > 1 ? ' évaluations ?' : ' évaluation ?'),
+                    libelle: actionKey === 'delete' ? 'Supprimer' : 'Annuler les évaluations',
+                    danger: true,
+                }
+            );
+            if (!confirme || bulkProcessing || processingIds.size) return;
         }
 
         let filteredIds = ids;
