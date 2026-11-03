@@ -12,6 +12,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Novembre 2026
 
+### Ajouts
+- Réglages, onglet Général : plage horaire des cours (premier créneau et fin du dernier) modifiable par l'école ; une fin avant le début est refusée. La création d'évaluation propose le premier créneau de l'école au lieu de 8 h. Vue morte `emploi-temps/teacher` retirée.
+
 ### Corrections
 - Création d'évaluation : un super administrateur ou un coordinateur peut assigner l'enseignant au lieu d'être enregistré lui-même comme enseignant ; les classes LMD ne sont plus proposées dans ce formulaire BTS, un message renvoie aux notes LMD. Planning : le bouton « Enseignants » n'apparaît plus sans accès au module.
 - **Annonces — reprise sécurisée :** décompte de simulation sur clés v2 exactes, exclusions des antécédents de rebond/plainte/suppression dans l'instance et des domaines factices de la liste centrale (`esbtp.edu`…, aussi au ciblage et à l'envoi), sélection de lots sans blocage par références invalides, cadence configurable, arrêt si la queue n'assure pas une transaction SQL atomique.

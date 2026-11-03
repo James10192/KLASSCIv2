@@ -330,8 +330,17 @@ class ESBTPEvaluationController extends Controller
         $currentUser = \Auth::user();
         $assigneUnEnseignant = ! $this->estEnseignantSansCoordination($currentUser);
         if ($assigneUnEnseignant) {
-            $enseignants = User::permission('identity.teach')->with('roles:id,name')->orderBy('name')->get();
+            // User::permission() leve une exception si la permission n'existe pas encore
+            // en base (instance ou permissions:fix n'a pas tourne) : une liste vide vaut mieux qu'une page en erreur.
+            if (\Spatie\Permission\Models\Permission::where('name', 'identity.teach')->where('guard_name', 'web')->exists()) {
+                $enseignants = User::permission('identity.teach')->with('roles:id,name')->orderBy('name')->get();
+            }
         }
+
+        // Une evaluation de deux heures au premier creneau de l'ecole.
+        $plage = app(\App\Services\Planning\PlageHoraireJournee::class);
+        $heureDebutParDefaut = $plage->debut();
+        $heureFinParDefaut = min($plage->debut() + 2, $plage->fin());
 
         // Prepare subjects for JavaScript
         $matieresJson = $matieres->map(function ($matiere) {
@@ -343,7 +352,7 @@ class ESBTPEvaluationController extends Controller
             ];
         });
 
-        return view('esbtp.evaluations.create', compact('classes', 'matieres', 'matieresJson', 'matiere_id', 'classe_id', 'types', 'enseignants', 'anneeUniversitaire', 'assigneUnEnseignant', 'classesLmdEcartees'));
+        return view('esbtp.evaluations.create', compact('classes', 'matieres', 'matieresJson', 'matiere_id', 'classe_id', 'types', 'enseignants', 'anneeUniversitaire', 'assigneUnEnseignant', 'classesLmdEcartees', 'heureDebutParDefaut', 'heureFinParDefaut'));
     }
 
     /**

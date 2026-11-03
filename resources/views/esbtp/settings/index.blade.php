@@ -1342,6 +1342,8 @@
             </div>
 
 
+            @include('esbtp.settings.partials.plage-horaire')
+
             @include('esbtp.settings.partials.emargement')
 
                 </div>
