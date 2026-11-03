@@ -1,7 +1,91 @@
 <?php
 
 /*
- * Contenu de la fenêtre « Nouveautés » affichée à la connexion.
+ *        [
+            'titre' => 'Prévenir les étudiants par e-mail à chaque annonce',
+            'icone' => 'fa-envelope-open-text',
+            'texte' => 'En publiant une annonce, cochez l’envoi par e-mail : chaque étudiant ciblé est prévenu une seule fois, et vous pouvez limiter l’envoi aux inscrits de l’année. La fiche de l’annonce montre l’aperçu du courriel et le bilan de diffusion, adresse par adresse. Recherche, filtres et listes se mettent à jour sans recharger la page. En cas de doute sur un envoi, KLASSCI le met en attente au lieu de le renvoyer : personne ne reçoit le message deux fois.',
+            'permissions' => ['annonces.create', 'annonces.edit', 'annonces.view'],
+        ],
+        [
+            'titre' => 'Des reçus sur une seule feuille, avec la vraie heure',
+            'icone' => 'fa-receipt',
+            'texte' => 'Les exemplaires élève et caisse du reçu tiennent sur une seule feuille A4, avec la place pour la signature et le cachet. Reçus, liste des paiements et journal de caisse affichent l’heure réelle de saisie et de validation ; un ancien paiement indique « heure non conservée » au lieu de 00:00. Dans Comptabilité, Reçus et encaissements, choisissez d’imprimer le nom complet ou les initiales du caissier.',
+            'permissions' => ['paiements.create', 'paiements.view', 'paiements.view_own'],
+        ],
+        [
+            'titre' => 'Encaisser une dette d’une année passée',
+            'icone' => 'fa-history',
+            'texte' => 'Un étudiant qui doit encore une ancienne année se retrouve à la caisse, même sans nouvelle inscription : la recherche guide vers ses anciennes inscriptions. Le reliquat se règle depuis la fiche financière, et les montants déjà reportés ne sont plus comptés deux fois. Le suivi et les exports distinguent « Frais de cette année » et « Dettes anciennes », et chaque ligne exportée indique l’année d’inscription.',
+            'permissions' => ['paiements.create', 'paiements.view', 'paiements.export'],
+        ],
+        [
+            'titre' => 'Paiements : corriger, valider et filtrer sur place',
+            'icone' => 'fa-money-check-alt',
+            'texte' => 'La date réelle d’un versement se modifie à l’encaissement, sur ordinateur comme sur téléphone. Un paiement en attente se valide directement depuis la fiche d’inscription, et le mode de règlement se corrige depuis la fiche du versement. La liste des paiements gagne un filtre « Mode de règlement » et charge toutes les lignes en défilant ; l’export détaillé s’ouvre en aperçu jusqu’à 400 lignes.',
+            'permissions' => ['paiements.create', 'paiements.validate', 'paiements.correct_mode', 'paiements.view'],
+        ],
+        [
+            'titre' => 'Exonérations et réductions motivées',
+            'icone' => 'fa-hand-holding-usd',
+            'texte' => 'Une inscription gratuite se valide sans faux paiement dès que l’exonération est explicite, avec son motif et son auteur ; un tarif réellement configuré à 0 FCFA n’en demande pas. Les anciennes exonérations se reconfirment depuis la fiche. « Accorder une réduction » est disponible par inscription, avec son droit propre, distinct de la modification d’inscription.',
+            'permissions' => ['inscriptions.validate', 'frais.souscriptions.ajuster'],
+        ],
+        [
+            'titre' => 'Donner un accès à une seule personne',
+            'icone' => 'fa-user-lock',
+            'texte' => 'Personnel, Accès individuels : accordez une permission à une personne précise, pour une durée limitée ou sans limite, sans changer son rôle, puis retirez-la quand vous voulez. Les droits sur les classes sont plus fins : voir les étudiants, les listes d’appel ou complètes, exporter, imprimer une fiche de notes. Le menu n’affiche que ce que la personne peut ouvrir.',
+            'permissions' => ['permissions.temporaires.manage', 'permissions.individuels.permanents.manage', 'personnel.manage'],
+        ],
+        [
+            'titre' => 'Les notes d’un étudiant, regroupées par matière',
+            'icone' => 'fa-book-open',
+            'texte' => 'Sur la fiche étudiant et la fiche d’inscription, partie académique : évaluations et notes se saisissent et se corrigent dans des fenêtres centrées, sans quitter la fiche. Les notes sont regroupées par matière, ou par semestre, avec une recherche. Les résultats se consultent par inscription et par semestre, et le bulletin BTS ou LMD se régénère depuis la fiche.',
+            'permissions' => ['students.view', 'notes.create', 'notes.edit', 'bulletins.generate'],
+        ],
+        [
+            'titre' => 'Feuille de notes vierge à votre format',
+            'icone' => 'fa-print',
+            'texte' => 'Depuis la fenêtre des notes BTS, imprimez une feuille vierge avec jusqu’à 4 colonnes en A4 portrait ou 8 en paysage. Les réglages tiennent dans une barre compacte au-dessus de la grille. Les notes LMD reçoivent les mêmes filtres que le BTS (année, recherche, filière, niveau, statut), et une ancienne année peut être choisie pour terminer une saisie sans changer l’année courante.',
+            'permissions' => ['notes.create', 'notes.edit', 'lmd.notes.manage'],
+        ],
+        [
+            'titre' => 'Créer une évaluation pour un enseignant',
+            'icone' => 'fa-chalkboard-teacher',
+            'texte' => 'À la création d’une évaluation, la direction choisit l’enseignant concerné, y compris ceux qui ont un rôle personnalisé. Pour une classe LMD, KLASSCI renvoie vers les notes LMD. Activer ou publier plusieurs évaluations à la fois s’arrête à la première erreur et dit lesquelles ont réussi.',
+            'permissions' => ['evaluations.create', 'evaluations.edit'],
+        ],
+        [
+            'titre' => 'BTS tronc commun : résultats et rangs alignés',
+            'icone' => 'fa-code-branch',
+            'texte' => 'Résultats, fiche étudiant et bulletins montrent le semestre 1 dans la classe de tronc commun et le semestre 2 dans la spécialité. Les rangs imprimés concordent partout. Dans les paramètres des bulletins, l’école choisit la règle annuelle (S1 et S2, ou S2 seul) et le critère du conseil, dont « Les deux moyennes ». Un relevé provisoire est consultable avant la publication des bulletins.',
+            'permissions' => ['bulletins.view', 'resultats.view', 'bulletins.configure'],
+        ],
+        [
+            'titre' => 'Bulletins LMD : impression groupée et mise en page réglable',
+            'icone' => 'fa-file-pdf',
+            'texte' => 'Sélectionnez des bulletins LMD, ou tous ceux du filtre, et obtenez un seul PDF, jusqu’à 400. L’en-tête est plus compact, les polices, la hauteur du logo et les espacements se règlent, et les rubriques vides disparaissent. Nouveau réglage « Minimum UE pour APC », et le professeur de chaque élément vient du planning, avec plusieurs enseignants possibles par classe.',
+            'permissions' => ['lmd.bulletins.view', 'lmd.bulletins.generate', 'lmd.bulletins.export.bulk'],
+        ],
+        [
+            'titre' => 'Exporter la liste des enseignants',
+            'icone' => 'fa-file-export',
+            'texte' => 'Enseignants, Exporter : une seule fenêtre prépare le PDF ou l’Excel. Choisissez BTS, LMD ou les deux, les classes, filières, niveaux, matières et colonnes, puis l’un des documents : annuaire, saisies des bulletins, affectations par classe et semestre, répertoire par spécialisation ou matières regroupées.',
+            'permissions' => ['teachers.view'],
+        ],
+        [
+            'titre' => 'Invitations et connexion des étudiants et parents',
+            'icone' => 'fa-key',
+            'texte' => 'L’étudiant et ses parents reçoivent un lien sécurisé pour créer leur mot de passe, sans code temporaire, et la confirmation d’inscription ou de réinscription. Le dossier montre l’état et l’expiration du lien ainsi que l’historique des envois, sans jamais afficher le lien lui-même.',
+            'permissions' => ['inscriptions.view', 'inscriptions.candidatures.view', 'students.view'],
+        ],
+        [
+            'titre' => 'Effectifs, places et années mieux suivis',
+            'icone' => 'fa-chart-bar',
+            'texte' => 'Nouveau rapport des effectifs par classe, filtrable et exportable en PDF. Les places affichées correspondent à l’année du dossier ou de destination. La fiche étudiant propose la réinscription vers l’année suivante dès que l’année courante est échue. Le planning général peut reprendre les affectations d’enseignants de l’année précédente, sans écraser l’existant.',
+            'permissions' => ['classes.view', 'inscriptions.edit', 'planning.manage'],
+        ],
+ Contenu de la fenêtre « Nouveautés » affichée à la connexion.
  *
  * Une entrée par changement VISIBLE. `si` (facultatif) réserve une entrée aux
  * écoles où l'écran annoncé est ouvert : voir Nouveautes::disponible(). Chaque entrée n'apparaît qu'aux comptes
@@ -20,7 +104,7 @@
  */
 
 return [
-    'titre' => 'Octobre 2026',
+    'titre' => 'Octobre et novembre 2026',
     'entrees' => [
         [
             'titre' => 'Plus d’étudiants à l’écran pendant la saisie des notes',
