@@ -623,6 +623,7 @@
             @endforeach
         @endforeach
     </div>
+    @include('esbtp.emploi-temps.partials._vue-jour-mobile')
 @else
     {{-- PDF: Use same CSS Grid structure as web timeline (without interactive elements) - COMPACT VERSION --}}
     <div class="timetable-timeline timetable-variant-{{ $variant }}" style="display: grid; grid-template-columns: 50px repeat({{ count($normalizedDays) }}, 1fr); grid-template-rows: {{ $pdfGridTemplateRows }}; gap: 0; border: 1px solid #e2e8f0; background: white; font-family: Arial, sans-serif;">
