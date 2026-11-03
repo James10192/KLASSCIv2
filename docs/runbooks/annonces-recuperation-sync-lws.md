@@ -57,3 +57,5 @@ Le contrôleur refuse la création de nouvelles campagnes e-mail sur queue sync,
 - Ne jamais faire `queue:retry all` ou `queue:flush` comme moyen de récupérer cet incident : ces commandes ignorent les garanties métier d'idempotence.
 
 Références officielles : https://laravel.com/docs/12.x/queues ; https://aide.lws.fr/base/cPanel/Fonctions-supplementaires/programmer-une-tache-Cron-dans-cPanel ; https://aide.lws.fr/base/Hebergement-web-mutualise/Outils-web/Comment-creer-une-tache-cron-LWS-Panel ; https://resend.com/changelog/suppression-list-support
+- Entre deux passages `--execute`, attendre au moins `limit / mail_per_minute` minutes : chaque passage numérote ses délais à partir de zéro, et deux passages rapprochés empilent leurs jobs sur les mêmes minutes (la cadence du job freine, mais la file gonfle).
+- Les lignes écartées (référence invalide, domaine factice, adresse rebondie) restent `retrying` et réapparaissent à chaque simulation : c'est attendu, la commande ne les clôt pas. Elles sont à traiter à part, jamais par `--execute` répété.
