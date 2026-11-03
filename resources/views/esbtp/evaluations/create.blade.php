@@ -139,7 +139,7 @@
                                 <label for="heure_debut" class="ec-label">Heure de début <span class="ec-required">*</span></label>
                                 <input type="time" class="ec-input @error('heure_debut') ec-input--error @enderror"
                                        id="heure_debut" name="heure_debut"
-                                       value="{{ old('heure_debut', '08:00') }}" required>
+                                       value="{{ old('heure_debut', sprintf('%02d:00', $heureDebutParDefaut)) }}" required>
                                 @error('heure_debut')<div class="ec-error">{{ $message }}</div>@enderror
                             </div>
 
@@ -147,7 +147,7 @@
                                 <label for="heure_fin" class="ec-label">Heure de fin <span class="ec-required">*</span></label>
                                 <input type="time" class="ec-input @error('heure_fin') ec-input--error @enderror"
                                        id="heure_fin" name="heure_fin"
-                                       value="{{ old('heure_fin', '10:00') }}" required>
+                                       value="{{ old('heure_fin', sprintf('%02d:00', $heureFinParDefaut)) }}" required>
                                 @error('heure_fin')<div class="ec-error">{{ $message }}</div>@enderror
                             </div>
 

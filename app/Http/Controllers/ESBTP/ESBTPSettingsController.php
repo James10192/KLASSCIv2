@@ -604,6 +604,10 @@ class ESBTPSettingsController extends Controller
             ];
 
             $reglagesTexte[] = \App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::KEY;
+            // La plage horaire des cours : cles pointees, controlees par
+            // incoherenceDeLaPlageHoraire() avant toute ecriture.
+            $reglagesTexte[] = \App\Services\Planning\PlageHoraireJournee::CLE_DEBUT;
+            $reglagesTexte[] = \App\Services\Planning\PlageHoraireJournee::CLE_FIN;
 
             // Les trois regles de separation des devoirs : un mode a trois
             // etats, donc un selecteur et non une case. Elles etaient dans les
@@ -1163,7 +1167,40 @@ class ESBTPSettingsController extends Controller
             return $this->refus($request, $incoherence);
         }
 
+        if (($incoherence = $this->incoherenceDeLaPlageHoraire($request)) !== null) {
+            return $this->refus($request, $incoherence);
+        }
+
         return $this->refuserCandidaturesSansAnnee($request);
+    }
+
+    /**
+     * Une plage horaire illisible serait remplacee en silence par la plage
+     * par defaut a la lecture : on la refuse ici, ou l'ecole peut la corriger.
+     */
+    private function incoherenceDeLaPlageHoraire(Request $request): ?string
+    {
+        $plage = \App\Services\Planning\PlageHoraireJournee::class;
+        $rawInput = $request->all();
+        if (! $this->estSoumis($rawInput, $plage::CLE_DEBUT) && ! $this->estSoumis($rawInput, $plage::CLE_FIN)) {
+            return null;
+        }
+
+        $lire = function (string $cle, int $defaut) use ($rawInput): ?int {
+            $valeur = $this->estSoumis($rawInput, $cle)
+                ? $this->valeurSoumise($rawInput, $cle)
+                : \App\Helpers\SettingsHelper::get($cle, $defaut);
+
+            return is_numeric($valeur) && (string) (int) $valeur === trim((string) $valeur) ? (int) $valeur : null;
+        };
+        $debut = $lire($plage::CLE_DEBUT, $plage::DEBUT_PAR_DEFAUT);
+        $fin = $lire($plage::CLE_FIN, $plage::FIN_PAR_DEFAUT);
+
+        if ($debut === null || $fin === null || $debut < 0 || $fin > 23 || $debut >= $fin) {
+            return 'Plage horaire des cours invalide : deux heures entières entre 0 et 23, la fin après le début.';
+        }
+
+        return null;
     }
 
     /**
