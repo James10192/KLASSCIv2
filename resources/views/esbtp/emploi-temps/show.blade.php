@@ -828,20 +828,20 @@
                     <div class="ets-kpi-icon"><i class="fas fa-clock"></i></div>
                     <div>
                         <div class="ets-kpi-value">{{ $heroKpis['total_seances'] }}</div>
-                        <div class="ets-kpi-label">Séances programmées</div>
+                        <div class="ets-kpi-label">{{ $heroKpis['total_seances'] > 1 ? 'Séances programmées' : 'Séance programmée' }}</div>
                     </div>
                 </div>
                 <div class="ets-kpi">
                     <div class="ets-kpi-icon"><i class="fas fa-hourglass-half"></i></div>
                     <div>
-                        <div class="ets-kpi-value">{{ number_format($heroKpis['heures_planifiees'], 0) }}h</div>
-                        <div class="ets-kpi-label">Heures planifiées</div>
+                        <div class="ets-kpi-value">{{ number_format($heroKpis['heures_planifiees'], 0, ',', ' ') }} h</div>
+                        <div class="ets-kpi-label">Volume au programme</div>
                     </div>
                 </div>
                 <div class="ets-kpi">
                     <div class="ets-kpi-icon"><i class="fas fa-chart-line"></i></div>
                     <div>
-                        <div class="ets-kpi-value">{{ $heroKpis['pourcentage_restant'] }}%</div>
+                        <div class="ets-kpi-value">{{ str_replace('.', ',', (string) $heroKpis['pourcentage_restant']) }} %</div>
                         <div class="ets-kpi-label">Volume restant</div>
                     </div>
                 </div>
@@ -849,7 +849,7 @@
                     <div class="ets-kpi-icon"><i class="fas fa-chalkboard-teacher"></i></div>
                     <div>
                         <div class="ets-kpi-value">{{ $heroKpis['enseignants'] }}</div>
-                        <div class="ets-kpi-label">Enseignants</div>
+                        <div class="ets-kpi-label">{{ $heroKpis['enseignants'] > 1 ? 'Enseignants' : 'Enseignant' }}</div>
                     </div>
                 </div>
             </div>
