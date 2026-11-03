@@ -16,6 +16,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - Réglages, onglet Général : plage horaire des cours (premier créneau et fin du dernier) modifiable par l'école ; une fin avant le début est refusée. La création d'évaluation propose le premier créneau de l'école au lieu de 8 h. Vue morte `emploi-temps/teacher` retirée.
 
 ### Corrections
+- Emploi du temps sur téléphone : un jour à la fois, avec le nombre de séances par jour et le jour courant ouvert, au lieu d'une grille de six colonnes à faire défiler en largeur. Le bureau garde la grille.
 - Fenêtres au chargement : l'avis de renouvellement de l'abonnement compte désormais comme une fenêtre ouverte ; les rappels (emplois du temps, évaluations à activer) et les Nouveautés attendent le chargement suivant au lieu de s'empiler par-dessus.
 - Emploi du temps : bandeau au singulier quand il le faut (« 1 séance programmée »), volume au programme écrit « 1 510 h », et volume restant à 99,9 % au lieu d'un 100 % trompeur après une première séance. Évaluations : suppression et annulation confirmées dans une fenêtre KLASSCI au lieu de la boîte du navigateur. Planning : messages d'erreur de la fenêtre d'ajout de matières affichés dans la fenêtre elle-même.
 - Création d'évaluation : un super administrateur ou un coordinateur peut assigner l'enseignant au lieu d'être enregistré lui-même comme enseignant ; les classes LMD ne sont plus proposées dans ce formulaire BTS, un message renvoie aux notes LMD. Planning : le bouton « Enseignants » n'apparaît plus sans accès au module.
