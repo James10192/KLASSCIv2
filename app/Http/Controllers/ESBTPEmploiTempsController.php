@@ -401,6 +401,7 @@ class ESBTPEmploiTempsController extends Controller
         // Récupérer les matières liées à cette combinaison STRICTE filière+niveau
         // (pivot esbtp_matiere_filiere_niveau — Single Source of Truth).
         $matieresLiees = ESBTPMatiere::where('is_active', true)
+            ->btsOnly() // une ECUE rattachee par erreur a ce couple n'est pas une matiere BTS
             ->whereHas('liaisonsFilieresNiveaux', function ($query) use ($classe) {
                 $query->where('filiere_id', $classe->filiere_id)
                       ->where('niveau_etude_id', $classe->niveau_etude_id);

@@ -295,6 +295,15 @@ class ESBTPEvaluationController extends Controller
      *
      * @return Response
      */
+    /**
+     * Vrai pour qui enseigne sans piloter. Gate::before donne identity.teach a un
+     * super administrateur : can() seul le prenait pour un enseignant.
+     */
+    private function estEnseignantSansCoordination(?User $user): bool
+    {
+        return $user !== null && $user->can('identity.teach') && ! $user->can('identity.coordinate');
+    }
+
     public function create(Request $request)
     {
         // Get the matiere_id and classe_id from the request
@@ -303,6 +312,14 @@ class ESBTPEvaluationController extends Controller
 
         $anneeUniversitaire = $this->anneeDemandeeOuCourante($request);
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
+        // Ce formulaire ne propose que des matieres BTS : une classe LMD n'y
+        // trouverait aucune matiere. Ses evaluations se creent depuis les notes LMD.
+        // Une classe deja choisie (fenetre integree) reste proposee telle quelle.
+        $classesLmdEcartees = 0;
+        if (! $classe_id) {
+            $classesLmdEcartees = $classes->where('systeme_academique', 'LMD')->count();
+            $classes = $classes->reject(fn ($classe) => $classe->systeme_academique === 'LMD')->values();
+        }
         $matieres = ESBTPMatiere::where('is_active', true)
             ->whereNull('unite_enseignement_id') // BTS only : exclure les ECUE LMD
             ->orderBy('name')->get();
@@ -311,7 +328,8 @@ class ESBTPEvaluationController extends Controller
         // Récupérer la liste des enseignants pour l'assignation (seulement pour les non-enseignants)
         $enseignants = collect();
         $currentUser = \Auth::user();
-        if (! $currentUser->can('identity.teach')) {
+        $assigneUnEnseignant = ! $this->estEnseignantSansCoordination($currentUser);
+        if ($assigneUnEnseignant) {
             $enseignants = User::permission('identity.teach')->with('roles:id,name')->orderBy('name')->get();
         }
 
@@ -325,7 +343,7 @@ class ESBTPEvaluationController extends Controller
             ];
         });
 
-        return view('esbtp.evaluations.create', compact('classes', 'matieres', 'matieresJson', 'matiere_id', 'classe_id', 'types', 'enseignants', 'anneeUniversitaire'));
+        return view('esbtp.evaluations.create', compact('classes', 'matieres', 'matieresJson', 'matiere_id', 'classe_id', 'types', 'enseignants', 'anneeUniversitaire', 'assigneUnEnseignant', 'classesLmdEcartees'));
     }
 
     /**
@@ -488,7 +506,7 @@ class ESBTPEvaluationController extends Controller
 
             // Auto-assigner l'enseignant si c'est un rôle enseignant qui crée l'évaluation
             $user = \Auth::user();
-            if ($user->can('identity.teach')) {
+            if ($this->estEnseignantSansCoordination($user)) {
                 $evaluation->enseignant_id = \Auth::id();
             } else {
                 // Pour les autres rôles, utiliser l'assignation du formulaire
