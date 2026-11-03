@@ -44,6 +44,13 @@
             @empty
                 <p class="etj-vide">Aucune séance le {{ mb_strtolower($dayInfo['label'], 'UTF-8') }}.</p>
             @endforelse
+            {{-- Meme lien et meme garde que les « + » de la grille du bureau. --}}
+            @if(($interactive ?? false) && ($emploiTemps ?? null))
+                @php $etjNumero = is_numeric($dayInfo['key']) ? $dayInfo['key'] : ($dayToNumber[$dayInfo['slug']] ?? 1); @endphp
+                <a class="etj-ajouter" href="{{ route('esbtp.seances-cours.create', ['emploi_temps_id' => $emploiTemps->id, 'jour' => $etjNumero]) }}">
+                    <i class="fas fa-plus" aria-hidden="true"></i> Ajouter une séance le {{ mb_strtolower($dayInfo['label'], 'UTF-8') }}
+                </a>
+            @endif
         </div>
     @endforeach
 </div>
@@ -71,6 +78,7 @@
     .etj-details { display: flex; flex-wrap: wrap; gap: .25rem .75rem; font-size: .78rem; color: #64748b; margin-top: .2rem; }
     .etj-type { font-weight: 700; color: #0453cb; }
     .etj-modifier { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #0453cb; background: rgba(4,83,203,.08); flex-shrink: 0; }
+    .etj-ajouter { display: flex; align-items: center; justify-content: center; gap: .5rem; min-height: 48px; border: 1px dashed rgba(4,83,203,.4); border-radius: 12px; color: #0453cb; font-weight: 600; font-size: .88rem; text-decoration: none; background: rgba(4,83,203,.04); }
     .etj-vide { text-align: center; color: #64748b; padding: 1.5rem 1rem; background: #f8fafc; border-radius: 12px; margin: 0; }
 </style>
 @endonce
