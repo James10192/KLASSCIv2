@@ -14,6 +14,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 - Création d'évaluation : un super administrateur ou un coordinateur peut assigner l'enseignant au lieu d'être enregistré lui-même comme enseignant ; les classes LMD ne sont plus proposées dans ce formulaire BTS, un message renvoie aux notes LMD. Planning : le bouton « Enseignants » n'apparaît plus sans accès au module.
+- **Annonces — reprise sécurisée :** décompte de simulation sur clés v2 exactes, exclusions des antécédents de rebond/plainte/suppression dans l'instance et des domaines factices de la liste centrale (`esbtp.edu`…, aussi au ciblage et à l'envoi), sélection de lots sans blocage par références invalides, cadence configurable, arrêt si la queue n'assure pas une transaction SQL atomique.
 - **Annonces — file sync bloquée :** refuser les nouvelles campagnes quand la file est synchrone, et fournir une commande de simulation/récupération transactionnelle par petits lots réservée aux limitations locales prouvées avant transport ; aucune reprise des échecs fournisseurs ou des résultats incertains.
 
 ### Communication — 2 novembre

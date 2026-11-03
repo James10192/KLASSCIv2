@@ -63,7 +63,7 @@ class AnnonceMailPulseTest extends TestCase
     public function test_brouillon_et_case_decochee_n_envoient_rien(): void
     {
         Bus::fake([EnvoyerAnnonceCourriel::class]);
-        ESBTPEtudiant::factory()->create(['email' => 'exemple@etudiants.test']);
+        ESBTPEtudiant::factory()->create(['email' => 'exemple@etudiants-ecole.ci']);
 
         $annonce = $this->annonce('general', false);
         (new DiffuserAnnonceParCourriel($annonce->id))->handle();
@@ -79,15 +79,15 @@ class AnnonceMailPulseTest extends TestCase
     {
         Bus::fake([EnvoyerAnnonceCourriel::class]);
         // Le champ email est unique en base, mais email_personnel peut être partagé.
-        $a = ESBTPEtudiant::factory()->create(['email_personnel' => 'partage@etudiants.test']);
-        $b = ESBTPEtudiant::factory()->create(['email_personnel' => 'partage@etudiants.test']);
-        ESBTPEtudiant::factory()->create(['email' => 'hors-cible@etudiants.test']);
+        $a = ESBTPEtudiant::factory()->create(['email_personnel' => 'partage@etudiants-ecole.ci']);
+        $b = ESBTPEtudiant::factory()->create(['email_personnel' => 'partage@etudiants-ecole.ci']);
+        ESBTPEtudiant::factory()->create(['email' => 'hors-cible@etudiants-ecole.ci']);
 
         $annonce = $this->annonce('etudiant');
         $annonce->etudiants()->attach([$a->id, $b->id]);
         (new DiffuserAnnonceParCourriel($annonce->id))->handle();
 
-        $this->assertSame(['partage@etudiants.test'],
+        $this->assertSame(['partage@etudiants-ecole.ci'],
             DB::table('esbtp_annonce_email_deliveries')->where('annonce_id', $annonce->id)->pluck('email')->all());
         Bus::assertDispatchedTimes(EnvoyerAnnonceCourriel::class, 1);
     }
@@ -101,9 +101,9 @@ class AnnonceMailPulseTest extends TestCase
 
         $classe = ESBTPClasse::factory()->create(['annee_universitaire_id' => $annee->id]);
         $autre = ESBTPClasse::factory()->create(['annee_universitaire_id' => $annee->id]);
-        $a = ESBTPEtudiant::factory()->create(['email' => 'bonne@etudiants.test']);
-        $b = ESBTPEtudiant::factory()->create(['email' => 'autre@etudiants.test']);
-        $c = ESBTPEtudiant::factory()->create(['email' => 'ancienne@etudiants.test']);
+        $a = ESBTPEtudiant::factory()->create(['email' => 'bonne@etudiants-ecole.ci']);
+        $b = ESBTPEtudiant::factory()->create(['email' => 'autre@etudiants-ecole.ci']);
+        $c = ESBTPEtudiant::factory()->create(['email' => 'ancienne@etudiants-ecole.ci']);
         ESBTPInscription::factory()->create(['etudiant_id' => $a->id, 'annee_universitaire_id' => $annee->id, 'classe_id' => $classe->id]);
         ESBTPInscription::factory()->create(['etudiant_id' => $b->id, 'annee_universitaire_id' => $annee->id, 'classe_id' => $autre->id]);
         ESBTPInscription::factory()->create(['etudiant_id' => $c->id, 'annee_universitaire_id' => $ancienne->id, 'classe_id' => $classe->id]);
@@ -112,7 +112,7 @@ class AnnonceMailPulseTest extends TestCase
         $annonce->classes()->attach($classe->id);
         (new DiffuserAnnonceParCourriel($annonce->id))->handle();
 
-        $this->assertSame(['bonne@etudiants.test'],
+        $this->assertSame(['bonne@etudiants-ecole.ci'],
             DB::table('esbtp_annonce_email_deliveries')->where('annonce_id', $annonce->id)->pluck('email')->all());
     }
 
@@ -151,7 +151,7 @@ class AnnonceMailPulseTest extends TestCase
     {
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'exemple@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'exemple@etudiants-ecole.ci',
             'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
         ]);
         $client = Mockery::mock(MailPulseClient::class);
@@ -175,9 +175,9 @@ class AnnonceMailPulseTest extends TestCase
         $ancienne = ESBTPAnneeUniversitaire::factory()->create(['is_current' => false]);
         ESBTPAnneeUniversitaire::flushCurrentCache();
 
-        $active = ESBTPEtudiant::factory()->create(['email' => 'actif@etudiants.test']);
-        $annule = ESBTPEtudiant::factory()->create(['email' => 'annule@etudiants.test']);
-        $archive = ESBTPEtudiant::factory()->create(['email' => 'archive@etudiants.test']);
+        $active = ESBTPEtudiant::factory()->create(['email' => 'actif@etudiants-ecole.ci']);
+        $annule = ESBTPEtudiant::factory()->create(['email' => 'annule@etudiants-ecole.ci']);
+        $archive = ESBTPEtudiant::factory()->create(['email' => 'archive@etudiants-ecole.ci']);
         ESBTPInscription::factory()->create(['etudiant_id' => $active->id, 'annee_universitaire_id' => $annee->id, 'status' => 'active']);
         ESBTPInscription::factory()->create(['etudiant_id' => $annule->id, 'annee_universitaire_id' => $annee->id, 'status' => 'annulée']);
         ESBTPInscription::factory()->create(['etudiant_id' => $archive->id, 'annee_universitaire_id' => $ancienne->id, 'status' => 'active']);
@@ -187,7 +187,7 @@ class AnnonceMailPulseTest extends TestCase
 
         (new DiffuserAnnonceParCourriel($annonce->id))->handle();
 
-        $this->assertSame(['actif@etudiants.test'],
+        $this->assertSame(['actif@etudiants-ecole.ci'],
             DB::table('esbtp_annonce_email_deliveries')->where('annonce_id', $annonce->id)->pluck('email')->all());
     }
 
@@ -198,7 +198,7 @@ class AnnonceMailPulseTest extends TestCase
         ESBTPAnneeUniversitaire::flushCurrentCache();
         $cible = ESBTPClasse::factory()->create(['annee_universitaire_id' => $annee->id]);
         $autre = ESBTPClasse::factory()->create(['annee_universitaire_id' => $annee->id]);
-        $etudiant = ESBTPEtudiant::factory()->create(['email' => 'invalide@etudiants.test']);
+        $etudiant = ESBTPEtudiant::factory()->create(['email' => 'invalide@etudiants-ecole.ci']);
         ESBTPInscription::factory()->create(['etudiant_id' => $etudiant->id,
             'annee_universitaire_id' => $annee->id, 'classe_id' => $cible->id, 'status' => 'annulée']);
         ESBTPInscription::factory()->create(['etudiant_id' => $etudiant->id,
@@ -215,7 +215,7 @@ class AnnonceMailPulseTest extends TestCase
     {
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'test@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'test@etudiants-ecole.ci',
             'status' => 'submitted', 'submitted_at' => now(),
             'mailpulse_message_id' => 'mp-webhook-target',
             'error_code' => 'submission_outcome_unknown',
@@ -255,7 +255,7 @@ class AnnonceMailPulseTest extends TestCase
     {
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'test@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'test@etudiants-ecole.ci',
             'status' => 'submitted', 'submitted_at' => now(),
             'mailpulse_message_id' => 'mp-standard', 'created_at' => now(), 'updated_at' => now(),
         ]);
@@ -273,7 +273,7 @@ class AnnonceMailPulseTest extends TestCase
                 'message' => [
                     'id' => 'mp-standard', 'channel' => 'email', 'status' => 'delivered',
                     'external_tenant_id' => 'esbtp-abidjan',
-                    'recipient' => ['type' => 'email', 'value' => 'test@etudiants.test'],
+                    'recipient' => ['type' => 'email', 'value' => 'test@etudiants-ecole.ci'],
                     'metadata' => [
                         'source' => 'klassci', 'workflow_event' => 'announcement_email',
                         'external_reference' => "klassci-annonce-{$annonce->id}-courriel-{$id}",
@@ -297,7 +297,7 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertSame(202, $post(array_replace($event, ['tenant_id' => 'other-org']))->getStatusCode());
         $this->assertSame(202, $post(array_replace_recursive($event, ['data' => ['message' => ['external_tenant_id' => 'other-school']]]))->getStatusCode());
         $this->assertSame(202, $post(array_replace_recursive($event, ['data' => ['message' => ['id' => 'other-message']]]))->getStatusCode());
-        $this->assertSame(202, $post(array_replace_recursive($event, ['data' => ['message' => ['recipient' => ['value' => 'wrong@etudiants.test']]]]))->getStatusCode());
+        $this->assertSame(202, $post(array_replace_recursive($event, ['data' => ['message' => ['recipient' => ['value' => 'wrong@etudiants-ecole.ci']]]]))->getStatusCode());
         $this->assertSame('submitted', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
         $this->assertSame(200, $post($event)->getStatusCode());
         $this->assertSame(200, $post($event)->getStatusCode());
@@ -310,7 +310,7 @@ class AnnonceMailPulseTest extends TestCase
         Bus::fake([EnvoyerAnnonceCourriel::class]);
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'origine@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'origine@etudiants-ecole.ci',
             'status' => 'submitted', 'submitted_at' => now(),
             'mailpulse_message_id' => 'mp-course-email', 'created_at' => now(), 'updated_at' => now(),
         ]);
@@ -318,7 +318,7 @@ class AnnonceMailPulseTest extends TestCase
         $reader->shouldReceive('lire')->once()->with('mp-course-email')
             ->andReturnUsing(function () use ($id) {
                 DB::table('esbtp_annonce_email_deliveries')->where('id', $id)
-                    ->update(['email' => 'nouveau@etudiants.test']);
+                    ->update(['email' => 'nouveau@etudiants-ecole.ci']);
 
                 return [
                     'status' => 'delivered', 'error_code' => null,
@@ -330,7 +330,7 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertSame(1, $result['lues']);
         $row = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
         $this->assertSame('submitted', $row->status);
-        $this->assertSame('nouveau@etudiants.test', $row->email);
+        $this->assertSame('nouveau@etudiants-ecole.ci', $row->email);
         $this->assertNull($row->provider_delivered_at);
         Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
     }
@@ -341,7 +341,7 @@ class AnnonceMailPulseTest extends TestCase
         config(['app.tenant_code' => 'esbtp-abidjan']);
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'origine@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'origine@etudiants-ecole.ci',
             'status' => 'awaiting_dispatch', 'error_code' => 'submission_outcome_unknown',
             'created_at' => now(), 'updated_at' => now(),
         ]);
@@ -353,10 +353,10 @@ class AnnonceMailPulseTest extends TestCase
             ->with($reference, 'esbtp-abidjan')
             ->andReturnUsing(function () use ($id) {
                 DB::table('esbtp_annonce_email_deliveries')->where('id', $id)
-                    ->update(['email' => 'nouveau@etudiants.test']);
+                    ->update(['email' => 'nouveau@etudiants-ecole.ci']);
 
                 return [
-                    'id' => 'mp-course-reference', 'recipient' => 'origine@etudiants.test',
+                    'id' => 'mp-course-reference', 'recipient' => 'origine@etudiants-ecole.ci',
                     'status' => 'delivered', 'delivered_at' => now()->toIso8601String(),
                     'error_code' => null, 'delivery_delays' => [],
                 ];
@@ -366,7 +366,7 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertSame(1, $result['lues']);
         $row = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
         $this->assertSame('awaiting_dispatch', $row->status);
-        $this->assertSame('nouveau@etudiants.test', $row->email);
+        $this->assertSame('nouveau@etudiants-ecole.ci', $row->email);
         $this->assertNull($row->mailpulse_message_id);
         Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
     }
@@ -376,7 +376,7 @@ class AnnonceMailPulseTest extends TestCase
         Bus::fake([EnvoyerAnnonceCourriel::class]);
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'preuve@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'preuve@etudiants-ecole.ci',
             'status' => 'submitted', 'submitted_at' => now(),
             'mailpulse_message_id' => 'mp-preuve', 'created_at' => now(), 'updated_at' => now(),
         ]);
@@ -404,14 +404,14 @@ class AnnonceMailPulseTest extends TestCase
     {
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'origine@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'origine@etudiants-ecole.ci',
             'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
         ]);
         $client = Mockery::mock(MailPulseClient::class);
         $client->shouldReceive('getSetting')->twice()
             ->andReturnUsing(function () use ($id) {
                 DB::table('esbtp_annonce_email_deliveries')->where('id', $id)
-                    ->update(['email' => 'nouveau@etudiants.test']);
+                    ->update(['email' => 'nouveau@etudiants-ecole.ci']);
 
                 return '';
             });
@@ -422,7 +422,7 @@ class AnnonceMailPulseTest extends TestCase
         $this->assertSame('pre_submission_context_changed', $row->error_code);
         $this->assertNull($row->submitted_at);
         $this->assertNull($row->mailpulse_message_id);
-        $this->assertSame('nouveau@etudiants.test', $row->email);
+        $this->assertSame('nouveau@etudiants-ecole.ci', $row->email);
     }
 
     public function test_rapprochement_mailpulse_distingue_delivre_retarde_et_rebond_sans_renvoyer(): void
@@ -432,7 +432,7 @@ class AnnonceMailPulseTest extends TestCase
         $ids = [];
         foreach (['delivered', 'delayed', 'failed'] as $type) {
             $ids[$type] = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-                'annonce_id' => $annonce->id, 'email' => "{$type}@etudiants.test",
+                'annonce_id' => $annonce->id, 'email' => "{$type}@etudiants-ecole.ci",
                 'status' => 'submitted', 'submitted_at' => now(),
                 'mailpulse_message_id' => "mailpulse-{$type}",
                 'error_code' => 'submission_outcome_unknown',
@@ -474,7 +474,7 @@ class AnnonceMailPulseTest extends TestCase
         config(['app.tenant_code' => 'esbtp-abidjan']);
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'retrouve@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'retrouve@etudiants-ecole.ci',
             'status' => 'awaiting_dispatch', 'error_code' => 'submission_outcome_unknown',
             'created_at' => now(), 'updated_at' => now(),
         ]);
@@ -483,7 +483,7 @@ class AnnonceMailPulseTest extends TestCase
         $reader->shouldReceive('lireParReference')->once()
             ->with($reference, 'esbtp-abidjan')
             ->andReturn([
-                'id' => 'mp-retrouve', 'recipient' => 'retrouve@etudiants.test',
+                'id' => 'mp-retrouve', 'recipient' => 'retrouve@etudiants-ecole.ci',
                 'status' => 'delivered', 'delivered_at' => '2026-10-30T01:00:00+00:00',
                 'error_code' => null, 'delivery_delays' => [],
             ]);
@@ -503,7 +503,7 @@ class AnnonceMailPulseTest extends TestCase
         config(['app.tenant_code' => 'esbtp-abidjan']);
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'original@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'original@etudiants-ecole.ci',
             'status' => 'awaiting_dispatch', 'error_code' => 'queue_outcome_unknown',
             'created_at' => now(), 'updated_at' => now(),
         ]);
@@ -511,7 +511,7 @@ class AnnonceMailPulseTest extends TestCase
         $reader = Mockery::mock(MailPulseStatutsMessages::class);
         $reader->shouldReceive('lireParReference')->twice()->with($reference, 'esbtp-abidjan')
             ->andReturn('introuvable', [
-                'id' => 'mp-ailleurs', 'recipient' => 'autre@etudiants.test',
+                'id' => 'mp-ailleurs', 'recipient' => 'autre@etudiants-ecole.ci',
                 'status' => 'delivered', 'delivered_at' => now()->toIso8601String(),
             ]);
         $service = new SynchroniserCourrielsAnnonce($reader);
@@ -528,7 +528,7 @@ class AnnonceMailPulseTest extends TestCase
         $annonce = $this->annonce();
         foreach (['legacy', 'current'] as $kind) {
             DB::table('esbtp_annonce_email_deliveries')->insert([
-                'annonce_id' => $annonce->id, 'email' => "{$kind}@etudiants.test",
+                'annonce_id' => $annonce->id, 'email' => "{$kind}@etudiants-ecole.ci",
                 'status' => 'submitted', 'submitted_at' => now(),
                 'mailpulse_message_id' => $kind === 'current' ? 'mailpulse-current' : null,
                 'created_at' => now(), 'updated_at' => now(),
@@ -548,7 +548,7 @@ class AnnonceMailPulseTest extends TestCase
     {
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'incertain@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'incertain@etudiants-ecole.ci',
             'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
         ]);
         $client = Mockery::mock(MailPulseClient::class);
@@ -572,7 +572,7 @@ class AnnonceMailPulseTest extends TestCase
     {
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'exception@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'exception@etudiants-ecole.ci',
             'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
         ]);
         $client = Mockery::mock(MailPulseClient::class);
@@ -592,7 +592,7 @@ class AnnonceMailPulseTest extends TestCase
     {
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'sans-id@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'sans-id@etudiants-ecole.ci',
             'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
         ]);
         $client = Mockery::mock(MailPulseClient::class);
@@ -610,7 +610,7 @@ class AnnonceMailPulseTest extends TestCase
     {
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'sans-doublon@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'sans-doublon@etudiants-ecole.ci',
             'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
         ]);
         $client = Mockery::mock(MailPulseClient::class);
@@ -641,7 +641,7 @@ class AnnonceMailPulseTest extends TestCase
         $ids = [];
         foreach (['ancien' => 20, 'recent' => 5] as $nom => $minutes) {
             $ids[$nom] = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-                'annonce_id' => $annonce->id, 'email' => "{$nom}@etudiants.test",
+                'annonce_id' => $annonce->id, 'email' => "{$nom}@etudiants-ecole.ci",
                 'status' => 'processing', 'processing_at' => now()->subMinutes($minutes),
                 'created_at' => now(), 'updated_at' => now(),
             ]);
@@ -665,7 +665,7 @@ class AnnonceMailPulseTest extends TestCase
         $annonce = $this->annonce();
         for ($i = 0; $i < 3; $i++) {
             DB::table('esbtp_annonce_email_deliveries')->insert([
-                'annonce_id' => $annonce->id, 'email' => "bloque-{$i}@etudiants.test",
+                'annonce_id' => $annonce->id, 'email' => "bloque-{$i}@etudiants-ecole.ci",
                 'status' => 'processing', 'processing_at' => now()->subMinutes(20),
                 'created_at' => now(), 'updated_at' => now(),
             ]);
@@ -684,7 +684,7 @@ class AnnonceMailPulseTest extends TestCase
         config(['app.tenant_code' => 'default']);
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'protection@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'protection@etudiants-ecole.ci',
             'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
         ]);
         $client = Mockery::mock(MailPulseClient::class);
@@ -701,7 +701,7 @@ class AnnonceMailPulseTest extends TestCase
     {
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'cle-absente@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'cle-absente@etudiants-ecole.ci',
             'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
         ]);
         $client = Mockery::mock(MailPulseClient::class);
@@ -738,7 +738,7 @@ class AnnonceMailPulseTest extends TestCase
     {
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'v2@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'v2@etudiants-ecole.ci',
             'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
         ]);
         $reference = "klassci-v2-presentation-annonce-{$annonce->id}-courriel-{$id}";
@@ -766,7 +766,7 @@ class AnnonceMailPulseTest extends TestCase
         config(['app.tenant_code' => 'esbtp-abidjan']);
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'v2@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'v2@etudiants-ecole.ci',
             'status' => 'awaiting_dispatch', 'error_code' => 'submission_outcome_unknown',
             'created_at' => now(), 'updated_at' => now(),
         ]);
@@ -775,7 +775,7 @@ class AnnonceMailPulseTest extends TestCase
         $reader = Mockery::mock(MailPulseStatutsMessages::class);
         $reader->shouldReceive('lireParReference')->once()
             ->with($reference, 'esbtp-abidjan')->andReturn([
-                'id' => 'mp-v2', 'recipient' => 'v2@etudiants.test',
+                'id' => 'mp-v2', 'recipient' => 'v2@etudiants-ecole.ci',
                 'status' => 'delivered', 'delivered_at' => '2026-10-30T01:00:00+00:00',
                 'error_code' => null, 'delivery_delays' => [],
             ]);
@@ -801,7 +801,7 @@ class AnnonceMailPulseTest extends TestCase
     {
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'deux-essais@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'deux-essais@etudiants-ecole.ci',
             'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
         ]);
         $reference = "klassci-v2-presentation-annonce-{$annonce->id}-courriel-{$id}";
@@ -833,7 +833,7 @@ class AnnonceMailPulseTest extends TestCase
     {
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'v2-signature@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'v2-signature@etudiants-ecole.ci',
             'status' => 'submitted', 'submitted_at' => now(),
             'mailpulse_message_id' => 'mp-signature',
             'created_at' => now(), 'updated_at' => now(),
@@ -852,7 +852,7 @@ class AnnonceMailPulseTest extends TestCase
             'data' => ['message' => [
                 'id' => 'mp-signature', 'channel' => 'email', 'status' => 'delivered',
                 'external_tenant_id' => 'esbtp-abidjan',
-                'recipient' => ['type' => 'email', 'value' => 'v2-signature@etudiants.test'],
+                'recipient' => ['type' => 'email', 'value' => 'v2-signature@etudiants-ecole.ci'],
                 'metadata' => [
                     'source' => 'klassci', 'workflow_event' => 'announcement_email',
                     'external_reference' => $ref,
@@ -884,7 +884,7 @@ class AnnonceMailPulseTest extends TestCase
         config(['app.tenant_code' => 'esbtp-abidjan']);
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'race@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'race@etudiants-ecole.ci',
             'status' => 'awaiting_dispatch', 'error_code' => 'submission_outcome_unknown',
             'created_at' => now(), 'updated_at' => now(),
         ]);
@@ -899,7 +899,7 @@ class AnnonceMailPulseTest extends TestCase
                 DB::table('esbtp_annonce_email_deliveries')->where('id', $id)
                     ->update(['mailpulse_request_id' => 'klassci-v2-esbtp-yakro-annonce-9-courriel-9']);
                 return [
-                    'id' => 'mp-foreign', 'recipient' => 'race@etudiants.test',
+                    'id' => 'mp-foreign', 'recipient' => 'race@etudiants-ecole.ci',
                     'status' => 'delivered', 'delivered_at' => now()->toIso8601String(),
                     'error_code' => null, 'delivery_delays' => [],
                 ];
@@ -916,7 +916,7 @@ class AnnonceMailPulseTest extends TestCase
     {
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'reconciliation@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'reconciliation@etudiants-ecole.ci',
             'status' => 'retrying', 'created_at' => now(), 'updated_at' => now(),
         ]);
         (new EnvoyerAnnonceCourriel($id))->failed(new \RuntimeException('worker timeout'));
@@ -933,7 +933,7 @@ class AnnonceMailPulseTest extends TestCase
         config(['queue.default' => 'database']);
         $annonce = $this->annonce();
         $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
-            'annonce_id' => $annonce->id, 'email' => 'locale@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'locale@etudiants-ecole.ci',
             'status' => 'retrying', 'error_code' => 'local_rate_limit',
             'attempts' => 1, 'created_at' => now(), 'updated_at' => now(),
         ]);
@@ -951,12 +951,12 @@ class AnnonceMailPulseTest extends TestCase
         $annonce = $this->annonce();
         $ids = [];
         foreach ([
-            ['email' => 'a@etudiants.test', 'status' => 'retrying', 'error_code' => 'local_rate_limit'],
-            ['email' => 'b@etudiants.test', 'status' => 'retrying', 'error_code' => 'local_rate_limit'],
-            ['email' => 'c@etudiants.test', 'status' => 'retrying', 'error_code' => 'local_rate_limit'],
-            ['email' => 'd@etudiants.test', 'status' => 'retrying', 'error_code' => 'pre_submission_exception'],
-            ['email' => 'e@etudiants.test', 'status' => 'failed', 'error_code' => 'email_bounced'],
-            ['email' => 'f@etudiants.test', 'status' => 'awaiting_dispatch', 'error_code' => 'submission_outcome_unknown'],
+            ['email' => 'a@etudiants-ecole.ci', 'status' => 'retrying', 'error_code' => 'local_rate_limit'],
+            ['email' => 'b@etudiants-ecole.ci', 'status' => 'retrying', 'error_code' => 'local_rate_limit'],
+            ['email' => 'c@etudiants-ecole.ci', 'status' => 'retrying', 'error_code' => 'local_rate_limit'],
+            ['email' => 'd@etudiants-ecole.ci', 'status' => 'retrying', 'error_code' => 'pre_submission_exception'],
+            ['email' => 'e@etudiants-ecole.ci', 'status' => 'failed', 'error_code' => 'email_bounced'],
+            ['email' => 'f@etudiants-ecole.ci', 'status' => 'awaiting_dispatch', 'error_code' => 'submission_outcome_unknown'],
         ] as $row) {
             $ids[] = DB::table('esbtp_annonce_email_deliveries')->insertGetId($row + [
                 'annonce_id' => $annonce->id, 'attempts' => 1,
@@ -996,7 +996,7 @@ class AnnonceMailPulseTest extends TestCase
         Bus::fake([EnvoyerAnnonceCourriel::class]);
         $annonce = $this->annonce();
         DB::table('esbtp_annonce_email_deliveries')->insert([
-            'annonce_id' => $annonce->id, 'email' => 'locale@etudiants.test',
+            'annonce_id' => $annonce->id, 'email' => 'locale@etudiants-ecole.ci',
             'status' => 'retrying', 'error_code' => 'local_rate_limit',
             'attempts' => 1, 'created_at' => now(), 'updated_at' => now(),
         ]);
@@ -1011,4 +1011,171 @@ class AnnonceMailPulseTest extends TestCase
         Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
     }
 
+
+    public function test_la_reprise_ignore_une_mauvaise_reference_v2_en_tete_de_lot(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        $annonce = $this->annonce();
+        $premier = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'mauvais@etudiants-ecole.ci',
+            'status' => 'retrying', 'error_code' => 'local_rate_limit',
+            'attempts' => 1, 'mailpulse_request_id' => 'klassci-v2-autre-ecole-annonce-1-courriel-1',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $second = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'bon@etudiants-ecole.ci',
+            'status' => 'retrying', 'error_code' => 'local_rate_limit',
+            'attempts' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('esbtp_annonce_email_deliveries')->where('id', $second)->update([
+            'mailpulse_request_id' => \App\Services\Annonces\ReferenceCourrielAnnonce::nouvelle(
+                'presentation', $annonce->id, $second
+            ),
+        ]);
+
+        $this->artisan('annonces:recuperer-file', ['--annonce' => $annonce->id])
+            ->expectsOutputToContain('1 strictement récupérables')
+            ->assertExitCode(0);
+        $this->artisan('annonces:recuperer-file', [
+            '--annonce' => $annonce->id, '--tenant' => 'presentation',
+            '--execute' => true, '--limit' => 1,
+        ])->assertExitCode(0);
+        $this->assertSame('retrying', DB::table('esbtp_annonce_email_deliveries')->where('id', $premier)->value('status'));
+        $this->assertSame('pending', DB::table('esbtp_annonce_email_deliveries')->where('id', $second)->value('status'));
+        Bus::assertDispatchedTimes(EnvoyerAnnonceCourriel::class, 1);
+    }
+
+    public function test_la_reprise_refuse_un_dispatch_differe_apres_commit(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        config(['queue.connections.database.after_commit' => true]);
+        $annonce = $this->annonce();
+
+        $this->artisan('annonces:recuperer-file', [
+            '--annonce' => $annonce->id, '--tenant' => 'presentation',
+            '--execute' => true,
+        ])->assertExitCode(1);
+        Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
+    }
+
+    public function test_un_rebond_precedent_bloque_le_nouvel_envoi_sans_http(): void
+    {
+        $ancienne = $this->annonce();
+        DB::table('esbtp_annonce_email_deliveries')->insert([
+            'annonce_id' => $ancienne->id, 'email' => 'rebond@etudiants-ecole.ci',
+            'status' => 'failed', 'error_code' => 'email_bounced',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $nouvelle = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $nouvelle->id, 'email' => 'rebond@etudiants-ecole.ci',
+            'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $client = Mockery::mock(MailPulseClient::class);
+        $client->shouldNotReceive('sendEmailMessage');
+        (new EnvoyerAnnonceCourriel($id))->handle($client, new CadenceMailPulse);
+
+        $ligne = DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->first();
+        $this->assertSame('failed', $ligne->status);
+        $this->assertSame('suppressed_by_history', $ligne->error_code);
+        $this->assertNull($ligne->provider_failed_at);
+    }
+
+    public function test_la_reprise_exclut_une_adresse_deja_rebondie_sur_une_autre_annonce(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        $ancienne = $this->annonce();
+        DB::table('esbtp_annonce_email_deliveries')->insert([
+            'annonce_id' => $ancienne->id, 'email' => 'historique@etudiants-ecole.ci',
+            'status' => 'failed', 'error_code' => 'email_bounced',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'historique@etudiants-ecole.ci',
+            'status' => 'retrying', 'error_code' => 'local_rate_limit',
+            'attempts' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->update([
+            'mailpulse_request_id' => \App\Services\Annonces\ReferenceCourrielAnnonce::nouvelle(
+                'presentation', $annonce->id, $id
+            ),
+        ]);
+        $this->artisan('annonces:recuperer-file', [
+            '--annonce' => $annonce->id, '--tenant' => 'presentation',
+            '--execute' => true,
+        ])->assertExitCode(0);
+        $this->assertSame('retrying', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
+        Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
+    }
+
+    public function test_la_reprise_insere_un_vrai_job_database_sans_emettre_de_courriel(): void
+    {
+        // Contrairement à Bus::fake, ce cas vérifie la file SQL réelle.
+        config(['queue.default' => 'database', 'queue.connections.database.after_commit' => false]);
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'queue-reelle@etudiants-ecole.ci',
+            'status' => 'retrying', 'error_code' => 'local_rate_limit',
+            'attempts' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->update([
+            'mailpulse_request_id' => \App\Services\Annonces\ReferenceCourrielAnnonce::nouvelle(
+                'presentation', $annonce->id, $id
+            ),
+        ]);
+        $avant = DB::table('jobs')->where('queue', 'annonces')->count();
+
+        $this->artisan('annonces:recuperer-file', [
+            '--annonce' => $annonce->id, '--tenant' => 'presentation',
+            '--execute' => true, '--limit' => 1,
+        ])->assertExitCode(0);
+
+        $this->assertSame('pending', DB::table('esbtp_annonce_email_deliveries')
+            ->where('id', $id)->value('status'));
+        $this->assertSame($avant + 1, DB::table('jobs')->where('queue', 'annonces')->count());
+        $this->assertNull(DB::table('esbtp_annonce_email_deliveries')
+            ->where('id', $id)->value('submitted_at'));
+    }
+
+    public function test_la_reprise_refuse_une_file_database_sur_une_autre_connexion(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        $annonce = $this->annonce();
+        config(['queue.connections.database.connection' => 'base-autre-instance']);
+
+        $this->artisan('annonces:recuperer-file', [
+            '--annonce' => $annonce->id, '--tenant' => 'presentation',
+            '--execute' => true,
+        ])->assertExitCode(1);
+        Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
+    }
+
+    public function test_la_reprise_et_le_ciblage_ecartent_les_domaines_factices_centraux(): void
+    {
+        Bus::fake([EnvoyerAnnonceCourriel::class]);
+        $annonce = $this->annonce();
+        $id = DB::table('esbtp_annonce_email_deliveries')->insertGetId([
+            'annonce_id' => $annonce->id, 'email' => 'compte@esbtp.edu',
+            'status' => 'retrying', 'error_code' => 'local_rate_limit',
+            'attempts' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->update([
+            'mailpulse_request_id' => \App\Services\Annonces\ReferenceCourrielAnnonce::nouvelle(
+                'presentation', $annonce->id, $id
+            ),
+        ]);
+
+        $this->artisan('annonces:recuperer-file', ['--annonce' => $annonce->id])
+            ->expectsOutputToContain('0 strictement récupérables')
+            ->assertExitCode(0);
+        $this->artisan('annonces:recuperer-file', [
+            '--annonce' => $annonce->id, '--tenant' => 'presentation', '--execute' => true,
+        ])->assertExitCode(0);
+        $this->assertSame('retrying', DB::table('esbtp_annonce_email_deliveries')->where('id', $id)->value('status'));
+        Bus::assertNotDispatched(EnvoyerAnnonceCourriel::class);
+
+        $etudiant = new \App\Models\ESBTPEtudiant(['email_personnel' => 'Eleve@ESBTP.edu.ci', 'email' => 'vrai@etudiants-ecole.ci']);
+        $this->assertSame('vrai@etudiants-ecole.ci', CiblageCourrielsAnnonce::adresse($etudiant));
+    }
 }
