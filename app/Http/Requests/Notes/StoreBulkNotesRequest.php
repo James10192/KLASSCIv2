@@ -34,6 +34,13 @@ class StoreBulkNotesRequest extends FormRequest
             'classe_id' => ['nullable', 'integer', 'exists:esbtp_classes,id'],
             'matiere_id' => ['nullable', 'integer', 'exists:esbtp_matieres,id'],
             'submit_final' => ['nullable', 'boolean'],
+            // snapshots optionnels, indexés "etudiant_id_evaluation_id" ;
+            // chaque note attendue est null (inexistante) ou un état validé.
+            'expected' => ['sometimes', 'array'],
+            'expected.*' => ['nullable', 'array'],
+            'expected.*.note' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'expected.*.absent' => ['sometimes', 'boolean'],
+            'expected.*.validee' => ['sometimes', 'boolean'],
             'notes' => ['required', 'array', 'min:1', 'max:'.self::MAX_NOTES_PER_BATCH],
             'notes.*.evaluation_id' => ['required', 'integer', 'exists:esbtp_evaluations,id'],
             'notes.*.etudiant_id' => ['required', 'integer', 'exists:esbtp_etudiants,id'],
