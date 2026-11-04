@@ -1457,10 +1457,12 @@
         .matiere-config {
             justify-content: center;
         }
-    }
+    /* Une accolade fermante orpheline se trouvait ici : le navigateur avalait
+       alors le bloc suivant tout entier. Les deux regles ci-dessus restent
+       globales, comme elles l'etaient en pratique. */
     /* Telephone : une carte par combinaison prenait pres d'un ecran. Les
        chiffres passent sur une ligne et la carte se resserre, sans rien
-       retirer : meme contenu, environ trois fois moins de hauteur. */
+       retirer : meme contenu. Mesure a 390 px : page de 38 001 a 23 181 px. */
     @media (max-width: 767.98px) {
         .combinaisons-grid { gap: .6rem; margin-top: 1rem; }
         .combinaison-card { min-height: 0; }
