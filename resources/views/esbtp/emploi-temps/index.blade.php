@@ -2074,15 +2074,14 @@
                                     <i class="fas fa-info-circle me-1"></i>Changer d'année
                                 </button>
                             </div>
-                            <select name="annee_id" id="annee_id" class="form-select" style="background-color: #f8f9fa; cursor: not-allowed;" disabled>
+                            {{-- Lecture seule : la liste désactivée n'était jamais envoyée. --}}
+                            <div id="annee_id" class="form-control" style="background-color: #f8f9fa;" aria-readonly="true">
                                 @if(isset($anneeUniversitaireCourante))
-                                    <option value="{{ $anneeUniversitaireCourante->id }}" selected>
-                                        {{ $anneeUniversitaireCourante->name }} (Année en cours)
-                                    </option>
+                                    {{ $anneeUniversitaireCourante->name }} (Année en cours)
                                 @else
-                                    <option value="" selected>Aucune année active</option>
+                                    Aucune année active
                                 @endif
-                            </select>
+                            </div>
                             <div class="mt-2">
                                 <small class="text-muted">
                                     <i class="fas fa-info-circle me-1"></i>
@@ -2093,21 +2092,14 @@
 
                         <div class="mb-3">
                             <label for="is_current" class="form-label">Emploi du temps courant</label>
-                            <select class="form-select" id="is_current" name="is_current">
-                                <option value="">Tous</option>
-                                <option value="1" {{ request('is_current') == '1' ? 'selected' : '' }}>Courant uniquement</option>
-                                <option value="0" {{ request('is_current') == '0' ? 'selected' : '' }}>Non courant</option>
-                            </select>
+                            <x-au-select id="is_current" name="is_current" :value="request('is_current')" placeholder="Tous"
+                                :options="['1' => 'Courant uniquement', '0' => 'Non courant']" />
                         </div>
 
                         <div class="mb-3">
                             <label for="period_status" class="form-label">Statut automatique</label>
-                            <select class="form-select" id="period_status" name="period_status">
-                                <option value="">Tous les statuts</option>
-                                <option value="current" {{ request('period_status') == 'current' ? 'selected' : '' }}>Actifs (période en cours)</option>
-                                <option value="upcoming" {{ request('period_status') == 'upcoming' ? 'selected' : '' }}>Inactifs (période à venir)</option>
-                                <option value="expired" {{ request('period_status') == 'expired' ? 'selected' : '' }}>Expirés</option>
-                            </select>
+                            <x-au-select id="period_status" name="period_status" :value="request('period_status')" placeholder="Tous les statuts"
+                                :options="['current' => 'Actifs (période en cours)', 'upcoming' => 'Inactifs (période à venir)', 'expired' => 'Expirés']" />
                         </div>
 
                             <div class="d-grid gap-2">

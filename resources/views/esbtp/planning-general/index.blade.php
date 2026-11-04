@@ -1458,6 +1458,22 @@
             justify-content: center;
         }
     }
+    /* Telephone : une carte par combinaison prenait pres d'un ecran. Les
+       chiffres passent sur une ligne et la carte se resserre, sans rien
+       retirer : meme contenu, environ trois fois moins de hauteur. */
+    @media (max-width: 767.98px) {
+        .combinaisons-grid { gap: .6rem; margin-top: 1rem; }
+        .combinaison-card { min-height: 0; }
+        .card-header-section { padding: .75rem .9rem .4rem; }
+        .card-body-section { padding: 0 .9rem .4rem; }
+        .card-footer-section { padding: .4rem .9rem .75rem; }
+        .school-logo { width: 34px; height: 34px; font-size: 15px; }
+        .stats-grid { grid-template-columns: 1fr 1fr; gap: .5rem; }
+        .stat-item { padding: .45rem .6rem; }
+        .stat-number { font-size: .95rem; }
+        .stat-description { font-size: .66rem; margin-top: .15rem; }
+        .stat-line { line-height: 1.3; }
+    }
 </style>
 @endsection
 
