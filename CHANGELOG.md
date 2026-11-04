@@ -13,6 +13,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ## Novembre 2026
 
 ### Ajouts
+- **Fiche étudiant — saisie multiple des notes :** édition de plusieurs évaluations depuis l'onglet Académique, enregistrement AJAX groupé, états note/évaluation distingués, erreurs de sauvegarde partielles conservées et détection de corrections concurrentes ; sans validation officielle implicite. L'écran d'inscription conserve son éditeur unitaire.
 - Réglages, onglet Général : plage horaire des cours (premier créneau et fin du dernier) modifiable par l'école ; une fin avant le début est refusée. La création d'évaluation propose le premier créneau de l'école au lieu de 8 h. Vue morte `emploi-temps/teacher` retirée.
 
 ### Corrections

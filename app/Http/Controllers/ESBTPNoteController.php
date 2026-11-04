@@ -726,7 +726,9 @@ class ESBTPNoteController extends Controller
 
             return response()->json([
                 'success'   => true,
-                'message'   => 'Note enregistrée en brouillon.',
+                'message'   => $result['note']->isSubmitted()
+                    ? 'Note enregistrée ; sa validation existante est conservée.'
+                    : 'Note enregistrée en brouillon (non validée).',
                 'note_id'   => $result['note']->id,
                 'is_absent' => (bool) $result['note']->is_absent,
                 'note'      => $result['note']->note,
@@ -770,8 +772,13 @@ class ESBTPNoteController extends Controller
         $submitFinal = $request->boolean('submit_final');
 
         try {
-            // Mêmes gardes que l'assistant : SaisieGroupeeDeNotes.
-            $r = app(SaisieGroupeeDeNotes::class)->enregistrer($notes, Auth::user(), $submitFinal);
+            // Contrat existant inchangé sans expected ; la fiche étudiant
+            // active une vérification optimiste pour chaque paire étudiant/évaluation.
+            $service = app(SaisieGroupeeDeNotes::class);
+            $expected = $request->input('expected');
+            $r = is_array($expected)
+                ? $service->enregistrer($notes, Auth::user(), $submitFinal, $expected)
+                : $service->enregistrer($notes, Auth::user(), $submitFinal);
             $saved = $r['saved'];
             $errors = count($r['refused']);
 

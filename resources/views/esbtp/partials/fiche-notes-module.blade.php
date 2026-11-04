@@ -121,6 +121,30 @@
 .fng-group-toggle[aria-expanded="false"] .fa-chevron-down{transform:rotate(-90deg)}
 .fng-eval-context{font-size:12px;font-weight:650;color:#64748b;margin:0 0 12px}
 .fng-no-match td{padding:19px!important;text-align:center;color:#718096}
+/* La grille garde sa hauteur, l'éditeur remplace le score sans modale. */
+.fng-inline-editor[hidden],.fng-bulk-bar[hidden]{display:none!important}
+.fng-inline-editor{display:flex;flex-direction:column;gap:7px;min-width:160px}
+.fng-inline-main{display:flex;gap:8px;align-items:center}
+.fng-inline-note-label{margin:0;flex:1;min-width:80px}
+.fng-inline-note-label input{width:100%;min-width:0;max-width:104px;min-height:40px;padding:7px 10px;border-radius:9px;border:1px solid #c9d7e8;color:#17243b;font:inherit;font-size:14px;font-variant-numeric:tabular-nums}
+.fng-inline-note-label input:focus-visible,.fng-inline-details textarea:focus-visible{outline:2px solid #0453cb;outline-offset:1px}
+.fng-inline-absent{display:flex;gap:4px;align-items:center;font-size:11px;color:#475569;white-space:nowrap;cursor:pointer;margin:0}
+.fng-inline-absent input{accent-color:#0453cb;width:17px;height:17px}
+.fng-inline-details summary{font-size:11px;color:#0453cb;cursor:pointer}
+.fng-inline-details textarea{width:100%;margin-top:5px;padding:7px;border-radius:8px;border:1px solid #c9d7e8;font-size:12px}
+.fng-inline-error{display:block;color:#b91c1c;font-size:11px;max-width:280px}
+.fng-inline-error[hidden]{display:none!important}
+.fng-row-dirty td{background:#f4f8ff}
+.fng-evaluation-status{display:block;font-size:10px;color:#64748b;margin-top:5px}
+.fng-status-submitted{background:#e8f8f3;color:#0b8064}
+.fng-status-draft{background:#eef5ff;color:#2257a5}
+.fng-status-missing{background:#f1f5f9;color:#64748b}
+.fng-block[data-fng-bulk-active="1"] [data-fng-note],.fng-block[data-fng-bulk-active="1"] [data-fng-new-eval],.fng-block[data-fng-bulk-active="1"] [data-fng-edit-eval],.fng-block[data-fng-bulk-active="1"] [data-fng-publish],.fng-block[data-fng-bulk-active="1"] [data-fng-delete]{display:none!important}
+.fng-bulk-bar{position:sticky;bottom:0;z-index:2;background:#fff;border-top:1px solid #dbe5f3;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 -8px 22px rgba(22,45,81,.08)}
+.fng-bulk-message{display:flex;flex-direction:column;gap:3px;font-size:12px;flex:1;min-width:220px}
+.fng-bulk-message small{color:#64748b;line-height:1.4}
+.fng-bulk-buttons{display:flex;gap:7px;flex-wrap:wrap}
+@@media(max-width:700px){.fng-bulk-buttons{width:100%}.fng-bulk-buttons .fng-btn{flex:1;min-height:44px}.fng-inline-editor{min-width:130px}.fng-inline-note-label input{min-height:44px}}
 @@media(max-width:650px){.fng-list-toolbar{align-items:stretch}.fng-view-switch{width:100%;justify-content:space-between;flex-wrap:wrap}.fng-view-btn{font-size:11px;padding:7px 8px}.fng-search-field{max-width:none;order:3;flex-basis:100%}.fng-list-count{align-self:center}}
 </style>
 <script>
@@ -164,6 +188,7 @@
     }
     return data;
   }
+  @include('esbtp.partials._fiche-notes-bulk-script')
   function enhanceSelectors(dlg) {
     for (const select of dlg.querySelectorAll('select.fng-select')) {
       const picker=document.createElement('div');

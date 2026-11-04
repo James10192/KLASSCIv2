@@ -39,6 +39,21 @@ final class FicheNotesIntegrationUxTest extends TestCase
         $this->assertStringContainsString('$this->authorize(\'view\', $inscription)', $source);
     }
 
+    public function test_bulk_editor_only_on_student_sheet_and_still_uses_existing_backend(): void
+    {
+        $content = $this->source('resources/views/esbtp/partials/fiche-notes-contenu.blade.php');
+        $controller = $this->source('app/Http/Controllers/ESBTP/FicheNotesController.php');
+        $script = $this->source('resources/views/esbtp/partials/_fiche-notes-bulk-script.blade.php');
+        $this->assertStringContainsString('data-fng-bulk-start', $content);
+        $this->assertStringContainsString('data-save-bulk', $content);
+        $this->assertStringContainsString('data-fng-note-status-label', $content);
+        $this->assertStringContainsString('!empty($allowBulk)', $content);
+        $this->assertStringContainsString("'allowBulk' => \$allowBulk", $controller);
+        $this->assertStringContainsString('submit_final:false', $script);
+        $this->assertStringContainsString('data.refused', $script);
+        $this->assertStringNotContainsString('window.location.reload()', $script);
+    }
+
     public function test_both_existing_pages_use_same_permissioned_partial(): void
     {
         $student = $this->source('resources/views/esbtp/etudiants/show.blade.php');

@@ -13,10 +13,15 @@
         $canEditNote = auth()->user()->can('notes.edit');
         $canDeleteNote = auth()->user()->can('notes.delete');
         $canOpenEvaluation = \App\Support\PorteDeRoute::ouverte('esbtp.evaluations.show', auth()->user());
+        $hasWritableNotes = $evaluationsFiche->contains(
+            fn ($eval) => $eval->is_published && ($eval->notes->isNotEmpty() ? $canEditNote : $canCreateNote)
+        );
     @endphp
     <section class="fng-block" data-fng-inscription="{{ $ficheInsc->id }}"
         data-student="{{ $student->id }}"
         data-save="{{ route('esbtp.notes.save-ajax') }}"
+        data-save-bulk="{{ route('esbtp.notes.save-ajax-bulk') }}"
+        data-fng-bulk-limit="{{ \App\Http\Requests\Notes\StoreBulkNotesRequest::MAX_NOTES_PER_BATCH }}"
         data-create-evaluation="{{ route('esbtp.evaluations.store') }}"
         data-quick-base="{{ url('/esbtp/evaluations') }}">
         <div class="fng-block-head">
@@ -27,6 +32,9 @@
             <div class="fng-actions">
                 @if($canCreateEval && $block['matieres']->isNotEmpty())
                     <button type="button" class="fng-btn fng-btn-primary" data-fng-new-eval><i class="fas fa-plus"></i> Évaluation</button>
+                @endif
+                @if(!empty($allowBulk) && $hasWritableNotes)
+                    <button type="button" class="fng-btn fng-btn-primary" data-fng-bulk-start><i class="fas fa-table-cells" aria-hidden="true"></i> Saisie multiple</button>
                 @endif
                 @if(\App\Support\PorteDeRoute::ouverte('esbtp.bulletins.index', auth()->user()))
                     <a class="fng-btn" data-fng-document target="_blank" rel="noopener" href="{{ route('esbtp.bulletins.index', ['etudiant_id' => $student->id, 'annee_universitaire_id' => $ficheInsc->annee_universitaire_id]) }}"><i class="fas fa-file-alt"></i> Bulletins</a>
@@ -101,7 +109,10 @@
                 <thead><tr><th>Matière / Évaluation</th><th>Période</th><th>Barème · Coef.</th><th>Note</th><th>Statut</th><th class="fng-right">Actions</th></tr></thead>
                 <tbody>
                     @forelse($evaluationsFiche as $eval)
-                        @php $studentNote = $eval->notes->first(); @endphp
+                        @php
+                            $studentNote = $eval->notes->first();
+                            $canWriteFngNote = $eval->is_published && ($studentNote ? $canEditNote : $canCreateNote);
+                        @endphp
                         <tr data-fng-eval-row
                             data-fng-order="{{ $loop->index }}"
                             data-fng-matiere-id="{{ $eval->matiere_id ?? 'inconnue' }}"
@@ -115,21 +126,41 @@
                             </td>
                             <td>{{ preg_replace('/^semestre/', 'S', (string) $eval->periode) }}</td>
                             <td>{{ number_format((float)$eval->bareme, 1, ',', ' ') }} · ×{{ number_format((float)$eval->coefficient, 1, ',', ' ') }}</td>
-                            <td>
-                                @if($studentNote)
-                                    <span class="fng-score">{{ $studentNote->is_absent ? 'ABS' : number_format((float)$studentNote->note, 2, ',', ' ') }}</span>
-                                @else
-                                    <span class="fng-muted">Non saisie</span>
+                            <td data-fng-score-cell>
+                                <span data-fng-display-score class="{{ $studentNote ? 'fng-score' : 'fng-muted' }}">{{ $studentNote ? ($studentNote->is_absent ? 'ABS' : number_format((float)$studentNote->note, 2, ',', ' ')) : 'Non saisie' }}</span>
+                                @if(!empty($allowBulk) && $canWriteFngNote)
+                                    <div class="fng-inline-editor" data-fng-inline-editor hidden>
+                                        <div class="fng-inline-main">
+                                            <label class="fng-inline-note-label">
+                                                <span class="visually-hidden">Note de {{ $eval->titre }} sur {{ $eval->bareme }}</span>
+                                                <input type="text" inputmode="decimal" autocomplete="off" data-fng-inline-note
+                                                    aria-label="Note de {{ $eval->titre }} sur {{ $eval->bareme }}"
+                                                    value="{{ ($studentNote && !$studentNote->is_absent) ? $studentNote->note : '' }}"
+                                                    {{ $studentNote?->is_absent ? 'disabled' : '' }}>
+                                            </label>
+                                            <label class="fng-inline-absent"><input type="checkbox" data-fng-inline-absent {{ $studentNote?->is_absent ? 'checked' : '' }}> ABS</label>
+                                        </div>
+                                        <details class="fng-inline-details"><summary>Commentaire</summary>
+                                            <textarea rows="2" maxlength="500" data-fng-inline-comment aria-label="Commentaire pour {{ $eval->titre }}">{{ $studentNote?->commentaire ?? '' }}</textarea>
+                                        </details>
+                                        <small class="fng-inline-error" data-fng-inline-error role="alert" hidden></small>
+                                    </div>
                                 @endif
                             </td>
-                            <td><span class="fng-status {{ $eval->is_published ? 'fng-status-ok' : '' }}">{{ $eval->is_published ? 'Active' : 'Brouillon' }}</span></td>
+                            <td>
+                                <span class="fng-status {{ $studentNote ? ($studentNote->isSubmitted() ? 'fng-status-submitted' : 'fng-status-draft') : 'fng-status-missing' }}" data-fng-note-status-label>
+                                    {{ $studentNote ? ($studentNote->isSubmitted() ? 'Validée' : 'Brouillon (non validée)') : 'Non saisie' }}
+                                </span>
+                                <small class="fng-evaluation-status">Évaluation {{ $eval->is_published ? 'active' : 'non publiée' }}</small>
+                            </td>
                             <td class="fng-right">
                                 <div class="fng-actions">
-                                    @if(($studentNote ? $canEditNote : $canCreateNote) && $eval->is_published)
+                                    @if($canWriteFngNote)
                                         <button type="button" class="fng-icon-btn" title="{{ $studentNote ? 'Modifier la note' : 'Saisir une note' }}"
                                             data-fng-note data-evaluation="{{ $eval->id }}"
                                             data-note="{{ $studentNote?->note ?? '' }}" data-absent="{{ $studentNote?->is_absent ? 1 : 0 }}"
-                                            data-comment="{{ $studentNote?->commentaire ?? '' }}"
+                                            data-comment="{{ $studentNote?->commentaire ?? '' }}" data-existing="{{ $studentNote ? 1 : 0 }}"
+                                            data-submitted="{{ $studentNote?->isSubmitted() ? 1 : 0 }}"
                                             data-bareme="{{ $eval->bareme }}" data-title="{{ $eval->titre }}" data-matiere="{{ $eval->matiere?->name ?? 'Matière inconnue' }}">
                                             <i class="fas fa-{{ $studentNote ? 'pen' : 'plus' }}"></i>
                                         </button>
@@ -160,6 +191,18 @@
                 </tbody>
             </table>
         </div>
+        @if(!empty($allowBulk) && $hasWritableNotes)
+            <div class="fng-bulk-bar" data-fng-bulk-bar hidden>
+                <div class="fng-bulk-message" role="status" aria-live="polite">
+                    <strong data-fng-bulk-count>0 modification en attente</strong>
+                    <small data-fng-bulk-feedback>La sauvegarde ne valide pas officiellement les notes.</small>
+                </div>
+                <div class="fng-bulk-buttons">
+                    <button type="button" class="fng-btn" data-fng-bulk-cancel>Terminer / Annuler</button>
+                    <button type="button" class="fng-btn fng-btn-primary" data-fng-bulk-save disabled><i class="fas fa-save" aria-hidden="true"></i> Enregistrer les modifications</button>
+                </div>
+            </div>
+        @endif
         @if($canCreateEval)
             <template data-fng-eval-fields>
                 <label>Titre de l'évaluation <input required name="titre" maxlength="255" placeholder="Ex. Devoir de statistiques"></label>
