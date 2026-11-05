@@ -458,6 +458,9 @@ jobs:
       - name: Plage horaire des cours, reglage d ecole
         run: php vendor/bin/phpunit tests/Feature/Settings/PlageHoraireCoursEnregistrementTest.php --no-coverage
 
+      - name: Nouveautes, filtrage par permission et limite
+        run: php vendor/bin/phpunit tests/Feature/Layout/NouveautesTest.php --no-coverage
+
       - name: Validation inline depuis la fiche inscription
         run: php vendor/bin/phpunit tests/Feature/Paiements/InscriptionShowPaiementsInlineTest.php --no-coverage
 

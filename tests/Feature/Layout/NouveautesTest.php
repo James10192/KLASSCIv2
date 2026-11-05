@@ -38,6 +38,21 @@ class NouveautesTest extends TestCase
         $this->assertSame(['Pour tous', 'Pour la caisse'], $titres);
     }
 
+    public function test_seules_les_dernieres_entrees_qui_le_concernent_sont_montrees(): void
+    {
+        Permission::findOrCreate('students.view', 'web');
+        $entrees = [['titre' => 'Pour la scolarite', 'texte' => 'x', 'permissions' => ['students.view']]];
+        for ($i = 1; $i <= Nouveautes::LIMITE + 4; $i++) {
+            $entrees[] = ['titre' => 'Pour tous '.$i, 'texte' => 'x'];
+        }
+
+        $titres = array_column(Nouveautes::pour(null, ['titre' => 'T', 'entrees' => $entrees])['entrees'], 'titre');
+
+        $this->assertCount(Nouveautes::LIMITE, $titres);
+        $this->assertSame('Pour tous 1', $titres[0]);
+        $this->assertNotContains('Pour la scolarite', $titres);
+    }
+
     public function test_sans_compte_seules_les_entrees_sans_permission_restent(): void
     {
         $titres = array_column(Nouveautes::pour(null, self::CONTENU)['entrees'], 'titre');
