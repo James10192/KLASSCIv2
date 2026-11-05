@@ -39,6 +39,13 @@ class SauvegardeDataJob implements ShouldQueue
      */
     public function handle(): void
     {
+        // Le ménage passe AVANT : sur un disque plein, la sauvegarde échoue, et
+        // un ménage placé seulement après une réussite ne passait plus jamais —
+        // le disque restait plein, la sauvegarde suivante échouait aussi.
+        $this->nettoyerAnciennesSauvegardes();
+
+        $backupPath = null;
+
         try {
             Log::info("Début sauvegarde automatique - Type: {$this->typeSauvegarde}");
 
@@ -95,6 +102,12 @@ class SauvegardeDataJob implements ShouldQueue
 
             $this->envoyerNotificationEchec($e);
             $this->fail($e);
+        } finally {
+            // Une sauvegarde interrompue laissait son dossier de travail, non
+            // compressé, sur le disque : on le retire, réussite ou non.
+            if ($backupPath && is_dir(storage_path("app/{$backupPath}"))) {
+                $this->supprimerDossierRecursif(storage_path("app/{$backupPath}"));
+            }
         }
     }
 
@@ -178,7 +191,8 @@ class SauvegardeDataJob implements ShouldQueue
             //
             // Voir App\Services\Documents\StockageDocumentEtudiant::DOSSIER.
             'storage/app/dossiers-etudiants' => 'pieces_dossier_etudiants',
-            'storage/logs' => 'logs',
+            // Pas storage/logs : des journaux, pas des données d'école, et la
+            // plus grosse part de chaque archive, recopiée trente fois.
             '.env' => 'configuration/.env'
         ];
 
@@ -199,7 +213,9 @@ class SauvegardeDataJob implements ShouldQueue
      */
     private function compresserSauvegarde($backupPath, &$sauvegardeInfo)
     {
-        $archiveName = "backup_{$sauvegardeInfo['timestamp']}.zip";
+        // Le type dans le nom : chaque sauvegarde ne retire que les archives
+        // de son type, chacune avec sa propre durée de conservation.
+        $archiveName = "backup_{$this->typeSauvegarde}_{$sauvegardeInfo['timestamp']}.zip";
         $archivePath = storage_path("app/backups/{$archiveName}");
         $sourcePath = storage_path("app/{$backupPath}");
 
@@ -235,27 +251,58 @@ class SauvegardeDataJob implements ShouldQueue
     /**
      * Nettoie les anciennes sauvegardes
      */
-    private function nettoyerAnciennesSauvegardes()
+    private function nettoyerAnciennesSauvegardes(): void
     {
-        $retentionJours = $this->options['retention_jours'];
         $backupsPath = storage_path('app/backups');
+        if (!is_dir($backupsPath)) {
+            return;
+        }
 
-        if (is_dir($backupsPath)) {
-            $files = scandir($backupsPath);
-            $cutoffDate = Carbon::now()->subDays($retentionJours);
+        $limite = Carbon::now()->subDays($this->options['retention_jours'])->getTimestamp();
+        // Un dossier de travail n'existe que pendant une sauvegarde : plus vieux
+        // qu'un jour, c'est le reste d'une sauvegarde interrompue.
+        $limiteDossier = Carbon::now()->subDay()->getTimestamp();
 
-            foreach ($files as $file) {
-                if ($file === '.' || $file === '..') continue;
+        foreach (scandir($backupsPath) as $entree) {
+            if ($entree === '.' || $entree === '..') {
+                continue;
+            }
 
-                $filePath = $backupsPath . DIRECTORY_SEPARATOR . $file;
-                $fileTime = Carbon::createFromTimestamp(filemtime($filePath));
+            $chemin = $backupsPath . DIRECTORY_SEPARATOR . $entree;
 
-                if ($fileTime->lt($cutoffDate)) {
-                    unlink($filePath);
-                    Log::info("Ancienne sauvegarde supprimée: {$file}");
+            // Un échec sur une entrée n'arrête plus le ménage : auparavant, le
+            // premier dossier rencontré faisait lever unlink(), et plus aucune
+            // archive n'était jamais supprimée.
+            try {
+                if (is_dir($chemin)) {
+                    if (filemtime($chemin) < $limiteDossier) {
+                        $this->supprimerDossierRecursif($chemin);
+                        Log::info("Sauvegarde interrompue retirée: {$entree}");
+                    }
+                    continue;
                 }
+
+                if ($this->archiveConcernee($entree) && filemtime($chemin) < $limite) {
+                    unlink($chemin);
+                    Log::info("Ancienne sauvegarde supprimée: {$entree}");
+                }
+            } catch (\Throwable $e) {
+                Log::error("Sauvegarde non supprimée: {$entree} — " . $e->getMessage());
             }
         }
+    }
+
+    /**
+     * Archive de ce type, ou ancienne archive sans type (`backup_<date>.zip`,
+     * avant que le type n'entre dans le nom). Tout autre fichier est laissé.
+     */
+    private function archiveConcernee(string $nom): bool
+    {
+        if (!preg_match('/^backup_(?:([a-z]+)_)?\d{4}-\d{2}-\d{2}_[\d-]+\.zip$/', $nom, $m)) {
+            return false;
+        }
+
+        return ($m[1] ?? '') === '' || $m[1] === $this->typeSauvegarde;
     }
 
     /**
