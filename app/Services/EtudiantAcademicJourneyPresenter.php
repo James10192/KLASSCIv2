@@ -95,10 +95,6 @@ class EtudiantAcademicJourneyPresenter
             $metrics = $system === 'LMD'
                 ? $this->lmdMetrics($lmdBulletins->get($key, collect()))
                 : $this->btsMetrics($btsBulletins->get($key, collect()), $resultats->get($key, collect()), $bilansBts->get($key));
-            if ($system !== 'LMD' && ! array_key_exists('bilan', $metrics)) {
-                // Année sans moyenne : le bilan (et son snapshot) reste lisible.
-                $metrics['bilan'] = $bilansBts->get($key);
-            }
 
             $item = [
                 'id' => $inscription->id,
@@ -258,6 +254,20 @@ class EtudiantAcademicJourneyPresenter
                 'rang_label' => $bilan['rang'] ? $bilan['rang'] . ($bilan['effectif'] ? '/' . $bilan['effectif'] : '') : null,
                 'credits_label' => null,
                 'mention' => $last?->mention,
+                'bilan' => $bilan,
+            ];
+        }
+
+        if ($bilan !== null) {
+            // Le bilan officiel n'a pas de moyenne : pas de moyenne brute des
+            // bulletins à sa place, qui contredirait le bulletin et la fiche.
+            return [
+                'source' => 'Aucun résultat',
+                'moyenne' => null,
+                'moyenne_label' => null,
+                'rang_label' => null,
+                'credits_label' => null,
+                'mention' => null,
                 'bilan' => $bilan,
             ];
         }

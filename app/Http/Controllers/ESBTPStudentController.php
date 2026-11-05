@@ -687,7 +687,7 @@ class ESBTPStudentController extends Controller
 
             $lmdCredits = [
                 'capitalises' => $allLmdBulletins->count() ? $allLmdBulletins->sum('credits_capitalises') : null,
-                'totaux' => $allLmdBulletins->count() ? ($allLmdBulletins->sum('credits_totaux') ?: app(\App\Services\LMD\LmdAcademicRuleProfile::class)->expectedCreditsPerSemester()) : null,
+                'totaux' => $allLmdBulletins->count() ? ($allLmdBulletins->sum('credits_totaux') ?: $allLmdBulletins->count() * app(\App\Services\LMD\LmdAcademicRuleProfile::class)->expectedCreditsPerSemester()) : null,
                 'semestres' => $classeCourante ? $classeCourante->getSemestresLMD() : [],
             ];
         }
@@ -722,19 +722,6 @@ class ESBTPStudentController extends Controller
 
         $btsJourney = $this->resolveBtsJourney($etudiant);
         $academicJourney = $this->academicJourneyPresenter->present($etudiant);
-        $btsAnnualSnapshot = null;
-
-        // FIX flag assiduité : on calcule le snapshot annuel pour TOUT étudiant BTS
-        // (pas seulement les TC). Sinon les KPIs moyennes des tabs "vue d'ensemble"
-        // et "académique" retombent sur les bulletins bruts / résultats sans bonus
-        // assiduité → le flag bulletin_show_attendance_note est ignoré côté UI.
-        // Le bilan de l'année courante est déjà calculé par le parcours
-        // (BilanAnnuelBts), sous garde : on relit son snapshot. Une année aux
-        // données cassées y est « indisponible » et la fiche reste ouverte.
-        if (! $isLMD && $inscActive?->classe_id && $inscActive?->annee_universitaire_id) {
-            $btsAnnualSnapshot = collect($academicJourney['items'] ?? [])
-                ->firstWhere('id', $inscActive->id)['metrics']['bilan']['snapshot'] ?? null;
-        }
 
         $inscriptionRepairClasses = ESBTPClasse::with(['filiere', 'niveauEtude'])
             ->where('is_active', true)
@@ -754,7 +741,7 @@ class ESBTPStudentController extends Controller
             'etudiant', 'anneeCourante', 'voirFinances', 'situationFinanciere',
             'isLMD', 'bulletinLMD', 'bulletinsLMD', 'lmdMoyenneAnnuelle', 'parcours', 'lmdCredits',
             'statistiques', 'reliquatsEntrants', 'reliquatsSortants', 'categoriesfrais',
-            'tpeAttendu', 'tpeParSemestre', 'btsJourney', 'academicJourney', 'btsAnnualSnapshot', 'inscriptionRepairClasses',
+            'tpeAttendu', 'tpeParSemestre', 'btsJourney', 'academicJourney', 'inscriptionRepairClasses',
             'reinscriptionCible', 'anneeCouranteEchue', 'doitProposerReinscription'
         ));
     }

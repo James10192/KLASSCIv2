@@ -140,6 +140,25 @@ class EtudiantAcademicJourneyPresenterTest extends TestCase
         $this->assertTrue($metrics['bilan_indisponible']);
     }
 
+    public function test_un_bilan_sans_moyenne_ne_retombe_pas_sur_les_bulletins_bruts(): void
+    {
+        [$inscription, $bulletins, $cle] = $this->anneeBtsAvecDeuxBulletins();
+
+        $journey = (new EtudiantAcademicJourneyPresenter())->presentFromCollections(
+            collect([$inscription]),
+            btsBulletins: $bulletins,
+            bilansBts: collect([$cle => [
+                'moyenne' => null, 'complet' => false, 'provisoire' => false,
+                'semestres' => ['semestre1' => null, 'semestre2' => null],
+                'rang' => null, 'effectif' => null, 'snapshot' => ['state' => 'no_data'],
+            ]])
+        );
+
+        $metrics = $journey['items'][0]['metrics'];
+        $this->assertNull($metrics['moyenne']);
+        $this->assertSame('no_data', $metrics['bilan']['snapshot']['state']);
+    }
+
     private function anneeBtsAvecDeuxBulletins(): array
     {
         $filiere = $this->model(ESBTPFiliere::class, ['name' => 'Travaux publics']);
