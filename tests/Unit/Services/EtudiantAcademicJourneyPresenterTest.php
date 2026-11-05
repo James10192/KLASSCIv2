@@ -87,6 +87,7 @@ class EtudiantAcademicJourneyPresenterTest extends TestCase
             bilansBts: collect([$cle => [
                 'moyenne' => 10.02,
                 'complet' => true,
+                'provisoire' => false,
                 'semestres' => ['semestre1' => 9.46, 'semestre2' => 10.30],
                 'rang' => 33,
                 'effectif' => 47,
@@ -96,10 +97,10 @@ class EtudiantAcademicJourneyPresenterTest extends TestCase
         $metrics = $journey['items'][0]['metrics'];
         $this->assertSame('10,02 / 20', $metrics['moyenne_label']);
         $this->assertSame('33/47', $metrics['rang_label']);
-        $this->assertSame(10.30, $metrics['semestres']['semestre2']);
+        $this->assertSame(10.30, $metrics['bilan']['semestres']['semestre2']);
     }
 
-    public function test_une_annee_incomplete_garde_le_rang_du_semestre(): void
+    public function test_une_annee_incomplete_prend_le_rang_calcule_du_semestre(): void
     {
         [$inscription, $bulletins, $cle] = $this->anneeBtsAvecDeuxBulletins();
 
@@ -109,15 +110,34 @@ class EtudiantAcademicJourneyPresenterTest extends TestCase
             bilansBts: collect([$cle => [
                 'moyenne' => 9.46,
                 'complet' => false,
+                'provisoire' => true,
                 'semestres' => ['semestre1' => 9.46, 'semestre2' => null],
-                'rang' => null,
-                'effectif' => null,
+                'rang' => 30,
+                'effectif' => 47,
             ]])
         );
 
         $metrics = $journey['items'][0]['metrics'];
         $this->assertSame('9,46 / 20', $metrics['moyenne_label']);
-        $this->assertSame('28/47', $metrics['rang_label']);
+        // Le rang calculé (30), pas celui stocké sur le bulletin (28).
+        $this->assertSame('30/47', $metrics['rang_label']);
+        $this->assertSame('Moyenne provisoire (un semestre)', $metrics['source']);
+    }
+
+    public function test_un_calcul_en_echec_n_affiche_pas_la_moyenne_brute(): void
+    {
+        [$inscription, $bulletins, $cle] = $this->anneeBtsAvecDeuxBulletins();
+
+        $journey = (new EtudiantAcademicJourneyPresenter())->presentFromCollections(
+            collect([$inscription]),
+            btsBulletins: $bulletins,
+            bilansBts: collect([$cle => ['indisponible' => true]])
+        );
+
+        $metrics = $journey['items'][0]['metrics'];
+        $this->assertNull($metrics['moyenne']);
+        $this->assertNull($metrics['rang_label']);
+        $this->assertTrue($metrics['bilan_indisponible']);
     }
 
     private function anneeBtsAvecDeuxBulletins(): array

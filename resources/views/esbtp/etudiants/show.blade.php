@@ -3603,23 +3603,18 @@
        bulletin_show_attendance_note (effective_total = raw_total si flag OFF, sinon
        raw_total + bonus assiduité). Cohérent avec le PDF bulletin annuel. */
     $acadMoyenneProvisoire = false;
-    if ($acadRef && $acadRef->classe_id && $acadRef->annee_universitaire_id) {
-        try {
-            $_acadSnapshot = app(\App\Services\ESBTP\BtsCurrentResultSnapshotService::class)->getAnnualSnapshot(
-                (int) $etudiant->id,
-                (int) $acadRef->classe_id,
-                (int) $acadRef->annee_universitaire_id
-            );
-            $acadMoyenneProvisoire = ($_acadSnapshot['state'] ?? null) === 'annual_incomplete';
-            if (($_acadSnapshot['effective_total'] ?? null) !== null) {
-                $acadMg = round((float) $_acadSnapshot['effective_total'], 2);
-                if ($acadMg !== null) {
-                    $acadMention = $acadLabelFor((float) $acadMg);
-                }
-            }
-        } catch (\Throwable $e) {
-            // Silencieux : on garde la moyenne calculée en amont
-        }
+    // Le bilan de l'année est déjà calculé par le parcours académique
+    // (BilanAnnuelBts) : le relire, pas le recalculer.
+    $_acadMetrics = $acadRef
+        ? (collect($academicJourney['items'] ?? [])->firstWhere('id', $acadRef->id)['metrics'] ?? [])
+        : [];
+    $_acadBilan = $_acadMetrics['bilan'] ?? null;
+    if ($_acadMetrics['bilan_indisponible'] ?? false) {
+        $acadMg = null; $acadMention = null;
+    } elseif ($_acadBilan && $_acadBilan['moyenne'] !== null) {
+        $acadMoyenneProvisoire = $_acadBilan['provisoire'];
+        $acadMg = round((float) $_acadBilan['moyenne'], 2);
+        $acadMention = $acadLabelFor((float) $acadMg);
     }
 
     /* Rangs issus d'une seule source : mêmes cohortes, moyennes et ex-aequo
@@ -3630,15 +3625,9 @@
     if ($acadRef && $acadRef->classe_id && $acadRef->annee_universitaire_id) {
         try {
             $_ranking = app(\App\Services\RankingService::class);
-            $_ownerAnnualId = $acadClassMap
-                ? app(\App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::class)->classeDeRang($acadClassMap)
-                : (int) $acadRef->classe_id;
-            $_rk = $_ranking->calculerRangPourEtudiant(
-                (int) $etudiant->id, $_ownerAnnualId,
-                (int) $acadRef->annee_universitaire_id, 'annuel'
-            );
-            if ($_rk['rang'] !== null && $_rk['total'] > 0) {
-                $acadRang = $_rk['rang'] . '/' . $_rk['total'];
+            // Rang annuel : celui du bilan, déjà calculé (année complète seulement).
+            if (($_acadBilan['complet'] ?? false) && $_acadBilan['rang'] !== null && $_acadBilan['effectif'] > 0) {
+                $acadRang = $_acadBilan['rang'] . '/' . $_acadBilan['effectif'];
             }
             foreach (['semestre1', 'semestre2'] as $_periodeRang) {
                 $_classeRangSemestre = (int) ($acadClassMap[$_periodeRang.'_classe_id'] ?? $acadRef->classe_id);
@@ -4731,7 +4720,9 @@
         $autreArchKey = 'acad-arch-' . $autreInsc->id;
         // Le bilan officiel de l'année (même calcul que le bulletin et la page
         // des résultats), déjà calculé par le parcours académique.
-        $autreBilan = collect($academicJourney['items'] ?? [])->firstWhere('id', $autreInsc->id)['metrics'] ?? null;
+        $autreMetrics = collect($academicJourney['items'] ?? [])->firstWhere('id', $autreInsc->id)['metrics'] ?? [];
+        $autreBilan = $autreMetrics['bilan'] ?? null;
+        $autreBilanIndisponible = $autreMetrics['bilan_indisponible'] ?? false;
 
         /* Calcul moyenne générale selon le système */
         if ($autreIsLMD) {
@@ -4757,7 +4748,10 @@
         }
 
         if (! $autreIsLMD) {
-            if (($autreBilan['moyenne'] ?? null) !== null && isset($autreBilan['semestres'])) {
+            if ($autreBilanIndisponible) {
+                // Calcul en échec (journalisé) : rien plutôt qu'un chiffre faux.
+                $autreMg = null;
+            } elseif (($autreBilan['moyenne'] ?? null) !== null) {
                 $autreMg = round((float) $autreBilan['moyenne'], 2);
             } elseif ($autreBulsValides->count()) {
                 $autreMg = round($autreBulsValides->avg('moyenne_generale'), 2);
@@ -4880,10 +4874,12 @@
                         }
                         // `moyenne_generale` est la moyenne brute : le semestre
                         // officiel inclut la note d'assiduité.
-                        $_abCle = str_replace([' ', '_', '-'], '', strtolower((string) $ab->periode));
-                        if (in_array($_abCle, ['1', '2'], true)) { $_abCle = 'semestre' . $_abCle; }
-                        if (($autreBilan['semestres'][$_abCle] ?? null) !== null) {
-                            $abMg = round((float) $autreBilan['semestres'][$_abCle], 2);
+                        $_abCle = app(\App\Services\BulletinService::class)->normalizePeriode((string) $ab->periode);
+                        $_abOfficielle = $_abCle === 'annuel'
+                            ? ($autreBilan['moyenne'] ?? null)
+                            : ($autreBilan['semestres'][$_abCle] ?? null);
+                        if ($_abOfficielle !== null) {
+                            $abMg = round((float) $_abOfficielle, 2);
                         }
                         $abLabel = ucfirst(str_replace(['semestre', '_', '-'], ['Semestre ', ' ', ' '], strtolower($ab->periode ?? '')));
                         $abMgCls = $abMg === null ? 'var(--k-muted)' : ($abMg >= 12 ? 'var(--k-success)' : ($abMg >= 10 ? '#d97706' : 'var(--k-danger)'));

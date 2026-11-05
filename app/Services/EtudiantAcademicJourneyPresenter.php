@@ -214,30 +214,47 @@ class EtudiantAcademicJourneyPresenter
 
         return $inscriptions
             ->filter(fn (ESBTPInscription $i) => $this->systemFor($i) === 'BTS' && $i->classe_id && $i->annee_universitaire_id)
-            ->mapWithKeys(fn (ESBTPInscription $i) => [
-                $this->academicKey($i->classe_id, $i->annee_universitaire_id) => $bilanAnnuel->pour(
-                    (int) $etudiant->id, (int) $i->classe_id, (int) $i->annee_universitaire_id
-                ),
-            ]);
+            ->mapWithKeys(function (ESBTPInscription $i) use ($bilanAnnuel, $etudiant) {
+                $cle = $this->academicKey($i->classe_id, $i->annee_universitaire_id);
+                try {
+                    return [$cle => $bilanAnnuel->pour((int) $etudiant->id, (int) $i->classe_id, (int) $i->annee_universitaire_id)];
+                } catch (\Throwable $e) {
+                    // Une année aux données cassées ne doit pas faire tomber
+                    // la fiche ; elle s'affiche « indisponible », pas avec la
+                    // moyenne brute d'avant, qui serait fausse.
+                    report($e);
+
+                    return [$cle => ['indisponible' => true]];
+                }
+            });
     }
 
     private function btsMetrics(Collection $bulletins, Collection $resultats, ?array $bilan = null): array
     {
+        if ($bilan['indisponible'] ?? false) {
+            return [
+                'source' => 'Calcul indisponible',
+                'moyenne' => null,
+                'moyenne_label' => null,
+                'rang_label' => null,
+                'credits_label' => null,
+                'mention' => null,
+                'bilan' => null,
+                'bilan_indisponible' => true,
+            ];
+        }
+
         if ($bilan && $bilan['moyenne'] !== null) {
-            $last = $bulletins->filter(fn (ESBTPBulletin $b) => $b->rang)->sortBy('periode')->last();
-            // Année incomplète : le seul rang qui existe est celui du semestre.
-            $rang = $bilan['complet']
-                ? ($bilan['rang'] ? $bilan['rang'] . ($bilan['effectif'] ? '/' . $bilan['effectif'] : '') : null)
-                : ($last?->rang ? $last->rang . ($last->effectif_classe ? '/' . $last->effectif_classe : '') : null);
+            $last = $bulletins->sortBy('periode')->last();
 
             return [
-                'source' => 'Bulletins BTS',
+                'source' => $bilan['provisoire'] ? 'Moyenne provisoire (un semestre)' : 'Bulletins BTS',
                 'moyenne' => $bilan['moyenne'],
                 'moyenne_label' => number_format($bilan['moyenne'], 2, ',', ' ') . ' / 20',
-                'rang_label' => $rang,
+                'rang_label' => $bilan['rang'] ? $bilan['rang'] . ($bilan['effectif'] ? '/' . $bilan['effectif'] : '') : null,
                 'credits_label' => null,
                 'mention' => $last?->mention,
-                'semestres' => $bilan['semestres'],
+                'bilan' => $bilan,
             ];
         }
 
