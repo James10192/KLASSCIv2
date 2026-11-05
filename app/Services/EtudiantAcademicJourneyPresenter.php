@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Domain\Academique\CoherenceSystemeAcademique;
+use App\Domain\Bulletins\BilanAnnuelBts;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
@@ -13,6 +14,10 @@ use Illuminate\Support\Collection;
 
 class EtudiantAcademicJourneyPresenter
 {
+    public function __construct(private ?BilanAnnuelBts $bilanAnnuel = null)
+    {
+    }
+
     public function present(ESBTPEtudiant $etudiant): array
     {
         $etudiant->loadMissing([
@@ -49,7 +54,8 @@ class EtudiantAcademicJourneyPresenter
             $inscriptions,
             $this->btsBulletins($etudiant, $classeIds, $anneeIds),
             $this->lmdBulletins($etudiant, $classeIds, $anneeIds),
-            $this->resultats($etudiant, $classeIds, $anneeIds)
+            $this->resultats($etudiant, $classeIds, $anneeIds),
+            $this->bilansBts($etudiant, $inscriptions)
         );
     }
 
@@ -59,7 +65,7 @@ class EtudiantAcademicJourneyPresenter
      * @param Collection<int, ESBTPLMDBulletin>|null $lmdBulletins
      * @param Collection<int, ESBTPResultat>|null $resultats
      */
-    public function presentFromCollections(Collection $inscriptions, ?Collection $btsBulletins = null, ?Collection $lmdBulletins = null, ?Collection $resultats = null): array
+    public function presentFromCollections(Collection $inscriptions, ?Collection $btsBulletins = null, ?Collection $lmdBulletins = null, ?Collection $resultats = null, ?Collection $bilansBts = null): array
     {
         $inscriptions = $this->sortInscriptions($inscriptions);
 
@@ -79,15 +85,16 @@ class EtudiantAcademicJourneyPresenter
         $btsBulletins = $this->groupByAcademicKey($btsBulletins ?? collect());
         $lmdBulletins = $this->groupByAcademicKey($lmdBulletins ?? collect());
         $resultats = $this->groupByAcademicKey($resultats ?? collect());
+        $bilansBts ??= collect();
         $duplicateYears = $this->duplicateYears($inscriptions);
 
         $previous = null;
-        $items = $inscriptions->map(function (ESBTPInscription $inscription) use (&$previous, $btsBulletins, $lmdBulletins, $resultats) {
+        $items = $inscriptions->map(function (ESBTPInscription $inscription) use (&$previous, $btsBulletins, $lmdBulletins, $resultats, $bilansBts) {
             $system = $this->systemFor($inscription);
             $key = $this->academicKey($inscription->classe_id, $inscription->annee_universitaire_id);
             $metrics = $system === 'LMD'
                 ? $this->lmdMetrics($lmdBulletins->get($key, collect()))
-                : $this->btsMetrics($btsBulletins->get($key, collect()), $resultats->get($key, collect()));
+                : $this->btsMetrics($btsBulletins->get($key, collect()), $resultats->get($key, collect()), $bilansBts->get($key));
 
             $item = [
                 'id' => $inscription->id,
@@ -195,8 +202,62 @@ class EtudiantAcademicJourneyPresenter
         );
     }
 
-    private function btsMetrics(Collection $bulletins, Collection $resultats): array
+    /**
+     * Le bilan officiel de chaque année BTS, par clé classe/année : la même
+     * moyenne et le même rang que le bulletin et la page des résultats.
+     */
+    private function bilansBts(ESBTPEtudiant $etudiant, Collection $inscriptions): Collection
     {
+        // Résolu ici et pas au constructeur : le conteneur passe `null` à un
+        // paramètre facultatif, et seul `present()` lit la base.
+        $bilanAnnuel = $this->bilanAnnuel ?? app(BilanAnnuelBts::class);
+
+        return $inscriptions
+            ->filter(fn (ESBTPInscription $i) => $this->systemFor($i) === 'BTS' && $i->classe_id && $i->annee_universitaire_id)
+            ->mapWithKeys(function (ESBTPInscription $i) use ($bilanAnnuel, $etudiant) {
+                $cle = $this->academicKey($i->classe_id, $i->annee_universitaire_id);
+                try {
+                    return [$cle => $bilanAnnuel->pour((int) $etudiant->id, (int) $i->classe_id, (int) $i->annee_universitaire_id)];
+                } catch (\Throwable $e) {
+                    // Une année aux données cassées ne doit pas faire tomber
+                    // la fiche ; elle s'affiche « indisponible », pas avec la
+                    // moyenne brute d'avant, qui serait fausse.
+                    report($e);
+
+                    return [$cle => ['indisponible' => true]];
+                }
+            });
+    }
+
+    private function btsMetrics(Collection $bulletins, Collection $resultats, ?array $bilan = null): array
+    {
+        if ($bilan['indisponible'] ?? false) {
+            return [
+                'source' => 'Calcul indisponible',
+                'moyenne' => null,
+                'moyenne_label' => null,
+                'rang_label' => null,
+                'credits_label' => null,
+                'mention' => null,
+                'bilan' => null,
+                'bilan_indisponible' => true,
+            ];
+        }
+
+        if ($bilan && $bilan['moyenne'] !== null) {
+            $last = $bulletins->sortBy('periode')->last();
+
+            return [
+                'source' => $bilan['provisoire'] ? 'Moyenne provisoire (un semestre)' : 'Bulletins BTS',
+                'moyenne' => $bilan['moyenne'],
+                'moyenne_label' => number_format($bilan['moyenne'], 2, ',', ' ') . ' / 20',
+                'rang_label' => $bilan['rang'] ? $bilan['rang'] . ($bilan['effectif'] ? '/' . $bilan['effectif'] : '') : null,
+                'credits_label' => null,
+                'mention' => $last?->mention,
+                'bilan' => $bilan,
+            ];
+        }
+
         $calculatedBulletins = $bulletins->filter(fn (ESBTPBulletin $bulletin) => $bulletin->moyenne_generale !== null && $bulletin->moyenne_generale > 0);
 
         if ($calculatedBulletins->isNotEmpty()) {
