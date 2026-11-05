@@ -122,8 +122,14 @@ class InitialisationInstance
         File::ensureDirectoryExists(dirname($this->chemin('initialisation.lock')));
         $this->verrou = fopen($this->chemin('initialisation.lock'), 'c');
 
-        if ($this->verrou && flock($this->verrou, LOCK_EX | LOCK_NB)) {
-            return true;
+        // Trois essais : etat() et enCours() prennent le verrou un instant pour
+        // savoir s'il est libre. Tombé dans cette fenêtre, un lancement aurait
+        // répondu « déjà en cours » alors que rien ne tournait.
+        for ($essai = 0; $this->verrou && $essai < 3; $essai++) {
+            if (flock($this->verrou, LOCK_EX | LOCK_NB)) {
+                return true;
+            }
+            usleep(150000);
         }
 
         $this->rendreVerrou();

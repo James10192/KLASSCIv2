@@ -5,8 +5,9 @@
 # Environment) ; la fiche docs/runbooks/nouvelle-ecole-dokploy.md les décrit.
 #
 # Rien à générer à la main : la clé APP_KEY est tirée au premier démarrage et
-# gardée dans le volume `instance`, le mot de passe root de MySQL est tiré au
-# hasard par l'image et ne sert à personne.
+# gardée dans le volume `instance` ; le mot de passe root de MySQL est tiré au
+# hasard par l'image (affiché une fois dans les logs du service `base`) et
+# l'application n'en a pas besoin.
 
 x-ecole: &ecole
   build:
@@ -18,7 +19,6 @@ x-ecole: &ecole
     APP_URL: https://${DOMAINE:?Renseignez DOMAINE (ex. lycee-x.klassci.com) dans l'onglet Environment}
     TENANT_CODE: ${CODE_ECOLE:?Renseignez CODE_ECOLE (ex. lycee-x) dans l'onglet Environment}
     APP_TIMEZONE: ${FUSEAU:-UTC}
-    APP_KEY: ${APP_KEY:-}
     DB_CONNECTION: mysql
     DB_HOST: base
     DB_PORT: "3306"
@@ -31,15 +31,22 @@ x-ecole: &ecole
     # sans partir. En `sync`, ils partent pendant la requête.
     QUEUE_CONNECTION: ${QUEUE_CONNECTION:-sync}
     MAIL_MAILER: ${MAIL_MAILER:-log}
-    MAIL_HOST: ${MAIL_HOST:-}
-    MAIL_PORT: ${MAIL_PORT:-}
-    MAIL_USERNAME: ${MAIL_USERNAME:-}
-    MAIL_PASSWORD: ${MAIL_PASSWORD:-}
-    MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-}
-    MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-}
-    MASTER_API_URL: ${MASTER_API_URL:-}
-    MASTER_API_TOKEN: ${MASTER_API_TOKEN:-}
-    GROUP_SSO_SHARED_SECRET: ${GROUP_SSO_SHARED_SECRET:-}
+    # Facultatives : JAMAIS sous leur vrai nom. Absente, une variable de compose
+    # devient une chaîne vide qui masque la ligne de .env (clé vide figée par un
+    # config:cache tapé au terminal = école en 500). Préfixées ECOLE_, elles sont
+    # recopiées dans .env au démarrage seulement si elles sont renseignées
+    # (bin/deploy/ecrire-env-instance.php).
+    ECOLE_APP_KEY: ${APP_KEY:-}
+    ECOLE_DB_TIMEZONE: ${DECALAGE_BASE:-}
+    ECOLE_MAIL_HOST: ${MAIL_HOST:-}
+    ECOLE_MAIL_PORT: ${MAIL_PORT:-}
+    ECOLE_MAIL_USERNAME: ${MAIL_USERNAME:-}
+    ECOLE_MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+    ECOLE_MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-}
+    ECOLE_MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-}
+    ECOLE_MASTER_API_URL: ${MASTER_API_URL:-}
+    ECOLE_MASTER_API_TOKEN: ${MASTER_API_TOKEN:-}
+    ECOLE_GROUP_SSO_SHARED_SECRET: ${GROUP_SSO_SHARED_SECRET:-}
   volumes:
     - documents:/var/www/html/storage/app
     - instance:/var/www/html/storage/instance

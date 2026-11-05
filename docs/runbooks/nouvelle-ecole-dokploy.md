@@ -45,9 +45,14 @@ MOT_DE_PASSE_BASE=lettresEtChiffresSeulement24
 
 Puis **Save**.
 
-> **École hors de Côte d'Ivoire** : ajoutez aussi la ligne `FUSEAU=…` maintenant,
-> avant tout déploiement. Le fuseau ne se change plus sans dégâts une fois des
-> données saisies. Voir `docs/runbooks/ucao-benin-mise-en-service.md`.
+> **École hors de Côte d'Ivoire** : ajoutez maintenant, avant tout déploiement,
+> les **deux** lignes `FUSEAU=…` et `DECALAGE_BASE=…` (au Bénin :
+> `FUSEAU=Africa/Porto-Novo` et `DECALAGE_BASE=+01:00`). Elles ne se changent
+> plus sans dégâts une fois des données saisies. Un fuseau qui change d'heure en
+> été est refusé au démarrage. Voir `docs/runbooks/ucao-benin-mise-en-service.md`.
+>
+> **École reprise d'un ancien serveur** : ajoutez aussi `APP_KEY=` avec sa clé
+> d'origine, sinon ses données chiffrées deviennent illisibles.
 
 ## 3. Brancher le domaine
 
@@ -67,7 +72,11 @@ Le déploiement est bon quand l'onglet **Deployments** affiche **Done**, et que
 **Si le déploiement échoue avec un message « Renseignez … »**, une variable de
 l'étape 2 manque ou est vide : complétez-la et redéployez.
 
-## 5. Remplir l'assistant de l'école
+## 5. Remplir l'assistant de l'école — tout de suite
+
+Faites cette étape **juste après le déploiement**, sans attendre : tant que
+l'assistant n'est pas terminé, n'importe qui arrivant sur le domaine pourrait le
+remplir à votre place et créer le compte administrateur.
 
 Ouvrez `https://<domaine>/install`.
 
@@ -93,6 +102,7 @@ jamais repasser par l'assistant.
 | Logs : `ATTENTION : aucun volume…` | Le service a été créé en type **Application** et non **Compose**. | Recréez-le en suivant l'étape 1. |
 | L'assistant réapparaît après une mise à jour | Le volume de l'école a été supprimé. | Ne supprimez jamais un volume d'une école en service. Prévenez l'équipe technique. |
 | L'initialisation affiche une erreur | Le message et la fenêtre noire disent la cause. | Envoyez une capture à l'équipe technique. Relancer est sans danger. |
+| Logs : `FUSEAU … change d'heure en été : refusé` | Le fuseau choisi n'a pas un décalage fixe. | Prenez celui de la capitale du pays (ex. `Africa/Porto-Novo`), redéployez. |
 
 ## Ce qu'il ne faut jamais faire
 
@@ -107,8 +117,13 @@ jamais repasser par l'assistant.
   (`storage/instance/app.key`). Pour reprendre une école existante (migration
   depuis cPanel), posez plutôt `APP_KEY` dans l'onglet Environment avec la
   valeur d'origine, avant le premier déploiement.
-- Le mot de passe root de MySQL est aléatoire et inconnu : l'application n'en a
-  pas besoin. Pour une intervention, utilisez l'utilisateur `klassci`.
+- Le mot de passe root de MySQL est aléatoire, affiché une seule fois dans les
+  logs du premier démarrage du service `base` (« GENERATED ROOT PASSWORD »).
+  L'application n'en a pas besoin ; pour une intervention, utilisez `klassci`.
+- Les variables facultatives (courrier, master, clé reprise, `DECALAGE_BASE`) ne
+  sont jamais passées vides au conteneur : renseignées, elles sont recopiées dans
+  le `.env` de l'école à chaque démarrage ; retirées de Dokploy, leur ligne
+  disparaît au démarrage suivant.
 - La file d'attente est en `sync` (aucun worker ne tourne). Pour passer en
   `database`, ajoutez d'abord un worker.
 - Le planificateur tourne dans le service `planificateur`, en `www-data`. Ne

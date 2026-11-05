@@ -26,29 +26,43 @@ chmod 700 "$DOSSIER_INSTANCE"
 chmod 600 "$ENV_PERSISTANT"
 ln -sfn "$ENV_PERSISTANT" /var/www/html/.env
 
-# Clé de chiffrement : fournie par Dokploy, ou générée UNE fois et gardée dans
-# le volume. Elle chiffre sessions et données : la régénérer à chaque
-# redéploiement les rendrait illisibles, d'où le refus sans volume.
+# Clé de chiffrement. Trois cas :
+#  - APP_KEY posée directement dans l'environnement (service Dokploy de type
+#    Application) : elle prime, rien à faire ;
+#  - APP_KEY renseignée dans l'onglet Environment d'un service Compose (école
+#    reprise de cPanel) : elle arrive en ECOLE_APP_KEY et devient la clé ;
+#  - rien : tirée UNE fois et gardée dans le volume.
+# Elle n'est JAMAIS passée vide au conteneur : une commande tapée dans le
+# terminal Dokploy hériterait du vide, et un `config:cache` le figerait.
 # Le verrou évite que l'application et le planificateur, démarrés ensemble,
-# en tirent chacun une différente.
+# en tirent chacun une différente. Sans volume, refus : une clé neuve à
+# chaque déploiement rendrait sessions et données chiffrées illisibles.
 if [ -z "$APP_KEY" ]; then
-    if ! mountpoint -q "$DOSSIER_INSTANCE"; then
+    if ! mountpoint -q "$DOSSIER_INSTANCE" && [ -z "$ECOLE_APP_KEY" ]; then
         echo "APP_KEY absente et aucun volume sur $DOSSIER_INSTANCE : le conteneur refuse de démarrer." >&2
-        echo "Ajoutez le volume (ou posez APP_KEY dans l'environnement), puis redéployez." >&2
+        echo "Créez le service en type Compose (deploy/docker/docker-compose.yml), ou posez APP_KEY, puis redéployez." >&2
         exit 1
     fi
     CLE="$DOSSIER_INSTANCE/app.key"
-    flock "$DOSSIER_INSTANCE/.cle.lock" sh -c "
-        [ -s '$CLE' ] || php -r 'echo \"base64:\".base64_encode(random_bytes(32));' > '$CLE'
-    "
+    export CLE
+    flock "$DOSSIER_INSTANCE/.cle.lock" sh -c '
+        if [ -n "$ECOLE_APP_KEY" ]; then
+            printf %s "$ECOLE_APP_KEY" > "$CLE"
+        elif [ ! -s "$CLE" ]; then
+            php -r "echo \"base64:\".base64_encode(random_bytes(32));" > "$CLE"
+        fi
+    '
     chown www-data:www-data "$CLE"
     chmod 600 "$CLE"
-    APP_KEY=$(cat "$CLE")
-    export APP_KEY
-    # Aussi dans .env : une commande lancée plus tard dans le terminal Dokploy
-    # n'hérite pas de cet export, et le cache de config peut avoir été vidé.
-    grep -q '^APP_KEY=' "$ENV_PERSISTANT" || printf 'APP_KEY=%s\n' "$APP_KEY" >> "$ENV_PERSISTANT"
+    ECOLE_APP_KEY=$(cat "$CLE")
+    export ECOLE_APP_KEY
 fi
+
+# Variables facultatives de Dokploy (préfixe ECOLE_) recopiées dans .env, qui
+# fait foi pour toutes les commandes, terminal compris ; vérifie le fuseau.
+php bin/deploy/ecrire-env-instance.php "$ENV_PERSISTANT"
+chown www-data:www-data "$ENV_PERSISTANT"
+chmod 600 "$ENV_PERSISTANT"
 
 # Un fichier de journal créé par root (planificateur lancé à la main, version
 # précédente de l'image) bloquerait toute écriture de PHP-FPM jusqu'à minuit.

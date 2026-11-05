@@ -2,10 +2,9 @@
 
 namespace Tests\Unit\Install;
 
-use App\Http\Controllers\InstallController;
+use App\Support\Installation\FichierEnv;
 use Dotenv\Dotenv;
 use PHPUnit\Framework\TestCase;
-use ReflectionClass;
 
 /**
  * Ce que l'assistant écrit dans .env doit être relu à l'identique au
@@ -24,11 +23,7 @@ class EcritureEnvInstallationTest extends TestCase
 
     private function ecrire(string $contenu, array $valeurs): string
     {
-        $classe = new ReflectionClass(InstallController::class);
-        $methode = $classe->getMethod('ecrireValeursEnv');
-        $methode->setAccessible(true);
-
-        return $methode->invoke($classe->newInstanceWithoutConstructor(), $contenu, $valeurs);
+        return FichierEnv::ecrire($contenu, $valeurs);
     }
 
     public function test_chaque_valeur_est_relue_telle_quelle_par_dotenv(): void

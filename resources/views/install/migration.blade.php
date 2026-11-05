@@ -89,7 +89,8 @@ new Vue({
         terminal: [],
         nextUrl: '',
         suivi: null,
-        debut: 0
+        debut: 0,
+        attenteSansSuivi: null
     },
     mounted() {
         // Une initialisation lancée avant un rechargement continue sur le
@@ -103,6 +104,7 @@ new Vue({
             this.nextUrl = '';
             this.terminal = ['Démarrage de l’initialisation Laravel...'];
             this.debut = Date.now() - 5000;
+            this.attenteSansSuivi = null;
             this.suivre();
 
             axios.post('{{ route("install.run-migration") }}', {})
@@ -113,6 +115,7 @@ new Vue({
                     // connexion coupée. Dans les deux cas le serveur continue,
                     // c'est son état qui tranchera.
                     if (error.response?.status === 409 || !data || typeof data !== 'object') {
+                        this.attenteSansSuivi = 0;
                         return;
                     }
                     this.conclure(data);
@@ -132,7 +135,15 @@ new Vue({
                     if (data.data?.terminal?.length) {
                         this.terminal = data.data.terminal;
                     }
+                    if (statut !== 'en_cours' && this.attenteSansSuivi !== null && ++this.attenteSansSuivi >= 3) {
+                        // « Déjà en cours » annoncé, mais rien ne tourne : on rend
+                        // la main plutôt que de laisser tourner l'écran sans fin.
+                        this.attenteSansSuivi = null;
+                        this.conclure({ ok: false, message: 'Aucune initialisation ne tourne finalement. Relancez-la.' });
+                        return;
+                    }
                     if (statut === 'en_cours') {
+                        this.attenteSansSuivi = null;
                         this.status = 'running';
                         this.message = data.message || '';
                         if (auChargement) this.suivre();

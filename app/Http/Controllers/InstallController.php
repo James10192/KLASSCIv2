@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Log;
 use App\Models\Setting;
+use App\Support\Installation\FichierEnv;
 use App\Support\Installation\InitialisationInstance;
 
 class InstallController extends Controller
@@ -81,9 +82,9 @@ class InstallController extends Controller
      * Base déjà configurée et joignable (Dokploy, ou un .env déjà rempli) :
      * rien à saisir, on passe à l'initialisation.
      *
-     * Le critère est que la connexion réponde, pas l'origine des variables :
-     * un .env neuf (DB_HOST=127.0.0.1, base « laravel ») ne répond pas, et le
-     * formulaire s'affiche comme avant.
+     * Le critère est que la connexion réponde et que l'adresse et le code de
+     * l'école soient posés, pas l'origine des variables : un .env neuf ne
+     * remplit pas ces conditions, et le formulaire s'affiche comme avant.
      */
     private function adopterBaseFournie(): bool
     {
@@ -91,7 +92,15 @@ class InstallController extends Controller
             return true;
         }
 
-        if (!getenv('DB_HOST') || !getenv('DB_DATABASE') || !InstallationHelper::isDatabaseConfigured()) {
+        // L'étape base écrit aussi APP_URL et TENANT_CODE : on ne la saute que
+        // s'ils sont déjà posés. Un .env copié de .env.example avec seulement
+        // la base remplie garderait sinon http://localhost (liens des e-mails
+        // et PDF faux) et aucun code d'école (paywall, API master).
+        $hote = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
+        $urlPosee = $hote !== '' && !in_array($hote, ['localhost', '127.0.0.1'], true);
+        $codePose = !in_array((string) config('app.tenant_code'), ['', 'default'], true);
+
+        if (!$urlPosee || !$codePose || !InstallationHelper::isDatabaseConfigured()) {
             return false;
         }
 
@@ -998,56 +1007,15 @@ class InstallController extends Controller
         if (File::exists($path)) {
             $content = File::get($path);
 
-            File::put($path, $this->ecrireValeursEnv($content, $data));
+            File::put($path, FichierEnv::ecrire($content, $data));
         } else {
             // Pas de .env : on part de .env.example s'il existe, sinon d'un
             // fichier vide — l'image Docker n'embarque pas .env.example.
             $example = base_path('.env.example');
             $content = File::exists($example) ? File::get($example) : '';
 
-            File::put($path, $this->ecrireValeursEnv($content, $data));
+            File::put($path, FichierEnv::ecrire($content, $data));
         }
-    }
-
-    /**
-     * Remplace ou ajoute chaque clé, valeur mise en forme pour dotenv.
-     *
-     * Une clé existante est remplacée par une fonction de rappel : un mot de
-     * passe contenant `$1` ou `\\` serait sinon lu comme une référence de
-     * remplacement par preg_replace.
-     */
-    private function ecrireValeursEnv(string $content, array $data): string
-    {
-        foreach ($data as $key => $value) {
-            $ligne = $key . '=' . $this->formatEnvValue($value);
-            $motif = '/^' . preg_quote($key, '/') . '=.*$/m';
-
-            if (preg_match($motif, $content)) {
-                $content = preg_replace_callback($motif, fn () => $ligne, $content);
-            } else {
-                $content = rtrim($content, "\n") . "\n" . $ligne . "\n";
-            }
-        }
-
-        return $content;
-    }
-
-    /**
-     * Met une valeur sous une forme que dotenv relit telle quelle.
-     *
-     * Un nom d'école avec espaces (« PRESENTATION-TEST KLASSCI ») écrit nu
-     * rend tout le fichier illisible au démarrage suivant : on entoure de
-     * guillemets dès qu'un caractère l'exige, en échappant `\` et `"`.
-     */
-    private function formatEnvValue($value): string
-    {
-        $value = (string) ($value ?? '');
-
-        if ($value === '' || preg_match('/^[A-Za-z0-9_.:\/@+,-]+$/', $value)) {
-            return $value;
-        }
-
-        return '"' . str_replace(['\\', '"', '$'], ['\\\\', '\\"', '\\$'], $value) . '"';
     }
 
     /**
