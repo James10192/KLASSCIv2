@@ -21,10 +21,11 @@ class MotifDeRefusDeNoteTest extends TestCase
         return (new ESBTPEvaluation())->forceFill(array_merge(['id' => 58, 'is_published' => true, 'bareme' => 20], $attributs));
     }
 
-    private function motifs(array $cohorte = [1014]): MotifDeRefusDeNote
+    private function motifs(array $cohorte = [1014], string $horsCohorte = 'étudiant hors de la classe'): MotifDeRefusDeNote
     {
         $cohortes = Mockery::mock(NoteStudentCohortService::class);
         $cohortes->shouldReceive('allowedStudentIdsForEvaluation')->andReturn(collect($cohorte));
+        $cohortes->shouldReceive('raisonHorsCohorte')->andReturn($horsCohorte);
 
         return new MotifDeRefusDeNote($cohortes);
     }
@@ -55,6 +56,13 @@ class MotifDeRefusDeNoteTest extends TestCase
         $validee = (new ESBTPNote())->forceFill(['submission_status' => ESBTPNote::SUBMISSION_SUBMITTED]);
         $this->assertSame('note déjà validée', $this->motifs()->pour($this->saisie(), $this->evaluation(), $validee, false, $oui));
         $this->assertNull($this->motifs()->pour($this->saisie(), $this->evaluation(), $validee, true, $oui));
+    }
+
+    public function test_une_inscription_en_attente_est_nommee_comme_telle(): void
+    {
+        $motifs = $this->motifs([7], 'inscription dans la classe pas encore validée');
+
+        $this->assertSame('inscription dans la classe pas encore validée', $motifs->pour($this->saisie(), $this->evaluation(), null, false, fn () => true));
     }
 
     public function test_une_absence_ignore_le_bareme(): void

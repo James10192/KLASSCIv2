@@ -177,6 +177,25 @@ class NoteStudentCohortService
         );
     }
 
+    /**
+     * Pourquoi un étudiant absent de la cohorte l'est : la plupart du temps
+     * son inscription dans la classe attend encore sa validation. Le dire
+     * évite « hors de la classe », faux dans ce cas.
+     */
+    public function raisonHorsCohorte(int $etudiantId, ESBTPEvaluation $evaluation): string
+    {
+        $enAttente = ESBTPInscription::query()
+            ->where('etudiant_id', $etudiantId)
+            ->where('classe_id', $evaluation->classe_id)
+            ->where('annee_universitaire_id', $evaluation->annee_universitaire_id)
+            ->where(fn ($q) => $q->where('status', '!=', 'active')->orWhere('workflow_step', '!=', 'etudiant_cree'))
+            ->exists();
+
+        return $enAttente
+            ? 'inscription dans la classe pas encore validée'
+            : 'étudiant hors de la classe';
+    }
+
     public function allowedStudentIdsForEvaluation(ESBTPEvaluation $evaluation): Collection
     {
         return $this->studentsForEvaluation($evaluation)

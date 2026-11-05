@@ -40,7 +40,7 @@ class MotifDeRefusDeNote
         $evalKey = (int) $evaluation->id;
         $this->cohortes[$evalKey] ??= $this->cohortService->allowedStudentIdsForEvaluation($evaluation)->all();
         if (! in_array((int) $entry['etudiant_id'], $this->cohortes[$evalKey], true)) {
-            return 'étudiant hors de la classe';
+            return $this->cohortService->raisonHorsCohorte((int) $entry['etudiant_id'], $evaluation);
         }
 
         // Garde-fou note ≤ barème (défense en profondeur, déjà couvert pour

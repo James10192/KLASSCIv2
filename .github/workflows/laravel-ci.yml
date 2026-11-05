@@ -145,6 +145,7 @@ jobs:
         run: |
           php artisan test tests/Unit/Services/Notes/EvaluationsDeLaFicheTest.php --stop-on-failure
           php artisan test tests/Unit/Services/Notes/FicheNotesIntegrationUxTest.php --stop-on-failure
+          php artisan test tests/Unit/Services/Notes/MotifDeRefusDeNoteTest.php --stop-on-failure
 
       - name: Test fiche étudiant sans calcul de dossier inutilisé
         if: github.event_name == 'pull_request'
