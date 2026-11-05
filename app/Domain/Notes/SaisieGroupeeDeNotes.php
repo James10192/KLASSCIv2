@@ -101,9 +101,9 @@ class SaisieGroupeeDeNotes
      * @return array{saved:int, refused:array, total:int, synchronization:array}
      * @throws \Throwable rien n'est écrit si une exception remonte
      */
-    public function enregistrer(array $entrees, User $user, bool $valider): array
+    public function enregistrer(array $entrees, User $user, bool $valider, ?array $avantAttendu = null): array
     {
-        return $this->ecrireLot($entrees, $user, $valider, null);
+        return $this->ecrireLot($entrees, $user, $valider, $avantAttendu, false);
     }
 
     /**
@@ -116,7 +116,7 @@ class SaisieGroupeeDeNotes
      */
     public function enregistrerToutOuRien(array $entrees, User $user, bool $valider, array $avantAttendu): array
     {
-        return $this->ecrireLot($entrees, $user, $valider, $avantAttendu);
+        return $this->ecrireLot($entrees, $user, $valider, $avantAttendu, true);
     }
 
     /** Ce qu'une note est en ce moment, sous une forme comparable ; null = pas de note. */
@@ -125,7 +125,13 @@ class SaisieGroupeeDeNotes
         return $note ? ['note' => $note->is_absent ? null : (float) $note->note, 'absent' => (bool) $note->is_absent, 'validee' => $note->isSubmitted()] : null;
     }
 
-    private function ecrireLot(array $entrees, User $user, bool $valider, ?array $avantAttendu): array
+    /** Différencie l'absence d'une version attendue d'une note initialement absente. */
+    public static function snapshotConcorde(?array $actuel, array $attendus, string $cle): bool
+    {
+        return array_key_exists($cle, $attendus) && $actuel == $attendus[$cle];
+    }
+
+    private function ecrireLot(array $entrees, User $user, bool $valider, ?array $avantAttendu, bool $toutOuRien): array
     {
         $saved = 0;
         // Les paires refusées, avec leur raison : l'écran les garde en brouillon
@@ -133,14 +139,17 @@ class SaisieGroupeeDeNotes
         $refused = [];
         $avis = [];
 
-        $toutOuRien = $avantAttendu !== null;
         $synchronization = DB::transaction(function () use ($entrees, $user, $valider, $toutOuRien, $avantAttendu, &$saved, &$refused, &$avis) {
             $evaluations = ESBTPEvaluation::whereIn('id', collect($entrees)->pluck('evaluation_id')->unique())->get()->keyBy('id');
-            $existantes = $this->notesExistantes($entrees, $toutOuRien);
+            $existantes = $this->notesExistantes($entrees, $avantAttendu !== null);
             if ($toutOuRien) {
                 foreach ($entrees as $entree) {
-                    $actuelle = self::avant($existantes->get($entree['etudiant_id'] . '_' . $entree['evaluation_id']));
-                    if ($actuelle != ($avantAttendu[$entree['etudiant_id']] ?? null)) {
+                    $key = $entree['etudiant_id'] . '_' . $entree['evaluation_id'];
+                    $actuelle = self::avant($existantes->get($key));
+                    $attendue = array_key_exists($key, $avantAttendu)
+                        ? $avantAttendu[$key]
+                        : ($avantAttendu[$entree['etudiant_id']] ?? null); // compat assistant
+                    if ($actuelle != $attendue) {
                         throw new SaisieInterrompue('Une note a changé depuis la proposition.');
                     }
                 }
@@ -151,7 +160,15 @@ class SaisieGroupeeDeNotes
 
             foreach ($entrees as $entree) {
                 $evaluation = $evaluations->get($entree['evaluation_id']);
-                $note = $existantes->get($entree['etudiant_id'] . '_' . $entree['evaluation_id']);
+                $key = $entree['etudiant_id'] . '_' . $entree['evaluation_id'];
+                $note = $existantes->get($key);
+                // L'éditeur de fiche envoie un état lu avant modification.
+                // Si une autre saisie est passée entre-temps, refuser CETTE
+                // ligne sans perdre les autres corrections du lot.
+                if (! $toutOuRien && $avantAttendu !== null && ! self::snapshotConcorde(self::avant($note), $avantAttendu, $key)) {
+                    $refused[] = MotifDeRefusDeNote::ligne($entree, MotifDeRefusDeNote::SAISIE_CONCURRENTE);
+                    continue;
+                }
 
                 $raison = $motifs->pour($entree, $evaluation, $note, $modifierValidee, $peutGerer);
                 if ($raison !== null) {

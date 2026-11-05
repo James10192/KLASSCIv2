@@ -31,7 +31,7 @@ final class FicheNotesController extends Controller
             ->with(['classe', 'anneeUniversitaire'])
             ->orderByDesc('annee_universitaire_id')->orderByDesc('id')->get();
 
-        return $this->render($etudiant, $inscriptions);
+        return $this->render($etudiant, $inscriptions, true);
     }
 
     public function inscription(ESBTPInscription $inscription)
@@ -40,10 +40,10 @@ final class FicheNotesController extends Controller
         abort_unless(auth()->user()->can('notes.view'), 403);
         $inscription->loadMissing(['classe', 'anneeUniversitaire', 'etudiant']);
 
-        return $this->render($inscription->etudiant, collect([$inscription]));
+        return $this->render($inscription->etudiant, collect([$inscription]), false);
     }
 
-    private function render(ESBTPEtudiant $student, $inscriptions)
+    private function render(ESBTPEtudiant $student, $inscriptions, bool $allowBulk)
     {
         $blocks = $inscriptions->map(function (ESBTPInscription $inscription) use ($student) {
             $evaluations = app(EvaluationsDeLaFiche::class)->pourInscription($inscription)
@@ -96,6 +96,7 @@ final class FicheNotesController extends Controller
         return response()->view('esbtp.partials.fiche-notes-contenu', [
             'student' => $student,
             'blocks' => $blocks,
+            'allowBulk' => $allowBulk,
             'typesEvaluation' => ESBTPEvaluation::getTypes(),
         ]);
     }

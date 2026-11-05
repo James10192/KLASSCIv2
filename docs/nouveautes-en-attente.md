@@ -13,3 +13,4 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-11-04 · #1776 · Fiche étudiant : corriger plusieurs notes d'un coup sans fenêtre successive, vérifier les brouillons et les refus de sauvegarde
