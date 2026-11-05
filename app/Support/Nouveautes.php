@@ -11,6 +11,13 @@ use App\Models\User;
 class Nouveautes
 {
     /**
+     * Entrées montrées au plus, les plus récentes en tête du fichier. La
+     * fenêtre en affichait près de quarante : on ne lit pas un historique
+     * dans une fenêtre d'accueil.
+     */
+    public const LIMITE = 8;
+
+    /**
      * @return array{titre: string, entrees: list<array<string, mixed>>}
      */
     public static function pour(?User $utilisateur, ?array $contenu = null): array
@@ -33,7 +40,8 @@ class Nouveautes
             }
         ));
 
-        return ['titre' => (string) ($contenu['titre'] ?? ''), 'entrees' => $entrees];
+        // Filtrer d'abord, limiter ensuite : chacun voit SES huit dernières nouveautés.
+        return ['titre' => (string) ($contenu['titre'] ?? ''), 'entrees' => array_slice($entrees, 0, self::LIMITE)];
     }
 
     /**

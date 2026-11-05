@@ -1,7 +1,61 @@
 <?php
 
 /*
- *        [
+ * Contenu de la fenêtre « Nouveautés » affichée à la connexion.
+ *
+ * Une entrée par changement VISIBLE. `si` (facultatif) réserve une entrée aux
+ * écoles où l'écran annoncé est ouvert : voir Nouveautes::disponible(). Chaque entrée n'apparaît qu'aux comptes
+ * qui ont au moins une des permissions listées (aucune liste = tout le monde) :
+ * une caissière ne lit pas les nouveautés du jury, un étudiant ne lit pas
+ * celles de la caisse. Un compte à qui aucune entrée ne s'adresse ne voit pas
+ * la fenêtre du tout.
+ *
+ * Les captures se prennent avant le déploiement pour « avant », après pour
+ * « après », au même cadrage (voir .claude/rules/changelog.md). Un fichier
+ * modifié change de nom : les images sont servies avec un long cache.
+ *
+ * La version (clé whatsNew.vAAAA_MM_JJ) reste écrite dans le layout, où la
+ * lit bin/verifier-fraicheur-nouveautes.php ; changer de version fait
+ * réapparaître la fenêtre à tout le monde.
+ */
+
+return [
+    'titre' => 'Novembre 2026',
+    'entrees' => [
+        [
+            'titre' => 'L’emploi du temps, un jour à la fois sur téléphone',
+            'icone' => 'fa-mobile-screen',
+            'texte' => 'Sur téléphone, l’emploi du temps ne défile plus en largeur : choisissez le jour, voyez ses séances avec l’heure, l’enseignant et la salle, et ajoutez une séance ce jour-là. Le jour courant s’ouvre d’office. L’ordinateur garde la grille complète.',
+            'permissions' => ['timetables.view', 'timetables.view_all', 'timetables.edit'],
+            'captures' => [
+                'apres' => 'images/nouveautes/2026-11/emploi-temps-jour-telephone-apres.webp',
+                'format' => 'telephone',
+                'legende' => 'Le lundi ouvert : une séance, son enseignant, sa salle, et l’ajout d’une séance ce jour-là.',
+            ],
+        ],
+        [
+            'titre' => 'Vos heures de cours, cours du soir compris',
+            'icone' => 'fa-clock',
+            'texte' => 'Paramètres, onglet Général, « Plage horaire des cours » : indiquez l’heure du premier créneau et la fin du dernier, jusqu’à 23 h. L’emploi du temps, la saisie des séances et les disponibilités des enseignants suivent. Une nouvelle évaluation propose aussi votre premier créneau.',
+            'permissions' => ['system.manage'],
+            'captures' => [
+                'apres' => 'images/nouveautes/2026-11/plage-horaire-reglages-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'Deux heures suffisent ; une fin avant le début est refusée.',
+            ],
+        ],
+        [
+            'titre' => 'Planning et évaluations plus confortables',
+            'icone' => 'fa-hand-pointer',
+            'texte' => 'Sur téléphone, les cartes du planning général sont plus compactes. Sur ordinateur, le bouton « Enregistrer » d’une nouvelle évaluation reste en bas de l’écran. Annuler une évaluation se confirme dans une fenêtre claire, qui dit ce qui change pour les moyennes. Le bandeau de l’emploi du temps écrit « 1 séance », « 1 510 h » et le volume restant exact.',
+            'permissions' => ['planning.manage', 'timetables.view', 'evaluations.create', 'evaluations.edit'],
+        ],
+        [
+            'titre' => 'Une seule fenêtre à la fois',
+            'icone' => 'fa-window-restore',
+            'texte' => 'À l’ouverture d’une page, l’avis d’abonnement et les rappels ne s’empilent plus : un seul s’affiche, le suivant attend le prochain chargement.',
+        ],
+        [
             'titre' => 'Prévenir les étudiants par e-mail à chaque annonce',
             'icone' => 'fa-envelope-open-text',
             'texte' => 'En publiant une annonce, cochez l’envoi par e-mail : chaque étudiant ciblé est prévenu une seule fois, et vous pouvez limiter l’envoi aux inscrits de l’année. La fiche de l’annonce montre l’aperçu du courriel et le bilan de diffusion, adresse par adresse. Recherche, filtres et listes se mettent à jour sans recharger la page. En cas de doute sur un envoi, KLASSCI le met en attente au lieu de le renvoyer : personne ne reçoit le message deux fois.',
@@ -85,27 +139,6 @@
             'texte' => 'Nouveau rapport des effectifs par classe, filtrable et exportable en PDF. Les places affichées correspondent à l’année du dossier ou de destination. La fiche étudiant propose la réinscription vers l’année suivante dès que l’année courante est échue. Le planning général peut reprendre les affectations d’enseignants de l’année précédente, sans écraser l’existant.',
             'permissions' => ['classes.view', 'inscriptions.edit', 'planning.manage'],
         ],
- Contenu de la fenêtre « Nouveautés » affichée à la connexion.
- *
- * Une entrée par changement VISIBLE. `si` (facultatif) réserve une entrée aux
- * écoles où l'écran annoncé est ouvert : voir Nouveautes::disponible(). Chaque entrée n'apparaît qu'aux comptes
- * qui ont au moins une des permissions listées (aucune liste = tout le monde) :
- * une caissière ne lit pas les nouveautés du jury, un étudiant ne lit pas
- * celles de la caisse. Un compte à qui aucune entrée ne s'adresse ne voit pas
- * la fenêtre du tout.
- *
- * Les captures se prennent avant le déploiement pour « avant », après pour
- * « après », au même cadrage (voir .claude/rules/changelog.md). Un fichier
- * modifié change de nom : les images sont servies avec un long cache.
- *
- * La version (clé whatsNew.vAAAA_MM_JJ) reste écrite dans le layout, où la
- * lit bin/verifier-fraicheur-nouveautes.php ; changer de version fait
- * réapparaître la fenêtre à tout le monde.
- */
-
-return [
-    'titre' => 'Octobre et novembre 2026',
-    'entrees' => [
         [
             'titre' => 'Plus d’étudiants à l’écran pendant la saisie des notes',
             'icone' => 'fa-table',
