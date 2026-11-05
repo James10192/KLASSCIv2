@@ -40,7 +40,6 @@ x-ecole: &ecole
     # recopiées dans .env au démarrage seulement si elles sont renseignées
     # (bin/deploy/ecrire-env-instance.php).
     ECOLE_APP_KEY: ${APP_KEY:-}
-    ECOLE_DB_TIMEZONE: ${DECALAGE_BASE:-}
     ECOLE_MAIL_HOST: ${MAIL_HOST:-}
     ECOLE_MAIL_PORT: ${MAIL_PORT:-}
     ECOLE_MAIL_USERNAME: ${MAIL_USERNAME:-}

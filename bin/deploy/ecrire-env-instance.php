@@ -55,6 +55,17 @@ foreach (getenv() as $nom => $valeur) {
     }
 }
 
+// Le second fuseau, celui des colonnes que MySQL date lui-même (useCurrent),
+// se déduit du premier : à décalage fixe, il n'y a qu'une valeur possible.
+// Le poser à part laissait régler l'un sans l'autre. En UTC, aucune ligne :
+// Laravel n'émet alors aucun SET time_zone, comme sur les écoles en service.
+$decalage = $zone->getOffset(new DateTime('now', $zone));
+if ($decalage === 0) {
+    $retirer[] = 'DB_TIMEZONE';
+} else {
+    $ecrire['DB_TIMEZONE'] = sprintf('%s%02d:%02d', $decalage < 0 ? '-' : '+', intdiv(abs($decalage), 3600), intdiv(abs($decalage) % 3600, 60));
+}
+
 $contenu = (string) file_get_contents($chemin);
 foreach ($retirer as $cle) {
     $contenu = preg_replace('/^' . preg_quote($cle, '/') . '=.*\R?/m', '', $contenu);

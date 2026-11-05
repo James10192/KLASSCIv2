@@ -45,6 +45,7 @@ class SauvegardeDataJob implements ShouldQueue
         $this->nettoyerAnciennesSauvegardes();
 
         $backupPath = null;
+        $donneesCompletes = false;
 
         try {
             Log::info("Début sauvegarde automatique - Type: {$this->typeSauvegarde}");
@@ -72,6 +73,8 @@ class SauvegardeDataJob implements ShouldQueue
             if ($this->options['inclure_fichiers']) {
                 $this->sauvegarderFichiers($backupPath, $sauvegardeInfo);
             }
+
+            $donneesCompletes = true;
 
             // Compression si demandée
             if ($this->options['compression']) {
@@ -103,9 +106,11 @@ class SauvegardeDataJob implements ShouldQueue
             $this->envoyerNotificationEchec($e);
             $this->fail($e);
         } finally {
-            // Une sauvegarde interrompue laissait son dossier de travail, non
-            // compressé, sur le disque : on le retire, réussite ou non.
-            if ($backupPath && is_dir(storage_path("app/{$backupPath}"))) {
+            // Une sauvegarde interrompue AVANT d'avoir tout copié laissait un
+            // dossier incomplet : on le retire. Un dossier complet reste — sans
+            // compression, ou quand l'archive n'a pas pu s'écrire, c'est la
+            // seule copie ; le ménage le retire avec la durée de conservation.
+            if (!$donneesCompletes && $backupPath && is_dir(storage_path("app/{$backupPath}"))) {
                 $this->supprimerDossierRecursif(storage_path("app/{$backupPath}"));
             }
         }
@@ -219,24 +224,29 @@ class SauvegardeDataJob implements ShouldQueue
         $archivePath = storage_path("app/backups/{$archiveName}");
         $sourcePath = storage_path("app/{$backupPath}");
 
-        // Créer l'archive ZIP
+        // Une archive qui n'a pas pu être écrite est une sauvegarde ratée, et
+        // elle se dit ratée : ZipArchive n'écrit qu'à close(), si bien qu'un
+        // disque presque plein passait inaperçu (open() réussit, close() non),
+        // et la sauvegarde se déclarait réussie sans archive.
         $zip = new \ZipArchive();
-        if ($zip->open($archivePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === TRUE) {
-            $this->ajouterDossierAuZip($zip, $sourcePath, '');
-            $zip->close();
-
-            if (file_exists($archivePath)) {
-                $sauvegardeInfo['archive'] = $archiveName;
-                $sauvegardeInfo['taille_archive'] = filesize($archivePath);
-
-                // Supprimer le dossier temporaire non compressé
-                $this->supprimerDossierRecursif($sourcePath);
-
-                Log::info("Archive créée: {$archiveName} (" . number_format(filesize($archivePath) / 1024 / 1024, 2) . " MB)");
-            }
-        } else {
-            Log::warning("Impossible de créer l'archive ZIP: {$archivePath}");
+        if ($zip->open($archivePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            throw new \RuntimeException("Impossible de créer l'archive ZIP : {$archiveName}");
         }
+
+        $this->ajouterDossierAuZip($zip, $sourcePath, '');
+
+        if (!$zip->close() || !is_file($archivePath) || filesize($archivePath) === 0) {
+            @unlink($archivePath);
+            throw new \RuntimeException("Archive ZIP non écrite (disque plein ?) : {$archiveName}");
+        }
+
+        $sauvegardeInfo['archive'] = $archiveName;
+        $sauvegardeInfo['taille_archive'] = filesize($archivePath);
+
+        // Le dossier non compressé n'est retiré qu'une fois l'archive vérifiée.
+        $this->supprimerDossierRecursif($sourcePath);
+
+        Log::info("Archive créée: {$archiveName} (" . number_format(filesize($archivePath) / 1024 / 1024, 2) . " MB)");
     }
 
     /**
@@ -259,9 +269,9 @@ class SauvegardeDataJob implements ShouldQueue
         }
 
         $limite = Carbon::now()->subDays($this->options['retention_jours'])->getTimestamp();
-        // Un dossier de travail n'existe que pendant une sauvegarde : plus vieux
-        // qu'un jour, c'est le reste d'une sauvegarde interrompue.
-        $limiteDossier = Carbon::now()->subDay()->getTimestamp();
+        // Un dossier resté là est une sauvegarde complète non compressée (archive
+        // impossible) ou le reste d'un processus tué : même durée que les archives.
+        $limiteDossier = $limite;
 
         foreach (scandir($backupsPath) as $entree) {
             if ($entree === '.' || $entree === '..') {
@@ -277,7 +287,7 @@ class SauvegardeDataJob implements ShouldQueue
                 if (is_dir($chemin)) {
                     if (filemtime($chemin) < $limiteDossier) {
                         $this->supprimerDossierRecursif($chemin);
-                        Log::info("Sauvegarde interrompue retirée: {$entree}");
+                        Log::info("Ancienne sauvegarde non compressée retirée: {$entree}");
                     }
                     continue;
                 }
@@ -294,7 +304,9 @@ class SauvegardeDataJob implements ShouldQueue
 
     /**
      * Archive de ce type, ou ancienne archive sans type (`backup_<date>.zip`,
-     * avant que le type n'entre dans le nom). Tout autre fichier est laissé.
+     * avant que le type n'entre dans le nom). Tout autre fichier est laissé —
+     * l'ancien ménage effaçait aussi les emails-factices-*.json que relit
+     * AnciennesAdresses.
      */
     private function archiveConcernee(string $nom): bool
     {
@@ -302,7 +314,14 @@ class SauvegardeDataJob implements ShouldQueue
             return false;
         }
 
-        return ($m[1] ?? '') === '' || $m[1] === $this->typeSauvegarde;
+        // Une ancienne archive sans type peut être une sauvegarde complète :
+        // seule la tâche « complet » (30 jours) la retire, jamais celle de la
+        // base seule (7 jours), qui passe la première après le déploiement.
+        if (($m[1] ?? '') === '') {
+            return $this->typeSauvegarde === 'complet';
+        }
+
+        return $m[1] === $this->typeSauvegarde;
     }
 
     /**

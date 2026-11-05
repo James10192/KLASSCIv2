@@ -46,10 +46,10 @@ MOT_DE_PASSE_BASE=lettresEtChiffresSeulement24
 Puis **Save**.
 
 > **École hors de Côte d'Ivoire** : ajoutez maintenant, avant tout déploiement,
-> les **deux** lignes `FUSEAU=…` et `DECALAGE_BASE=…` (au Bénin :
-> `FUSEAU=Africa/Porto-Novo` et `DECALAGE_BASE=+01:00`). Elles ne se changent
-> plus sans dégâts une fois des données saisies. Un fuseau qui change d'heure en
-> été est refusé au démarrage. Voir `docs/runbooks/ucao-benin-mise-en-service.md`.
+> la ligne `FUSEAU=…` (au Bénin : `FUSEAU=Africa/Porto-Novo`). Le décalage de la
+> base de données s'en déduit tout seul. Elle ne se change plus sans dégâts une
+> fois des données saisies. Un fuseau qui change d'heure en été est refusé au
+> démarrage. Voir `docs/runbooks/ucao-benin-mise-en-service.md`.
 >
 > **École reprise d'un ancien serveur** : ajoutez aussi `APP_KEY=` avec sa clé
 > d'origine, sinon ses données chiffrées deviennent illisibles.
@@ -120,10 +120,12 @@ jamais repasser par l'assistant.
 - Le mot de passe root de MySQL est aléatoire, affiché une seule fois dans les
   logs du premier démarrage du service `base` (« GENERATED ROOT PASSWORD »).
   L'application n'en a pas besoin ; pour une intervention, utilisez `klassci`.
-- Les variables facultatives (courrier, master, clé reprise, `DECALAGE_BASE`) ne
+- Les variables facultatives (courrier, master, clé reprise) ne
   sont jamais passées vides au conteneur : renseignées, elles sont recopiées dans
   le `.env` de l'école à chaque démarrage ; retirées de Dokploy, leur ligne
-  disparaît au démarrage suivant.
+  disparaît au démarrage suivant — y compris une valeur posée à la main au
+  terminal : c'est Dokploy qui fait foi.
+- `DB_TIMEZONE` est calculé depuis `FUSEAU` à chaque démarrage (aucune ligne en UTC).
 - La file d'attente est en `sync` (aucun worker ne tourne). Pour passer en
   `database`, ajoutez d'abord un worker.
 - Le planificateur tourne dans le service `planificateur`, en `www-data`. Ne
