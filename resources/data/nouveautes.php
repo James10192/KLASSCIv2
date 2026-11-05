@@ -23,6 +23,17 @@ return [
     'titre' => 'Novembre 2026',
     'entrees' => [
         [
+            'titre' => 'Corriger plusieurs notes d’un étudiant d’un coup',
+            'icone' => 'fa-table-cells',
+            'texte' => 'Sur la fiche étudiant, partie académique, « Saisie multiple » ouvre la saisie directement dans le tableau des notes : changez plusieurs notes, une absence ou un commentaire, puis enregistrez tout en une fois, sans fenêtre successive. Chaque ligne indique si la note est validée ou encore en brouillon. Une note refusée garde votre saisie avec la raison, et une note modifiée entre-temps par un collègue vous est signalée au lieu d’être écrasée. Enregistrer ne valide pas officiellement les notes.',
+            'permissions' => ['notes.create', 'notes.edit'],
+            'captures' => [
+                'apres' => 'images/nouveautes/2026-11/notes-saisie-multiple-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'Deux notes changées dans le tableau, un seul bouton pour tout enregistrer.',
+            ],
+        ],
+        [
             'titre' => 'L’emploi du temps, un jour à la fois sur téléphone',
             'icone' => 'fa-mobile-screen',
             'texte' => 'Sur téléphone, l’emploi du temps ne défile plus en largeur : choisissez le jour, voyez ses séances avec l’heure, l’enseignant et la salle, et ajoutez une séance ce jour-là. Le jour courant s’ouvre d’office. L’ordinateur garde la grille complète.',
