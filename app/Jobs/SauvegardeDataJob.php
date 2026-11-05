@@ -270,8 +270,16 @@ class SauvegardeDataJob implements ShouldQueue
 
         $limite = Carbon::now()->subDays($this->options['retention_jours'])->getTimestamp();
         // Un dossier resté là est une sauvegarde complète non compressée (archive
-        // impossible) ou le reste d'un processus tué : même durée que les archives.
-        $limiteDossier = $limite;
+        // impossible) ou le reste d'un processus tué. On n'en garde qu'UN, le
+        // plus récent : chacun contient une copie intégrale des pièces, et en
+        // garder un par jour sur un disque plein recréait la spirale.
+        $limiteDossier = Carbon::now()->subDay()->getTimestamp();
+        $dossiers = array_values(array_filter(
+            scandir($backupsPath),
+            fn ($e) => $e !== '.' && $e !== '..' && is_dir($backupsPath . DIRECTORY_SEPARATOR . $e)
+        ));
+        usort($dossiers, fn ($a, $b) => filemtime($backupsPath . DIRECTORY_SEPARATOR . $b) <=> filemtime($backupsPath . DIRECTORY_SEPARATOR . $a));
+        $dossierGarde = $dossiers[0] ?? null;
 
         foreach (scandir($backupsPath) as $entree) {
             if ($entree === '.' || $entree === '..') {
@@ -285,7 +293,7 @@ class SauvegardeDataJob implements ShouldQueue
             // archive n'était jamais supprimée.
             try {
                 if (is_dir($chemin)) {
-                    if (filemtime($chemin) < $limiteDossier) {
+                    if ($entree !== $dossierGarde && filemtime($chemin) < $limiteDossier) {
                         $this->supprimerDossierRecursif($chemin);
                         Log::info("Ancienne sauvegarde non compressée retirée: {$entree}");
                     }
@@ -329,22 +337,28 @@ class SauvegardeDataJob implements ShouldQueue
      */
     private function copierRepertoireOuFichier($source, $destination)
     {
+        // Chaque échec lève : sur un disque presque plein, copy() rendait false
+        // sans bruit, et une sauvegarde tronquée se déclarait réussie puis
+        // prenait sa place dans la rotation.
         if (is_file($source)) {
-            $destinationDir = dirname($destination);
-            if (!is_dir($destinationDir)) {
-                mkdir($destinationDir, 0755, true);
+            $this->creerDossier(dirname($destination));
+            if (!copy($source, $destination)) {
+                throw new \RuntimeException("Copie impossible (disque plein ?) : {$source}");
             }
-            copy($source, $destination);
         } elseif (is_dir($source)) {
-            if (!is_dir($destination)) {
-                mkdir($destination, 0755, true);
-            }
+            $this->creerDossier($destination);
 
-            $files = scandir($source);
-            foreach ($files as $file) {
+            foreach (scandir($source) as $file) {
                 if ($file === '.' || $file === '..') continue;
                 $this->copierRepertoireOuFichier($source . DIRECTORY_SEPARATOR . $file, $destination . DIRECTORY_SEPARATOR . $file);
             }
+        }
+    }
+
+    private function creerDossier(string $dossier): void
+    {
+        if (!is_dir($dossier) && !mkdir($dossier, 0755, true) && !is_dir($dossier)) {
+            throw new \RuntimeException("Dossier impossible à créer : {$dossier}");
         }
     }
 

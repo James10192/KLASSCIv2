@@ -55,15 +55,44 @@ class NettoyageSauvegardesTest extends TestCase
         return collect(scandir($this->dossier))->reject(fn ($e) => in_array($e, ['.', '..']))->sort()->values()->all();
     }
 
+    public function test_un_seul_dossier_non_compresse_est_garde(): void
+    {
+        $this->poser('2026-11-01_03-00-00', 4, true);
+        $this->poser('2026-11-02_03-00-00', 3, true);
+        $this->poser('2026-11-03_03-00-00', 2, true);   // le plus récent : la copie de secours
+
+        $this->nettoyer('database', 7);
+
+        $this->assertSame(['2026-11-03_03-00-00'], $this->restants());
+    }
+
+    public function test_une_copie_de_fichier_ratee_est_un_echec(): void
+    {
+        $job = new SauvegardeDataJob('complet', ['retention_jours' => 30]);
+        $copier = new ReflectionMethod($job, 'copierRepertoireOuFichier');
+        $copier->setAccessible(true);
+        File::put($this->stockage . '/source.txt', 'pièce');
+        // La destination est un dossier : copy() échoue, comme sur un disque plein.
+        File::ensureDirectoryExists($this->stockage . '/cible.txt');
+
+        // RuntimeException du job, ou ErrorException de Laravel sur l'avertissement
+        // de copy() : dans les deux cas un échec, rattrapé et notifié.
+        $this->expectException(\Exception::class);
+        $copier->invoke($job, $this->stockage . '/source.txt', $this->stockage . '/cible.txt');
+    }
+
     public function test_un_dossier_ne_bloque_plus_le_menage(): void
     {
         $this->poser('2026-09-01_03-00-00', 40, true);          // trié avant les archives
+        $this->poser('2026-09-02_03-00-00', 39, true);
         $this->poser('backup_database_2026-09-03_03-00-00.zip', 40);
         $this->poser('backup_database_2026-11-04_03-00-00.zip', 1);
 
         $this->nettoyer('database', 7);
 
-        $this->assertSame(['backup_database_2026-11-04_03-00-00.zip'], $this->restants());
+        // Le plus récent des dossiers reste comme copie de secours ; l'autre et
+        // l'archive périmée partent.
+        $this->assertSame(['2026-09-02_03-00-00', 'backup_database_2026-11-04_03-00-00.zip'], $this->restants());
     }
 
     public function test_une_ancienne_archive_sans_type_n_est_retiree_que_par_la_tache_complete(): void
