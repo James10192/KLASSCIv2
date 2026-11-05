@@ -2777,7 +2777,7 @@
             $kpiMoyenneGen    = $lmdMoyenneAnnuelle;
             $kpiMoyenneIsLive = false;
         } else if (!$isLMD) {
-            if (($btsAnnualSnapshot['state'] ?? null) === 'annual_complete' && ($btsAnnualSnapshot['effective_total'] ?? null) !== null) {
+            if (in_array($btsAnnualSnapshot['state'] ?? null, ['annual_complete', 'annual_complete_no_coefficients'], true) && ($btsAnnualSnapshot['effective_total'] ?? null) !== null) {
                 $kpiMoyenneGen = round((float) $btsAnnualSnapshot['effective_total'], 2);
                 $kpiMoyenneIsLive = false;
             } elseif (($btsAnnualSnapshot['state'] ?? null) === 'annual_incomplete' && ($btsAnnualSnapshot['effective_total'] ?? null) !== null) {
@@ -2792,8 +2792,14 @@
                 : collect();
 
             $kpiBulletinsCalcueles = $kpiBulletins->filter(fn($b) => $b->moyenne_generale !== null && $b->moyenne_generale > 0);
+            $kpiBilanIndisponible = $kpiInscActive
+                ? (collect($academicJourney['items'] ?? [])->firstWhere('id', $kpiInscActive->id)['metrics']['bilan_indisponible'] ?? false)
+                : false;
             if ($kpiMoyenneGen !== null) {
                 // Le snapshot BTS phase-based est prioritaire quand il existe.
+            } elseif ($kpiBilanIndisponible || $btsAnnualSnapshot !== null) {
+                // Bilan officiel en échec ou sans moyenne : pas de moyenne brute
+                // des bulletins à sa place, elle contredirait le bulletin.
             } elseif ($kpiBulletinsCalcueles->count()) {
                 $kpiMoyenneGen    = round($kpiBulletinsCalcueles->avg('moyenne_generale'), 2);
                 $kpiMoyenneIsLive = false;
@@ -3889,7 +3895,7 @@
                 {{-- Crédits --}}
                 @php
                     $lmdCred = $_bul->credits_capitalises ?? 0;
-                    $lmdCredTot = $_bul->credits_totaux ?? 30;
+                    $lmdCredTot = $_bul->credits_totaux ?? app(\App\Services\LMD\LmdAcademicRuleProfile::class)->expectedCreditsPerSemester();
                     $lmdCredPct = $lmdCredTot > 0 ? min(100, round($lmdCred / $lmdCredTot * 100)) : 0;
                     $lmdCredOff = $lmdCirc - ($lmdCredPct / 100 * $lmdCirc);
                     $lmdCredStroke = $lmdCredPct >= 80 ? '#10b981' : ($lmdCredPct >= 50 ? '#f59e0b' : '#ef4444');
@@ -4850,7 +4856,7 @@
                                 @php $abLmdMgC = $abLmd->moyenne_generale >= 12 ? 'var(--k-success)' : ($abLmd->moyenne_generale >= 10 ? '#d97706' : 'var(--k-danger)'); @endphp
                                 <span style="font-size:.8rem; font-weight:700; color:{{ $abLmdMgC }};">{{ number_format($abLmd->moyenne_generale, 2) }}/20</span>
                             @endif
-                            <span style="font-size:.72rem; color:var(--k-muted);">{{ $abLmd->credits_capitalises ?? 0 }}/{{ $abLmd->credits_totaux ?? 30 }} CECT</span>
+                            <span style="font-size:.72rem; color:var(--k-muted);">{{ $abLmd->credits_capitalises ?? 0 }}/{{ $abLmd->credits_totaux ?? app(\App\Services\LMD\LmdAcademicRuleProfile::class)->expectedCreditsPerSemester() }} CECT</span>
                         </div>
                     </div>
                     @endforeach

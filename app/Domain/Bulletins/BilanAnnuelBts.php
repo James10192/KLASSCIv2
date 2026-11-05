@@ -42,7 +42,8 @@ final class BilanAnnuelBts
      *     provisoire: bool,
      *     semestres: array{semestre1: float|null, semestre2: float|null},
      *     rang: int|null,
-     *     effectif: int|null
+     *     effectif: int|null,
+     *     snapshot: array
      * }
      */
     public function pour(int $etudiantId, int $classeId, int $anneeId): array
@@ -73,6 +74,8 @@ final class BilanAnnuelBts
             ],
             'rang' => $position['rang'] ?? null,
             'effectif' => $position['total'] ?? null,
+            // Le snapshot complet, pour que la fiche ne le recalcule pas.
+            'snapshot' => $snapshot,
         ];
     }
 }

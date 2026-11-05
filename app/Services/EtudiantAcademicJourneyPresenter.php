@@ -95,6 +95,10 @@ class EtudiantAcademicJourneyPresenter
             $metrics = $system === 'LMD'
                 ? $this->lmdMetrics($lmdBulletins->get($key, collect()))
                 : $this->btsMetrics($btsBulletins->get($key, collect()), $resultats->get($key, collect()), $bilansBts->get($key));
+            if ($system !== 'LMD' && ! array_key_exists('bilan', $metrics)) {
+                // Année sans moyenne : le bilan (et son snapshot) reste lisible.
+                $metrics['bilan'] = $bilansBts->get($key);
+            }
 
             $item = [
                 'id' => $inscription->id,
