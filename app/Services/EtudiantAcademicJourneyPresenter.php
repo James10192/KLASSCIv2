@@ -258,6 +258,20 @@ class EtudiantAcademicJourneyPresenter
             ];
         }
 
+        if ($bilan !== null) {
+            // Le bilan officiel n'a pas de moyenne : pas de moyenne brute des
+            // bulletins à sa place, qui contredirait le bulletin et la fiche.
+            return [
+                'source' => 'Aucun résultat',
+                'moyenne' => null,
+                'moyenne_label' => null,
+                'rang_label' => null,
+                'credits_label' => null,
+                'mention' => null,
+                'bilan' => $bilan,
+            ];
+        }
+
         $calculatedBulletins = $bulletins->filter(fn (ESBTPBulletin $bulletin) => $bulletin->moyenne_generale !== null && $bulletin->moyenne_generale > 0);
 
         if ($calculatedBulletins->isNotEmpty()) {

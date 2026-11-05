@@ -22,7 +22,6 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use App\Services\FuzzyNameMatcher;
 use App\Services\LMD\AgregatDeLaPeriode;
 use App\Services\Reinscription\EligibiliteReinscription;
-use App\Services\ESBTP\BtsCurrentResultSnapshotService;
 use App\Services\EtudiantAcademicJourneyPresenter;
 use App\Exports\EtudiantsExport;
 use App\Helpers\SettingsHelper;
@@ -33,7 +32,6 @@ class ESBTPStudentController extends Controller
 {
     public function __construct(
         private BtsUiPresenter $btsUiPresenter,
-        private BtsCurrentResultSnapshotService $btsCurrentResultSnapshotService,
         private EtudiantAcademicJourneyPresenter $academicJourneyPresenter
     )
     {
@@ -689,7 +687,7 @@ class ESBTPStudentController extends Controller
 
             $lmdCredits = [
                 'capitalises' => $allLmdBulletins->count() ? $allLmdBulletins->sum('credits_capitalises') : null,
-                'totaux' => $allLmdBulletins->count() ? ($allLmdBulletins->sum('credits_totaux') ?: 30) : null,
+                'totaux' => $allLmdBulletins->count() ? ($allLmdBulletins->sum('credits_totaux') ?: $allLmdBulletins->count() * app(\App\Services\LMD\LmdAcademicRuleProfile::class)->expectedCreditsPerSemester()) : null,
                 'semestres' => $classeCourante ? $classeCourante->getSemestresLMD() : [],
             ];
         }
@@ -724,19 +722,6 @@ class ESBTPStudentController extends Controller
 
         $btsJourney = $this->resolveBtsJourney($etudiant);
         $academicJourney = $this->academicJourneyPresenter->present($etudiant);
-        $btsAnnualSnapshot = null;
-
-        // FIX flag assiduité : on calcule le snapshot annuel pour TOUT étudiant BTS
-        // (pas seulement les TC). Sinon les KPIs moyennes des tabs "vue d'ensemble"
-        // et "académique" retombent sur les bulletins bruts / résultats sans bonus
-        // assiduité → le flag bulletin_show_attendance_note est ignoré côté UI.
-        if (! $isLMD && $inscActive?->classe_id && $inscActive?->annee_universitaire_id) {
-            $btsAnnualSnapshot = $this->btsCurrentResultSnapshotService->getAnnualSnapshot(
-                $etudiant->id,
-                $inscActive->classe_id,
-                $inscActive->annee_universitaire_id
-            );
-        }
 
         $inscriptionRepairClasses = ESBTPClasse::with(['filiere', 'niveauEtude'])
             ->where('is_active', true)
@@ -756,7 +741,7 @@ class ESBTPStudentController extends Controller
             'etudiant', 'anneeCourante', 'voirFinances', 'situationFinanciere',
             'isLMD', 'bulletinLMD', 'bulletinsLMD', 'lmdMoyenneAnnuelle', 'parcours', 'lmdCredits',
             'statistiques', 'reliquatsEntrants', 'reliquatsSortants', 'categoriesfrais',
-            'tpeAttendu', 'tpeParSemestre', 'btsJourney', 'academicJourney', 'btsAnnualSnapshot', 'inscriptionRepairClasses',
+            'tpeAttendu', 'tpeParSemestre', 'btsJourney', 'academicJourney', 'inscriptionRepairClasses',
             'reinscriptionCible', 'anneeCouranteEchue', 'doitProposerReinscription'
         ));
     }

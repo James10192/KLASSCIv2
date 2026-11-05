@@ -2756,6 +2756,11 @@
 
         // Inscription de référence : année courante, sinon future sous réserve
         $kpiInscActive = $inscCourante ?? ($inscFutureSousReserve ?? null);
+        // Le bilan BTS de CETTE inscription, calculé par le parcours académique.
+        $kpiMetrics = $kpiInscActive
+            ? (collect($academicJourney['items'] ?? [])->firstWhere('id', $kpiInscActive->id)['metrics'] ?? [])
+            : [];
+        $kpiSnapshot = $kpiMetrics['bilan']['snapshot'] ?? null;
 
         $kpiPaiTotal = $kpiInscActive
             ? \App\Models\ESBTPPaiement::netStudentPaidFrom($kpiInscActive->paiements)
@@ -2777,11 +2782,11 @@
             $kpiMoyenneGen    = $lmdMoyenneAnnuelle;
             $kpiMoyenneIsLive = false;
         } else if (!$isLMD) {
-            if (($btsAnnualSnapshot['state'] ?? null) === 'annual_complete' && ($btsAnnualSnapshot['effective_total'] ?? null) !== null) {
-                $kpiMoyenneGen = round((float) $btsAnnualSnapshot['effective_total'], 2);
+            if (in_array($kpiSnapshot['state'] ?? null, ['annual_complete', 'annual_complete_no_coefficients'], true) && ($kpiSnapshot['effective_total'] ?? null) !== null) {
+                $kpiMoyenneGen = round((float) $kpiSnapshot['effective_total'], 2);
                 $kpiMoyenneIsLive = false;
-            } elseif (($btsAnnualSnapshot['state'] ?? null) === 'annual_incomplete' && ($btsAnnualSnapshot['effective_total'] ?? null) !== null) {
-                $kpiMoyenneGen = round((float) $btsAnnualSnapshot['effective_total'], 2);
+            } elseif (($kpiSnapshot['state'] ?? null) === 'annual_incomplete' && ($kpiSnapshot['effective_total'] ?? null) !== null) {
+                $kpiMoyenneGen = round((float) $kpiSnapshot['effective_total'], 2);
                 $kpiMoyenneIsLive = true;
             }
             // ── BTS : logique existante ──
@@ -2792,8 +2797,12 @@
                 : collect();
 
             $kpiBulletinsCalcueles = $kpiBulletins->filter(fn($b) => $b->moyenne_generale !== null && $b->moyenne_generale > 0);
+            $kpiBilanIndisponible = $kpiMetrics['bilan_indisponible'] ?? false;
             if ($kpiMoyenneGen !== null) {
                 // Le snapshot BTS phase-based est prioritaire quand il existe.
+            } elseif ($kpiBilanIndisponible || $kpiSnapshot !== null) {
+                // Bilan officiel en échec ou sans moyenne : pas de moyenne brute
+                // des bulletins à sa place, elle contredirait le bulletin.
             } elseif ($kpiBulletinsCalcueles->count()) {
                 $kpiMoyenneGen    = round($kpiBulletinsCalcueles->avg('moyenne_generale'), 2);
                 $kpiMoyenneIsLive = false;
@@ -3682,8 +3691,8 @@
        Dès qu'un bulletin/résultat existe, ce fallback est ignoré : les bulletins
        et esbtp_resultats ci-dessus priment toujours (override officiel). */
     $acadLiveSemestres = collect();
-    if ($acadBuls->isEmpty() && $acadSemestres->isEmpty() && is_array($btsAnnualSnapshot ?? null)) {
-        foreach (($btsAnnualSnapshot['semester_snapshots'] ?? []) as $semKey => $snap) {
+    if ($acadBuls->isEmpty() && $acadSemestres->isEmpty() && is_array($_acadBilan['snapshot'] ?? null)) {
+        foreach (($_acadBilan['snapshot']['semester_snapshots'] ?? []) as $semKey => $snap) {
             $subjects = collect($snap['subjects'] ?? [])
                 ->filter(fn($s) => ($s['moyenne'] ?? null) !== null)
                 ->values();
@@ -3867,29 +3876,29 @@
                 @php
                     $lmdMg = $_bul->moyenne_generale;
                     $lmdCirc = 2 * 3.14159 * 35;
-                    $lmdMgPct = $lmdMg ? min(100, round($lmdMg / 20 * 100)) : 0;
+                    $lmdMgPct = $lmdMg !== null ? min(100, round($lmdMg / 20 * 100)) : 0;
                     $lmdMgOff = $lmdCirc - ($lmdMgPct / 100 * $lmdCirc);
-                    $lmdMgStroke = !$lmdMg ? '#64748b' : ($lmdMg >= 14 ? '#10b981' : ($lmdMg >= 12 ? '#34d399' : ($lmdMg >= 10 ? '#f59e0b' : '#ef4444')));
+                    $lmdMgStroke = $lmdMg === null ? '#64748b' : ($lmdMg >= 14 ? '#10b981' : ($lmdMg >= 12 ? '#34d399' : ($lmdMg >= 10 ? '#f59e0b' : '#ef4444')));
                 @endphp
                 <div class="acad-kpi-block">
                     <div class="acad-kpi-label">Moyenne</div>
                     <div class="acad-ring-wrap">
                         <svg viewBox="0 0 80 80">
                             <circle class="acad-ring-bg" cx="40" cy="40" r="35"/>
-                            <circle class="acad-ring-fg" cx="40" cy="40" r="35" stroke="{{ $lmdMgStroke }}" stroke-dasharray="{{ $lmdCirc }}" stroke-dashoffset="{{ $lmdMg ? $lmdMgOff : $lmdCirc }}"/>
+                            <circle class="acad-ring-fg" cx="40" cy="40" r="35" stroke="{{ $lmdMgStroke }}" stroke-dasharray="{{ $lmdCirc }}" stroke-dashoffset="{{ $lmdMg !== null ? $lmdMgOff : $lmdCirc }}"/>
                         </svg>
                         <div class="acad-ring-center">
-                            <span class="acad-ring-val" style="color:{{ $lmdMgStroke }};">{{ $lmdMg ? number_format($lmdMg, 2) : '—' }}</span>
+                            <span class="acad-ring-val" style="color:{{ $lmdMgStroke }};">{{ $lmdMg !== null ? number_format($lmdMg, 2) : '—' }}</span>
                             <span class="acad-ring-sub">/20</span>
                         </div>
                     </div>
-                    @if($lmdMg) <div class="acad-kpi-mention">{{ $_bul->mention_generale }}</div> @endif
+                    @if($lmdMg !== null) <div class="acad-kpi-mention">{{ $_bul->mention_generale }}</div> @endif
                 </div>
 
                 {{-- Crédits --}}
                 @php
                     $lmdCred = $_bul->credits_capitalises ?? 0;
-                    $lmdCredTot = $_bul->credits_totaux ?? 30;
+                    $lmdCredTot = $_bul->credits_totaux ?? app(\App\Services\LMD\LmdAcademicRuleProfile::class)->expectedCreditsPerSemester();
                     $lmdCredPct = $lmdCredTot > 0 ? min(100, round($lmdCred / $lmdCredTot * 100)) : 0;
                     $lmdCredOff = $lmdCirc - ($lmdCredPct / 100 * $lmdCirc);
                     $lmdCredStroke = $lmdCredPct >= 80 ? '#10b981' : ($lmdCredPct >= 50 ? '#f59e0b' : '#ef4444');
@@ -4753,6 +4762,9 @@
                 $autreMg = null;
             } elseif (($autreBilan['moyenne'] ?? null) !== null) {
                 $autreMg = round((float) $autreBilan['moyenne'], 2);
+            } elseif ($autreBilan !== null) {
+                // Bilan officiel sans moyenne : pas de moyenne brute à sa place.
+                $autreMg = null;
             } elseif ($autreBulsValides->count()) {
                 $autreMg = round($autreBulsValides->avg('moyenne_generale'), 2);
             } elseif ($autreResultatsBruts->whereNotNull('moyenne')->count()) {
@@ -4850,7 +4862,7 @@
                                 @php $abLmdMgC = $abLmd->moyenne_generale >= 12 ? 'var(--k-success)' : ($abLmd->moyenne_generale >= 10 ? '#d97706' : 'var(--k-danger)'); @endphp
                                 <span style="font-size:.8rem; font-weight:700; color:{{ $abLmdMgC }};">{{ number_format($abLmd->moyenne_generale, 2) }}/20</span>
                             @endif
-                            <span style="font-size:.72rem; color:var(--k-muted);">{{ $abLmd->credits_capitalises ?? 0 }}/{{ $abLmd->credits_totaux ?? 30 }} CECT</span>
+                            <span style="font-size:.72rem; color:var(--k-muted);">{{ $abLmd->credits_capitalises ?? 0 }}/{{ $abLmd->credits_totaux ?? app(\App\Services\LMD\LmdAcademicRuleProfile::class)->expectedCreditsPerSemester() }} CECT</span>
                         </div>
                     </div>
                     @endforeach
