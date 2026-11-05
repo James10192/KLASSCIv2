@@ -281,6 +281,20 @@ class SauvegardeDataJob implements ShouldQueue
         usort($dossiers, fn ($a, $b) => filemtime($backupsPath . DIRECTORY_SEPARATOR . $b) <=> filemtime($backupsPath . DIRECTORY_SEPARATOR . $a));
         $dossierGarde = $dossiers[0] ?? null;
 
+        // Cette copie de secours ne sert que tant qu'aucune archive réussie ne
+        // l'a remplacée, et jamais au-delà de la durée de conservation : sans
+        // ces deux bornes, le dernier dossier resté sur le disque n'était plus
+        // jamais délogé.
+        if ($dossierGarde !== null) {
+            $dateGarde = filemtime($backupsPath . DIRECTORY_SEPARATOR . $dossierGarde);
+            $archivePlusRecente = collect(scandir($backupsPath))
+                ->contains(fn ($e) => $this->estArchive($e) && filemtime($backupsPath . DIRECTORY_SEPARATOR . $e) > $dateGarde);
+
+            if ($archivePlusRecente || $dateGarde < $limite) {
+                $dossierGarde = null;
+            }
+        }
+
         foreach (scandir($backupsPath) as $entree) {
             if ($entree === '.' || $entree === '..') {
                 continue;
@@ -316,6 +330,11 @@ class SauvegardeDataJob implements ShouldQueue
      * l'ancien ménage effaçait aussi les emails-factices-*.json que relit
      * AnciennesAdresses.
      */
+    private function estArchive(string $nom): bool
+    {
+        return (bool) preg_match('/^backup_(?:[a-z]+_)?\d{4}-\d{2}-\d{2}_[\d-]+\.zip$/', $nom);
+    }
+
     private function archiveConcernee(string $nom): bool
     {
         if (!preg_match('/^backup_(?:([a-z]+)_)?\d{4}-\d{2}-\d{2}_[\d-]+\.zip$/', $nom, $m)) {
