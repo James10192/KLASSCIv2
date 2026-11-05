@@ -3,6 +3,7 @@
 namespace Tests\Unit\Services;
 
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPInscription;
@@ -69,6 +70,75 @@ class EtudiantAcademicJourneyPresenterTest extends TestCase
 
         $this->assertCount(1, $journey['summary']['duplicate_years']);
         $this->assertSame('duplicate_same_year', $journey['items'][1]['transition']['type']);
+    }
+
+    /**
+     * Cas mesuré sur esbtp-abidjan : la fiche moyennait les
+     * deux bulletins bruts (9,46 et 10,43 → 9,95) et prenait le rang du
+     * semestre 2 (34), là où le bulletin et les résultats disent 10,02 et 33.
+     */
+    public function test_une_annee_bts_affiche_la_moyenne_et_le_rang_annuels_officiels(): void
+    {
+        [$inscription, $bulletins, $cle] = $this->anneeBtsAvecDeuxBulletins();
+
+        $journey = (new EtudiantAcademicJourneyPresenter())->presentFromCollections(
+            collect([$inscription]),
+            btsBulletins: $bulletins,
+            bilansBts: collect([$cle => [
+                'moyenne' => 10.02,
+                'complet' => true,
+                'semestres' => ['semestre1' => 9.46, 'semestre2' => 10.30],
+                'rang' => 33,
+                'effectif' => 47,
+            ]])
+        );
+
+        $metrics = $journey['items'][0]['metrics'];
+        $this->assertSame('10,02 / 20', $metrics['moyenne_label']);
+        $this->assertSame('33/47', $metrics['rang_label']);
+        $this->assertSame(10.30, $metrics['semestres']['semestre2']);
+    }
+
+    public function test_une_annee_incomplete_garde_le_rang_du_semestre(): void
+    {
+        [$inscription, $bulletins, $cle] = $this->anneeBtsAvecDeuxBulletins();
+
+        $journey = (new EtudiantAcademicJourneyPresenter())->presentFromCollections(
+            collect([$inscription]),
+            btsBulletins: $bulletins->take(1),
+            bilansBts: collect([$cle => [
+                'moyenne' => 9.46,
+                'complet' => false,
+                'semestres' => ['semestre1' => 9.46, 'semestre2' => null],
+                'rang' => null,
+                'effectif' => null,
+            ]])
+        );
+
+        $metrics = $journey['items'][0]['metrics'];
+        $this->assertSame('9,46 / 20', $metrics['moyenne_label']);
+        $this->assertSame('28/47', $metrics['rang_label']);
+    }
+
+    private function anneeBtsAvecDeuxBulletins(): array
+    {
+        $filiere = $this->model(ESBTPFiliere::class, ['name' => 'Travaux publics']);
+        $annee = $this->annee('2025-2026', '2025-09-01');
+        $classe = $this->makeClasse('1BTS GTP D', 'BTS', 1, $filiere);
+        $bulletin = fn (string $periode, float $moyenne, int $rang) => $this->model(ESBTPBulletin::class, [
+            'classe_id' => $classe->id,
+            'annee_universitaire_id' => $annee->id,
+            'periode' => $periode,
+            'moyenne_generale' => $moyenne,
+            'rang' => $rang,
+            'effectif_classe' => 47,
+        ]);
+
+        return [
+            $this->inscription($classe, $filiere, $annee, '2025-10-02'),
+            collect([$bulletin('semestre1', 9.46, 28), $bulletin('semestre2', 10.43, 34)]),
+            $classe->id . ':' . $annee->id,
+        ];
     }
 
     private function makeClasse(string $name, string $niveauType, int $year, ESBTPFiliere $filiere, ?ESBTPLMDParcours $parcours = null): ESBTPClasse

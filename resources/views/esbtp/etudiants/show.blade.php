@@ -4729,6 +4729,9 @@
         $autreAnneeLabel = optional($autreInsc->anneeUniversitaire)->display_name ?? 'Année N/A';
         $autreClasseLabel = optional($autreInsc->classe)->name ?? '';
         $autreArchKey = 'acad-arch-' . $autreInsc->id;
+        // Le bilan officiel de l'année (même calcul que le bulletin et la page
+        // des résultats), déjà calculé par le parcours académique.
+        $autreBilan = collect($academicJourney['items'] ?? [])->firstWhere('id', $autreInsc->id)['metrics'] ?? null;
 
         /* Calcul moyenne générale selon le système */
         if ($autreIsLMD) {
@@ -4754,7 +4757,9 @@
         }
 
         if (! $autreIsLMD) {
-            if ($autreBulsValides->count()) {
+            if (($autreBilan['moyenne'] ?? null) !== null && isset($autreBilan['semestres'])) {
+                $autreMg = round((float) $autreBilan['moyenne'], 2);
+            } elseif ($autreBulsValides->count()) {
                 $autreMg = round($autreBulsValides->avg('moyenne_generale'), 2);
             } elseif ($autreResultatsBruts->whereNotNull('moyenne')->count()) {
                 /* Pondération S1/S2 depuis settings (cohérence avec bulletins) */
@@ -4872,6 +4877,13 @@
                             }
                         } else {
                             $abMg = $abMgRaw ?: null;
+                        }
+                        // `moyenne_generale` est la moyenne brute : le semestre
+                        // officiel inclut la note d'assiduité.
+                        $_abCle = str_replace([' ', '_', '-'], '', strtolower((string) $ab->periode));
+                        if (in_array($_abCle, ['1', '2'], true)) { $_abCle = 'semestre' . $_abCle; }
+                        if (($autreBilan['semestres'][$_abCle] ?? null) !== null) {
+                            $abMg = round((float) $autreBilan['semestres'][$_abCle], 2);
                         }
                         $abLabel = ucfirst(str_replace(['semestre', '_', '-'], ['Semestre ', ' ', ' '], strtolower($ab->periode ?? '')));
                         $abMgCls = $abMg === null ? 'var(--k-muted)' : ($abMg >= 12 ? 'var(--k-success)' : ($abMg >= 10 ? '#d97706' : 'var(--k-danger)'));
