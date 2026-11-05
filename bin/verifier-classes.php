@@ -408,6 +408,39 @@ function contexteDe(string $code): array
     return [$espace, $imports];
 }
 
+/**
+ * Les classes que le fichier declare lui-meme (noms qualifies, en minuscules).
+ *
+ * Un script autonome — setup.php — declare sa classe et l'instancie plus bas,
+ * hors de tout autochargeur : `class_exists` ne la voit pas, et l'outil la
+ * disait introuvable alors que PHP la resout parfaitement.
+ */
+function classesDeclarees(string $code, string $espace): array
+{
+    $jetons = token_get_all($code);
+    $noms = [];
+
+    foreach ($jetons as $i => $jeton) {
+        if (! is_array($jeton) || ! in_array($jeton[0], [T_CLASS, T_INTERFACE, T_TRAIT, T_ENUM], true)) {
+            continue;
+        }
+
+        // `Foo::class` et `new class` ne declarent rien.
+        $avant = indexVoisin($jetons, $i, -1);
+        if ($avant !== null && in_array($jetons[$avant][0] ?? $jetons[$avant], [T_DOUBLE_COLON, T_NEW], true)) {
+            continue;
+        }
+
+        $apres = indexVoisin($jetons, $i, 1);
+        if ($apres !== null && is_array($jetons[$apres]) && $jetons[$apres][0] === T_STRING) {
+            $nom = $jetons[$apres][1];
+            $noms[] = strtolower($espace !== '' ? $espace.'\\'.$nom : $nom);
+        }
+    }
+
+    return $noms;
+}
+
 $chemins = array_slice($argv, 1);
 
 if ($chemins === []) {
@@ -503,6 +536,7 @@ $fautes = 0;
 foreach ($fichiers as $fichier) {
     $code = (string) file_get_contents($fichier);
     [$espace, $imports] = contexteDe($code);
+    $declarees = classesDeclarees($code, $espace);
 
     foreach (referencesDe($code) as $nom => $ligne) {
         // Les noms de classe sont insensibles a la casse en PHP : `use ...\Pdf;`
@@ -539,6 +573,10 @@ foreach ($fichiers as $fichier) {
         }
 
         foreach ($candidats as $candidat) {
+            if (in_array(strtolower($candidat), $declarees, true)) {
+                continue 2;
+            }
+
             // `class_exists` CHARGE la classe, donc execute son fichier — avec
             // tout ce qu'un fichier peut faire en s'executant.
             //
