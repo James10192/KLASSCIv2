@@ -4808,6 +4808,9 @@
             <div class="acad-arch-toggle-right">
                 @if($autreMg !== null)
                     <span class="acad-arch-kpi" style="color:{{ $autreMgColor }};">{{ number_format($autreMg, 2) }}/20</span>
+                    @if($autreBilan['provisoire'] ?? false)
+                        <span style="font-size:.68rem; color:var(--k-muted);" title="Un seul semestre noté">provisoire</span>
+                    @endif
                 @endif
                 @if($autreMention)
                     @php
@@ -4880,6 +4883,8 @@
                             : ($autreBilan['semestres'][$_abCle] ?? null);
                         if ($_abOfficielle !== null) {
                             $abMg = round((float) $_abOfficielle, 2);
+                        } elseif ($autreBilanIndisponible) {
+                            $abMg = null; // pas de moyenne brute à la place de l'officielle
                         }
                         $abLabel = ucfirst(str_replace(['semestre', '_', '-'], ['Semestre ', ' ', ' '], strtolower($ab->periode ?? '')));
                         $abMgCls = $abMg === null ? 'var(--k-muted)' : ($abMg >= 12 ? 'var(--k-success)' : ($abMg >= 10 ? '#d97706' : 'var(--k-danger)'));
