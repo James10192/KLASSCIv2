@@ -287,8 +287,10 @@ class SauvegardeDataJob implements ShouldQueue
         // jamais délogé.
         if ($dossierGarde !== null) {
             $dateGarde = filemtime($backupsPath . DIRECTORY_SEPARATOR . $dossierGarde);
+            // Seule une archive complète la remplace : une archive de la base
+            // seule ne contient pas les pièces que porte cette copie.
             $archivePlusRecente = collect(scandir($backupsPath))
-                ->contains(fn ($e) => $this->estArchive($e) && filemtime($backupsPath . DIRECTORY_SEPARATOR . $e) > $dateGarde);
+                ->contains(fn ($e) => $this->estArchiveComplete($e) && filemtime($backupsPath . DIRECTORY_SEPARATOR . $e) > $dateGarde);
 
             if ($archivePlusRecente || $dateGarde < $limite) {
                 $dossierGarde = null;
@@ -325,16 +327,20 @@ class SauvegardeDataJob implements ShouldQueue
     }
 
     /**
+     * Archive complète : nommée « complet », ou ancienne archive sans type
+     * (les complètes l'étaient avant que le type n'entre dans le nom).
+     */
+    private function estArchiveComplete(string $nom): bool
+    {
+        return (bool) preg_match('/^backup_(?:complet_)?\d{4}-\d{2}-\d{2}_[\d-]+\.zip$/', $nom);
+    }
+
+    /**
      * Archive de ce type, ou ancienne archive sans type (`backup_<date>.zip`,
      * avant que le type n'entre dans le nom). Tout autre fichier est laissé —
      * l'ancien ménage effaçait aussi les emails-factices-*.json que relit
      * AnciennesAdresses.
      */
-    private function estArchive(string $nom): bool
-    {
-        return (bool) preg_match('/^backup_(?:[a-z]+_)?\d{4}-\d{2}-\d{2}_[\d-]+\.zip$/', $nom);
-    }
-
     private function archiveConcernee(string $nom): bool
     {
         if (!preg_match('/^backup_(?:([a-z]+)_)?\d{4}-\d{2}-\d{2}_[\d-]+\.zip$/', $nom, $m)) {
