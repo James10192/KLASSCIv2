@@ -99,3 +99,7 @@ storage/fonts/*.ufm.json
 .opencode/rules/
 .opencode/hooks/
 .opencode/skills/
+
+# Secrets d une instance Compose (modèle : presentation.env.example)
+deploy/docker/*.env
+!deploy/docker/*.env.example

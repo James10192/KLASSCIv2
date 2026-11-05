@@ -44,13 +44,13 @@ try {
         ],
         [
             'key' => 'school_name',
-            'value' => 'ESBTP-yAKRO',
+            'value' => 'KLASSCI',
             'type' => 'string',
             'group' => 'establishment',
             'category' => 'establishment',
             'description' => 'Nom de l\'établissement',
             'is_required' => true,
-            'default_value' => 'ESBTP-yAKRO',
+            'default_value' => 'KLASSCI',
             'validation_rules' => ['required', 'string', 'max:255'],
             'sort_order' => 1
         ],

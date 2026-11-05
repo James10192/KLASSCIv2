@@ -24,12 +24,50 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+        $this->planifier($schedule);
+
+        // Une école qui vient d'être déployée n'a pas encore de tables : chaque
+        // tâche y échouait chaque minute (« table doesn't exist ») et le journal
+        // gonflait de plusieurs Mo avant même la fin de l'assistant. Les tâches
+        // restent déclarées (schedule:list inchangé) ; elles sont seulement
+        // sautées au lancement, la base n'étant interrogée qu'une fois par passage.
+        // Le pouls ne touche pas la base : il bat toujours, sinon une école
+        // déployée mais pas encore passée par l'assistant paraîtrait sans
+        // planificateur (GET /api/cli/planificateur → actif: false).
+        $baseVide = null;
+        foreach ($schedule->events() as $tache) {
+            if ($tache->description === \App\Domain\Exploitation\PoulsPlanificateur::NOM_TACHE) {
+                continue;
+            }
+
+            $tache->skip(function () use (&$baseVide) {
+                if ($baseVide === null) {
+                    $baseVide = $this->baseVideAvantInstallation();
+                    if ($baseVide) {
+                        // Une ligne par passage, pas une par tâche : sans elle, une
+                        // école dont DB_DATABASE vise une base vide perdrait toutes
+                        // ses tâches sans un mot.
+                        // warning, pas notice : l'image fixe LOG_LEVEL=warning.
+                        \Illuminate\Support\Facades\Log::warning('Planificateur : base pas encore installée (ou initialisation en cours), tâches sautées.');
+                    }
+                }
+
+                return $baseVide;
+            });
+        }
+    }
+
+    /**
+     * Les tâches de l'école.
+     */
+    private function planifier(Schedule $schedule): void
+    {
         // Pouls du planificateur : prouve de l'exterieur que cette tache cron
         // tourne (GET /api/cli/planificateur, tenant:planificateur d'adminKlassci).
         // En tete : une tache synchrone plus haut le retarderait au-dela du seuil.
         $schedule->call(fn () => \App\Domain\Exploitation\PoulsPlanificateur::battre())
             ->everyMinute()
-            ->name('pouls-planificateur');
+            ->name(\App\Domain\Exploitation\PoulsPlanificateur::NOM_TACHE);
 
         // PR6 Réconciliation : check overdue sessions daily à 8h (heure du matin = pertinent)
         $schedule->command('reconciliation:check-overdue')
@@ -337,4 +375,26 @@ class Kernel extends ConsoleKernel
         SendInscriptionPaiementReminders::class,
         MarkTeacherAbsences::class,
     ];
+
+    /**
+     * Vrai quand une initialisation tourne, ou quand la base répond ET n'a pas
+     * encore de table `users`.
+     *
+     * Base injoignable : on planifie comme avant (les tâches échoueront et le
+     * diront), jamais de silence sur une école en service.
+     */
+    private function baseVideAvantInstallation(): bool
+    {
+        // Pendant l'initialisation, `users` existe déjà mais pas les tables
+        // suivantes : on attend qu'elle soit finie.
+        if (app(\App\Support\Installation\InitialisationInstance::class)->enCours()) {
+            return true;
+        }
+
+        try {
+            return ! \Illuminate\Support\Facades\Schema::hasTable('users');
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
 }

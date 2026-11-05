@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Log;
 use App\Models\Setting;
+use App\Support\Installation\FichierEnv;
+use App\Support\Installation\InitialisationInstance;
 
 class InstallController extends Controller
 {
@@ -69,7 +71,46 @@ class InstallController extends Controller
             return redirect('/login');
         }
 
+        if ($this->adopterBaseFournie()) {
+            return redirect()->route('install.migration');
+        }
+
         return view('install.database');
+    }
+
+    /**
+     * Base déjà configurée et joignable (Dokploy, ou un .env déjà rempli) :
+     * rien à saisir, on passe à l'initialisation.
+     *
+     * Le critère est que la connexion réponde et que l'adresse et le code de
+     * l'école soient posés, pas l'origine des variables : un .env neuf ne
+     * remplit pas ces conditions, et le formulaire s'affiche comme avant.
+     */
+    private function adopterBaseFournie(): bool
+    {
+        if (session('db_configured')) {
+            return true;
+        }
+
+        // L'étape base écrit aussi APP_URL et TENANT_CODE : on ne la saute que
+        // s'ils sont déjà posés. Un .env copié de .env.example avec seulement
+        // la base remplie garderait sinon http://localhost (liens des e-mails
+        // et PDF faux) et aucun code d'école (paywall, API master).
+        $hote = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
+        $urlPosee = $hote !== '' && !in_array($hote, ['localhost', '127.0.0.1'], true);
+        $codePose = !in_array((string) config('app.tenant_code'), ['', 'default'], true);
+
+        if (!$urlPosee || !$codePose || !InstallationHelper::isDatabaseConfigured()) {
+            return false;
+        }
+
+        session([
+            'db_configured' => true,
+            'database_exists' => true,
+            'install_app_name' => $this->tenantNameFromRequest($this->tenantCodeFromHost(request()->getHost())),
+        ]);
+
+        return true;
     }
 
     /**
@@ -207,6 +248,8 @@ class InstallController extends Controller
                     'db_port' => $request->port,
                     'db_database' => $request->database,
                     'db_username' => $request->username,
+                    // Repris à l'initialisation comme nom de l'établissement.
+                    'install_app_name' => $request->input('app_name'),
                 ]);
                 
                 // Debug information
@@ -253,7 +296,7 @@ class InstallController extends Controller
         }
 
         // Check if database is configured
-        if (!session('db_configured')) {
+        if (!$this->adopterBaseFournie()) {
             return redirect()->route('install.database')
                 ->with('error', 'Veuillez configurer la base de données avant de continuer.');
         }
@@ -339,26 +382,21 @@ class InstallController extends Controller
                 }
             }
 
-            Artisan::call('config:clear');
-            Artisan::call('cache:clear');
-            $terminal[] = trim(Artisan::output()) ?: 'Caches Laravel vidés.';
+            // Migrations, setup.php et nom de l'école : verrouillé, et l'état
+            // est publié pour l'écran, qui le relit si cette réponse se perd.
+            $resultat = app(InitialisationInstance::class)->lancer((string) session('install_app_name', ''));
+            $terminal = array_merge($terminal, $resultat['terminal']);
 
-            Artisan::call('migrate', ['--force' => true]);
-            $terminal[] = trim(Artisan::output()) ?: 'Migrations vérifiées.';
-
-            $setupResult = $this->runSetupScript();
-            $terminal = array_merge($terminal, $setupResult['output']);
-
-            if (!$setupResult['ok']) {
-                session(['migration_errors' => $setupResult['message']]);
+            if (!$resultat['ok']) {
+                session(['migration_errors' => $resultat['message']]);
 
                 return $this->installJson(
                     false,
-                    'install.setup.failed',
-                    ['terminal' => $terminal, 'exit_code' => $setupResult['exit_code']],
-                    $setupResult['message'],
+                    $resultat['code'],
+                    ['terminal' => $terminal],
+                    $resultat['message'],
                     null,
-                    422
+                    $resultat['code'] === 'install.migration.en_cours' ? 409 : 422
                 );
             }
 
@@ -369,7 +407,7 @@ class InstallController extends Controller
                 'database_created' => $databaseCreated,
                 'esbtp_data_check' => $esbtpDataCheck,
                 'terminal' => $terminal,
-            ], 'Migrations, permissions, paramètres et seeders terminés.', route('install.admin'));
+            ], $resultat['message'], route('install.admin'));
         } catch (\Exception $e) {
             \Log::error("Erreur critique lors de l'exécution des migrations: " . $e->getMessage());
             session(['migration_errors' => $e->getMessage()]);
@@ -383,6 +421,23 @@ class InstallController extends Controller
                 500
             );
         }
+    }
+
+    /**
+     * Où en est l'initialisation : l'écran l'interroge pendant qu'elle tourne,
+     * et après coup si la réponse de runMigration s'est perdue en route.
+     */
+    public function etatInitialisation()
+    {
+        $etat = app(InitialisationInstance::class)->etat();
+
+        return $this->installJson(
+            ($etat['statut'] ?? null) === InitialisationInstance::REUSSIE,
+            'install.migration.etat',
+            ['statut' => $etat['statut'] ?? null, 'terminal' => $etat['terminal'] ?? [], 'maj' => $etat['maj'] ?? null],
+            (string) ($etat['message'] ?? ''),
+            ($etat['statut'] ?? null) === InitialisationInstance::REUSSIE ? route('install.admin') : null
+        );
     }
 
     /**
@@ -479,33 +534,26 @@ class InstallController extends Controller
                 'password' => 'required|string|min:8|confirmed',
             ]);
             
-            // Création de l'utilisateur admin
-            $admin = new User();
-            $admin->name = $validated['name'];
-            $admin->username = $validated['username'];
-            $admin->email = $validated['email'];
-            $admin->password = Hash::make($validated['password']);
-            $admin->save();
-            
-            // Assignation du rôle superAdmin
-            try {
-                if (Schema::hasTable('roles')) {
-                    $superAdminRole = Role::where('name', 'superAdmin')->first();
-                    if ($superAdminRole) {
-                        $admin->assignRole($superAdminRole);
-                    } else {
-                        \Log::warning("Rôle superAdmin non trouvé. Création d'un nouveau rôle.");
-                        $superAdminRole = Role::create(['name' => 'superAdmin']);
-                        $admin->assignRole($superAdminRole);
-                    }
-                } else {
-                    \Log::warning("La table des rôles n'existe pas encore.");
-                }
-            } catch (\Exception $e) {
-                \Log::error("Erreur lors de l'assignation du rôle: " . $e->getMessage());
-                // Continue execution - role assignment is not critical for installation
-            }
-            
+            // Compte et rôle ensemble ou pas du tout : un compte créé sans
+            // son rôle bloquait toute relance (nom d'utilisateur déjà pris)
+            // et laissait une école sans superAdmin.
+            DB::transaction(function () use ($validated) {
+                $admin = new User();
+                $admin->name = $validated['name'];
+                $admin->username = $validated['username'];
+                $admin->email = $validated['email'];
+                $admin->password = Hash::make($validated['password']);
+                $admin->save();
+
+                $superAdminRole = Role::firstOrCreate(['name' => 'superAdmin', 'guard_name' => 'web']);
+                $admin->assignRole($superAdminRole);
+            });
+
+            // « Un superAdmin existe ? » est gardé une heure, et les étapes
+            // précédentes l'ont mémorisé à non : sans ceci, la finalisation
+            // renvoyait vers la création d'un administrateur déjà créé.
+            InstallationHelper::flushCachedStatus();
+
             $request->session()->put('admin_created', true);
             $request->session()->put('admin_name', $validated['name']);
             $request->session()->put('admin_username', $validated['username']);
@@ -524,6 +572,10 @@ class InstallController extends Controller
             }
 
             return redirect()->route('install.complete')->with('success', 'Administrateur créé avec succès');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Champ invalide ou identifiant déjà pris : un 422 avec le détail
+            // par champ, que l'écran sait afficher, et non une erreur 500.
+            throw $e;
         } catch (\Exception $e) {
             \Log::error("Error creating admin: " . $e->getMessage());
             
@@ -580,8 +632,14 @@ class InstallController extends Controller
                     ->with('error', 'Vous devez d\'abord créer un compte administrateur');
             }
             
-            // Marquer l'application comme installée UNIQUEMENT si un admin existe
-            InstallationHelper::markAsInstalled();
+            // Marquer l'application comme installée UNIQUEMENT si un admin existe.
+            // Sans .env inscriptible, l'école retomberait sur l'assistant à la
+            // requête suivante : on le dit au lieu d'annoncer un succès.
+            if (!InstallationHelper::markAsInstalled()) {
+                Log::error("Finalisation impossible : .env absent ou non inscriptible");
+                return redirect()->route('install.complete')
+                    ->with('error', 'Impossible d\'enregistrer la fin de l\'installation : le fichier .env est absent ou non inscriptible.');
+            }
             
             // Nettoyer la session d'installation
             session()->forget('installation_in_progress');
@@ -642,39 +700,6 @@ class InstallController extends Controller
         }
 
         return strtoupper($tenantCode) . ' KLASSCI';
-    }
-
-    private function runSetupScript(): array
-    {
-        $script = base_path('setup.php');
-
-        if (!File::exists($script)) {
-            return [
-                'ok' => false,
-                'message' => 'Le fichier setup.php est introuvable à la racine du projet.',
-                'exit_code' => 127,
-                'output' => ['setup.php introuvable.'],
-            ];
-        }
-
-        $command = '"' . PHP_BINARY . '" "' . $script . '" --force 2>&1';
-        $output = [];
-        $exitCode = 0;
-        exec($command, $output, $exitCode);
-
-        $cleanOutput = array_values(array_filter(array_map(
-            fn ($line) => trim(preg_replace('/\x1b\[[0-9;]*m/', '', (string) $line)),
-            $output
-        )));
-
-        return [
-            'ok' => $exitCode === 0,
-            'message' => $exitCode === 0
-                ? 'Initialisation setup.php terminée.'
-                : 'setup.php a échoué. Consultez la sortie terminal et corrigez le point bloquant.',
-            'exit_code' => $exitCode,
-            'output' => $cleanOutput,
-        ];
     }
 
     /**
@@ -982,29 +1007,14 @@ class InstallController extends Controller
         if (File::exists($path)) {
             $content = File::get($path);
 
-            foreach ($data as $key => $value) {
-                // If the key exists, replace it
-                if (strpos($content, $key . '=') !== false) {
-                    $content = preg_replace('/^' . preg_quote($key, '/') . '=.*/m', $key . '=' . $this->formatEnvValue($value), $content);
-                } else {
-                    // Otherwise, add it
-                    $content .= "\n" . $key . '=' . $value;
-                }
-            }
-
-            File::put($path, $content);
+            File::put($path, FichierEnv::ecrire($content, $data));
         } else {
-            // If .env doesn't exist, create it from .env.example
+            // Pas de .env : on part de .env.example s'il existe, sinon d'un
+            // fichier vide — l'image Docker n'embarque pas .env.example.
             $example = base_path('.env.example');
-            if (File::exists($example)) {
-                $content = File::get($example);
+            $content = File::exists($example) ? File::get($example) : '';
 
-                foreach ($data as $key => $value) {
-                    $content = preg_replace('/' . $key . '=(.*)/', $key . '=' . $value, $content);
-                }
-
-                File::put($path, $content);
-            }
+            File::put($path, FichierEnv::ecrire($content, $data));
         }
     }
 

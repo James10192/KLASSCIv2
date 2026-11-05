@@ -18,13 +18,13 @@ class SettingsSeeder extends Seeder
             // Établissement
             [
                 'key' => 'school_name',
-                'value' => 'ESBTP-yAKRO',
+                'value' => 'KLASSCI',
                 'type' => 'string',
                 'group' => 'establishment',
                 'category' => 'establishment',
                 'description' => 'Nom de l\'établissement',
                 'is_required' => true,
-                'default_value' => 'ESBTP-yAKRO',
+                'default_value' => 'KLASSCI',
                 'validation_rules' => ['required', 'string', 'max:255'],
                 'sort_order' => 1
             ],
@@ -1613,15 +1613,21 @@ class SettingsSeeder extends Seeder
             ]
         ];
 
+        // Le nom de l'école est le sien : posé une fois, jamais réécrit. En
+        // `updateOrCreate`, chaque relance de `setup.php --force` le ramenait
+        // à la valeur semée, par-dessus le nom choisi.
+        $jamaisReecrits = ['school_name'];
+
         foreach ($settings as $settingData) {
-            Setting::updateOrCreate(
-                ['key' => $settingData['key']],
-                array_merge($settingData, [
-                    'is_active' => true,
-                    'created_by' => 1,
-                    'updated_by' => 1
-                ])
-            );
+            $valeurs = array_merge($settingData, [
+                'is_active' => true,
+                'created_by' => 1,
+                'updated_by' => 1
+            ]);
+
+            in_array($settingData['key'], $jamaisReecrits, true)
+                ? Setting::firstOrCreate(['key' => $settingData['key']], $valeurs)
+                : Setting::updateOrCreate(['key' => $settingData['key']], $valeurs);
         }
 
         $this->command->info('Configurations de base créées avec succès.');

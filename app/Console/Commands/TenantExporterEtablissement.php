@@ -170,8 +170,12 @@ class TenantExporterEtablissement extends Command
         exec(sprintf(
             '/bin/bash -o pipefail -c %s 2>&1',
             escapeshellarg(sprintf(
-                'tar -cz --exclude=%s -C %s . > %s',
+                // Pas ./backups : chaque archive complète y embarque le .env de
+                // l'école (APP_KEY, mot de passe de base, jetons du master et du
+                // groupe). Ces secrets ne partent pas avec les documents.
+                'tar -cz --exclude=%s --exclude=%s -C %s . > %s',
                 escapeshellarg('./exports'),
+                escapeshellarg('./backups'),
                 escapeshellarg($source),
                 escapeshellarg($archive),
             )),

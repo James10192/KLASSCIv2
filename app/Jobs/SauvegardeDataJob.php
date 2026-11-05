@@ -39,6 +39,14 @@ class SauvegardeDataJob implements ShouldQueue
      */
     public function handle(): void
     {
+        // Le ménage passe AVANT : sur un disque plein, la sauvegarde échoue, et
+        // un ménage placé seulement après une réussite ne passait plus jamais —
+        // le disque restait plein, la sauvegarde suivante échouait aussi.
+        $this->nettoyerAnciennesSauvegardes();
+
+        $backupPath = null;
+        $donneesCompletes = false;
+
         try {
             Log::info("Début sauvegarde automatique - Type: {$this->typeSauvegarde}");
 
@@ -65,6 +73,8 @@ class SauvegardeDataJob implements ShouldQueue
             if ($this->options['inclure_fichiers']) {
                 $this->sauvegarderFichiers($backupPath, $sauvegardeInfo);
             }
+
+            $donneesCompletes = true;
 
             // Compression si demandée
             if ($this->options['compression']) {
@@ -95,6 +105,14 @@ class SauvegardeDataJob implements ShouldQueue
 
             $this->envoyerNotificationEchec($e);
             $this->fail($e);
+        } finally {
+            // Une sauvegarde interrompue AVANT d'avoir tout copié laissait un
+            // dossier incomplet : on le retire. Un dossier complet reste — sans
+            // compression, ou quand l'archive n'a pas pu s'écrire, c'est la
+            // seule copie ; le ménage le retire avec la durée de conservation.
+            if (!$donneesCompletes && $backupPath && is_dir(storage_path("app/{$backupPath}"))) {
+                $this->supprimerDossierRecursif(storage_path("app/{$backupPath}"));
+            }
         }
     }
 
@@ -178,7 +196,8 @@ class SauvegardeDataJob implements ShouldQueue
             //
             // Voir App\Services\Documents\StockageDocumentEtudiant::DOSSIER.
             'storage/app/dossiers-etudiants' => 'pieces_dossier_etudiants',
-            'storage/logs' => 'logs',
+            // Pas storage/logs : des journaux, pas des données d'école, et la
+            // plus grosse part de chaque archive, recopiée trente fois.
             '.env' => 'configuration/.env'
         ];
 
@@ -199,28 +218,35 @@ class SauvegardeDataJob implements ShouldQueue
      */
     private function compresserSauvegarde($backupPath, &$sauvegardeInfo)
     {
-        $archiveName = "backup_{$sauvegardeInfo['timestamp']}.zip";
+        // Le type dans le nom : chaque sauvegarde ne retire que les archives
+        // de son type, chacune avec sa propre durée de conservation.
+        $archiveName = "backup_{$this->typeSauvegarde}_{$sauvegardeInfo['timestamp']}.zip";
         $archivePath = storage_path("app/backups/{$archiveName}");
         $sourcePath = storage_path("app/{$backupPath}");
 
-        // Créer l'archive ZIP
+        // Une archive qui n'a pas pu être écrite est une sauvegarde ratée, et
+        // elle se dit ratée : ZipArchive n'écrit qu'à close(), si bien qu'un
+        // disque presque plein passait inaperçu (open() réussit, close() non),
+        // et la sauvegarde se déclarait réussie sans archive.
         $zip = new \ZipArchive();
-        if ($zip->open($archivePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === TRUE) {
-            $this->ajouterDossierAuZip($zip, $sourcePath, '');
-            $zip->close();
-
-            if (file_exists($archivePath)) {
-                $sauvegardeInfo['archive'] = $archiveName;
-                $sauvegardeInfo['taille_archive'] = filesize($archivePath);
-
-                // Supprimer le dossier temporaire non compressé
-                $this->supprimerDossierRecursif($sourcePath);
-
-                Log::info("Archive créée: {$archiveName} (" . number_format(filesize($archivePath) / 1024 / 1024, 2) . " MB)");
-            }
-        } else {
-            Log::warning("Impossible de créer l'archive ZIP: {$archivePath}");
+        if ($zip->open($archivePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            throw new \RuntimeException("Impossible de créer l'archive ZIP : {$archiveName}");
         }
+
+        $this->ajouterDossierAuZip($zip, $sourcePath, '');
+
+        if (!$zip->close() || !is_file($archivePath) || filesize($archivePath) === 0) {
+            @unlink($archivePath);
+            throw new \RuntimeException("Archive ZIP non écrite (disque plein ?) : {$archiveName}");
+        }
+
+        $sauvegardeInfo['archive'] = $archiveName;
+        $sauvegardeInfo['taille_archive'] = filesize($archivePath);
+
+        // Le dossier non compressé n'est retiré qu'une fois l'archive vérifiée.
+        $this->supprimerDossierRecursif($sourcePath);
+
+        Log::info("Archive créée: {$archiveName} (" . number_format(filesize($archivePath) / 1024 / 1024, 2) . " MB)");
     }
 
     /**
@@ -235,27 +261,100 @@ class SauvegardeDataJob implements ShouldQueue
     /**
      * Nettoie les anciennes sauvegardes
      */
-    private function nettoyerAnciennesSauvegardes()
+    private function nettoyerAnciennesSauvegardes(): void
     {
-        $retentionJours = $this->options['retention_jours'];
         $backupsPath = storage_path('app/backups');
+        if (!is_dir($backupsPath)) {
+            return;
+        }
 
-        if (is_dir($backupsPath)) {
-            $files = scandir($backupsPath);
-            $cutoffDate = Carbon::now()->subDays($retentionJours);
+        $limite = Carbon::now()->subDays($this->options['retention_jours'])->getTimestamp();
+        // Un dossier resté là est une sauvegarde complète non compressée (archive
+        // impossible) ou le reste d'un processus tué. On n'en garde qu'UN, le
+        // plus récent : chacun contient une copie intégrale des pièces, et en
+        // garder un par jour sur un disque plein recréait la spirale.
+        $limiteDossier = Carbon::now()->subDay()->getTimestamp();
+        $dossiers = array_values(array_filter(
+            scandir($backupsPath),
+            fn ($e) => $e !== '.' && $e !== '..' && is_dir($backupsPath . DIRECTORY_SEPARATOR . $e)
+        ));
+        usort($dossiers, fn ($a, $b) => filemtime($backupsPath . DIRECTORY_SEPARATOR . $b) <=> filemtime($backupsPath . DIRECTORY_SEPARATOR . $a));
+        $dossierGarde = $dossiers[0] ?? null;
 
-            foreach ($files as $file) {
-                if ($file === '.' || $file === '..') continue;
+        // Cette copie de secours ne sert que tant qu'aucune archive réussie ne
+        // l'a remplacée, et jamais au-delà de la durée de conservation : sans
+        // ces deux bornes, le dernier dossier resté sur le disque n'était plus
+        // jamais délogé.
+        if ($dossierGarde !== null) {
+            $dateGarde = filemtime($backupsPath . DIRECTORY_SEPARATOR . $dossierGarde);
+            // Seule une archive complète la remplace : une archive de la base
+            // seule ne contient pas les pièces que porte cette copie.
+            $archivePlusRecente = collect(scandir($backupsPath))
+                ->contains(fn ($e) => $this->estArchiveComplete($e) && filemtime($backupsPath . DIRECTORY_SEPARATOR . $e) > $dateGarde);
 
-                $filePath = $backupsPath . DIRECTORY_SEPARATOR . $file;
-                $fileTime = Carbon::createFromTimestamp(filemtime($filePath));
-
-                if ($fileTime->lt($cutoffDate)) {
-                    unlink($filePath);
-                    Log::info("Ancienne sauvegarde supprimée: {$file}");
-                }
+            if ($archivePlusRecente || $dateGarde < $limite) {
+                $dossierGarde = null;
             }
         }
+
+        foreach (scandir($backupsPath) as $entree) {
+            if ($entree === '.' || $entree === '..') {
+                continue;
+            }
+
+            $chemin = $backupsPath . DIRECTORY_SEPARATOR . $entree;
+
+            // Un échec sur une entrée n'arrête plus le ménage : auparavant, le
+            // premier dossier rencontré faisait lever unlink(), et plus aucune
+            // archive n'était jamais supprimée.
+            try {
+                if (is_dir($chemin)) {
+                    if ($entree !== $dossierGarde && filemtime($chemin) < $limiteDossier) {
+                        $this->supprimerDossierRecursif($chemin);
+                        Log::info("Ancienne sauvegarde non compressée retirée: {$entree}");
+                    }
+                    continue;
+                }
+
+                if ($this->archiveConcernee($entree) && filemtime($chemin) < $limite) {
+                    unlink($chemin);
+                    Log::info("Ancienne sauvegarde supprimée: {$entree}");
+                }
+            } catch (\Throwable $e) {
+                Log::error("Sauvegarde non supprimée: {$entree} — " . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Archive complète : nommée « complet », ou ancienne archive sans type
+     * (les complètes l'étaient avant que le type n'entre dans le nom).
+     */
+    private function estArchiveComplete(string $nom): bool
+    {
+        return (bool) preg_match('/^backup_(?:complet_)?\d{4}-\d{2}-\d{2}_[\d-]+\.zip$/', $nom);
+    }
+
+    /**
+     * Archive de ce type, ou ancienne archive sans type (`backup_<date>.zip`,
+     * avant que le type n'entre dans le nom). Tout autre fichier est laissé —
+     * l'ancien ménage effaçait aussi les emails-factices-*.json que relit
+     * AnciennesAdresses.
+     */
+    private function archiveConcernee(string $nom): bool
+    {
+        if (!preg_match('/^backup_(?:([a-z]+)_)?\d{4}-\d{2}-\d{2}_[\d-]+\.zip$/', $nom, $m)) {
+            return false;
+        }
+
+        // Une ancienne archive sans type peut être une sauvegarde complète :
+        // seule la tâche « complet » (30 jours) la retire, jamais celle de la
+        // base seule (7 jours), qui passe la première après le déploiement.
+        if (($m[1] ?? '') === '') {
+            return $this->typeSauvegarde === 'complet';
+        }
+
+        return $m[1] === $this->typeSauvegarde;
     }
 
     /**
@@ -263,22 +362,28 @@ class SauvegardeDataJob implements ShouldQueue
      */
     private function copierRepertoireOuFichier($source, $destination)
     {
+        // Chaque échec lève : sur un disque presque plein, copy() rendait false
+        // sans bruit, et une sauvegarde tronquée se déclarait réussie puis
+        // prenait sa place dans la rotation.
         if (is_file($source)) {
-            $destinationDir = dirname($destination);
-            if (!is_dir($destinationDir)) {
-                mkdir($destinationDir, 0755, true);
+            $this->creerDossier(dirname($destination));
+            if (!copy($source, $destination)) {
+                throw new \RuntimeException("Copie impossible (disque plein ?) : {$source}");
             }
-            copy($source, $destination);
         } elseif (is_dir($source)) {
-            if (!is_dir($destination)) {
-                mkdir($destination, 0755, true);
-            }
+            $this->creerDossier($destination);
 
-            $files = scandir($source);
-            foreach ($files as $file) {
+            foreach (scandir($source) as $file) {
                 if ($file === '.' || $file === '..') continue;
                 $this->copierRepertoireOuFichier($source . DIRECTORY_SEPARATOR . $file, $destination . DIRECTORY_SEPARATOR . $file);
             }
+        }
+    }
+
+    private function creerDossier(string $dossier): void
+    {
+        if (!is_dir($dossier) && !mkdir($dossier, 0755, true) && !is_dir($dossier)) {
+            throw new \RuntimeException("Dossier impossible à créer : {$dossier}");
         }
     }
 
