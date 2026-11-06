@@ -23,6 +23,17 @@ return [
     'titre' => 'Novembre 2026',
     'entrees' => [
         [
+            'titre' => 'La moyenne de la fiche étudiant, celle du bulletin',
+            'icone' => 'fa-graduation-cap',
+            'texte' => 'Sur la fiche d’un étudiant BTS, la moyenne générale et le rang de l’année sont calculés comme au bulletin : poids des semestres, note d’assiduité, rang annuel de la classe. Tant que le bulletin n’est pas généré, la moyenne porte la mention « Provisoire · Bulletin non généré » ; une fois généré, c’est la valeur officielle qui s’affiche.',
+            'permissions' => ['students.view', 'notes.view', 'bulletins.view'],
+            'captures' => [
+                'apres' => 'images/nouveautes/2026-11/fiche-moyenne-provisoire-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'Une moyenne calculée sans bulletin généré est marquée provisoire.',
+            ],
+        ],
+        [
             'titre' => 'Corriger plusieurs notes d’un étudiant d’un coup',
             'icone' => 'fa-table-cells',
             'texte' => 'Sur la fiche étudiant, partie académique, « Saisie multiple » ouvre la saisie directement dans le tableau des notes : changez plusieurs notes, une absence ou un commentaire, puis enregistrez tout en une fois, sans fenêtre successive. Chaque ligne indique si la note est validée ou encore en brouillon. Une note refusée garde votre saisie avec la raison, et une note modifiée entre-temps par un collègue vous est signalée au lieu d’être écrasée. Enregistrer ne valide pas officiellement les notes.',
