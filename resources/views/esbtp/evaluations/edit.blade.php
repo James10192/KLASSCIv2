@@ -779,8 +779,11 @@ textarea.ee-input { resize: vertical; min-height: 90px; }
                 rebuildMatiereOptions(liste);
             })
             .catch(function(e) {
-                console.warn('[ee-edit] matieres API failed, fallback static:', e);
-                rebuildMatiereOptions(staticMatieres);
+                // Pas de repli sur la liste de départ : ce sont les matières d'une
+                // autre classe, et l'évaluation serait refusée sans explication.
+                console.warn('[ee-edit] chargement des matières impossible :', e);
+                rebuildMatiereOptions([]);
+                window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Impossible de charger les matières de cette classe. Réessayez ou revenez à la classe d’origine.' } }));
             })
             .finally(function() { setLoading(false); });
     }
