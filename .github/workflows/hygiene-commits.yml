@@ -426,6 +426,9 @@ jobs:
       - name: "Rapport des effectifs - années, distincts, permissions, AJAX et PDF"
         run: php vendor/bin/phpunit tests/Feature/Reports/ClasseEffectifsReportTest.php --no-coverage
 
+      - name: "Situation financière des classes - permissions, année et soldes"
+        run: php vendor/bin/phpunit tests/Feature/Comptabilite/SituationFinanciereClassesTest.php --no-coverage
+
       - name: "Évaluations - activations idempotentes et permissions AJAX"
         run: php vendor/bin/phpunit tests/Feature/Evaluations/EvaluationPublicationActionsTest.php --no-coverage
 
