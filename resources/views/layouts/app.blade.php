@@ -2168,6 +2168,16 @@
                         </div>
                         @endcan
 
+                        {{-- Situation financière des classes — droit spécifique, indépendant du catalogue de classes. --}}
+                        @can('comptabilite.suivi_classes.view')
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.comptabilite.suivi-classes.index') }}" class="menu-link {{ Request::routeIs('esbtp.comptabilite.suivi-classes.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-chart-column"></i></div>
+                                <div class="menu-text">Finances par classe</div>
+                            </a>
+                        </div>
+                        @endcan
+
                         {{-- Encaisser hors de la section Caisse : un comptable qui encaisse
                              (hors espèces, par exemple) n'a pas le module caisse, et ne voyait
                              donc l'écran nulle part. Masqué quand la section Caisse l'affiche. --}}
