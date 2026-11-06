@@ -69,7 +69,7 @@ class SituationFinanciereClassesTest extends TestCase
 
         $this->get(route('esbtp.comptabilite.suivi-classes.index', ['classe' => $classe->id]))
             ->assertOk()->assertSee('Situation financière des classes')
-            ->assertDontSee('openDetails(', false);
+            ->assertDontSee('Voir les étudiants', false);
 
         $this->getJson(route('esbtp.comptabilite.suivi-classes.details', $classe))
             ->assertForbidden();
