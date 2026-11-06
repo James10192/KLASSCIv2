@@ -2,13 +2,13 @@
 
 namespace App\Domain\Comptabilite\SuiviClasses;
 
-use App\Actions\Comptabilite\GetImpayesAgingAction;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
 use App\Services\Frais\MontantsParFrais;
 use App\Services\RelanceCalculationService;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Lecture seule, par inscription et par année. La classe n'appartient pas à
@@ -32,8 +32,39 @@ final class SituationClassesService
     {
     }
 
+    /** Durée du cache des agrégats : changer de page ne recalcule pas tout l'établissement. */
+    private const CACHE_SECONDES = 90;
+
     /** @param array<string, mixed> $filters */
     public function build(array $filters, bool $avecEtudiants = false, bool $pagination = true): array
+    {
+        $cle = $filters;
+        unset($cle['page']);
+        ksort($cle);
+        // Le détail par étudiant n'est demandé que pour une classe : pas de cache.
+        $calcul = $avecEtudiants
+            ? $this->calculer($filters, true)
+            : Cache::remember('suivi_classes:'.sha1(json_encode($cle)), self::CACHE_SECONDES,
+                fn () => $this->calculer($filters, false));
+
+        $liste = $calcul['liste'];
+        $page = max(1, (int) ($filters['page'] ?? 1));
+        return [
+            'classes' => $pagination
+                ? new LengthAwarePaginator(array_slice($liste, ($page - 1) * self::PAGE_SIZE, self::PAGE_SIZE), count($liste), self::PAGE_SIZE, $page, [
+                    'path' => request()->url(), 'query' => request()->except('page'),
+                ])
+                : collect($liste),
+            'totaux' => $calcul['totaux'],
+            'filtered_category' => (int) ($filters['categorie'] ?? 0) > 0,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @return array{liste: array<int, array<string, mixed>>, totaux: array<string, mixed>}
+     */
+    private function calculer(array $filters, bool $avecEtudiants): array
     {
         $anneeId = (int) ($filters['annee'] ?? 0);
         $classeId = (int) ($filters['classe'] ?? 0);
@@ -77,7 +108,7 @@ final class SituationClassesService
                 ])
                 ->where('annee_universitaire_id', $anneeId)
                 ->whereIn('classe_id', array_keys($rows))
-                ->whereIn('status', GetImpayesAgingAction::ACTIVE_INSCRIPTION_STATUSES)
+                ->whereIn('status', ESBTPInscription::STATUTS_ACTIFS_COMPTABLES)
                 ->chunkById(250, function ($lot) use (&$rows, &$uniques, $categoryId, $avecEtudiants) {
                     $ids = $lot->pluck('id')->map(fn ($id) => (int) $id)->all();
                     // Source canonique des allocations et des avoirs, hors reliquats.
@@ -155,17 +186,7 @@ final class SituationClassesService
             ? round(min(100, 100 * $totaux['regle'] / $totaux['attendu']), 1)
             : null;
 
-        $liste = array_values($rows);
-        $page = max(1, (int) ($filters['page'] ?? 1));
-        return [
-            'classes' => $pagination
-                ? new LengthAwarePaginator(array_slice($liste, ($page - 1) * self::PAGE_SIZE, self::PAGE_SIZE), count($liste), self::PAGE_SIZE, $page, [
-                    'path' => request()->url(), 'query' => request()->except('page'),
-                ])
-                : collect($liste),
-            'totaux' => $totaux,
-            'filtered_category' => $categoryId > 0,
-        ];
+        return ['liste' => array_values($rows), 'totaux' => $totaux];
     }
 
 }

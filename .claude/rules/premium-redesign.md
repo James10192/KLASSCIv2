@@ -272,6 +272,7 @@ Chaque page a son propre namespace pour éviter les conflits avec les classes gl
 | frais.configure | `fc-*` | `fc-hero`, `fc-card`, `fc-grid` |
 | notes.index | `nm-*` | `nm-hero`, `nm-card` |
 | situation financière | `sf-*` | `sf-hero` |
+| situation financière des classes (`/esbtp/comptabilite/suivi-classes`) | `sfc-*` | `sfc-hero`, `sfc-kpi`, `sfc-table` |
 | student-messages | `sm-*` | `sm-hero-top`, `sm-hero-icon` |
 | planning-header | `ph-*` | `ph-hero`, `ph-kpi`, `ph-tab` (composant réutilisable) |
 | custom-roles (Lot 8) | `cr-*` | `cr-modal`, `cr-picker`, `cr-perm`, `cr-role-card`, `cr-section-bar` |

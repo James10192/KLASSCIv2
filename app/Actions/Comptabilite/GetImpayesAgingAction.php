@@ -13,7 +13,7 @@ use App\Services\RelanceCalculationService;
  */
 class GetImpayesAgingAction
 {
-    public const ACTIVE_INSCRIPTION_STATUSES = ['active', 'en_attente', 'validée'];
+    private const ACTIVE_INSCRIPTION_STATUSES = \App\Models\ESBTPInscription::STATUTS_ACTIFS_COMPTABLES;
     private const STUDENT_PREVIEW_PER_BUCKET = 5;
     private const TOP_ECHUS = 5;
 

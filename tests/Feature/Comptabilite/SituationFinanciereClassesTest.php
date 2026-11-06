@@ -93,6 +93,19 @@ class SituationFinanciereClassesTest extends TestCase
         $this->get(route('esbtp.comptabilite.suivi-classes.index'))->assertForbidden();
     }
 
+    public function test_un_filtre_inconnu_est_refuse_au_lieu_de_rendre_un_rapport_vide(): void
+    {
+        $this->actingAs($this->utilisateur([
+            'module.comptabilite.access', 'comptabilite.access', 'comptabilite.suivi_classes.view',
+        ]));
+
+        foreach (['filiere', 'niveau', 'classe', 'categorie', 'annee'] as $filtre) {
+            $this->getJson(route('esbtp.comptabilite.suivi-classes.data', [$filtre => 999999]))
+                ->assertStatus(422)
+                ->assertJsonValidationErrors($filtre);
+        }
+    }
+
     public function test_grant_individuel_autorise_le_detail_sans_export(): void
     {
         $classe = ESBTPClasse::factory()->create();

@@ -1,12 +1,12 @@
 <x-pdf-document :title="$reportTitle" :subtitle="$reportSubtitle" :filters="$reportFilters" orientation="landscape">
     <style>
-        .sf-report { table-layout: fixed; font-size: 7.3pt; }
-        .sf-report thead { display: table-header-group; }
-        .sf-report tr { page-break-inside: avoid; }
-        .sf-report .money { text-align: right; white-space: nowrap; }
-        .sf-report .total td { font-weight: bold; background: #e8f0fc; }
-        .sf-report td { overflow-wrap: break-word; word-wrap: break-word; }
-        .sf-note { margin: 12px 0; color: #475569; font-size: 8pt; }
+        .sfc-report { table-layout: fixed; font-size: 7.3pt; }
+        .sfc-report thead { display: table-header-group; }
+        .sfc-report tr { page-break-inside: avoid; }
+        .sfc-report .money { text-align: right; white-space: nowrap; }
+        .sfc-report .total td { font-weight: bold; background: #e8f0fc; }
+        .sfc-report td { overflow-wrap: break-word; word-wrap: break-word; }
+        .sfc-note { margin: 12px 0; color: #475569; font-size: 8pt; }
     </style>
     <table class="pdf-kpi-table" aria-label="Synthèse du rapport">
         <tr>
@@ -16,8 +16,8 @@
             <td class="pdf-kpi-cell"><div class="pdf-kpi-label">Échu impayé</div><div class="pdf-kpi-value">{{ number_format($rapport['totaux']['echu'], 0, ',', ' ') }}</div></td>
         </tr>
     </table>
-    <p class="sf-note">Montants dans la monnaie de l'établissement. Le « reste à payer » découle des échéanciers et des règlements ventilés. Les reliquats historiques ne sont pas ajoutés aux frais annuels une seconde fois. Les encaissements de caisse ne se déduisent pas d'une ventilation par catégorie.</p>
-    <table class="pdf-detail-table sf-report">
+    <p class="sfc-note">Montants dans la monnaie de l'établissement. Le « reste à payer » découle des échéanciers et des règlements ventilés. Les reliquats historiques ne sont pas ajoutés aux frais annuels une seconde fois. Les encaissements de caisse ne se déduisent pas d'une ventilation par catégorie.</p>
+    <table class="pdf-detail-table sfc-report">
         <thead>
         <tr>
             <th>Classe</th><th>Effectif</th><th class="money">Attendu</th><th class="money">Réglé</th>

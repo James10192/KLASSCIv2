@@ -209,6 +209,9 @@ class ESBTPInscription extends Model implements Auditable
     /** Les graphies d'une inscription annulée que le dépôt connaît. */
     public const STATUTS_ANNULES = ['cancelled', 'annulée', 'annulee'];
 
+    /** Statuts qui comptent dans le dû d'une inscription (aging des impayés, situation des classes). */
+    public const STATUTS_ACTIFS_COMPTABLES = ['active', 'en_attente', 'validée'];
+
     public const STATUT_ETABLISSEMENT_NOUVEAU = 'nouveau';
 
     public const STATUT_ETABLISSEMENT_ANCIEN = 'ancien';

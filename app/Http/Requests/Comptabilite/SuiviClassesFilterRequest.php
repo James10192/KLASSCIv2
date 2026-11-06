@@ -16,11 +16,12 @@ final class SuiviClassesFilterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'annee' => ['nullable', 'integer', 'min:1'],
-            'filiere' => ['nullable', 'integer', 'min:1'],
-            'niveau' => ['nullable', 'integer', 'min:1'],
-            'classe' => ['nullable', 'integer', 'min:1'],
-            'categorie' => ['nullable', 'integer', 'min:1'],
+            // Un identifiant inconnu est refusé : sinon le rapport sort vide sans dire pourquoi.
+            'annee' => ['nullable', 'integer', 'min:1', Rule::exists('esbtp_annee_universitaires', 'id')],
+            'filiere' => ['nullable', 'integer', 'min:1', Rule::exists('esbtp_filieres', 'id')],
+            'niveau' => ['nullable', 'integer', 'min:1', Rule::exists('esbtp_niveau_etudes', 'id')],
+            'classe' => ['nullable', 'integer', 'min:1', Rule::exists('esbtp_classes', 'id')],
+            'categorie' => ['nullable', 'integer', 'min:1', Rule::exists('esbtp_frais_categories', 'id')],
             'systeme' => ['nullable', 'string', Rule::in(
                 \App\Models\ESBTPClasse::query()->whereNotNull('systeme_academique')
                     ->distinct()->pluck('systeme_academique')->all()
