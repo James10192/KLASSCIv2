@@ -69,7 +69,7 @@ class SituationFinanciereClassesTest extends TestCase
 
         $this->get(route('esbtp.comptabilite.suivi-classes.index', ['classe' => $classe->id]))
             ->assertOk()->assertSee('Situation financière des classes')
-            ->assertDontSee('Afficher le détail de', false);
+            ->assertDontSee('openDetails(', false);
 
         $this->getJson(route('esbtp.comptabilite.suivi-classes.details', $classe))
             ->assertForbidden();
@@ -167,6 +167,33 @@ class SituationFinanciereClassesTest extends TestCase
         $this->assertEquals(60, $ligne['taux']);
         $this->assertEquals(100000, $rapport['totaux']['attendu']);
     }
+    public function test_le_detail_ne_montre_que_les_liens_que_l_utilisateur_peut_ouvrir(): void
+    {
+        foreach (['students.view', 'inscriptions.view', 'paiements.view'] as $permission) {
+            Permission::findOrCreate($permission, 'web');
+        }
+        $classe = ESBTPClasse::factory()->create();
+        $inscription = ESBTPInscription::factory()->create([
+            'classe_id' => $classe->id, 'annee_universitaire_id' => $this->annee->id,
+            'filiere_id' => $classe->filiere_id, 'niveau_id' => $classe->niveau_etude_id,
+            'status' => 'active',
+        ]);
+        $base = ['module.comptabilite.access', 'comptabilite.access', 'comptabilite.suivi_classes.view', 'comptabilite.suivi_classes.view_details'];
+        $url = route('esbtp.comptabilite.suivi-classes.details', [$classe, 'annee' => $this->annee->id]);
+        $fiche = route('esbtp.etudiants.show', $inscription->etudiant_id);
+        $paiements = route('esbtp.paiements.index');
+
+        $this->actingAs($this->utilisateur($base));
+        $html = $this->getJson($url)->assertOk()->json('html');
+        $this->assertStringNotContainsString($fiche, $html);
+        $this->assertStringNotContainsString($paiements, $html);
+
+        $this->actingAs($this->utilisateur([...$base, 'students.view', 'paiements.view']));
+        $html = $this->getJson($url)->assertOk()->json('html');
+        $this->assertStringContainsString($fiche, $html);
+        $this->assertStringContainsString($paiements, $html);
+    }
+
     public function test_un_export_autorise_produit_un_pdf_et_un_xlsx(): void
     {
         $classe = ESBTPClasse::factory()->create();

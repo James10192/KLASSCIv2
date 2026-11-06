@@ -27,6 +27,7 @@ final class SuiviClassesFilterRequest extends FormRequest
                     ->distinct()->pluck('systeme_academique')->all()
             )],
             'search' => ['nullable', 'string', 'max:100'],
+            'tri' => ['nullable', 'string', Rule::in(array_keys(\App\Domain\Comptabilite\SuiviClasses\SituationClassesService::TRIS))],
             'page' => ['nullable', 'integer', 'min:1'],
         ];
     }

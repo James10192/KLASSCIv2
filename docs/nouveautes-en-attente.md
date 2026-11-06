@@ -13,3 +13,4 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-11-06 · #1790 · Finances par classe : refonte de la page (indicateurs, classes à surveiller, tri, filtres repliables, détail par étudiant)

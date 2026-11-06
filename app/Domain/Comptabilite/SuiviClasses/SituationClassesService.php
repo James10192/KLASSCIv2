@@ -39,7 +39,8 @@ final class SituationClassesService
     public function build(array $filters, bool $avecEtudiants = false, bool $pagination = true): array
     {
         $cle = $filters;
-        unset($cle['page']);
+        // La page et le tri s'appliquent après le calcul : ils ne changent pas la clé du cache.
+        unset($cle['page'], $cle['tri']);
         ksort($cle);
         // Le détail par étudiant n'est demandé que pour une classe : pas de cache.
         $calcul = $avecEtudiants
@@ -47,7 +48,7 @@ final class SituationClassesService
             : Cache::remember('suivi_classes:'.sha1(json_encode($cle)), self::CACHE_SECONDES,
                 fn () => $this->calculer($filters, false));
 
-        $liste = $calcul['liste'];
+        $liste = self::trier($calcul['liste'], (string) ($filters['tri'] ?? self::TRI_DEFAUT));
         $page = max(1, (int) ($filters['page'] ?? 1));
         return [
             'classes' => $pagination
@@ -56,8 +57,52 @@ final class SituationClassesService
                 ])
                 : collect($liste),
             'totaux' => $calcul['totaux'],
+            'a_surveiller' => self::aSurveiller($calcul['liste']),
             'filtered_category' => (int) ($filters['categorie'] ?? 0) > 0,
         ];
+    }
+
+    /** Tris proposés à l'écran : clé => libellé. */
+    public const TRIS = [
+        'reste' => 'Reste à payer, du plus élevé',
+        'echu' => 'Échu impayé, du plus élevé',
+        'taux' => 'Recouvrement, du plus faible',
+        'classe' => 'Nom de classe',
+    ];
+
+    public const TRI_DEFAUT = 'classe';
+
+    /**
+     * @param array<int, array<string, mixed>> $liste
+     * @return array<int, array<string, mixed>>
+     */
+    public static function trier(array $liste, string $tri): array
+    {
+        $cle = match ($tri) {
+            'reste' => fn (array $a, array $b) => $b['restant'] <=> $a['restant'],
+            'echu' => fn (array $a, array $b) => $b['echu'] <=> $a['echu'],
+            // Une classe sans montant attendu n'a pas de taux : elle passe en dernier.
+            'taux' => fn (array $a, array $b) => ($a['taux'] ?? INF) <=> ($b['taux'] ?? INF),
+            default => fn (array $a, array $b) => strnatcasecmp($a['classe'], $b['classe']),
+        };
+        usort($liste, $cle);
+
+        return $liste;
+    }
+
+    /**
+     * Les trois classes qui portent le plus d'échu impayé : ce que le comptable
+     * doit regarder en premier.
+     *
+     * @param array<int, array<string, mixed>> $liste
+     * @return array<int, array<string, mixed>>
+     */
+    public static function aSurveiller(array $liste): array
+    {
+        $liste = array_values(array_filter($liste, fn (array $l) => $l['echu'] > 0));
+        usort($liste, fn (array $a, array $b) => $b['echu'] <=> $a['echu']);
+
+        return array_slice($liste, 0, 3);
     }
 
     /**
@@ -151,6 +196,7 @@ final class SituationClassesService
                         if ($avecEtudiants) {
                             $row['etudiants'][] = [
                                 'inscription_id' => (int) $inscription->id,
+                                'etudiant_id' => (int) ($inscription->etudiant_id ?? 0),
                                 'nom' => (string) ($inscription->etudiant?->nom_complet ?? 'Étudiant inconnu'),
                                 'matricule' => (string) ($inscription->etudiant?->matricule ?? '—'),
                                 ...$montants,
