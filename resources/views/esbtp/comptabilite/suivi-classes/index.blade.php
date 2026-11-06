@@ -116,7 +116,7 @@
         <div class="sf-filter"><label>Niveau</label><x-au-select name="niveau" x-model="filters.niveau" icon="fa-graduation-cap" :options="$sfOptions($niveaux)" :value="$filtres['niveau'] ?? ''" :searchable="true" /></div>
         <div class="sf-filter"><label>Classe</label><x-au-select name="classe" x-model="filters.classe" icon="fa-users" :options="$sfOptions($classesOptions)" :value="$filtres['classe'] ?? ''" :searchable="true" /></div>
         <div class="sf-filter"><label>Système académique</label><x-au-select name="systeme" x-model="filters.systeme" icon="fa-university" :options="['' => 'Tous les systèmes'] + $systemes->mapWithKeys(fn($s) => [$s => $s])->all()" :value="$filtres['systeme'] ?? ''" /></div>
-        <div class="sf-filter"><label>Catégorie de frais</label><x-au-select name="categorie" x-model="filters.categorie" icon="fa-list" :options="$sfOptions($categories,'nom')" :value="$filtres['categorie'] ?? ''" :searchable="true" /></div>
+        <div class="sf-filter"><label>Catégorie de frais</label><x-au-select name="categorie" x-model="filters.categorie" icon="fa-list" :options="$sfOptions($categories,'name')" :value="$filtres['categorie'] ?? ''" :searchable="true" /></div>
         <div class="sf-filter"><label for="sf-search">Rechercher une classe</label><input id="sf-search" type="search" x-model="filters.search" placeholder="Nom de classe…" maxlength="100" /></div>
         <div class="sf-filter-buttons">
             <button type="submit" class="sf-btn" :disabled="loading"><i class="fas fa-filter"></i> Appliquer</button>

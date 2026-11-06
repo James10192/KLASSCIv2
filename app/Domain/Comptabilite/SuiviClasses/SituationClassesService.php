@@ -6,6 +6,7 @@ use App\Actions\Comptabilite\GetImpayesAgingAction;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
+use App\Services\Frais\MontantsParFrais;
 use App\Services\RelanceCalculationService;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -24,7 +25,10 @@ final class SituationClassesService
     public const PDF_MAX_ROWS = 1000;
     public const EXCEL_MAX_ROWS = 50000;
 
-    public function __construct(private readonly RelanceCalculationService $calculs)
+    public function __construct(
+        private readonly RelanceCalculationService $calculs,
+        private readonly MontantsParFrais $montantsParFrais,
+    )
     {
     }
 
@@ -75,11 +79,29 @@ final class SituationClassesService
                 ->whereIn('classe_id', array_keys($rows))
                 ->whereIn('status', GetImpayesAgingAction::ACTIVE_INSCRIPTION_STATUSES)
                 ->chunkById(250, function ($lot) use (&$rows, &$uniques, $categoryId, $avecEtudiants) {
+                    $ids = $lot->pluck('id')->map(fn ($id) => (int) $id)->all();
+                    // Source canonique des allocations et des avoirs, hors reliquats.
+                    // Une seule agrégation par lot évite une requête par étudiant.
+                    $parFrais = $this->montantsParFrais->netParInscriptionEtFrais($ids);
+                    $nets = ESBTPPaiement::query()
+                        ->whereIn('inscription_id', $ids)
+                        ->valides()
+                        ->horsReliquat()
+                        ->selectRaw('inscription_id, SUM('.ESBTPPaiement::sqlStudentPaidCase().') AS total_net')
+                        ->groupBy('inscription_id')
+                        ->pluck('total_net', 'inscription_id');
+
                     $this->calculs->preloadForInscriptions($lot);
                     foreach ($lot as $inscription) {
                         $id = (int) $inscription->classe_id;
                         $state = $this->calculs->getFinancialState($inscription);
-                        $montants = $this->montants($state, $inscription, $categoryId);
+                        $montants = $this->montants(
+                            $state,
+                            $inscription,
+                            $categoryId,
+                            $parFrais[(int) $inscription->id] ?? [],
+                            (float) ($nets[(int) $inscription->id] ?? 0),
+                        );
                         $row = &$rows[$id];
 
                         $studentId = (int) $inscription->etudiant_id;
@@ -146,41 +168,92 @@ final class SituationClassesService
         ];
     }
 
-    /** @return array{attendu:float,regle:float,restant:float,echu:float,encaisse:float,ajustements:float} */
-    private function montants(array $state, ESBTPInscription $inscription, int $categoryId): array
-    {
-        if ($categoryId > 0) {
-            $lignes = collect($state['due_lines'] ?? [])
-                ->filter(fn ($l) => (int) ($l['category_id'] ?? 0) === $categoryId);
-            return [
-                'attendu' => (float) $lignes->sum('amount'),
-                'regle' => (float) $lignes->sum('paid_amount'),
-                'restant' => (float) $lignes->sum('remaining_amount'),
-                'echu' => (float) $lignes->filter(function ($l) {
-                    if (empty($l['due_date'])) {
-                        return false;
-                    }
-                    return Carbon::parse($l['due_date'])->addDays((int) ($l['grace_days'] ?? 0))->startOfDay()->lte(today());
-                })->sum('remaining_amount'),
-                // Une ventilation de frais n'est pas un flux de caisse.
-                'encaisse' => 0.0,
-                'ajustements' => 0.0,
-            ];
+    /**
+     * Les lignes d'échéancier font foi pour la dette ; leurs « paid_amount »
+     * ne font PAS foi pour le montant net, car le moteur historique de tranches
+     * peut y appliquer positivement des avoirs et des paiements de reliquat.
+     * La ventilation par frais est donc relue depuis MontantsParFrais, puis
+     * appliquée chronologiquement aux échéances.
+     *
+     * @param array<int, float> $payeParFrais
+     * @return array{attendu:float,regle:float,restant:float,echu:float,encaisse:float,ajustements:float}
+     */
+    private function montants(
+        array $state,
+        ESBTPInscription $inscription,
+        int $categoryId,
+        array $payeParFrais,
+        float $netGlobal
+    ): array {
+        $lignes = array_values(array_filter(
+            $state['due_lines'] ?? [],
+            fn (array $l) => $categoryId === 0 || (int) ($l['category_id'] ?? 0) === $categoryId
+        ));
+        usort($lignes, fn (array $a, array $b) =>
+            (string) ($a['due_date'] ?? '') <=> (string) ($b['due_date'] ?? '')
+        );
+
+        $pools = [];
+        foreach ($payeParFrais as $fraisId => $net) {
+            $pools[(string) $fraisId] = max(0.0, (float) $net);
+        }
+        $netNonVentile = $categoryId > 0
+            ? 0.0
+            : max(0.0, $netGlobal - array_sum($pools));
+
+        // 1. Imputer les montants nets par frais, sans aucun effet des reliquats.
+        foreach ($lignes as &$ligne) {
+            $key = (string) ($ligne['category_id'] ?? 0);
+            $montant = max(0.0, (float) ($ligne['amount'] ?? 0));
+            $verse = min($montant, $pools[$key] ?? 0.0);
+            $pools[$key] = max(0.0, ($pools[$key] ?? 0.0) - $verse);
+            $ligne['report_paid'] = $verse;
+            $ligne['report_remaining'] = $montant - $verse;
+        }
+        unset($ligne);
+
+        // 2. Les paiements globalement non affectés peuvent couvrir les frais
+        //    du même dossier, par ordre d'échéance. Jamais dans un filtre de frais.
+        if ($netNonVentile > 0) {
+            foreach ($lignes as &$ligne) {
+                $verse = min($netNonVentile, $ligne['report_remaining']);
+                $ligne['report_paid'] += $verse;
+                $ligne['report_remaining'] -= $verse;
+                $netNonVentile -= $verse;
+                if ($netNonVentile <= 0.001) {
+                    break;
+                }
+            }
+            unset($ligne);
         }
 
-        // Paiements validés, hors règlement d'une dette d'une autre année.
-        $encaisse = ESBTPPaiement::netCashFrom(
+        $attendu = 0.0;
+        $regle = 0.0;
+        $restant = 0.0;
+        $echu = 0.0;
+        foreach ($lignes as $ligne) {
+            $attendu += max(0.0, (float) ($ligne['amount'] ?? 0));
+            $regle += $ligne['report_paid'];
+            $restant += $ligne['report_remaining'];
+            if (! empty($ligne['due_date']) && Carbon::parse($ligne['due_date'])
+                ->addDays((int) ($ligne['grace_days'] ?? 0))->startOfDay()->lte(today())) {
+                $echu += $ligne['report_remaining'];
+            }
+        }
+
+        // Le montant de caisse est indépendant de l'imputation sur une tranche.
+        // Une remise/avoir interne n'enlève de la caisse que s'il s'agit d'un refund.
+        $encaisse = $categoryId > 0 ? 0.0 : ESBTPPaiement::netCashFrom(
             $inscription->paiements->filter(fn ($p) => $p->type_paiement !== 'reliquat')
         );
-        $regle = (float) ($state['total_paid'] ?? 0.0);
 
         return [
-            'attendu' => (float) ($state['total_due'] ?? 0.0),
-            'regle' => $regle,
-            'restant' => (float) ($state['remaining_total'] ?? 0.0),
-            'echu' => (float) ($state['overdue_amount'] ?? 0.0),
-            'encaisse' => $encaisse,
-            'ajustements' => $regle - $encaisse,
+            'attendu' => round($attendu, 2),
+            'regle' => round($regle, 2),
+            'restant' => round($restant, 2),
+            'echu' => round($echu, 2),
+            'encaisse' => round($encaisse, 2),
+            'ajustements' => round($regle - $encaisse, 2),
         ];
     }
 }

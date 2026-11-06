@@ -7,6 +7,7 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
 use App\Models\User;
+use App\Services\Frais\MontantsParFrais;
 use App\Services\RelanceCalculationService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Mockery;
@@ -111,12 +112,14 @@ class SituationFinanciereClassesTest extends TestCase
             'name' => '2097-2098', 'start_date' => '2097-09-01',
             'end_date' => '2098-07-31', 'is_current' => false,
         ]);
+        $inscriptionCourante = null;
         foreach ([$this->annee, $autreAnnee] as $annee) {
-            ESBTPInscription::factory()->create([
+            $inscription = ESBTPInscription::factory()->create([
                 'classe_id' => $classe->id, 'annee_universitaire_id' => $annee->id,
                 'filiere_id' => $classe->filiere_id, 'niveau_id' => $classe->niveau_etude_id,
                 'status' => 'active',
             ]);
+            if ($annee->is_current) $inscriptionCourante = $inscription;
         }
 
         $calcs = Mockery::mock(RelanceCalculationService::class);
@@ -127,11 +130,16 @@ class SituationFinanciereClassesTest extends TestCase
             'remaining_total' => 40000,
             'overdue_amount' => 15000,
             'due_lines' => [
-                ['category_id' => 17, 'amount' => 100000, 'paid_amount' => 60000,
-                    'remaining_amount' => 40000, 'due_date' => '2000-01-01', 'grace_days' => 0],
+                ['category_id' => 17, 'amount' => 75000, 'paid_amount' => 60000,
+                    'remaining_amount' => 15000, 'due_date' => '2000-01-01', 'grace_days' => 0],
+                ['category_id' => 17, 'amount' => 25000, 'paid_amount' => 0,
+                    'remaining_amount' => 25000, 'due_date' => '2099-01-01', 'grace_days' => 0],
             ],
         ]);
-        $service = new SituationClassesService($calcs);
+        $parFrais = Mockery::mock(MontantsParFrais::class);
+        $parFrais->shouldReceive('netParInscriptionEtFrais')->once()
+            ->andReturn([(int) $inscriptionCourante->id => [17 => 60000]]);
+        $service = new SituationClassesService($calcs, $parFrais);
         $rapport = $service->build([
             'annee' => $this->annee->id, 'classe' => $classe->id,
         ], pagination: false);

@@ -32,7 +32,7 @@ final class ESBTPSuiviClassesController extends Controller
             'filieres' => ESBTPFiliere::orderBy('name')->get(),
             'niveaux' => ESBTPNiveauEtude::orderBy('name')->get(),
             'classesOptions' => ESBTPClasse::orderBy('name')->get(['id', 'name']),
-            'categories' => ESBTPFraisCategory::where('is_active', true)->orderBy('nom')->get(),
+            'categories' => ESBTPFraisCategory::where('is_active', true)->orderBy('name')->get(),
             'systemes' => ESBTPClasse::whereNotNull('systeme_academique')->distinct()->pluck('systeme_academique'),
         ]);
     }
@@ -99,7 +99,7 @@ final class ESBTPSuiviClassesController extends Controller
             'Filière' => ESBTPFiliere::find($filters['filiere'] ?? null)?->name,
             'Niveau' => ESBTPNiveauEtude::find($filters['niveau'] ?? null)?->name,
             'Classe' => ESBTPClasse::find($filters['classe'] ?? null)?->name,
-            'Catégorie' => ESBTPFraisCategory::find($filters['categorie'] ?? null)?->nom,
+            'Catégorie' => ESBTPFraisCategory::find($filters['categorie'] ?? null)?->name,
             'Système' => $filters['systeme'] ?? null,
             'Recherche' => $filters['search'] ?? null,
         ], fn ($v) => $v !== null && $v !== '');
