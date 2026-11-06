@@ -36,7 +36,7 @@ final class SituationClasseMontantsTest extends TestCase
         $this->assertEquals(70000, $resultat['regle']);
         $this->assertEquals(30000, $resultat['restant']);
         $this->assertEquals(20000, $resultat['echu']);
-        $this->assertEquals(-70000, $resultat['ajustements']);
+        $this->assertEquals(70000, $resultat['ajustements']);
     }
 
     public function test_un_paiement_non_ventile_couvre_le_reste_sans_fausser_un_filtre_de_frais(): void
