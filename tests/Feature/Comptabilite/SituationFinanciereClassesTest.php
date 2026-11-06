@@ -153,4 +153,27 @@ class SituationFinanciereClassesTest extends TestCase
         $this->assertEquals(60, $ligne['taux']);
         $this->assertEquals(100000, $rapport['totaux']['attendu']);
     }
+    public function test_un_export_autorise_produit_un_pdf_et_un_xlsx(): void
+    {
+        $classe = ESBTPClasse::factory()->create();
+        $user = $this->utilisateur([
+            'module.comptabilite.access', 'comptabilite.access',
+            'comptabilite.suivi_classes.view', 'comptabilite.suivi_classes.export',
+        ]);
+        $this->actingAs($user);
+
+        $pdf = $this->get(route('esbtp.comptabilite.suivi-classes.pdf-preview', [
+            'annee' => $this->annee->id, 'classe' => $classe->id,
+        ]));
+        $pdf->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF-', $pdf->getContent());
+
+        $excel = $this->get(route('esbtp.comptabilite.suivi-classes.excel', [
+            'annee' => $this->annee->id, 'classe' => $classe->id,
+        ]));
+        $excel->assertOk();
+        $this->assertStringContainsString('.xlsx', (string) $excel->headers->get('Content-Disposition'));
+    }
+
+
 }
