@@ -54,6 +54,9 @@
 .sf-pagination nav{display:flex;max-width:100%;overflow-x:auto;}
 .sf-hint {border:1px solid #d7e5f8;border-radius:12px;padding:.85rem 1rem;background:#f2f7fe;color:#31577c;font-size:.79rem;line-height:1.6;}
 .sf-loading {opacity:.5;pointer-events:none;}
+.sf-error {display:flex;align-items:center;gap:.65rem;padding:.7rem .9rem;border:1px solid #f2b5b5;background:#fff4f4;border-radius:11px;color:#991b1b;font-size:.82rem;}
+.sf-error button {margin-left:auto;border:0;background:transparent;color:inherit;cursor:pointer;font-weight:700;}
+
 .sf-modal-backdrop {position:fixed;inset:0;background:#0a193caa;z-index:1070;display:flex;justify-content:center;align-items:center;padding:1rem;}
 .sf-modal {background:white;border-radius:18px;width:min(1120px,100%);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 22px 80px #07142d40;overflow:hidden;}
 .sf-modal-header {display:flex;gap:1rem;justify-content:space-between;align-items:center;padding:1.1rem 1.3rem;border-bottom:1px solid #e2e8f0;}
@@ -102,6 +105,11 @@
             @endcan
         </div>
     </header>
+
+    <div class="sf-error" role="alert" x-show="message" x-cloak>
+        <i class="fas fa-exclamation-circle"></i><span x-text="message"></span>
+        <button type="button" @click="message=''" aria-label="Fermer le message">Fermer</button>
+    </div>
 
     <section class="sf-cards" aria-label="Indicateurs financiers">
         <div class="sf-card"><div class="sf-card-label">Montant attendu</div><div class="sf-card-value" x-text="money(totaux.attendu)">{{ number_format($rapport['totaux']['attendu'],0,',',' ') }}</div><div class="sf-card-note">Frais dus dans le périmètre sélectionné</div></div>
@@ -188,7 +196,7 @@ window.suiviClasses = function(config) {
                 if(window.Alpine && typeof Alpine.initTree === 'function') Alpine.initTree(this.$refs.results);
                 this.totaux=data.totaux; this.categorieFiltre=data.categorie;
                 history.replaceState(null,'',location.pathname+'?'+this.params(page).toString());
-            } catch(e) { this.message=e.message; alert(e.message); }
+            } catch(e) { this.message=e.message; }
             finally { this.loading=false; }
         },
         reset() { this.filters={...this.initialFilters,filiere:'',niveau:'',classe:'',categorie:'',systeme:'',search:''}; this.$nextTick(() => this.$el.querySelectorAll('.sf-filters .au-select-native').forEach(s => s.dispatchEvent(new Event('change',{bubbles:true})))); this.refresh(1); },

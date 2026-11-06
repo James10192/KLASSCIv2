@@ -38,7 +38,7 @@
             <td class="money">{{ $ligne['taux'] === null ? '—' : number_format($ligne['taux'], 1, ',', ' ') . ' %' }}</td>
         </tr>
         @empty
-        <tr><td colspan="{{ $rapport['filtered_category'] ? 6 : 8 }}" style="text-align:center;">Aucune classe correspondante.</td></tr>
+        <tr><td colspan="{{ $rapport['filtered_category'] ? 7 : 9 }}" style="text-align:center;">Aucune classe correspondante.</td></tr>
         @endforelse
         <tr class="total">
             <td>TOTAL GÉNÉRAL</td>

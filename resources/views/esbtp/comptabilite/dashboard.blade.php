@@ -564,6 +564,14 @@ a.af-todo:hover { border-color: #b9cdee; color: #1e293b; }
                 </a>
             </div>
 
+            @can('comptabilite.suivi_classes.view')
+            <a href="{{ route('esbtp.comptabilite.suivi-classes.index') }}" class="m-row" style="margin: .8rem 0;" aria-label="Ouvrir la situation financière des classes">
+                <div class="av ic" aria-hidden="true"><x-m.icon name="file" /></div>
+                <div class="tt"><b>Finances par classe</b><span>Attendu · réglé · reste à recouvrer</span></div>
+                <div class="tr"><span class="m-chip info">Ouvrir</span></div>
+            </a>
+            @endcan
+
             <div class="m-sec"><b>À faire aujourd'hui</b></div>
             @if($dmRienAFaire)
                 <x-m.empty icon="check" title="Rien à faire ici" text="Les actions du jour (relances, réconciliation, validation) s'affichent selon vos droits." />
