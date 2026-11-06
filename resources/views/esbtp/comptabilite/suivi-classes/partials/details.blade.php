@@ -65,7 +65,7 @@
                     @endif
                 </tr>
             @empty
-                <tr><td colspan="7" class="sfc-empty"><i class="fas fa-user-slash"></i>Aucune inscription dans cette classe pour l’année choisie.</td></tr>
+                <tr><td colspan="{{ ($sfcFiche || $sfcInscription || $sfcPaiements) ? 7 : 6 }}" class="sfc-empty"><i class="fas fa-user-slash"></i>Aucune inscription dans cette classe pour l’année choisie.</td></tr>
             @endforelse
             </tbody>
         </table>
