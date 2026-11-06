@@ -13,3 +13,4 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-11-06 · #1789 · Modifier une évaluation : la matière de l’évaluation est de nouveau proposée, BTS comme LMD
