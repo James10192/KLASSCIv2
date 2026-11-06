@@ -13,7 +13,7 @@ use App\Services\RelanceCalculationService;
  */
 class GetImpayesAgingAction
 {
-    private const ACTIVE_INSCRIPTION_STATUSES = ['active', 'en_attente', 'validée'];
+    public const ACTIVE_INSCRIPTION_STATUSES = ['active', 'en_attente', 'validée'];
     private const STUDENT_PREVIEW_PER_BUCKET = 5;
     private const TOP_ECHUS = 5;
 

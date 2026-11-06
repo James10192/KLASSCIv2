@@ -1273,6 +1273,21 @@ return [
             'group' => 'Comptabilité',
             'icon' => 'fa-paper-plane',
         ],
+        'comptabilite.suivi_classes.view' => [
+            'label' => 'Consulter les montants financiers par classe',
+            'group' => 'Comptabilité',
+            'icon' => 'fa-chart-bar',
+        ],
+        'comptabilite.suivi_classes.view_details' => [
+            'label' => 'Consulter les règlements individuels dans une classe',
+            'group' => 'Comptabilité',
+            'icon' => 'fa-eye',
+        ],
+        'comptabilite.suivi_classes.export' => [
+            'label' => 'Exporter la situation financière des classes (PDF/Excel)',
+            'group' => 'Comptabilité',
+            'icon' => 'fa-file-export',
+        ],
         'comptabilite.reports.export' => [
             'label' => 'Exporter les rapports comptables',
             'group' => 'Comptabilité',
@@ -2440,6 +2455,8 @@ return [
             'comptabilite.analytics.view', 'comptabilite.analytics.refresh',
             'comptabilite.analytics.run_now', 'comptabilite.analytics.configure',
             'comptabilite.recouvrement.access',
+            'comptabilite.suivi_classes.view', 'comptabilite.suivi_classes.view_details',
+            'comptabilite.suivi_classes.export',
             'comptabilite.audit.view',  // QW6 mai 2026 — comptable doit auditer son module
             'comptabilite.journal.view',  // S1.3 mai 2026 — comptable consulte le journal de caisse OHADA
             // PR1 réconciliation — view+open+resolve+export. Approve réservé au coordinateur (séparation OHADA).

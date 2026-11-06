@@ -287,6 +287,20 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     Route::middleware(['permission:reports.view', 'permission:reports.generate', 'throttle:10,1'])->get('/esbtp/rapports/effectifs/pdf', [\App\Http\Controllers\ClasseEffectifsReportController::class, 'download'])
         ->name('esbtp.rapports.effectifs.pdf');
 
+    // Situation financière des classes — chaque endpoint est protégé par les permissions effectives.
+    Route::prefix('esbtp/comptabilite/suivi-classes')->name('esbtp.comptabilite.suivi-classes.')->group(function () {
+        $c = \App\Http\Controllers\ESBTPSuiviClassesController::class;
+        Route::get('/', [$c, 'index'])->name('index');
+        Route::get('/data', [$c, 'data'])->middleware('throttle:60,1')->name('data');
+        Route::get('/pdf/preview', [$c, 'preview'])->middleware('throttle:30,1')->name('pdf-preview');
+        Route::get('/pdf', [$c, 'downloadPdf'])->middleware('throttle:10,1')->name('pdf');
+        Route::get('/excel', [$c, 'downloadExcel'])->middleware('throttle:10,1')->name('excel');
+        Route::get('/{classe}/details', [$c, 'details'])
+            ->middleware(['can:comptabilite.suivi_classes.view_details', 'throttle:60,1'])
+            ->whereNumber('classe')
+            ->name('details');
+    });
+
     // Lot 9 â€” Dashboard widget-based (universel, gated par permissions)
     // Premier consommateur : rÃ´les custom (Lot 8). Accessible Ã  tous via /dashboard/widgets.
     Route::prefix('dashboard/widgets')->name('dashboard.widgets.')->group(function () {

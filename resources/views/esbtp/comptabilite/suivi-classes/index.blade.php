@@ -191,7 +191,7 @@ window.suiviClasses = function(config) {
             } catch(e) { this.message=e.message; alert(e.message); }
             finally { this.loading=false; }
         },
-        reset() { this.filters={...this.initialFilters,fil iere:''}; },
+        reset() { this.filters={...this.initialFilters,filiere:'',niveau:'',classe:'',categorie:'',systeme:'',search:''}; this.refresh(1); },
         handlePagination(e) {
             const a=e.target.closest('a[href]');
             if(!a || !a.closest('.sf-pagination')) return;
