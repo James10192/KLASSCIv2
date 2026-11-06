@@ -3,6 +3,7 @@
 namespace Tests\Feature\Comptabilite;
 
 use App\Domain\Comptabilite\SuiviClasses\SituationClassesService;
+use App\Domain\Comptabilite\SuiviClasses\SituationClasseMontants;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
@@ -139,7 +140,7 @@ class SituationFinanciereClassesTest extends TestCase
         $parFrais = Mockery::mock(MontantsParFrais::class);
         $parFrais->shouldReceive('netParInscriptionEtFrais')->once()
             ->andReturn([(int) $inscriptionCourante->id => [17 => 60000]]);
-        $service = new SituationClassesService($calcs, $parFrais);
+        $service = new SituationClassesService($calcs, $parFrais, new SituationClasseMontants());
         $rapport = $service->build([
             'annee' => $this->annee->id, 'classe' => $classe->id,
         ], pagination: false);
