@@ -688,9 +688,14 @@ class ESBTPNoteController extends Controller
             }
 
             if (! $this->studentBelongsToEvaluationCohort((int) $request->input('etudiant_id'), $evaluation)) {
+                $raison = app(\App\Services\Notes\NoteStudentCohortService::class)
+                    ->raisonHorsCohorte((int) $request->input('etudiant_id'), $evaluation);
+
                 return response()->json([
                     'success' => false,
-                    'message' => "Cet étudiant n'appartient pas à la cohorte de cette évaluation.",
+                    'message' => $raison === 'étudiant hors de la classe'
+                        ? "Cet étudiant n'appartient pas à la cohorte de cette évaluation."
+                        : "L'inscription de cet étudiant dans la classe n'est pas encore validée : validez-la avant de saisir ses notes.",
                 ], 422);
             }
 
