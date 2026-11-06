@@ -379,6 +379,9 @@ a.af-todo:hover { border-color: #b9cdee; color: #1e293b; }
                     <a href="{{ route('esbtp.paiements.index') }}"><i class="fas fa-money-bill-wave"></i><span>Paiements<small>Historique</small></span></a>
                     <a href="{{ route('esbtp.paiements.suivi-categories') }}"><i class="fas fa-chart-pie"></i><span>Suivi<small>Par catégorie</small></span></a>
                 @endcanany
+                @can('comptabilite.suivi_classes.view')
+                    <a href="{{ route('esbtp.comptabilite.suivi-classes.index') }}"><i class="fas fa-chart-column"></i><span>Finances par classe<small>Attendu · réglé · restant</small></span></a>
+                @endcan
                 @can('comptabilite.relances.send')
                     <a href="{{ route('esbtp.comptabilite.relances.index') }}"><i class="fas fa-paper-plane"></i><span>Relances<small>Impayés</small></span></a>
                 @endcan
@@ -560,6 +563,14 @@ a.af-todo:hover { border-color: #b9cdee; color: #1e293b; }
                     <span class="d ok" x-text="mFmt(d.totalValidatedToday) + ' FCFA'">{{ number_format((float) ($totalValidatedToday ?? 0), 0, ',', ' ') }} FCFA</span>
                 </a>
             </div>
+
+            @can('comptabilite.suivi_classes.view')
+            <a href="{{ route('esbtp.comptabilite.suivi-classes.index') }}" class="m-row" style="margin: .8rem 0;" aria-label="Ouvrir la situation financière des classes">
+                <div class="av ic" aria-hidden="true"><x-m.icon name="file" /></div>
+                <div class="tt"><b>Finances par classe</b><span>Attendu · réglé · reste à recouvrer</span></div>
+                <div class="tr"><span class="m-chip info">Ouvrir</span></div>
+            </a>
+            @endcan
 
             <div class="m-sec"><b>À faire aujourd'hui</b></div>
             @if($dmRienAFaire)

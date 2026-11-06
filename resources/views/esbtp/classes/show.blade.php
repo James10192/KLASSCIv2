@@ -710,6 +710,15 @@
                             </a>
                         @endcan
                     @endif
+                    @can('module.comptabilite.access')
+                    @can('comptabilite.access')
+                    @can('comptabilite.suivi_classes.view')
+                        <a href="{{ route('esbtp.comptabilite.suivi-classes.index', ['classe' => $classe->id]) }}" class="cs-btn--glass">
+                            <i class="fas fa-chart-pie"></i> Finances de la classe
+                        </a>
+                    @endcan
+                    @endcan
+                    @endcan
                     @can('classes.edit')
                         <a href="{{ route('esbtp.classes.edit', array_merge(['classe' => $classe->id], ['return_url' => request()->fullUrl()])) }}" class="cs-btn--white">
                             <i class="fas fa-edit"></i>Modifier
