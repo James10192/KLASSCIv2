@@ -1,0 +1,186 @@
+<?php
+
+namespace App\Domain\Comptabilite\SuiviClasses;
+
+use App\Actions\Comptabilite\GetImpayesAgingAction;
+use App\Models\ESBTPClasse;
+use App\Models\ESBTPInscription;
+use App\Models\ESBTPPaiement;
+use App\Services\RelanceCalculationService;
+use Carbon\Carbon;
+use Illuminate\Pagination\LengthAwarePaginator;
+
+/**
+ * Lecture seule, par inscription et par année. La classe n'appartient pas à
+ * l'année : ce sont les inscriptions qui portent cette information.
+ *
+ * Réutilise l'échéancier canonique (montants obligatoires/configurés,
+ * options effectivement souscrites, exonérations et paiements ventilés).
+ * Ne déplace pas les reliquats d'une année à une autre.
+ */
+final class SituationClassesService
+{
+    public const PAGE_SIZE = 20;
+    public const PDF_MAX_ROWS = 1000;
+    public const EXCEL_MAX_ROWS = 50000;
+
+    public function __construct(private readonly RelanceCalculationService $calculs)
+    {
+    }
+
+    /** @param array<string, mixed> $filters */
+    public function build(array $filters, bool $avecEtudiants = false, bool $pagination = true): array
+    {
+        $anneeId = (int) ($filters['annee'] ?? 0);
+        $classeId = (int) ($filters['classe'] ?? 0);
+        $categoryId = (int) ($filters['categorie'] ?? 0);
+        $classes = ESBTPClasse::query()
+            ->with(['filiere', 'niveau'])
+            ->when($classeId, fn ($q) => $q->whereKey($classeId))
+            ->when($filters['filiere'] ?? null, fn ($q, $id) => $q->where('filiere_id', $id))
+            ->when($filters['niveau'] ?? null, fn ($q, $id) => $q->where('niveau_etude_id', $id))
+            ->when($filters['systeme'] ?? null, fn ($q, $s) => $q->where('systeme_academique', $s))
+            ->when($filters['search'] ?? null, fn ($q, $s) => $q->where('name', 'like', '%'.addcslashes($s, '%_\\').'%'))
+            ->orderBy('name')
+            ->get();
+
+        $rows = [];
+        foreach ($classes as $classe) {
+            $rows[(int) $classe->id] = [
+                'classe_id' => (int) $classe->id,
+                'classe' => (string) $classe->name,
+                'filiere' => (string) ($classe->filiere?->name ?? '—'),
+                'niveau' => (string) ($classe->niveau?->name ?? '—'),
+                'effectif' => 0,
+                'attendu' => 0.0,
+                'regle' => 0.0,
+                'encaisse' => 0.0,
+                'ajustements' => 0.0,
+                'restant' => 0.0,
+                'echu' => 0.0,
+                'etudiants' => [],
+                'taux' => null,
+            ];
+        }
+
+        if ($anneeId > 0 && $rows !== []) {
+            $uniques = [];
+            // Un lot réduit la mémoire et pré-charge paiements + références.
+            ESBTPInscription::query()
+                ->with([
+                    'etudiant',
+                    'paiements' => fn ($q) => $q->where('status', 'validé')->whereNull('deleted_at'),
+                ])
+                ->where('annee_universitaire_id', $anneeId)
+                ->whereIn('classe_id', array_keys($rows))
+                ->whereIn('status', GetImpayesAgingAction::ACTIVE_INSCRIPTION_STATUSES)
+                ->chunkById(250, function ($lot) use (&$rows, &$uniques, $categoryId, $avecEtudiants) {
+                    $this->calculs->preloadForInscriptions($lot);
+                    foreach ($lot as $inscription) {
+                        $id = (int) $inscription->classe_id;
+                        $state = $this->calculs->getFinancialState($inscription);
+                        $montants = $this->montants($state, $inscription, $categoryId);
+                        $row = &$rows[$id];
+
+                        $studentId = (int) $inscription->etudiant_id;
+                        if ($studentId > 0 && ! isset($uniques[$id][$studentId])) {
+                            $uniques[$id][$studentId] = true;
+                            $row['effectif']++;
+                        }
+
+                        foreach (['attendu', 'regle', 'restant', 'echu'] as $field) {
+                            $row[$field] += $montants[$field];
+                        }
+                        if ($categoryId === 0) {
+                            $row['encaisse'] += $montants['encaisse'];
+                            $row['ajustements'] += $montants['ajustements'];
+                        }
+                        if ($avecEtudiants) {
+                            $row['etudiants'][] = [
+                                'inscription_id' => (int) $inscription->id,
+                                'nom' => (string) ($inscription->etudiant?->nom_complet ?? 'Étudiant inconnu'),
+                                'matricule' => (string) ($inscription->etudiant?->matricule ?? '—'),
+                                ...$montants,
+                            ];
+                        }
+                        unset($row);
+                    }
+                });
+        }
+
+        foreach ($rows as &$row) {
+            foreach (['attendu', 'regle', 'encaisse', 'ajustements', 'restant', 'echu'] as $field) {
+                $row[$field] = round($row[$field], 2);
+            }
+            $row['taux'] = $row['attendu'] > 0
+                ? round(min(100, 100 * $row['regle'] / $row['attendu']), 1)
+                : null;
+        }
+        unset($row);
+
+        $totaux = [
+            'classes' => count($rows), 'effectif' => 0,
+            'attendu' => 0.0, 'regle' => 0.0, 'encaisse' => 0.0,
+            'ajustements' => 0.0, 'restant' => 0.0, 'echu' => 0.0, 'taux' => null,
+        ];
+        foreach ($rows as $row) {
+            $totaux['effectif'] += $row['effectif'];
+            foreach (['attendu', 'regle', 'encaisse', 'ajustements', 'restant', 'echu'] as $k) {
+                $totaux[$k] += $row[$k];
+            }
+        }
+        $totaux['taux'] = $totaux['attendu'] > 0
+            ? round(min(100, 100 * $totaux['regle'] / $totaux['attendu']), 1)
+            : null;
+
+        $liste = array_values($rows);
+        $page = max(1, (int) ($filters['page'] ?? 1));
+        return [
+            'classes' => $pagination
+                ? new LengthAwarePaginator(array_slice($liste, ($page - 1) * self::PAGE_SIZE, self::PAGE_SIZE), count($liste), self::PAGE_SIZE, $page, [
+                    'path' => request()->url(), 'query' => request()->except('page'),
+                ])
+                : collect($liste),
+            'totaux' => $totaux,
+            'filtered_category' => $categoryId > 0,
+        ];
+    }
+
+    /** @return array{attendu:float,regle:float,restant:float,echu:float,encaisse:float,ajustements:float} */
+    private function montants(array $state, ESBTPInscription $inscription, int $categoryId): array
+    {
+        if ($categoryId > 0) {
+            $lignes = collect($state['due_lines'] ?? [])
+                ->filter(fn ($l) => (int) ($l['category_id'] ?? 0) === $categoryId);
+            return [
+                'attendu' => (float) $lignes->sum('amount'),
+                'regle' => (float) $lignes->sum('paid_amount'),
+                'restant' => (float) $lignes->sum('remaining_amount'),
+                'echu' => (float) $lignes->filter(function ($l) {
+                    if (empty($l['due_date'])) {
+                        return false;
+                    }
+                    return Carbon::parse($l['due_date'])->addDays((int) ($l['grace_days'] ?? 0))->startOfDay()->lte(today());
+                })->sum('remaining_amount'),
+                // Une ventilation de frais n'est pas un flux de caisse.
+                'encaisse' => 0.0,
+                'ajustements' => 0.0,
+            ];
+        }
+
+        // Paiements validés, hors règlement d'une dette d'une autre année.
+        $encaisse = ESBTPPaiement::netCashFrom(
+            $inscription->paiements->filter(fn ($p) => $p->type_paiement !== 'reliquat')
+        );
+        $regle = (float) ($state['total_paid'] ?? 0.0);
+
+        return [
+            'attendu' => (float) ($state['total_due'] ?? 0.0),
+            'regle' => $regle,
+            'restant' => (float) ($state['remaining_total'] ?? 0.0),
+            'echu' => (float) ($state['overdue_amount'] ?? 0.0),
+            'encaisse' => $encaisse,
+            'ajustements' => $regle - $encaisse,
+        ];
+    }
+}
