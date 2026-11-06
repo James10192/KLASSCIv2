@@ -14,3 +14,4 @@ Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
 - 2026-11-06 · #1790 · Finances par classe : refonte de la page (indicateurs, classes à surveiller, tri, filtres repliables, détail par étudiant)
+- 2026-11-06 · #1789 · Modifier une évaluation : la matière de l’évaluation est de nouveau proposée, BTS comme LMD
