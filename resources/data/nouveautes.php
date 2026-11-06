@@ -23,6 +23,17 @@ return [
     'titre' => 'Novembre 2026',
     'entrees' => [
         [
+            'titre' => 'La situation financière de chaque classe',
+            'icone' => 'fa-chart-column',
+            'texte' => 'Une nouvelle page, « Situation financière des classes » (Comptabilité), montre pour chaque classe le montant attendu, les règlements imputés, le reste à payer et l’échu impayé, avec le total de l’établissement en tête. Filtrez par année, filière, niveau, classe, système ou catégorie de frais sans recharger la page, ouvrez le détail d’une classe, et exportez le tout en PDF ou en Excel.',
+            'permissions' => ['comptabilite.suivi_classes.view'],
+            'captures' => [
+                'apres' => 'images/nouveautes/2026-11/situation-classes-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'Les totaux portent sur toutes les classes filtrées, pas seulement sur la page affichée.',
+            ],
+        ],
+        [
             'titre' => 'La moyenne de la fiche étudiant, celle du bulletin',
             'icone' => 'fa-graduation-cap',
             'texte' => 'Sur la fiche d’un étudiant BTS, la moyenne générale et le rang de l’année sont calculés comme au bulletin : poids des semestres, note d’assiduité, rang annuel de la classe. Tant que le bulletin n’est pas généré, la moyenne porte la mention « Provisoire · Bulletin non généré » ; une fois généré, c’est la valeur officielle qui s’affiche.',
