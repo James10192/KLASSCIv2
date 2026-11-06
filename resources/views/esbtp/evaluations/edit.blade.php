@@ -754,7 +754,8 @@ textarea.ee-input { resize: vertical; min-height: 90px; }
     }
 
     function loadMatieres(classeId) {
-        if (!classeId) {
+        // Retour à la classe d'origine : la liste serveur contient déjà la matière actuelle.
+        if (!classeId || String(classeId) === @json((string) $evaluation->classe_id)) {
             rebuildMatiereOptions(staticMatieres);
             return;
         }
@@ -767,7 +768,15 @@ textarea.ee-input { resize: vertical; min-height: 90px; }
                 return r.json();
             })
             .then(function(data) {
-                rebuildMatiereOptions(Array.isArray(data) && data.length > 0 ? data : staticMatieres);
+                // L'API rend { source, matieres: [...] } : lire data.matieres, sinon
+                // chaque changement de classe retombait sur la liste de départ.
+                const liste = Array.isArray(data) ? data : (data && Array.isArray(data.matieres) ? data.matieres : []);
+                if (liste.length === 0) {
+                    rebuildMatiereOptions([]);
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'warning', message: 'Aucune matière n’est configurée pour cette classe.' } }));
+                    return;
+                }
+                rebuildMatiereOptions(liste);
             })
             .catch(function(e) {
                 console.warn('[ee-edit] matieres API failed, fallback static:', e);

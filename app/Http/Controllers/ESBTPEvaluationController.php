@@ -667,8 +667,7 @@ class ESBTPEvaluationController extends Controller
     public function edit(ESBTPEvaluation $evaluation)
     {
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
-        $matieres = ESBTPMatiere::whereNull('unite_enseignement_id') // BTS only : exclure les ECUE LMD
-            ->orderBy('name')->get();
+        $matieres = $this->matieresPourEdition($evaluation);
         $types = ESBTPEvaluation::getTypes();
         $dateEval = $evaluation->date_evaluation ? Carbon::parse($evaluation->date_evaluation) : null;
         $heureDebut = $dateEval?->format('H:i');
@@ -684,6 +683,32 @@ class ESBTPEvaluationController extends Controller
         $periodes = $evaluation->periodesProposables();
 
         return view('esbtp.evaluations.edit', compact('evaluation', 'classes', 'matieres', 'types', 'periodes', 'heureDebut', 'heureFin'));
+    }
+
+    /**
+     * Matières proposées pour modifier une évaluation : celles de SA classe.
+     *
+     * Le formulaire proposait le catalogue BTS quelle que soit la classe. Une
+     * évaluation de classe LMD (ECUE) n'y trouvait pas sa matière : la liste
+     * s'ouvrait sans sélection, et l'évaluation ne pouvait plus être enregistrée.
+     * La matière actuelle est toujours proposée, même hors maquette.
+     *
+     * @return \Illuminate\Support\Collection<int, object{id: int, name: string}>
+     */
+    private function matieresPourEdition(ESBTPEvaluation $evaluation): \Illuminate\Support\Collection
+    {
+        $lignes = collect();
+        if ($evaluation->classe) {
+            $lignes = collect(app(\App\Services\Notes\MatieresSaisissables::class)
+                ->pour($evaluation->classe, $evaluation->annee_universitaire_id ? (int) $evaluation->annee_universitaire_id : null)['matieres']);
+        }
+
+        $actuelle = $evaluation->matiere;
+        if ($actuelle && ! $lignes->contains('id', (int) $actuelle->id)) {
+            $lignes->prepend(['id' => (int) $actuelle->id, 'name' => $actuelle->name ?: 'Matière sans nom']);
+        }
+
+        return $lignes->map(fn (array $l) => (object) ['id' => (int) $l['id'], 'name' => (string) $l['name']])->values();
     }
 
     /**
