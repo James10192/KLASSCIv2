@@ -23,14 +23,25 @@ return [
     'titre' => 'Novembre 2026',
     'entrees' => [
         [
+            'titre' => 'Modifier une évaluation retrouve sa matière',
+            'icone' => 'fa-pen-to-square',
+            'texte' => 'En modifiant une évaluation, la liste des matières est celle de sa classe : la maquette en BTS, les éléments constitutifs (ECUE) en LMD. La matière de l’évaluation est déjà choisie, même si elle sort de la maquette. Changer de classe recharge sa liste, et un échec de chargement est signalé au lieu de proposer les matières d’une autre classe.',
+            'permissions' => ['evaluations.edit'],
+            'captures' => [
+                'apres' => 'images/nouveautes/2026-11/evaluation-matiere-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'Une évaluation de Licence 3 s’ouvre avec son ECUE, « Anglais technique », déjà choisie.',
+            ],
+        ],
+        [
             'titre' => 'La situation financière de chaque classe',
             'icone' => 'fa-chart-column',
-            'texte' => 'Une nouvelle page, « Situation financière des classes » (Comptabilité), montre pour chaque classe le montant attendu, les règlements imputés, le reste à payer et l’échu impayé, avec le total de l’établissement en tête. Filtrez par année, filière, niveau, classe, système ou catégorie de frais sans recharger la page, ouvrez le détail d’une classe, et exportez le tout en PDF ou en Excel.',
+            'texte' => 'La page « Situation financière des classes » (Comptabilité) donne en tête le montant attendu, le réglé avec son taux, le reste et l’échu impayé. Les trois classes au plus gros échu sont mises en avant, le tableau se trie par reste, échu, recouvrement ou nom, et les filtres se rechargent tout seuls. La fenêtre d’une classe classe ses étudiants (en retard d’abord) avec un lien vers leur fiche, leur inscription ou leurs paiements, si vous y avez accès.',
             'permissions' => ['comptabilite.suivi_classes.view'],
             'captures' => [
-                'apres' => 'images/nouveautes/2026-11/situation-classes-apres.webp',
+                'apres' => 'images/nouveautes/2026-11/situation-classes-refonte-apres.webp',
                 'format' => 'bureau',
-                'legende' => 'Les totaux portent sur toutes les classes filtrées, pas seulement sur la page affichée.',
+                'legende' => 'Les classes à surveiller apparaissent sous les totaux, avant le détail classe par classe.',
             ],
         ],
         [
