@@ -1546,7 +1546,7 @@ class ESBTPNoteController extends Controller
         $matiereSlug = Str::slug($export->matiereName() ?? ('matiere-' . $matiereId));
         $filename = sprintf('notes_%s_%s_%s_%s.xlsx', $classeSlug, $matiereSlug, $periode, now()->format('Ymd-His'));
 
-        return Excel::download($export, $filename);
+        return Excel::download($export, \App\Support\NomDeFichier::sur($filename));
     }
 
     /**

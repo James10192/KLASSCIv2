@@ -236,7 +236,7 @@ class PaiementExportService
                 $context
             );
 
-            return Excel::download($export, $filename);
+            return Excel::download($export, \App\Support\NomDeFichier::sur($filename));
         } catch (\Throwable $e) {
             Log::warning('Excel xlsx indisponible — fallback CSV', [
                 'error' => $e->getMessage(),

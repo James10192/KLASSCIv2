@@ -31,7 +31,7 @@ class ESBTPLMDPvExportController extends Controller
 
         $payload = $this->assembler->forJury($jury);
 
-        return Excel::download(new LmdPvAnnuelExport($payload), $this->basename($jury).'.xlsx');
+        return Excel::download(new LmdPvAnnuelExport($payload), \App\Support\NomDeFichier::sur($this->basename($jury).'.xlsx'));
     }
 
     public function pdf(Request $request, ESBTPLMDJury $jury)

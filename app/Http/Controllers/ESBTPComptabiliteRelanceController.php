@@ -291,7 +291,7 @@ class ESBTPComptabiliteRelanceController extends Controller
 
         return \Maatwebsite\Excel\Facades\Excel::download(
             new \App\Exports\RelancesExport($rowsCollection, $kpis, $filters),
-            $filename
+            \App\Support\NomDeFichier::sur($filename)
         );
     }
 
@@ -471,7 +471,7 @@ class ESBTPComptabiliteRelanceController extends Controller
                 'Content-Type' => 'application/pdf',
                 'Content-Disposition' => 'inline; filename="' . $filename . '"',
             ])->deleteFileAfterSend(true)
-            : response()->download($finalPath, $filename)->deleteFileAfterSend(true);
+            : response()->download($finalPath, \App\Support\NomDeFichier::sur($filename))->deleteFileAfterSend(true);
     }
 
 
