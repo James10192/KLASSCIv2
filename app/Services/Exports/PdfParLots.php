@@ -109,7 +109,7 @@ class PdfParLots
             ])->deleteFileAfterSend(true);
         }
 
-        return response()->download($chemin, $filename)->deleteFileAfterSend(true);
+        return response()->download($chemin, \App\Support\NomDeFichier::sur($filename))->deleteFileAfterSend(true);
     }
 
     /**

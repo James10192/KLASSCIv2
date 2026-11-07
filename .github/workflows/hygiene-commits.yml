@@ -316,6 +316,7 @@ jobs:
             tests/Unit/Exports/EnseignantsPremiumSelectsTest.php \
             tests/Unit/Security \
             tests/Unit/Comptabilite \
+            tests/Unit/Support/NomDeFichierTest.php \
             tests/Unit/Photos \
             tests/Unit/Services/Master \
             tests/Unit/Services/BtsProvisionalTranscriptTest.php \
@@ -440,6 +441,9 @@ jobs:
 
       - name: "Évaluations - enseignant assigné et classes LMD écartées"
         run: php vendor/bin/phpunit tests/Feature/Evaluations/CreationEvaluationParcoursTest.php --no-coverage
+
+      - name: "PDF - un nom de fichier avec barres obliques se télécharge"
+        run: php vendor/bin/phpunit tests/Feature/Exports/PdfNomDeFichierTest.php --no-coverage
 
       - name: "Évaluations - la modification propose les matières de la classe (BTS et LMD)"
         run: php vendor/bin/phpunit tests/Feature/Evaluations/EditionEvaluationMatieresTest.php --no-coverage

@@ -2031,7 +2031,7 @@ class ESBTPClasseController extends Controller
                 $anneeCourante,
                 $etablissement,
             ),
-            $filename,
+            \App\Support\NomDeFichier::sur($filename),
         );
     }
 
@@ -2133,7 +2133,7 @@ class ESBTPClasseController extends Controller
                 "filename" => $filename,
             ]);
 
-            return Excel::download($export, $filename);
+            return Excel::download($export, \App\Support\NomDeFichier::sur($filename));
         } catch (\Exception $e) {
             \Log::error("Erreur export Excel classes: " . $e->getMessage(), [
                 "trace" => config('app.debug') ? $e->getTraceAsString() : null,
@@ -2191,7 +2191,7 @@ class ESBTPClasseController extends Controller
 
             return Excel::download(
                 $export,
-                $filename,
+                \App\Support\NomDeFichier::sur($filename),
                 \Maatwebsite\Excel\Excel::CSV,
                 [
                     "Content-Type" => "text/csv",

@@ -174,7 +174,7 @@ class ESBTPBulletinTacheController extends Controller
                 'Content-Type' => 'application/pdf',
                 'Content-Disposition' => 'inline; filename="'.$nom.'"',
             ])
-            : response()->download($chemin, $nom);
+            : response()->download($chemin, \App\Support\NomDeFichier::sur($nom));
     }
 
     /**

@@ -58,7 +58,7 @@ class ExportRenderer
         return app(EnregistreurDeTraces::class)->mesurer(
             EnregistreurDeTraces::TRAVAIL,
             'export.excel:' . class_basename($report),
-            fn () => Excel::download($report->excelExport(), $report->filename() . '.xlsx'),
+            fn () => Excel::download($report->excelExport(), \App\Support\NomDeFichier::sur($report->filename() . '.xlsx')),
         );
     }
 

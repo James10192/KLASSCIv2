@@ -1458,7 +1458,7 @@ class ESBTPPaiementController extends Controller
 
         return \Maatwebsite\Excel\Facades\Excel::download(
             new \App\Exports\SuiviPaiementsExport($etudiants, $category, $statutLabel, $stats, $filters, $settings),
-            $filename
+            \App\Support\NomDeFichier::sur($filename)
         );
     }
 
@@ -1634,7 +1634,7 @@ class ESBTPPaiementController extends Controller
         }
 
         // Retourner le PDF fusionné et nettoyer après envoi
-        return response()->download($finalPath, $filename)->deleteFileAfterSend(true);
+        return response()->download($finalPath, \App\Support\NomDeFichier::sur($filename))->deleteFileAfterSend(true);
     }
 
     /**
@@ -2410,7 +2410,7 @@ class ESBTPPaiementController extends Controller
                 'filename' => $filename
             ]);
 
-            return \Maatwebsite\Excel\Facades\Excel::download($export, $filename);
+            return \Maatwebsite\Excel\Facades\Excel::download($export, \App\Support\NomDeFichier::sur($filename));
 
         } catch (\Exception $e) {
             Log::error('Erreur export Excel paiements: ' . $e->getMessage(), [
@@ -2453,7 +2453,7 @@ class ESBTPPaiementController extends Controller
                 'filename' => $filename,
             ]);
 
-            return \Maatwebsite\Excel\Facades\Excel::download($export, $filename);
+            return \Maatwebsite\Excel\Facades\Excel::download($export, \App\Support\NomDeFichier::sur($filename));
         } catch (\Exception $e) {
             Log::error('Erreur export SAARI paiements: ' . $e->getMessage(), [
                 'trace' => config('app.debug') ? $e->getTraceAsString() : null,
@@ -2513,7 +2513,7 @@ class ESBTPPaiementController extends Controller
                 'filename' => $filename
             ]);
 
-            return \Maatwebsite\Excel\Facades\Excel::download($export, $filename, \Maatwebsite\Excel\Excel::CSV, [
+            return \Maatwebsite\Excel\Facades\Excel::download($export, \App\Support\NomDeFichier::sur($filename), \Maatwebsite\Excel\Excel::CSV, [
                 'Content-Type' => 'text/csv',
             ]);
 

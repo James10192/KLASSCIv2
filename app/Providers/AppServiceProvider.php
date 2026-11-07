@@ -49,6 +49,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Nom de fichier des PDF nettoyé (« / » refusé par Symfony) : voir PdfAuNomSur.
+        $this->app->bind('dompdf.wrapper', fn ($app) => new \App\Support\Pdf\PdfAuNomSur(
+            $app['dompdf'], $app['config'], $app['files'], $app['view']
+        ));
         // Une instance par requête : le coffre mémorise ses lectures, et le registre
         // des modèles le consulte à chaque appel. Sans cela, une requête et un
         // déchiffrement par fournisseur à chaque résolution.
