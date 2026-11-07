@@ -133,6 +133,10 @@
     .sfc-hero-icon { width:44px; height:44px; font-size:1.1rem; }
     .sfc-kpis { gap:.5rem; margin-top:1rem; }
     .sfc-kpi { padding:.7rem .75rem; }
+    .sfc-kpi-value { font-size:1.02rem; white-space:normal; }
+    .sfc-kpi-value span { white-space:nowrap; }
+    .sfc-kpi-value small { display:block; margin:.1rem 0 0; }
+    .sfc-hero-left { align-items:flex-start; }
     .sfc-filters-main, .sfc-filters-more { grid-template-columns:1fr; }
     .sfc-filters-actions .sfc-btn { flex:1; }
     .sfc-table-scroll { display:none; }
