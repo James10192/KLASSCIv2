@@ -38,6 +38,11 @@ final class ReglesCreationEvaluation
      */
     public static function normaliserPeriode(mixed $periode): mixed
     {
+        // Un entier JSON (3) doit se comporter comme la chaîne « 3 ».
+        if (is_int($periode)) {
+            $periode = (string) $periode;
+        }
+
         return ESBTPEvaluation::periodeSaisie($periode);
     }
 

@@ -44,10 +44,17 @@ Chaque entrée de `entries` :
   ligne. Rien n'est recréé. Deux devoirs de même titre à des dates différentes
   sont acceptés.
 - Deux lignes identiques dans le même lot sont refusées.
+- Limite de concurrence : le verrou sur la classe ne vaut que pour les créations
+  faites par ce CLI. La création depuis l'écran (`store`) ne prend pas ce verrou :
+  une création simultanée sur la même classe peut passer entre la vérification et
+  l'écriture. Sans contrainte unique en base, le risque est résiduel.
 - Les bornes (barème, coefficient), les types et les périodes sont ceux de
   l'écran de création. Les gardes du modèle (cohérence LMD/BTS, ECUE, période de
   spécialité) s'appliquent à chaque ligne ; la simulation les exécute réellement
   puis annule la transaction, donc elle prédit exactement l'exécution.
+  Précision : la simulation n'écrit rien en base (transaction annulée), mais
+  l'enregistrement déclenche l'invalidation de caches d'indicateurs académiques ;
+  ces caches se reconstruisent sans effet métier.
 - Le CLI n'accepte pas `enseignant_id`. Pour une classe LMD, le modèle pose
   l'enseignant automatiquement quand le planning en résout un seul ; un pool
   ambigu refuse la création (422). Sinon l'évaluation reste sans enseignant,

@@ -58,9 +58,13 @@ class ReglesCreationEvaluationTest extends TestCase
     {
         $regles = ReglesCreationEvaluation::champs(null);
 
-        $this->assertStringContainsString('min:'.ESBTPEvaluation::BAREME_MIN, $regles['bareme']);
-        $this->assertStringContainsString('max:'.ESBTPEvaluation::BAREME_MAX, $regles['bareme']);
-        $this->assertStringContainsString('min:'.ESBTPEvaluation::COEFFICIENT_MIN, $regles['coefficient']);
-        $this->assertStringContainsString('max:'.ESBTPEvaluation::COEFFICIENT_MAX, $regles['coefficient']);
+        $this->assertSame(
+            'required|numeric|min:'.ESBTPEvaluation::BAREME_MIN.'|max:'.ESBTPEvaluation::BAREME_MAX,
+            $regles['bareme']
+        );
+        $this->assertSame(
+            'required|numeric|min:'.ESBTPEvaluation::COEFFICIENT_MIN.'|max:'.ESBTPEvaluation::COEFFICIENT_MAX,
+            $regles['coefficient']
+        );
     }
 }
