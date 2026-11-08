@@ -2,7 +2,7 @@
 
 ## `POST /api/cli/evaluations/creer`
 
-Crée un lot d'évaluations (examens, devoirs, rattrapages) dans une année
+Crée un lot d'évaluations (examens, devoirs…) dans une année
 universitaire donnée.
 
 - Authentification : jeton Sanctum avec l'aptitude `cli:admin`.
@@ -29,7 +29,7 @@ Chaque entrée de `entries` :
 | `matiere_id` | Matière existante. |
 | `titre` | 1 à 255 caractères. |
 | `description` | Optionnel, 1000 caractères au plus. |
-| `type` | Un des types saisissables (`devoir`, `examen`, `rattrapage`…). |
+| `type` | Un des types saisissables (`devoir`, `examen`, `controle`…, liste de `ESBTPEvaluation::getTypes()`). |
 | `periode` | Une période propre à la classe (`semestre1`, `semestre2`… pour une classe LMD). |
 | `date_evaluation` | Date `AAAA-MM-JJ`. |
 | `heure_debut`, `heure_fin` | `HH:MM`, la fin doit suivre le début. |
@@ -52,13 +52,13 @@ Chaque entrée de `entries` :
   l'écran de création. Les gardes du modèle (cohérence LMD/BTS, ECUE, période de
   spécialité) s'appliquent à chaque ligne ; la simulation les exécute réellement
   puis annule la transaction, donc elle prédit exactement l'exécution.
-  Précision : la simulation n'écrit rien en base (transaction annulée), mais
-  l'enregistrement déclenche l'invalidation de caches d'indicateurs académiques ;
-  ces caches se reconstruisent sans effet métier.
-- Le CLI n'accepte pas `enseignant_id`. Pour une classe LMD, le modèle pose
-  l'enseignant automatiquement quand le planning en résout un seul ; un pool
-  ambigu refuse la création (422). Sinon l'évaluation reste sans enseignant,
-  à compléter dans l'écran.
+  Précision : la simulation n'écrit rien et n'invalide aucun cache (les invalidations
+  sont planifiées après commit, et la transaction de simulation est annulée). Seule
+  l'exécution réelle invalide les caches d'indicateurs académiques.
+- Le CLI n'accepte pas `enseignant_id`. Pour une classe LMD, l'observateur
+  `ESBTPEvaluationLmdTeacherObserver` valide l'enseignant : si le planning n'en
+  résout pas un seul, la création est refusée (422) ; le pool ambigu aussi.
+  Pour une classe BTS, l'évaluation est créée sans enseignant assigné.
 
 ### Réponse (simulation)
 

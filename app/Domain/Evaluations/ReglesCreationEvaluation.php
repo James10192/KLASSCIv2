@@ -86,7 +86,8 @@ final class ReglesCreationEvaluation
      */
     public static function dureeMinutes(Carbon $debut, Carbon $fin, mixed $saisie = null): int
     {
-        $calculee = (int) $fin->diffInMinutes($debut);
+        // Carbon 3 rend un écart signé : on part du début pour obtenir une durée positive.
+        $calculee = (int) $debut->diffInMinutes($fin);
         $duree = $saisie !== null && $saisie !== '' ? (int) $saisie : $calculee;
 
         return $duree > 0 ? $duree : $calculee;

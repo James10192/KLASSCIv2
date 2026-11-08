@@ -773,7 +773,7 @@ class ESBTPEvaluationController extends Controller
                     ->with('error', 'L’heure de fin doit suivre l’heure de début.')
                     ->withInput();
             }
-            $calculatedDuration = $endAt->diffInMinutes($startAt);
+            $calculatedDuration = $startAt->diffInMinutes($endAt);
 
             $evaluation->titre = $request->titre;
             $evaluation->description = $request->description;
