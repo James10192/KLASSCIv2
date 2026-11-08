@@ -39,7 +39,13 @@ class LectureNotesCliTest extends TestCase
         $classe = ESBTPClasse::factory()->create(['systeme_academique' => 'BTS', 'is_active' => true]);
         $evaluation = ESBTPEvaluation::factory()->create(['annee_universitaire_id' => $annee->id, 'classe_id' => $classe->id, 'status' => ESBTPEvaluation::STATUS_COMPLETED]);
         $etudiant = ESBTPEtudiant::factory()->create();
-        ESBTPNote::factory()->create(['evaluation_id' => $evaluation->id, 'etudiant_id' => $etudiant->id, 'note' => 0]);
+        ESBTPNote::factory()->create([
+            'evaluation_id' => $evaluation->id,
+            'etudiant_id' => $etudiant->id,
+            'matiere_id' => $evaluation->matiere_id,
+            'classe_id' => $classe->id,
+            'note' => 0,
+        ]);
 
         $avant = ESBTPNote::count();
 
