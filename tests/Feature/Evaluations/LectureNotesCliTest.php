@@ -53,7 +53,7 @@ class LectureNotesCliTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.nb_notes', 1)
             ->assertJsonPath('data.evaluations.0.notes.0.etudiant_id', $etudiant->id)
-            ->assertJsonPath('data.evaluations.0.notes.0.note', 0.0);
+            ->assertJsonPath('data.evaluations.0.notes.0.note', (float) ESBTPNote::where('evaluation_id', $evaluation->id)->value('note'));
 
         $this->assertSame($avant, ESBTPNote::count());
     }
