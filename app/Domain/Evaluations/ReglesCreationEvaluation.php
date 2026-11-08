@@ -25,11 +25,24 @@ final class ReglesCreationEvaluation
      */
     public static function champs(?ESBTPClasse $classe): array
     {
+        return array_merge(self::bornes(), [
+            'periode' => ['required', Rule::in(array_keys(ESBTPEvaluation::periodesPourClasse($classe)))],
+        ]);
+    }
+
+    /**
+     * Type, barème et coefficient : partagés par la création (écran et CLI) et la
+     * mise à jour de l'écran. Le coefficient est obligatoire ici ; la mise à jour
+     * le rend facultatif en le remplaçant.
+     *
+     * @return array<string, mixed>
+     */
+    public static function bornes(): array
+    {
         return [
             'type' => ['required', 'string', Rule::in(ESBTPEvaluation::typesSaisissables())],
             'bareme' => 'required|numeric|min:'.ESBTPEvaluation::BAREME_MIN.'|max:'.ESBTPEvaluation::BAREME_MAX,
             'coefficient' => 'required|numeric|min:'.ESBTPEvaluation::COEFFICIENT_MIN.'|max:'.ESBTPEvaluation::COEFFICIENT_MAX,
-            'periode' => ['required', Rule::in(array_keys(ESBTPEvaluation::periodesPourClasse($classe)))],
         ];
     }
 

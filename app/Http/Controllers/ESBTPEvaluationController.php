@@ -709,20 +709,18 @@ class ESBTPEvaluationController extends Controller
         try {
             // Garde-fou critique : bareme strictement > 0 (sinon division par zéro
             // dans ESBTPNote::getNoteVingtAttribute), coefficient strictement borné.
-            $request->validate([
+            $request->validate(array_merge(ReglesCreationEvaluation::bornes(), [
                 'titre' => 'required|string|max:255',
                 'description' => 'nullable|string|max:1000',
-                'type' => ['required', Rule::in(ESBTPEvaluation::typesSaisissables())],
                 'date_evaluation' => 'required|date',
                 'heure_debut' => 'required|date_format:H:i',
                 'heure_fin' => 'required|date_format:H:i|after:heure_debut',
                 'classe_id' => 'required|exists:esbtp_classes,id',
                 'matiere_id' => 'required|exists:esbtp_matieres,id',
-                'bareme' => 'required|numeric|min:'.ESBTPEvaluation::BAREME_MIN.'|max:'.ESBTPEvaluation::BAREME_MAX,
                 'coefficient' => 'nullable|numeric|min:'.ESBTPEvaluation::COEFFICIENT_MIN.'|max:'.ESBTPEvaluation::COEFFICIENT_MAX,
                 'duree_minutes' => 'nullable|integer|min:1|max:480',
                 'periode' => ['required', Rule::in(array_keys($evaluation->periodesProposables()))],
-            ], [
+            ]), [
                 'titre.required' => 'Le titre est obligatoire',
                 'type.required' => 'Le type d\'évaluation est obligatoire',
                 'date_evaluation.required' => 'La date est obligatoire',
