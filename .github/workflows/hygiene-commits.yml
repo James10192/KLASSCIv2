@@ -410,6 +410,11 @@ jobs:
       - name: Répartition des frais et reliquats transférés
         run: php vendor/bin/phpunit tests/Feature/Frais/RepartitionDuVersementTest.php --no-coverage
 
+      # Endpoint CLI de création d'évaluations : simulation, confirmation,
+      # doublons et lot atomique. Base requise : ce job a MariaDB.
+      - name: Test endpoint CLI de création d'évaluations
+        run: php vendor/bin/phpunit tests/Feature/Evaluations/CreationEvaluationCliTest.php --no-coverage
+
       - name: Date métier des encaissements et cohérence caisse
         run: |
           php vendor/bin/phpunit tests/Feature/Paiements/EncaisserMobileTest.php --no-coverage
