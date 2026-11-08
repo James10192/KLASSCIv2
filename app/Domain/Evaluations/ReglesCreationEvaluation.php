@@ -47,6 +47,17 @@ final class ReglesCreationEvaluation
     }
 
     /**
+     * Un titre « régularisation … » désactive le contrôle enseignant LMD de
+     * l'observateur. Règle unique, appelée par l'observateur et par le CLI.
+     */
+    public static function estTitreDeRegularisation(string $titre): bool
+    {
+        $titre = mb_strtolower(trim($titre), 'UTF-8');
+
+        return str_starts_with($titre, 'régularisation ') || str_starts_with($titre, 'regularisation ');
+    }
+
+    /**
      * « 1 » (forme de la fenêtre des notes LMD) devient « semestre1 ».
      */
     public static function normaliserPeriode(mixed $periode): mixed

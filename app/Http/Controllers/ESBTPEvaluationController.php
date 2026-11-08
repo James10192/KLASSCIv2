@@ -521,7 +521,6 @@ class ESBTPEvaluationController extends Controller
                 }
             }
 
-
             \Log::info('Tentative de sauvegarde de l\'évaluation:', [
                 'titre' => $evaluation->titre,
                 'matiere_id' => $evaluation->matiere_id,

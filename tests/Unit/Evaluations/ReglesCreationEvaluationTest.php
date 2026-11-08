@@ -67,4 +67,12 @@ class ReglesCreationEvaluationTest extends TestCase
             $regles['coefficient']
         );
     }
+
+    public function test_un_titre_de_regularisation_est_reconnu_quelle_que_soit_la_casse(): void
+    {
+        $this->assertTrue(ReglesCreationEvaluation::estTitreDeRegularisation('Régularisation Maths'));
+        $this->assertTrue(ReglesCreationEvaluation::estTitreDeRegularisation('  regularisation ECUE'));
+        $this->assertFalse(ReglesCreationEvaluation::estTitreDeRegularisation('Régularisationx'));
+        $this->assertFalse(ReglesCreationEvaluation::estTitreDeRegularisation('Examen semestre 1'));
+    }
 }

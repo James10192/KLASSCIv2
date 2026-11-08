@@ -107,6 +107,12 @@ jobs:
           php artisan key:generate --force --no-interaction
           php bin/verifier-couverture-nanan.php
 
+      # Règles de création d'évaluation partagées entre l'écran et le CLI
+      # (durée, période, bornes, statut). Sans base : rapide et déterministe.
+      - name: Test règles de création d'évaluation (écran et CLI)
+        if: github.event_name == 'pull_request'
+        run: php artisan test tests/Unit/Evaluations --stop-on-failure
+
       # `php -l` ne voit PAS un `use` oublie : la syntaxe est correcte, le nom
       # ne se resout qu'a l'execution. En aout 2026, une extraction de classe a
       # laisse `ESBTPCandidature` sans import, et le catalogue du portail public
@@ -118,12 +124,6 @@ jobs:
       # noms irresolus anterieurs, chacun demandant de decider si le modele doit
       # naitre ou la relation mourir. Les traiter est un chantier ; les laisser
       # bloquer chaque PR en serait un autre.
-      # Règles de création d'évaluation partagées entre l'écran et le CLI
-      # (durée, période, bornes, statut). Sans base : rapide et déterministe.
-      - name: Test règles de création d'évaluation (écran et CLI)
-        if: github.event_name == 'pull_request'
-        run: php artisan test tests/Unit/Evaluations --stop-on-failure
-
       - name: Test disponibilités des classes selon l'année des inscriptions
         if: github.event_name == 'pull_request'
         run: php artisan test tests/Unit/InscriptionEditFormScriptsTest.php --stop-on-failure

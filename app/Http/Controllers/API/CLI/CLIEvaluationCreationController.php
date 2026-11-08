@@ -118,83 +118,95 @@ class CLIEvaluationCreationController extends BaseApiController
         $vues = [];
 
         foreach (array_values($entries) as $index => $entry) {
-            // Identifiant vérifié avant toute recherche : un tableau ou une chaîne
-            // non numérique doit donner un 422, pas une erreur de type.
-            $classeId = $entry['classe_id'] ?? null;
-            $classe = is_int($classeId) || (is_string($classeId) && ctype_digit($classeId))
-                ? ESBTPClasse::find((int) $classeId)
-                : null;
+            $resultat = $this->verifierLigne($entry, $index, $annee, $vues);
 
-            $entry['periode'] = ReglesCreationEvaluation::normaliserPeriode($entry['periode'] ?? null);
-
-            $validator = Validator::make($entry, array_merge(
-                ReglesCreationEvaluation::champs($classe),
-                [
-                    'classe_id' => 'required|integer|exists:esbtp_classes,id',
-                    'matiere_id' => 'required|integer|exists:esbtp_matieres,id',
-                    'titre' => 'required|string|max:255',
-                    'description' => 'nullable|string|max:1000',
-                    'date_evaluation' => 'required|date_format:Y-m-d',
-                    'heure_debut' => 'required|date_format:H:i',
-                    'heure_fin' => 'required|date_format:H:i|after:heure_debut',
-                    'is_published' => 'nullable|boolean',
-                ]
-            ));
-
-            if ($validator->fails()) {
-                $errors[] = ['ligne' => $index, 'erreur' => $validator->errors()->all()];
+            if (isset($resultat['erreur'])) {
+                $errors[] = ['ligne' => $index, 'erreur' => $resultat['erreur']];
 
                 continue;
             }
 
-            // Un titre « régularisation … » désactive le contrôle enseignant LMD de
-            // l'observateur : le CLI ne crée pas ce type d'évaluation (même règle).
-            $titreNormalise = mb_strtolower(trim((string) $entry['titre']), 'UTF-8');
-            if (str_starts_with($titreNormalise, 'régularisation ') || str_starts_with($titreNormalise, 'regularisation ')) {
-                $errors[] = ['ligne' => $index, 'erreur' => 'Titre réservé aux régularisations : création refusée par le CLI.'];
-
-                continue;
-            }
-
-            $debut = Carbon::createFromFormat('Y-m-d H:i', $entry['date_evaluation'].' '.$entry['heure_debut']);
-            $fin = Carbon::createFromFormat('Y-m-d H:i', $entry['date_evaluation'].' '.$entry['heure_fin']);
-            $cle = implode('|', [
-                $entry['classe_id'], $entry['matiere_id'], $entry['type'], $entry['periode'], $entry['titre'], $debut->toDateString(),
-            ]);
-
-            if (isset($vues[$cle])) {
-                $errors[] = ['ligne' => $index, 'erreur' => 'Doublon dans le lot (ligne '.$vues[$cle].').'];
-
-                continue;
-            }
-            $vues[$cle] = $index;
-
-            $existante = $this->existante($entry, $debut, $annee);
-
-            if ($existante) {
-                $errors[] = ['ligne' => $index, 'erreur' => 'Évaluation déjà existante (#'.$existante->id.') : rien n’est recréé.'];
-
-                continue;
-            }
-
-            $plan[] = [
-                'ligne' => $index,
-                'classe_id' => (int) $entry['classe_id'],
-                'matiere_id' => (int) $entry['matiere_id'],
-                'titre' => $entry['titre'],
-                'description' => $entry['description'] ?? null,
-                'type' => $entry['type'],
-                'periode' => $entry['periode'],
-                'debut' => $debut,
-                'fin' => $fin,
-                'duree_saisie' => null,
-                'bareme' => (float) $entry['bareme'],
-                'coefficient' => (float) $entry['coefficient'],
-                'is_published' => (bool) ($entry['is_published'] ?? false),
-            ];
+            $plan[] = $resultat['ligne'];
         }
 
         return [$plan, $errors];
+    }
+
+    /**
+     * Vérifie une ligne : règles de création, titre, doublon dans le lot et en base.
+     * Retourne ['ligne' => ...] si la ligne est créable, sinon ['erreur' => ...].
+     *
+     * @param  array<string, mixed>  $entry
+     * @param  array<string, int>  $vues  clés déjà rencontrées dans le lot (modifié)
+     * @return array<string, mixed>
+     */
+    private function verifierLigne(array $entry, int $index, ESBTPAnneeUniversitaire $annee, array &$vues): array
+    {
+        // Identifiant vérifié avant toute recherche : un tableau ou une chaîne
+        // non numérique doit donner un 422, pas une erreur de type.
+        $classeId = $entry['classe_id'] ?? null;
+        $classe = is_int($classeId) || (is_string($classeId) && ctype_digit($classeId))
+            ? ESBTPClasse::find((int) $classeId)
+            : null;
+
+        $entry['periode'] = ReglesCreationEvaluation::normaliserPeriode($entry['periode'] ?? null);
+
+        $validator = Validator::make($entry, array_merge(
+            ReglesCreationEvaluation::champs($classe),
+            [
+                'classe_id' => 'required|integer|exists:esbtp_classes,id',
+                'matiere_id' => 'required|integer|exists:esbtp_matieres,id',
+                'titre' => 'required|string|max:255',
+                'description' => 'nullable|string|max:1000',
+                'date_evaluation' => 'required|date_format:Y-m-d',
+                'heure_debut' => 'required|date_format:H:i',
+                'heure_fin' => 'required|date_format:H:i|after:heure_debut',
+                'is_published' => 'nullable|boolean',
+            ]
+        ));
+
+        if ($validator->fails()) {
+            return ['erreur' => $validator->errors()->all()];
+        }
+
+        // Un titre « régularisation … » désactive le contrôle enseignant LMD de
+        // l'observateur : le CLI ne crée pas ce type d'évaluation.
+        if (ReglesCreationEvaluation::estTitreDeRegularisation((string) $entry['titre'])) {
+            return ['erreur' => 'Titre réservé aux régularisations : création refusée par le CLI.'];
+        }
+
+        $debut = Carbon::createFromFormat('Y-m-d H:i', $entry['date_evaluation'].' '.$entry['heure_debut']);
+        $fin = Carbon::createFromFormat('Y-m-d H:i', $entry['date_evaluation'].' '.$entry['heure_fin']);
+        $cle = implode('|', [
+            $entry['classe_id'], $entry['matiere_id'], $entry['type'], $entry['periode'], $entry['titre'], $debut->toDateString(),
+        ]);
+
+        if (isset($vues[$cle])) {
+            return ['erreur' => 'Doublon dans le lot (ligne '.$vues[$cle].').'];
+        }
+        $vues[$cle] = $index;
+
+        $existante = $this->existante($entry, $debut, $annee);
+
+        if ($existante) {
+            return ['erreur' => 'Évaluation déjà existante (#'.$existante->id.') : rien n’est recréé.'];
+        }
+
+        return ['ligne' => [
+            'ligne' => $index,
+            'classe_id' => (int) $entry['classe_id'],
+            'matiere_id' => (int) $entry['matiere_id'],
+            'titre' => $entry['titre'],
+            'description' => $entry['description'] ?? null,
+            'type' => $entry['type'],
+            'periode' => $entry['periode'],
+            'debut' => $debut,
+            'fin' => $fin,
+            'duree_saisie' => null,
+            'bareme' => (float) $entry['bareme'],
+            'coefficient' => (float) $entry['coefficient'],
+            'is_published' => (bool) ($entry['is_published'] ?? false),
+        ]];
     }
 
     /**

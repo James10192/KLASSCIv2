@@ -55,7 +55,7 @@ Chaque entrée de `entries` :
   Précision : la simulation n'écrit rien et n'invalide aucun cache (les invalidations
   sont planifiées après commit, et la transaction de simulation est annulée). Seule
   l'exécution réelle invalide les caches d'indicateurs académiques.
-- Les titres commençant par « régularisation » sont refusés : ils désactivent le
+- Les titres commençant par « régularisation » suivi d’un espace (casse indifférente) sont refusés : ils désactivent le
   contrôle enseignant de l'observateur LMD, que le CLI ne doit pas contourner.
 - Le CLI n'accepte pas `enseignant_id`. Pour une classe LMD, l'observateur
   `ESBTPEvaluationLmdTeacherObserver` valide l'enseignant : si le planning n'en
