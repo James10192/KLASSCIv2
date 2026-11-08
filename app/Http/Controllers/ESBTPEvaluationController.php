@@ -771,7 +771,6 @@ class ESBTPEvaluationController extends Controller
                     ->with('error', 'L’heure de fin doit suivre l’heure de début.')
                     ->withInput();
             }
-            $calculatedDuration = $startAt->diffInMinutes($endAt);
 
             $evaluation->titre = $request->titre;
             $evaluation->description = $request->description;
@@ -791,12 +790,7 @@ class ESBTPEvaluationController extends Controller
             }
             $evaluation->coefficient = (float) $coefficient;
             $evaluation->bareme = $request->bareme;
-            $evaluation->duree_minutes = $request->filled('duree_minutes')
-                ? (int) $request->duree_minutes
-                : $calculatedDuration;
-            if ($evaluation->duree_minutes <= 0) {
-                $evaluation->duree_minutes = $calculatedDuration;
-            }
+            $evaluation->duree_minutes = ReglesCreationEvaluation::dureeMinutes($startAt, $endAt, $request->input('duree_minutes'));
 
             // Capture des anciennes valeurs pour détecter changements (avant assignation)
             $oldClasseId = $evaluation->getOriginal('classe_id');
@@ -817,9 +811,7 @@ class ESBTPEvaluationController extends Controller
 
             $evaluation->updated_by = Auth::id();
             if ($evaluation->status !== ESBTPEvaluation::STATUS_CANCELLED) {
-                $evaluation->status = $evaluation->is_published
-                    ? $evaluation->determineAutomaticStatus(null, false)
-                    : ESBTPEvaluation::STATUS_DRAFT;
+                $evaluation->status = ReglesCreationEvaluation::statut((bool) $evaluation->is_published, $evaluation);
             }
             $evaluation->save();
 

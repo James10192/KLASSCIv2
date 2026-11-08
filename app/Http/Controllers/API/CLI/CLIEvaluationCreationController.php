@@ -147,6 +147,15 @@ class CLIEvaluationCreationController extends BaseApiController
                 continue;
             }
 
+            // Un titre « régularisation … » désactive le contrôle enseignant LMD de
+            // l'observateur : le CLI ne crée pas ce type d'évaluation (même règle).
+            $titreNormalise = mb_strtolower(trim((string) $entry['titre']), 'UTF-8');
+            if (str_starts_with($titreNormalise, 'régularisation ') || str_starts_with($titreNormalise, 'regularisation ')) {
+                $errors[] = ['ligne' => $index, 'erreur' => 'Titre réservé aux régularisations : création refusée par le CLI.'];
+
+                continue;
+            }
+
             $debut = Carbon::createFromFormat('Y-m-d H:i', $entry['date_evaluation'].' '.$entry['heure_debut']);
             $fin = Carbon::createFromFormat('Y-m-d H:i', $entry['date_evaluation'].' '.$entry['heure_fin']);
             $cle = implode('|', [

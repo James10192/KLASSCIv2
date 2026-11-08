@@ -55,6 +55,8 @@ Chaque entrée de `entries` :
   Précision : la simulation n'écrit rien et n'invalide aucun cache (les invalidations
   sont planifiées après commit, et la transaction de simulation est annulée). Seule
   l'exécution réelle invalide les caches d'indicateurs académiques.
+- Les titres commençant par « régularisation » sont refusés : ils désactivent le
+  contrôle enseignant de l'observateur LMD, que le CLI ne doit pas contourner.
 - Le CLI n'accepte pas `enseignant_id`. Pour une classe LMD, l'observateur
   `ESBTPEvaluationLmdTeacherObserver` valide l'enseignant : si le planning n'en
   résout pas un seul, la création est refusée (422) ; le pool ambigu aussi.
@@ -68,7 +70,7 @@ Chaque entrée de `entries` :
   "data": {
     "dry_run": true,
     "annee": { "id": 4, "name": "2025-2026" },
-    "lignes": 2,
+    "lignes": 1,
     "publiees": 2,
     "plan": [
       {
