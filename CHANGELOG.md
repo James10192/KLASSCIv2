@@ -13,6 +13,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ## Novembre 2026
 
 ### Ajouts
+- **Lecture des notes par le CLI :** `GET /api/cli/evaluations/notes` renvoie, par évaluation, les notes saisies (étudiant, matricule, note, absence). Lecture seule, filtres `annee_id`, `classe_id`, `evaluation_id`.
 - **Création d'évaluations par le CLI :** `POST /api/cli/evaluations/creer` crée un lot d'évaluations (examens, devoirs) avec publication optionnelle, en simulation par défaut, motif obligatoire, bornes et périodes de l'écran de création, gardes du modèle appliquées, refus des doublons du même jour, enseignant posé par le planning LMD quand il est unique (`docs/api/CLI_EVALUATIONS_CREATION.md`).
 - **Finances par classe :** nouveau rapport par année, filière, niveau et classe des frais attendus, règlements imputés, montants restant à recouvrer et échéances échues ; accès nominatif par permission, filtres AJAX et exports PDF/Excel aux couleurs de l'établissement.
 - **Fiche étudiant — saisie multiple des notes :** édition de plusieurs évaluations depuis l'onglet Académique, enregistrement AJAX groupé, états note/évaluation distingués, erreurs de sauvegarde partielles conservées et détection de corrections concurrentes ; sans validation officielle implicite. L'écran d'inscription conserve son éditeur unitaire.

@@ -415,6 +415,9 @@ jobs:
       - name: Test endpoint CLI de création d'évaluations
         run: php vendor/bin/phpunit tests/Feature/Evaluations/CreationEvaluationCliTest.php --no-coverage
 
+      - name: Test lecture seule des notes par évaluation (CLI)
+        run: php vendor/bin/phpunit tests/Feature/Evaluations/LectureNotesCliTest.php --no-coverage
+
       - name: Date métier des encaissements et cohérence caisse
         run: |
           php vendor/bin/phpunit tests/Feature/Paiements/EncaisserMobileTest.php --no-coverage
