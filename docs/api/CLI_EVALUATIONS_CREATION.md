@@ -40,10 +40,16 @@ Chaque entrée de `entries` :
 ### Garde-fous
 
 - Une évaluation déjà existante, non annulée, pour le même
-  `(année, classe, matière, type, période, titre)` fait refuser la ligne.
-  Rien n'est recréé.
+  `(année, classe, matière, type, période, titre)` le MÊME JOUR fait refuser la
+  ligne. Rien n'est recréé. Deux devoirs de même titre à des dates différentes
+  sont acceptés.
 - Deux lignes identiques dans le même lot sont refusées.
-- Les règles de période et de barème sont celles de l'écran de création.
+- Les bornes (barème, coefficient), les types et les périodes sont ceux de
+  l'écran de création. Les gardes du modèle (cohérence LMD/BTS, ECUE, période de
+  spécialité) s'appliquent à chaque ligne ; la simulation les exécute réellement
+  puis annule la transaction, donc elle prédit exactement l'exécution.
+- Le CLI n'assigne pas d'enseignant (`enseignant_id` n'est pas accepté) : les
+  évaluations créées restent sans enseignant assigné, à compléter dans l'écran.
 
 ### Réponse (simulation)
 

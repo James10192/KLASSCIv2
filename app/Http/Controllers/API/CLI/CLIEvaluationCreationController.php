@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Crée des évaluations (examens, devoirs…) depuis le CLI.
@@ -72,38 +73,26 @@ class CLIEvaluationCreationController extends BaseApiController
             'publiees' => count(array_filter($plan, fn ($p) => $p['is_published'])),
         ];
 
-        if ($dryRun) {
-            return $this->successResponse(
-                $resume + ['plan' => $plan],
-                'Simulation : aucune écriture. Relancer avec dry_run=false et la confirmation pour créer.'
+        $auteur = (int) $request->user()->id;
+
+        try {
+            // Simulation et exécution passent par le même chemin d'écriture (gardes du
+            // modèle comprises) ; la simulation annule la transaction à la fin.
+            $creees = $this->ecrire($plan, $annee, $auteur, $dryRun);
+        } catch (ValidationException $e) {
+            return $this->errorResponse(
+                'Création refusée par les règles de l’évaluation : aucune évaluation n’a été créée.',
+                ['errors' => $e->errors()],
+                422
             );
         }
 
-        $auteur = (int) $request->user()->id;
-        $creees = [];
-        DB::transaction(function () use ($plan, $annee, $auteur, &$creees): void {
-            foreach ($plan as $ligne) {
-                $evaluation = new ESBTPEvaluation;
-                $evaluation->titre = $ligne['titre'];
-                $evaluation->description = $ligne['description'];
-                $evaluation->type = $ligne['type'];
-                $evaluation->date_evaluation = Carbon::createFromFormat('Y-m-d H:i', $ligne['debut']);
-                $evaluation->coefficient = $ligne['coefficient'];
-                $evaluation->bareme = $ligne['bareme'];
-                $evaluation->duree_minutes = $ligne['duree_minutes'];
-                $evaluation->classe_id = $ligne['classe_id'];
-                $evaluation->matiere_id = $ligne['matiere_id'];
-                $evaluation->periode = $ligne['periode'];
-                $evaluation->annee_universitaire_id = $annee->id;
-                $evaluation->created_by = $auteur;
-                $evaluation->is_published = $ligne['is_published'];
-                $evaluation->status = $ligne['is_published']
-                    ? $evaluation->determineAutomaticStatus(null, false)
-                    : ESBTPEvaluation::STATUS_DRAFT;
-                $evaluation->save();
-                $creees[] = (int) $evaluation->id;
-            }
-        });
+        if ($dryRun) {
+            return $this->successResponse(
+                $resume + ['plan' => $plan],
+                'Simulation exacte : aucune écriture. Relancer avec dry_run=false et la confirmation pour créer.'
+            );
+        }
 
         Log::warning('CLI: création d’évaluations exécutée', [
             'annee_universitaire_id' => $annee->id,
@@ -127,7 +116,12 @@ class CLIEvaluationCreationController extends BaseApiController
         $vues = [];
 
         foreach (array_values($entries) as $index => $entry) {
-            $classe = ESBTPClasse::find($entry['classe_id'] ?? null);
+            // Identifiant vérifié avant toute recherche : un tableau ou une chaîne
+            // non numérique doit donner un 422, pas une erreur de type.
+            $classeId = $entry['classe_id'] ?? null;
+            $classe = is_int($classeId) || (is_string($classeId) && ctype_digit($classeId))
+                ? ESBTPClasse::find((int) $classeId)
+                : null;
 
             $validator = Validator::make($entry, [
                 'classe_id' => 'required|integer|exists:esbtp_classes,id',
@@ -161,15 +155,7 @@ class CLIEvaluationCreationController extends BaseApiController
             }
             $vues[$cle] = $index;
 
-            $existante = ESBTPEvaluation::query()
-                ->where('annee_universitaire_id', $annee->id)
-                ->where('classe_id', $entry['classe_id'])
-                ->where('matiere_id', $entry['matiere_id'])
-                ->where('type', $entry['type'])
-                ->where('periode', $entry['periode'])
-                ->where('titre', $entry['titre'])
-                ->where(fn ($q) => $q->whereNull('status')->orWhere('status', '!=', ESBTPEvaluation::STATUS_CANCELLED))
-                ->first();
+            $existante = $this->existante($entry, $debut, $annee);
 
             if ($existante) {
                 $errors[] = ['ligne' => $index, 'erreur' => 'Évaluation déjà existante (#'.$existante->id.') : rien n’est recréé.'];
@@ -197,5 +183,90 @@ class CLIEvaluationCreationController extends BaseApiController
         $plan = array_map(fn (array $p) => $p + ['debut' => $p['debut']->format('Y-m-d H:i')], $plan);
 
         return [$plan, $errors];
+    }
+
+    /**
+     * Écrit le plan dans une transaction. Le doublon est revérifié DANS la
+     * transaction ; en simulation, la transaction est annulée à la fin. Une
+     * garde du modèle qui lève ValidationException annule tout le lot.
+     *
+     * @return array<int, int> identifiants créés (vide en simulation)
+     */
+    private function ecrire(array $plan, ESBTPAnneeUniversitaire $annee, int $auteur, bool $simulation): array
+    {
+        $creees = [];
+
+        DB::beginTransaction();
+        try {
+            foreach ($plan as $ligne) {
+                $debut = Carbon::createFromFormat('Y-m-d H:i', $ligne['debut']);
+                $existante = $this->existante([
+                    'classe_id' => $ligne['classe_id'],
+                    'matiere_id' => $ligne['matiere_id'],
+                    'type' => $ligne['type'],
+                    'periode' => $ligne['periode'],
+                    'titre' => $ligne['titre'],
+                ], $debut, $annee);
+
+                if ($existante) {
+                    throw ValidationException::withMessages([
+                        'ligne' => ['Évaluation déjà existante (#'.$existante->id.') pour la ligne '.$ligne['ligne'].'.'],
+                    ]);
+                }
+
+                $evaluation = new ESBTPEvaluation;
+                $evaluation->titre = $ligne['titre'];
+                $evaluation->description = $ligne['description'];
+                $evaluation->type = $ligne['type'];
+                $evaluation->date_evaluation = $debut;
+                $evaluation->coefficient = $ligne['coefficient'];
+                $evaluation->bareme = $ligne['bareme'];
+                $evaluation->duree_minutes = $ligne['duree_minutes'];
+                $evaluation->classe_id = $ligne['classe_id'];
+                $evaluation->matiere_id = $ligne['matiere_id'];
+                $evaluation->periode = $ligne['periode'];
+                $evaluation->annee_universitaire_id = $annee->id;
+                $evaluation->created_by = $auteur;
+                $evaluation->is_published = $ligne['is_published'];
+                $evaluation->status = $ligne['is_published']
+                    ? $evaluation->determineAutomaticStatus(null, false)
+                    : ESBTPEvaluation::STATUS_DRAFT;
+                $evaluation->save();
+                $creees[] = (int) $evaluation->id;
+            }
+
+            if ($simulation) {
+                DB::rollBack();
+
+                return [];
+            }
+
+            DB::commit();
+
+            return $creees;
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Évaluation vivante déjà présente pour le même (année, classe, matière,
+     * type, période, titre, JOUR). Deux devoirs de même titre à des dates
+     * différentes restent légitimes.
+     */
+    private function existante(array $entry, Carbon $debut, ESBTPAnneeUniversitaire $annee): ?ESBTPEvaluation
+    {
+        return ESBTPEvaluation::query()
+            ->where('annee_universitaire_id', $annee->id)
+            ->where('classe_id', $entry['classe_id'])
+            ->where('matiere_id', $entry['matiere_id'])
+            ->where('type', $entry['type'])
+            ->where('periode', $entry['periode'])
+            ->where('titre', $entry['titre'])
+            ->whereDate('date_evaluation', $debut->toDateString())
+            ->where(fn ($q) => $q->whereNull('status')->orWhere('status', '!=', ESBTPEvaluation::STATUS_CANCELLED))
+            ->first();
     }
 }
