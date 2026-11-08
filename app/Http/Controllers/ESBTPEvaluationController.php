@@ -403,7 +403,7 @@ class ESBTPEvaluationController extends Controller
 
         // La fenêtre des notes LMD envoie « 1 » : refusé depuis que la période
         // est contrôlée, il bloquait toute création d'évaluation LMD.
-        $request->merge(['periode' => ESBTPEvaluation::periodeSaisie($request->input('periode'))]);
+        $request->merge(['periode' => ReglesCreationEvaluation::normaliserPeriode($request->input('periode'))]);
         $classeCible = ESBTPClasse::find($request->input('classe_id'));
 
         // Garde-fou critique : bareme strictement > 0 (sinon division par zéro
@@ -478,10 +478,6 @@ class ESBTPEvaluationController extends Controller
             }
 
             $evaluation = new ESBTPEvaluation;
-            $evaluation->titre = $request->titre;
-            $evaluation->description = $request->description;
-            $evaluation->type = $request->type;
-            $evaluation->date_evaluation = $startAt;
 
             // Récupérer le coefficient depuis le formulaire (priorité haute)
             $coefficient = $request->input('coefficient');
@@ -493,14 +489,20 @@ class ESBTPEvaluationController extends Controller
                     $coefficient = 1;
                 }
             }
-            $evaluation->coefficient = (float) $coefficient;
-            $evaluation->bareme = $request->bareme;
-            $evaluation->duree_minutes = ReglesCreationEvaluation::dureeMinutes($startAt, $endAt, $request->input('duree_minutes'));
-            $evaluation->classe_id = $request->classe_id;
-            $evaluation->matiere_id = $request->matiere_id;
-            $evaluation->created_by = \Auth::id();
-            $evaluation->is_published = $request->has('is_published') ? 1 : 0;
-            $evaluation->status = ReglesCreationEvaluation::statut((bool) $evaluation->is_published, $evaluation);
+            ReglesCreationEvaluation::remplir($evaluation, [
+                'titre' => $request->titre,
+                'description' => $request->description,
+                'type' => $request->type,
+                'debut' => $startAt,
+                'fin' => $endAt,
+                'duree_saisie' => $request->input('duree_minutes'),
+                'coefficient' => $coefficient,
+                'bareme' => $request->bareme,
+                'classe_id' => $request->classe_id,
+                'matiere_id' => $request->matiere_id,
+                'periode' => $request->periode ?? 'semestre1',
+                'is_published' => $request->has('is_published'),
+            ], $anneeUniversitaire->id, \Auth::id());
 
             // Auto-assigner l'enseignant si c'est un rôle enseignant qui crée l'évaluation
             $user = \Auth::user();
@@ -519,9 +521,6 @@ class ESBTPEvaluationController extends Controller
                 }
             }
 
-            // Ajouter les valeurs par défaut pour les champs manquants
-            $evaluation->periode = $request->periode ?? 'semestre1'; // Valeur par défaut pour periode
-            $evaluation->annee_universitaire_id = $anneeUniversitaire->id;
 
             \Log::info('Tentative de sauvegarde de l\'évaluation:', [
                 'titre' => $evaluation->titre,

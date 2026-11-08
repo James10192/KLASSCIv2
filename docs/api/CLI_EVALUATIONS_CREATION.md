@@ -48,8 +48,10 @@ Chaque entrée de `entries` :
   l'écran de création. Les gardes du modèle (cohérence LMD/BTS, ECUE, période de
   spécialité) s'appliquent à chaque ligne ; la simulation les exécute réellement
   puis annule la transaction, donc elle prédit exactement l'exécution.
-- Le CLI n'assigne pas d'enseignant (`enseignant_id` n'est pas accepté) : les
-  évaluations créées restent sans enseignant assigné, à compléter dans l'écran.
+- Le CLI n'accepte pas `enseignant_id`. Pour une classe LMD, le modèle pose
+  l'enseignant automatiquement quand le planning en résout un seul ; un pool
+  ambigu refuse la création (422). Sinon l'évaluation reste sans enseignant,
+  à compléter dans l'écran.
 
 ### Réponse (simulation)
 

@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\API\CLI;
 
-use App\Http\Controllers\API\BaseApiController;
 use App\Domain\Evaluations\ReglesCreationEvaluation;
+use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEvaluation;
@@ -18,11 +18,12 @@ use Illuminate\Validation\ValidationException;
 /**
  * Crée des évaluations (examens, devoirs…) depuis le CLI.
  *
- * Simulation par défaut. Chaque ligne reprend les règles de l'écran de création
- * (barème, coefficient, types, périodes propres à la classe, heures). Un lot
- * est atomique : une ligne invalide ou un doublon annule tout. Une évaluation
- * déjà existante pour le même (année, classe, matière, type, période, titre) est
- * refusée : on ne crée jamais deux fois la même évaluation.
+ * Simulation par défaut. Les règles de création (bornes, types, périodes propres
+ * à la classe, remplissage, statut, durée) sont celles de l'écran : elles viennent
+ * de App\Domain\Evaluations\ReglesCreationEvaluation. Un lot est atomique : une
+ * ligne invalide, un doublon ou une garde du modèle annule tout. Une évaluation
+ * déjà présente le même jour pour (année, classe, matière, type, période, titre)
+ * est refusée.
  */
 class CLIEvaluationCreationController extends BaseApiController
 {
@@ -66,13 +67,6 @@ class CLIEvaluationCreationController extends BaseApiController
             );
         }
 
-        $resume = [
-            'dry_run' => $dryRun,
-            'annee' => ['id' => (int) $annee->id, 'name' => $annee->name ?? $annee->libelle],
-            'lignes' => count($plan),
-            'publiees' => count(array_filter($plan, fn ($p) => $p['is_published'])),
-        ];
-
         $auteur = (int) $request->user()->id;
 
         try {
@@ -87,9 +81,17 @@ class CLIEvaluationCreationController extends BaseApiController
             );
         }
 
+        $resume = [
+            'dry_run' => $dryRun,
+            'annee' => ['id' => (int) $annee->id, 'name' => $annee->name ?? $annee->libelle],
+            'lignes' => count($plan),
+            'publiees' => count(array_filter($plan, fn ($p) => $p['is_published'])),
+            'plan' => array_map(fn (array $p) => $this->versJson($p), $plan),
+        ];
+
         if ($dryRun) {
             return $this->successResponse(
-                $resume + ['plan' => $plan],
+                $resume,
                 'Simulation exacte : aucune écriture. Relancer avec dry_run=false et la confirmation pour créer.'
             );
         }
@@ -105,7 +107,7 @@ class CLIEvaluationCreationController extends BaseApiController
     }
 
     /**
-     * Valide chaque ligne et calcule le plan. Retourne [plan, erreurs].
+     * Valide chaque ligne et calcule le plan (objets Carbon). Retourne [plan, erreurs].
      *
      * @return array{0: array<int, array<string, mixed>>, 1: array<int, array<string, mixed>>}
      */
@@ -122,6 +124,8 @@ class CLIEvaluationCreationController extends BaseApiController
             $classe = is_int($classeId) || (is_string($classeId) && ctype_digit($classeId))
                 ? ESBTPClasse::find((int) $classeId)
                 : null;
+
+            $entry['periode'] = ReglesCreationEvaluation::normaliserPeriode($entry['periode'] ?? null);
 
             $validator = Validator::make($entry, array_merge(
                 ReglesCreationEvaluation::champs($classe),
@@ -145,7 +149,9 @@ class CLIEvaluationCreationController extends BaseApiController
 
             $debut = Carbon::createFromFormat('Y-m-d H:i', $entry['date_evaluation'].' '.$entry['heure_debut']);
             $fin = Carbon::createFromFormat('Y-m-d H:i', $entry['date_evaluation'].' '.$entry['heure_fin']);
-            $cle = implode('|', [$entry['classe_id'], $entry['matiere_id'], $entry['type'], $entry['periode'], $entry['titre']]);
+            $cle = implode('|', [
+                $entry['classe_id'], $entry['matiere_id'], $entry['type'], $entry['periode'], $entry['titre'], $debut->toDateString(),
+            ]);
 
             if (isset($vues[$cle])) {
                 $errors[] = ['ligne' => $index, 'erreur' => 'Doublon dans le lot (ligne '.$vues[$cle].').'];
@@ -171,23 +177,22 @@ class CLIEvaluationCreationController extends BaseApiController
                 'type' => $entry['type'],
                 'periode' => $entry['periode'],
                 'debut' => $debut,
-                'duree_minutes' => ReglesCreationEvaluation::dureeMinutes($debut, $fin),
+                'fin' => $fin,
+                'duree_saisie' => null,
                 'bareme' => (float) $entry['bareme'],
                 'coefficient' => (float) $entry['coefficient'],
                 'is_published' => (bool) ($entry['is_published'] ?? false),
             ];
         }
 
-        // Un plan ne sert qu'à voir la simulation : on le rend sérialisable.
-        $plan = array_map(fn (array $p) => $p + ['debut' => $p['debut']->format('Y-m-d H:i')], $plan);
-
         return [$plan, $errors];
     }
 
     /**
-     * Écrit le plan dans une transaction. Le doublon est revérifié DANS la
-     * transaction ; en simulation, la transaction est annulée à la fin. Une
-     * garde du modèle qui lève ValidationException annule tout le lot.
+     * Écrit le plan dans une transaction. Pour chaque ligne : verrou sur la classe
+     * (les créations concurrentes d'une même classe se succèdent), doublon revérifié
+     * sous ce verrou, puis remplissage par la règle partagée. En simulation, la
+     * transaction est annulée à la fin.
      *
      * @return array<int, int> identifiants créés (vide en simulation)
      */
@@ -198,14 +203,15 @@ class CLIEvaluationCreationController extends BaseApiController
         DB::beginTransaction();
         try {
             foreach ($plan as $ligne) {
-                $debut = Carbon::createFromFormat('Y-m-d H:i', $ligne['debut']);
+                ESBTPClasse::query()->whereKey($ligne['classe_id'])->lockForUpdate()->first();
+
                 $existante = $this->existante([
                     'classe_id' => $ligne['classe_id'],
                     'matiere_id' => $ligne['matiere_id'],
                     'type' => $ligne['type'],
                     'periode' => $ligne['periode'],
                     'titre' => $ligne['titre'],
-                ], $debut, $annee);
+                ], $ligne['debut'], $annee);
 
                 if ($existante) {
                     throw ValidationException::withMessages([
@@ -214,20 +220,7 @@ class CLIEvaluationCreationController extends BaseApiController
                 }
 
                 $evaluation = new ESBTPEvaluation;
-                $evaluation->titre = $ligne['titre'];
-                $evaluation->description = $ligne['description'];
-                $evaluation->type = $ligne['type'];
-                $evaluation->date_evaluation = $debut;
-                $evaluation->coefficient = $ligne['coefficient'];
-                $evaluation->bareme = $ligne['bareme'];
-                $evaluation->duree_minutes = $ligne['duree_minutes'];
-                $evaluation->classe_id = $ligne['classe_id'];
-                $evaluation->matiere_id = $ligne['matiere_id'];
-                $evaluation->periode = $ligne['periode'];
-                $evaluation->annee_universitaire_id = $annee->id;
-                $evaluation->created_by = $auteur;
-                $evaluation->is_published = $ligne['is_published'];
-                $evaluation->status = ReglesCreationEvaluation::statut($ligne['is_published'], $evaluation);
+                ReglesCreationEvaluation::remplir($evaluation, $ligne, (int) $annee->id, $auteur);
                 $evaluation->save();
                 $creees[] = (int) $evaluation->id;
             }
@@ -265,5 +258,28 @@ class CLIEvaluationCreationController extends BaseApiController
             ->whereDate('date_evaluation', $debut->toDateString())
             ->where(fn ($q) => $q->whereNull('status')->orWhere('status', '!=', ESBTPEvaluation::STATUS_CANCELLED))
             ->first();
+    }
+
+    /**
+     * Forme JSON d'une ligne du plan (les dates sont rendues en texte).
+     *
+     * @param  array<string, mixed>  $p
+     * @return array<string, mixed>
+     */
+    private function versJson(array $p): array
+    {
+        return [
+            'ligne' => $p['ligne'],
+            'classe_id' => $p['classe_id'],
+            'matiere_id' => $p['matiere_id'],
+            'titre' => $p['titre'],
+            'type' => $p['type'],
+            'periode' => $p['periode'],
+            'debut' => $p['debut']->format('Y-m-d H:i'),
+            'duree_minutes' => ReglesCreationEvaluation::dureeMinutes($p['debut'], $p['fin']),
+            'bareme' => $p['bareme'],
+            'coefficient' => $p['coefficient'],
+            'is_published' => $p['is_published'],
+        ];
     }
 }
