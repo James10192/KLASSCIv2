@@ -755,6 +755,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // Import atomique d'un relevé vérifié dans des évaluations existantes.
         Route::post('/notes/importer', [App\Http\Controllers\API\CLI\CLINotesImportController::class, 'importer'])
             ->name('notes.importer');
+        // Création d'évaluations (examens, devoirs) : simulation par défaut,
+        // motif obligatoire, doublons refusés. Voir docs/api/CLI_EVALUATIONS_CREATION.md.
+        Route::post('/evaluations/creer', [App\Http\Controllers\API\CLI\CLIEvaluationCreationController::class, 'creer'])
+            ->name('evaluations.creer');
         // Jetons SERVEUR du LMS (compte technique « Service LMS ») : le jeton
         // en clair n'est rendu qu'a la creation. Voir docs/api/LMS_JETON_SERVEUR.md.
         Route::post('/lms/jeton-serveur', [App\Http\Controllers\API\CLI\CLILmsJetonController::class, 'creer'])

@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Domain\Evaluations\ReglesCreationEvaluation;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEvaluation;
 use App\Models\User;
@@ -91,8 +92,7 @@ final class ESBTPEvaluationLmdTeacherObserver
 
     private function doitEtreStrict(ESBTPEvaluation $evaluation): bool
     {
-        $titre = mb_strtolower(trim((string) $evaluation->titre), 'UTF-8');
-        if (str_starts_with($titre, 'régularisation ') || str_starts_with($titre, 'regularisation ')) {
+        if (ReglesCreationEvaluation::estTitreDeRegularisation((string) $evaluation->titre)) {
             return false;
         }
 
