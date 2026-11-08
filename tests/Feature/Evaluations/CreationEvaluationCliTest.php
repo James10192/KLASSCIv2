@@ -31,6 +31,14 @@ class CreationEvaluationCliTest extends TestCase
     {
         parent::setUp();
 
+        // Sans instance installee, CheckInstalled/EnsureInstalled redirigent (302)
+        // avant le controleur : même réglage que CreationEvaluationParcoursTest.
+        $this->withoutMiddleware([
+            \App\Http\Middleware\CheckInstalled::class,
+            \App\Http\Middleware\EnsureInstalled::class,
+            \App\Http\Middleware\PaywallMiddleware::class,
+        ]);
+
         $this->annee = ESBTPAnneeUniversitaire::factory()->create();
         $this->classe = ESBTPClasse::factory()->create(['systeme_academique' => 'BTS', 'is_active' => true]);
         $this->matiere = ESBTPMatiere::factory()->create();
