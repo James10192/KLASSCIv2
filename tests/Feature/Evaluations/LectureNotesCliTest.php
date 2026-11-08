@@ -3,6 +3,7 @@
 namespace Tests\Feature\Evaluations;
 
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
@@ -35,7 +36,8 @@ class LectureNotesCliTest extends TestCase
         Sanctum::actingAs(User::factory()->create(), ['cli:read']);
 
         $annee = ESBTPAnneeUniversitaire::factory()->create();
-        $evaluation = ESBTPEvaluation::factory()->create(['annee_universitaire_id' => $annee->id, 'status' => ESBTPEvaluation::STATUS_COMPLETED]);
+        $classe = ESBTPClasse::factory()->create(['systeme_academique' => 'BTS', 'is_active' => true]);
+        $evaluation = ESBTPEvaluation::factory()->create(['annee_universitaire_id' => $annee->id, 'classe_id' => $classe->id, 'status' => ESBTPEvaluation::STATUS_COMPLETED]);
         $etudiant = ESBTPEtudiant::factory()->create();
         ESBTPNote::factory()->create(['evaluation_id' => $evaluation->id, 'etudiant_id' => $etudiant->id, 'note' => 0]);
 
@@ -55,7 +57,8 @@ class LectureNotesCliTest extends TestCase
         Sanctum::actingAs(User::factory()->create(), ['cli:read']);
 
         $annee = ESBTPAnneeUniversitaire::factory()->create();
-        ESBTPEvaluation::factory()->create(['annee_universitaire_id' => $annee->id, 'status' => ESBTPEvaluation::STATUS_CANCELLED]);
+        $classe = ESBTPClasse::factory()->create(['systeme_academique' => 'BTS', 'is_active' => true]);
+        ESBTPEvaluation::factory()->create(['annee_universitaire_id' => $annee->id, 'classe_id' => $classe->id, 'status' => ESBTPEvaluation::STATUS_CANCELLED]);
 
         $this->getJson('/api/cli/evaluations/notes?annee_id='.$annee->id)
             ->assertOk()
