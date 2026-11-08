@@ -426,6 +426,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
 
     // Read endpoints — Academic years
     Route::get('/annee', [App\Http\Controllers\API\CLI\CLIAcademicController::class, 'annee'])->name('annee');
+    // Lecture seule des notes saisies par évaluation (annee_id, classe_id, evaluation_id).
+    Route::get('/evaluations/notes', [App\Http\Controllers\API\CLI\CLILectureNotesController::class, 'notes'])
+        ->name('evaluations.notes.lecture');
     Route::get('/evaluations/coverage', [App\Http\Controllers\API\CLI\CLIEvaluationCoverageController::class, 'index'])
         ->name('evaluations.coverage');
     // Rapport d'usage : l'etablissement travaille-t-il vraiment dans KLASSCI ? (lecture seule)
