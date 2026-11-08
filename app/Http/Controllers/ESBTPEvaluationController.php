@@ -9,6 +9,7 @@ use App\Domain\Notes\SuppressionDEvaluation;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
+use App\Domain\Evaluations\ReglesCreationEvaluation;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereCoefficient;
@@ -407,21 +408,17 @@ class ESBTPEvaluationController extends Controller
 
         // Garde-fou critique : bareme strictement > 0 (sinon division par zéro
         // dans ESBTPNote::getNoteVingtAttribute), coefficient strictement borné.
-        $validator = \Validator::make($request->all(), [
+        $validator = \Validator::make($request->all(), array_merge(ReglesCreationEvaluation::champs($classeCible), [
             'titre' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
-            'type' => ['required', 'string', Rule::in(ESBTPEvaluation::typesSaisissables())],
             'date_evaluation' => 'required|date',
             'heure_debut' => 'required|date_format:H:i',
             'heure_fin' => 'required|date_format:H:i|after:heure_debut',
             'classe_id' => 'required|exists:esbtp_classes,id',
             'matiere_id' => 'required|exists:esbtp_matieres,id',
-            'bareme' => 'required|numeric|min:'.ESBTPEvaluation::BAREME_MIN.'|max:'.ESBTPEvaluation::BAREME_MAX,
-            'coefficient' => 'required|numeric|min:'.ESBTPEvaluation::COEFFICIENT_MIN.'|max:'.ESBTPEvaluation::COEFFICIENT_MAX,
             'duree_minutes' => 'nullable|integer|min:1|max:480',
             'is_published' => 'nullable|boolean',
-            'periode' => ['required', Rule::in(array_keys(ESBTPEvaluation::periodesPourClasse($classeCible)))],
-        ], [
+        ]), [
             'titre.required' => 'Le titre est obligatoire',
             'type.required' => 'Le type d\'évaluation est obligatoire',
             'type.in' => 'Le type d\'évaluation doit être valide',
@@ -479,7 +476,6 @@ class ESBTPEvaluationController extends Controller
                     ->with('error', 'L’heure de fin doit suivre l’heure de début.')
                     ->withInput();
             }
-            $calculatedDuration = $endAt->diffInMinutes($startAt);
 
             $evaluation = new ESBTPEvaluation;
             $evaluation->titre = $request->titre;
@@ -499,19 +495,12 @@ class ESBTPEvaluationController extends Controller
             }
             $evaluation->coefficient = (float) $coefficient;
             $evaluation->bareme = $request->bareme;
-            $evaluation->duree_minutes = $request->filled('duree_minutes')
-                ? (int) $request->duree_minutes
-                : $calculatedDuration;
-            if ($evaluation->duree_minutes <= 0) {
-                $evaluation->duree_minutes = $calculatedDuration;
-            }
+            $evaluation->duree_minutes = ReglesCreationEvaluation::dureeMinutes($startAt, $endAt, $request->input('duree_minutes'));
             $evaluation->classe_id = $request->classe_id;
             $evaluation->matiere_id = $request->matiere_id;
             $evaluation->created_by = \Auth::id();
             $evaluation->is_published = $request->has('is_published') ? 1 : 0;
-            $evaluation->status = $evaluation->is_published
-                ? $evaluation->determineAutomaticStatus(null, false)
-                : ESBTPEvaluation::STATUS_DRAFT;
+            $evaluation->status = ReglesCreationEvaluation::statut((bool) $evaluation->is_published, $evaluation);
 
             // Auto-assigner l'enseignant si c'est un rôle enseignant qui crée l'évaluation
             $user = \Auth::user();

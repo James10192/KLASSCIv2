@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
+use App\Domain\Evaluations\ReglesCreationEvaluation;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEvaluation;
@@ -12,7 +13,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -123,20 +123,19 @@ class CLIEvaluationCreationController extends BaseApiController
                 ? ESBTPClasse::find((int) $classeId)
                 : null;
 
-            $validator = Validator::make($entry, [
-                'classe_id' => 'required|integer|exists:esbtp_classes,id',
-                'matiere_id' => 'required|integer|exists:esbtp_matieres,id',
-                'titre' => 'required|string|max:255',
-                'description' => 'nullable|string|max:1000',
-                'type' => ['required', 'string', Rule::in(ESBTPEvaluation::typesSaisissables())],
-                'periode' => ['required', 'string', Rule::in(array_keys(ESBTPEvaluation::periodesPourClasse($classe)))],
-                'date_evaluation' => 'required|date_format:Y-m-d',
-                'heure_debut' => 'required|date_format:H:i',
-                'heure_fin' => 'required|date_format:H:i|after:heure_debut',
-                'bareme' => 'required|numeric|min:'.ESBTPEvaluation::BAREME_MIN.'|max:'.ESBTPEvaluation::BAREME_MAX,
-                'coefficient' => 'required|numeric|min:'.ESBTPEvaluation::COEFFICIENT_MIN.'|max:'.ESBTPEvaluation::COEFFICIENT_MAX,
-                'is_published' => 'nullable|boolean',
-            ]);
+            $validator = Validator::make($entry, array_merge(
+                ReglesCreationEvaluation::champs($classe),
+                [
+                    'classe_id' => 'required|integer|exists:esbtp_classes,id',
+                    'matiere_id' => 'required|integer|exists:esbtp_matieres,id',
+                    'titre' => 'required|string|max:255',
+                    'description' => 'nullable|string|max:1000',
+                    'date_evaluation' => 'required|date_format:Y-m-d',
+                    'heure_debut' => 'required|date_format:H:i',
+                    'heure_fin' => 'required|date_format:H:i|after:heure_debut',
+                    'is_published' => 'nullable|boolean',
+                ]
+            ));
 
             if ($validator->fails()) {
                 $errors[] = ['ligne' => $index, 'erreur' => $validator->errors()->all()];
@@ -172,7 +171,7 @@ class CLIEvaluationCreationController extends BaseApiController
                 'type' => $entry['type'],
                 'periode' => $entry['periode'],
                 'debut' => $debut,
-                'duree_minutes' => (int) $debut->diffInMinutes($fin),
+                'duree_minutes' => ReglesCreationEvaluation::dureeMinutes($debut, $fin),
                 'bareme' => (float) $entry['bareme'],
                 'coefficient' => (float) $entry['coefficient'],
                 'is_published' => (bool) ($entry['is_published'] ?? false),
@@ -228,9 +227,7 @@ class CLIEvaluationCreationController extends BaseApiController
                 $evaluation->annee_universitaire_id = $annee->id;
                 $evaluation->created_by = $auteur;
                 $evaluation->is_published = $ligne['is_published'];
-                $evaluation->status = $ligne['is_published']
-                    ? $evaluation->determineAutomaticStatus(null, false)
-                    : ESBTPEvaluation::STATUS_DRAFT;
+                $evaluation->status = ReglesCreationEvaluation::statut($ligne['is_published'], $evaluation);
                 $evaluation->save();
                 $creees[] = (int) $evaluation->id;
             }
