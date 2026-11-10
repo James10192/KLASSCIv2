@@ -652,14 +652,19 @@ class ESBTPLMDBulletinController extends Controller
     {
         abort_if($bulletin->is_published, 403, 'Bulletin LMD publié : suppression interdite.');
 
-        // Supprimer les resultats ECUEs lies
-        $bulletin->resultatsECUEs()->delete();
-
-        // Supprimer les resultats UEs lies
-        $bulletin->resultatsUEs()->delete();
-
-        // Supprimer le bulletin
-        $bulletin->delete();
+        // Un statut publié posé en parallèle interdit aussi la suppression
+        // des enfants : le contrôle se fait sur le parent verrouillé.
+        \Illuminate\Support\Facades\DB::transaction(function () use ($bulletin): void {
+            $locked = ESBTPLMDBulletin::query()->lockForUpdate()->findOrFail($bulletin->id);
+            if ($locked->is_published) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'bulletin' => 'Bulletin LMD publié entretemps : suppression annulée.',
+                ]);
+            }
+            $locked->resultatsECUEs()->delete();
+            $locked->resultatsUEs()->delete();
+            $locked->delete();
+        });
 
         return redirect()
             ->route('esbtp.lmd.bulletins.index')
