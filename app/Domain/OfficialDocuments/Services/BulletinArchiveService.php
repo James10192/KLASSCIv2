@@ -154,6 +154,17 @@ final class BulletinArchiveService
         return $this->storage->stream($document, $inline);
     }
 
+    /** Octets immuables pour les exports groupés et le chatbot autorisés. */
+    public function octets(OfficialDocument $document): string
+    {
+        if (! in_array($document->document_type, [self::TYPE_BTS, self::TYPE_LMD], true)) {
+            throw new LogicException('Type de document incompatible avec un bulletin.');
+        }
+        $this->integrity->assertValidAndIntact($document, false, auth()->id());
+
+        return $this->storage->contents($document->path);
+    }
+
     private function serie(ESBTPBulletin|ESBTPLMDBulletin $bulletin)
     {
         return OfficialDocument::query()
