@@ -620,8 +620,8 @@ class ESBTPLMDBulletinController extends Controller
      */
     public function togglePublication(ESBTPLMDBulletin $bulletin)
     {
-        // Un bulletin sans aucune note retenue se publiait à 0,00 et 0 crédit,
-        // en PDF officiel signé. Dépublier reste toujours possible.
+        // Ne jamais publier un bulletin sans note comme un original officiel.
+        // La dépublication directe est désormais interdite : correction versionnée.
         if (! $bulletin->is_published) {
             $aUneNote = $bulletin->resultatsECUEs()->get()
                 ->contains(fn ($r) => $this->service->noteEffectiveECUE($r) !== null);
@@ -638,7 +638,6 @@ class ESBTPLMDBulletinController extends Controller
         try {
             app(\App\Domain\OfficialDocuments\Services\BulletinArchiveService::class)
                 ->publier($bulletin, auth()->user());
-            $this->creditWallet->syncBulletin($bulletin->fresh());
 
             return redirect()->back()->with('success', 'Bulletin LMD publié et archivé avec succès.');
         } catch (\Throwable $e) {
