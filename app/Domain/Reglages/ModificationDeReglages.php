@@ -80,6 +80,9 @@ class ModificationDeReglages
         'pdf_signature_height' => [40, 200],
         'pdf_watermark_opacity' => [0.02, 0.30],
         'pdf_watermark_rotation' => [-90, 90],
+        // La ponderation par blocs n'accepte ni coefficient nul ni exorbitant.
+        'bulletin_bloc_general_coef' => [0.1, 10],
+        'bulletin_bloc_professionnel_coef' => [0.1, 10],
     ];
 
     /**
@@ -280,6 +283,10 @@ class ModificationDeReglages
         [$valeur, $refus] = $this->normaliserBascules($reglage->key, $valeur);
         if ($refus !== null) {
             return [(string) $valeur, $refus];
+        }
+
+        if ($reglage->key === 'bulletin_moyenne_mode' && ! in_array($valeur, ['ponderee', 'blocs'], true)) {
+            return [$valeur, 'Mode de calcul BTS invalide : choisissez par matière ou par blocs.'];
         }
 
         if ($valeur === '') {
