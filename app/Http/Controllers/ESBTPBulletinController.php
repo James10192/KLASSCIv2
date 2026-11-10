@@ -541,17 +541,46 @@ class ESBTPBulletinController extends Controller
      */
     public function bulkPublish(Request $request)
     {
-        $ids = $this->validateBulkIds($request);
-        $count = ESBTPBulletin::whereIn('id', $ids)->update([
-            'is_published' => true,
-            'published_at' => now(),
-        ]);
+        $ids = array_unique($this->validateBulkIds($request));
+        if (count($ids) > 6) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pour archiver les originaux de façon fiable, publiez au maximum six bulletins à la fois.',
+            ], 422);
+        }
+
+        $archives = app(\App\Domain\OfficialDocuments\Services\BulletinArchiveService::class);
+        $count = 0;
+        $errors = [];
+        foreach (ESBTPBulletin::whereIn('id', $ids)->get() as $bulletin) {
+            try {
+                if ($bulletin->is_published) {
+                    // Idempotence : un ancien bulletin déjà publié n'est
+                    // jamais rétroactivement transformé en fausse archive.
+                    continue;
+                }
+                $diagnostic = $this->bulletinConsistencyService->getSnapshot(
+                    (int) $bulletin->etudiant_id,
+                    (int) $bulletin->classe_id,
+                    (int) $bulletin->annee_universitaire_id,
+                    (string) $bulletin->periode
+                );
+                if (! empty($diagnostic['has_divergence'])) {
+                    throw new \RuntimeException('Moyennes différentes des résultats courants : régénérez avant publication.');
+                }
+                $archives->publier($bulletin, $request->user());
+                $count++;
+            } catch (\Throwable $e) {
+                $errors[] = "Bulletin #{$bulletin->id} : {$e->getMessage()}";
+            }
+        }
 
         return response()->json([
-            'success' => true,
-            'message' => "$count bulletin(s) publié(s).",
+            'success' => $errors === [],
+            'message' => "$count bulletin(s) publiés et archivés".($errors ? ' — '.count($errors).' refusés.' : '.'),
             'count' => $count,
-        ]);
+            'errors' => $errors,
+        ], $errors ? 422 : 200);
     }
 
     /**
@@ -640,6 +669,12 @@ class ESBTPBulletinController extends Controller
      */
     public function previewPDF(ESBTPBulletin $bulletin)
     {
+        // Une pièce déjà publiée appartient à l'archive officielle. Ne pas
+        // rediriger vers une projection courante même si les notes ont changé.
+        if ($bulletin->is_published) {
+            return $this->genererPDF($bulletin, true);
+        }
+
         // P-D : unification endpoints PDF. Si le snapshot officiel diverge de la
         // donnée live (notes ajoutées/modifiées depuis la dernière génération),
         // on redirige vers l'endpoint params-preview qui choisira automatiquement
@@ -695,10 +730,15 @@ class ESBTPBulletinController extends Controller
         );
 
         try {
+            $archives = app(\App\Domain\OfficialDocuments\Services\BulletinArchiveService::class);
+            if ($bulletin->is_published && ($document = $archives->archive($bulletin))) {
+                return $archives->telecharger($document, $inline);
+            }
+
             // Le telechargement/aperçu est un GET. Il ne doit jamais ecrire une
             // nouvelle moyenne ou reclasser la cohorte dans la base.
             // La regeneration officielle a sa propre action avec controles.
-            $pdf = $this->buildBulletinPdf($bulletin, false);
+            $pdf = $this->buildBulletinPdf($bulletin, false, (bool) $bulletin->is_published);
 
             $filename = 'bulletin_'.
                         ($bulletin->etudiant ? $bulletin->etudiant->matricule : 'unknown').'_'.
@@ -738,7 +778,7 @@ class ESBTPBulletinController extends Controller
      * téléchargement unitaire. Lève une exception en cas d'échec (le caller décide
      * du fallback).
      */
-    public function buildBulletinPdf(ESBTPBulletin $bulletin, bool $persist = false): \Barryvdh\DomPDF\PDF
+    public function buildBulletinPdf(ESBTPBulletin $bulletin, bool $persist = false, bool $legacyUnarchived = false): \Barryvdh\DomPDF\PDF
     {
         // $persist=false (export groupé) : on calcule et on met à jour l'objet en
         // mémoire pour un rendu identique, MAIS on n'écrit rien en base — un GET
@@ -1203,6 +1243,9 @@ class ESBTPBulletinController extends Controller
             // son bloc @page et DomPDF retombe sur ses marges par defaut (~27 mm),
             // ce qui rendait les marges reglees dans la configuration sans effet.
             $data['isPdfExport'] = true;
+            // Les anciens bulletins publiés sans fichier archivé sont
+            // explicitement marqués. Ce PDF live n'est PAS un original figé.
+            $data['legacyUnarchived'] = $legacyUnarchived;
 
             Log::debug('Chargement de la vue PDF avec le template configurable pour le bulletin #'.$bulletin->id);
             $pdf = PDF::loadView($this->bulletinService->getBulletinTemplateView(), $data);
@@ -1531,9 +1574,25 @@ class ESBTPBulletinController extends Controller
     public function togglePublication(Request $request, ESBTPBulletin $bulletin)
     {
         try {
-            $wasPublished = $bulletin->is_published;
-            $bulletin->is_published = ! $bulletin->is_published;
-            $bulletin->save();
+            if ($bulletin->is_published) {
+                // Une dépublication ferait perdre la traçabilité académique.
+                // Une correction exige une nouvelle émission motivée, pas
+                // l'écrasement du bulletin déjà remis aux familles.
+                throw new \LogicException('Bulletin publié : dépublication directe interdite. Utilisez une procédure de rectification versionnée.');
+            }
+            $diagnostic = $this->bulletinConsistencyService->getSnapshot(
+                (int) $bulletin->etudiant_id,
+                (int) $bulletin->classe_id,
+                (int) $bulletin->annee_universitaire_id,
+                (string) $bulletin->periode
+            );
+            if (! empty($diagnostic['has_divergence'])) {
+                throw new \RuntimeException('Moyennes différentes des résultats courants : régénérez le bulletin avant publication.');
+            }
+            $wasPublished = false;
+            app(\App\Domain\OfficialDocuments\Services\BulletinArchiveService::class)
+                ->publier($bulletin, $request->user());
+            $bulletin->refresh();
 
             // Si le bulletin vient d'être publié, notifier les parents
             if (! $wasPublished && $bulletin->is_published) {
