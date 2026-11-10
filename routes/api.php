@@ -713,6 +713,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
             ->name('diagnostics.evaluations-periode.repair');
         Route::get('/diagnostics/bulletins', [App\Http\Controllers\API\CLI\CLIBulletinDiagnosticController::class, 'index'])
             ->name('diagnostics.bulletins');
+        // Comparer sans donnees nominatives le classement BTS canonique et la liste students.
+        Route::get('/diagnostics/bulletins/classement', App\Http\Controllers\API\CLI\CLIBulletinClassementDiagnosticController::class)
+            ->middleware('throttle:10,1')
+            ->name('diagnostics.bulletins.classement');
         Route::get('/diagnostics/bulletins/config', [App\Http\Controllers\API\CLI\CLIBulletinDiagnosticController::class, 'configCoverage'])
             ->name('diagnostics.bulletins.config');
         Route::get('/diagnostics/bulletin/{id}', [App\Http\Controllers\API\CLI\CLIBulletinDiagnosticController::class, 'show'])
