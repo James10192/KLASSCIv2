@@ -289,6 +289,10 @@ class ModificationDeReglages
             return [$valeur, 'Mode de calcul BTS invalide : choisissez par matière ou par blocs.'];
         }
 
+        if (in_array($reglage->key, ['bulletin_bloc_general_coef', 'bulletin_bloc_professionnel_coef'], true) && $valeur === '') {
+            return [$valeur, 'Le poids de chaque bloc est obligatoire : saisissez un nombre compris entre 0,1 et 10.'];
+        }
+
         if ($valeur === '') {
             return $reglage->is_required ? ['', "« {$reglage->key} » est obligatoire : il ne peut pas être vidé."] : ['', null];
         }
