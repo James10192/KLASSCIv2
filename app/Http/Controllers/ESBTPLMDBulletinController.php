@@ -590,9 +590,9 @@ class ESBTPLMDBulletinController extends Controller
     }
 
     /** Rendu officiel unitaire réutilisé par les tranches LMD, sans écriture métier. */
-    public function rendrePdfPourExport(ESBTPLMDBulletin $bulletin): DomPdfDocument
+    public function rendrePdfPourExport(ESBTPLMDBulletin $bulletin, bool $legacyUnarchived = false): DomPdfDocument
     {
-        return $this->buildBulletinPdf($bulletin)[0];
+        return $this->buildBulletinPdf($bulletin, $legacyUnarchived)[0];
     }
 
     private function prepareLogoBase64(?string $logoPath): ?string
