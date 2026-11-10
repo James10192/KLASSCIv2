@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\LMD;
 
+use App\Domain\OfficialDocuments\Models\OfficialDocument;
+use App\Domain\OfficialDocuments\Services\BulletinArchiveService;
 use App\Models\ESBTPLMDBulletin;
 use App\Models\ESBTPLMDJury;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +22,20 @@ final class LmdDecisionProjectionService
             foreach ($decisions as $decision) {
                 if ($decision->bulletin_id === null) {
                     throw new RuntimeException("La décision de l'étudiant {$decision->etudiant_id} n'est liée à aucun bulletin.");
+                }
+
+                // Les PDF LMD émis manuellement sont immuables. La projection
+                // des décisions d'un autre jury ne doit jamais modifier leurs
+                // valeurs officielles en contournant le hook Eloquent par
+                // update() SQL de masse.
+                $archiveExistante = OfficialDocument::query()
+                    ->forSource(ESBTPLMDBulletin::class, (int) $decision->bulletin_id)
+                    ->where('document_type', BulletinArchiveService::TYPE_LMD)
+                    ->exists();
+                if ($archiveExistante) {
+                    throw new RuntimeException(
+                        "Le bulletin de l'étudiant {$decision->etudiant_id} dispose déjà d'une archive officielle : rectification versionnée obligatoire avant projection du jury."
+                    );
                 }
 
                 $updated = ESBTPLMDBulletin::query()
