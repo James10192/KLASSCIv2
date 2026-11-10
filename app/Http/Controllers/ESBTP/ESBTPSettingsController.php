@@ -1098,6 +1098,20 @@ class ESBTPSettingsController extends Controller
     {
         $rawInput = $request->all();
 
+        // Les champs du systeme LMD appartiennent au formulaire commun.
+        // Ils sont valides avant la transaction, sans bloquer les appels qui ne
+        // soumettent pas la rubrique LMD (ex. formulaires spécialisés).
+        if ($request->exists('setting_lmd_cc_weight') || $request->exists('setting_lmd_exam_weight') || $request->exists('lmd_ponderation_cc_examen')) {
+            $poidsLmd = [
+                'active' => $request->boolean('lmd_ponderation_cc_examen'),
+                'cc' => $request->input('setting_lmd_cc_weight', \App\Helpers\SettingsHelper::get('lmd_cc_weight', 40)),
+                'examen' => $request->input('setting_lmd_exam_weight', \App\Helpers\SettingsHelper::get('lmd_exam_weight', 60)),
+            ];
+            if (($erreur = ModificationDeReglages::refusPonderationLmd($poidsLmd)) !== null) {
+                return $this->refus($request, $erreur);
+            }
+        }
+
         $reglagesDate = [
             PortailReinscriptionService::REGLAGE_OUVERTURE,
             PortailReinscriptionService::REGLAGE_FERMETURE,
