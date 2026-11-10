@@ -369,10 +369,15 @@ class ModificationDeReglages
         // regle. Une pondération CC/Examen activee doit totaliser 100 %.
         // Le cas 0/0 ne doit jamais retomber silencieusement sur le mode non pondéré.
         if (array_intersect(array_keys($soumis), ['lmd_cc_weight', 'lmd_exam_weight', 'lmd_ponderation_cc_examen']) !== []) {
+            // Ne pas confondre une valeur absente et zéro : le profil LMD
+            // historique fournit 40/60 quand ces clés ne sont pas encore
+            // semées sur un ancien tenant.
+            $lireLmd = fn (string $cle, string $defaut): string =>
+                array_key_exists($cle, $soumis) ? (string) $soumis[$cle] : (string) Setting::get($cle, $defaut);
             $poidsLmd = [
-                'active' => $apres('lmd_ponderation_cc_examen'),
-                'cc' => $apres('lmd_cc_weight'),
-                'examen' => $apres('lmd_exam_weight'),
+                'active' => $lireLmd('lmd_ponderation_cc_examen', '0'),
+                'cc' => $lireLmd('lmd_cc_weight', '40'),
+                'examen' => $lireLmd('lmd_exam_weight', '60'),
             ];
             if (($refus = self::refusPonderationLmd($poidsLmd)) !== null) {
                 return $refus;
