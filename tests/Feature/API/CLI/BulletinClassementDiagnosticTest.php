@@ -3,6 +3,7 @@
 namespace Tests\Feature\API\CLI;
 
 use App\Helpers\SettingsHelper;
+use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPConfigMatiere;
 use App\Models\ESBTPEvaluation;
@@ -109,6 +110,19 @@ class BulletinClassementDiagnosticTest extends TestCase
             ->assertJsonPath('data.etudiant_cible.dans_cohorte', true)
             ->assertJsonPath('data.etudiant_cible.rang', 2)
             ->assertJsonPath('data.etudiant_cible.moyenne_canonique', 14);
+
+        $bulletin = ESBTPBulletin::factory()->create([
+            'etudiant_id' => $premierDeLaListe->id,
+            'classe_id' => $this->classe->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre2',
+        ]);
+        $this->getJson('/api/cli/diagnostics/bulletins/classement?bulletin_id='.$bulletin->id)
+            ->assertOk()
+            ->assertJsonPath('data.bulletin_id_source', $bulletin->id)
+            ->assertJsonPath('data.cohorte.membres_canoniques', 3)
+            ->assertJsonPath('data.statistiques.plus_forte_moyenne', 18)
+            ->assertJsonPath('data.etudiant_cible.rang', 2);
 
         $json = $resultat->json('data');
         $this->assertArrayNotHasKey('matricule', $json);
