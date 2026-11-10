@@ -674,7 +674,10 @@ class ESBTPBulletinController extends Controller
         );
 
         try {
-            $pdf = $this->buildBulletinPdf($bulletin);
+            // Le telechargement/aperçu est un GET. Il ne doit jamais ecrire une
+            // nouvelle moyenne ou reclasser la cohorte dans la base.
+            // La regeneration officielle a sa propre action avec controles.
+            $pdf = $this->buildBulletinPdf($bulletin, false);
 
             $filename = 'bulletin_'.
                         ($bulletin->etudiant ? $bulletin->etudiant->matricule : 'unknown').'_'.
@@ -714,7 +717,7 @@ class ESBTPBulletinController extends Controller
      * téléchargement unitaire. Lève une exception en cas d'échec (le caller décide
      * du fallback).
      */
-    public function buildBulletinPdf(ESBTPBulletin $bulletin, bool $persist = true): \Barryvdh\DomPDF\PDF
+    public function buildBulletinPdf(ESBTPBulletin $bulletin, bool $persist = false): \Barryvdh\DomPDF\PDF
     {
         // $persist=false (export groupé) : on calcule et on met à jour l'objet en
         // mémoire pour un rendu identique, MAIS on n'écrit rien en base — un GET
@@ -1825,19 +1828,14 @@ class ESBTPBulletinController extends Controller
             }
 
             // Utiliser le BulletinService unifié pour générer les données
-            $donnees = $inline
-                ? $this->bulletinService->genererDonneesBulletinPreview(
-                    $etudiant_id,
-                    $classe_id,
-                    $annee_universitaire_id,
-                    $periode
-                )
-                : $this->bulletinService->genererDonneesBulletin(
-                    $etudiant_id,
-                    $classe_id,
-                    $annee_universitaire_id,
-                    $periode
-                );
+            // L'aperçu ET le téléchargement doivent rester sans écriture.
+            // L'action de regeneration contrôlée est le seul endroit qui persiste.
+            $donnees = $this->bulletinService->genererDonneesBulletinPreview(
+                $etudiant_id,
+                $classe_id,
+                $annee_universitaire_id,
+                $periode
+            );
 
             // Ajouter le logo pour le PDF
             $config = $this->bulletinService->getPDFConfig();

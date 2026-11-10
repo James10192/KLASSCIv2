@@ -13,3 +13,4 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-11-10 · #à-ouvrir · Paramètres Bulletins BTS : choix de la pondération par matière ou par blocs, coefficients Général/Technique ; téléchargement PDF sans réécriture des résultats.
