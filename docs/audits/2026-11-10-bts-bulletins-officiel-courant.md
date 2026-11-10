@@ -1,7 +1,7 @@
 # BTS — Frontière entre bulletin officiel et résultats courants
 
 Date : 10 novembre 2026. Portée : `ESBTPBulletin` (BTS), toutes les instances KLASSCI.
-Statut : **audit et première sécurisation ; immutabilité documentaire NON garantie**.
+Statut actualisé : **archive privée immuable des nouvelles publications BTS et LMD, avec vérification SHA-256 ; anciens bulletins publiés non archivés signalés explicitement.** Les rectifications versionnées demeurent bloquées jusqu'à un processus dédié.
 
 ## 1. Signalement et calcul contrôlé
 
@@ -62,10 +62,13 @@ Le GET `genererPDFParParamsUnified` persistait lui aussi quand
 la régénération explicite reste séparée et soumise à
 `BulletinConsistencyService::regenerateOfficialBulletin`.
 
-**Défaut toujours ouvert** : sans archive PDF immuable produite à la
-publication, les valeurs imprimées peuvent suivre des notes modifiées après
-publication. Un simple contrôle d'égalité des moyennes ne suffit pas :
-deux notes peuvent changer en sens opposé sans modifier la moyenne.
+**Défaut traité pour les publications nouvelles :** le PDF original est archivé
+dans `OfficialDocument` au même moment que la publication. Tous les accès
+principaux (unitaire, export groupé, parents) relisent les octets signés par
+SHA-256, sans re-rendu. Les **anciens** bulletins publiés sans archive portent
+un bandeau de reconstitution historique : on ne prétend pas avoir retrouvé
+leur PDF authentique. Un contrôle de moyenne seul serait insuffisant car deux
+notes peuvent changer en sens inverse ; c'est l'archive binaire qui fait foi.
 
 ## 4. Écriture, publication et garde-fous
 
@@ -90,9 +93,9 @@ deux notes peuvent changer en sens opposé sans modifier la moyenne.
   ensuite remplacée par la projection canonique ; elle doit être simplifiée
   sans perdre les parcours de génération groupée.
 
-## 5. Prochain lot requis pour une immutabilité complète (NON inclus ici)
+## 5. Compléments nécessaires : rectification officielle versionnée (NON inclus ici)
 
-1. **Versionner l'émission** : à chaque publication, conserver le PDF binaire,
+1. **Émission initiale implémentée** : à chaque publication, conserver le PDF binaire,
    son SHA-256, la configuration et les versions des données/assiduité
    pertinentes ; stockage privé et contrôle d'accès par établissement.
    **Réutiliser l'infrastructure existante** `App\\Domain\\OfficialDocuments` :
@@ -100,12 +103,12 @@ deux notes peuvent changer en sens opposé sans modifier la moyenne.
    `OfficialDocumentIntegrityService` et `OfficialDocumentEventRecorder`.
    Les PV de jury et relevés LMD emploient déjà ce mécanisme : éviter
    une nouvelle table d'archives concurrente.
-2. Servir les téléchargements « **Officiel** » exclusivement depuis l'archive
-   publiée, sans aucun recalcul. Si aucune archive n'existe pour un ancien
-   bulletin, afficher explicitement « bulletin historique non archivé »
-   et une procédure de régularisation, jamais un PDF live étiqueté officiel.
-3. Différencier l'« **Aperçu courant** » (bandeau BROUILLON/Courant, aucune
-   écriture) de l'« **Officiel publié** » (archive versionnée).
+2. **Téléchargements officiels implémentés** : lecture exclusive de l'archive
+   quand elle existe ; document historique non archivé visiblement signalé
+   lorsque seul un rendu courant reste possible.
+3. **Différenciation implémentée pour PDF** : les aperçus courants et les
+   rendus historiques non archivés ont des bandeaux distincts ; l'officiel
+   nouvellement publié est servi depuis les octets conservés.
 4. Toute rectification doit exiger motif, permission fine, contrôle
    maker-checker si requis, version n+1 et conservation consultable de n.
 5. Assurer les interdictions **côté serveur** sur chaque chemin d'écriture,
@@ -117,10 +120,10 @@ deux notes peuvent changer en sens opposé sans modifier la moyenne.
 
 ## 6. Acceptation / déploiement
 
-Première phase (cette PR) : champs de composition visibles, validations,
-tests de calcul, **GET PDF sans écriture**, refus d'édition/suppression
-sur les bulletins publiés ou signés dans les parcours Web contrôlés,
-diagnostic documenté.
+Cette PR : champs BTS de composition visibles, contrôles LMD de somme 100 %,
+tests de calcul, **GET PDF sans écriture**, modèles et contrôleurs protégés,
+archive officielle des nouvelles publications BTS/LMD, diffusion des octets
+originaux (unitaire, groupé, chatbot), diagnostic documenté.
 Aucune migration de résultats, aucun recalcul automatique, aucun
 déploiement tenant. Revue thermo-nucléaire et tests CI requis avant fusion.
 
