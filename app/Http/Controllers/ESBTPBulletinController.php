@@ -454,6 +454,8 @@ class ESBTPBulletinController extends Controller
      */
     public function edit(ESBTPBulletin $bulletin)
     {
+        abort_if($this->bulletinConsistencyService->isProtected($bulletin), 403, 'Bulletin publié ou signé : édition directe interdite.');
+
         $bulletin->load(['etudiant', 'classe', 'anneeUniversitaire', 'resultats.matiere']);
 
         return view('esbtp.bulletins.edit', compact('bulletin'));
@@ -466,6 +468,7 @@ class ESBTPBulletinController extends Controller
      */
     public function update(UpdateBulletinRequest $request, ESBTPBulletin $bulletin)
     {
+        abort_if($this->bulletinConsistencyService->isProtected($bulletin), 403, 'Bulletin publié ou signé : modification interdite.');
 
         DB::beginTransaction();
         try {
@@ -522,6 +525,8 @@ class ESBTPBulletinController extends Controller
      */
     public function destroy(ESBTPBulletin $bulletin)
     {
+        abort_if($this->bulletinConsistencyService->isProtected($bulletin), 403, 'Bulletin publié ou signé : suppression interdite.');
+
         try {
             $bulletin->delete();
 
@@ -594,6 +599,14 @@ class ESBTPBulletinController extends Controller
     public function bulkDelete(Request $request)
     {
         $ids = $this->validateBulkIds($request);
+        $proteges = ESBTPBulletin::whereIn('id', $ids)->get()
+            ->contains(fn (ESBTPBulletin $bulletin): bool => $this->bulletinConsistencyService->isProtected($bulletin));
+        if ($proteges) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lot refusé : au moins un bulletin est publié ou signé.',
+            ], 422);
+        }
         $count = ESBTPBulletin::whereIn('id', $ids)->delete();
 
         return response()->json([
