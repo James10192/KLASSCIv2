@@ -599,15 +599,23 @@ class ESBTPBulletinController extends Controller
     public function bulkDelete(Request $request)
     {
         $ids = $this->validateBulkIds($request);
-        $proteges = ESBTPBulletin::whereIn('id', $ids)->get()
-            ->contains(fn (ESBTPBulletin $bulletin): bool => $this->bulletinConsistencyService->isProtected($bulletin));
-        if ($proteges) {
+        // Verrouiller la decision de suppression avec les lignes verifiees :
+        // une publication concurrente ne doit pas se produire entre le controle
+        // et la suppression du meme bulletin.
+        $count = DB::transaction(function () use ($ids): ?int {
+            $bulletins = ESBTPBulletin::whereIn('id', $ids)->lockForUpdate()->get();
+            if ($bulletins->contains(fn (ESBTPBulletin $bulletin): bool => $this->bulletinConsistencyService->isProtected($bulletin))) {
+                return null;
+            }
+
+            return ESBTPBulletin::whereIn('id', $ids)->delete();
+        });
+        if ($count === null) {
             return response()->json([
                 'success' => false,
                 'message' => 'Lot refusé : au moins un bulletin est publié ou signé.',
             ], 422);
         }
-        $count = ESBTPBulletin::whereIn('id', $ids)->delete();
 
         return response()->json([
             'success' => true,
