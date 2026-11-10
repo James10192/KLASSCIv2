@@ -64,8 +64,7 @@ Sur les **nouvelles publications après déploiement** :
 - Un aperçu recomposé depuis les résultats courants affiche
   **APERÇU DES RÉSULTATS COURANTS**, jamais « original officiel ».
 
-**Important :** aucune interface de rectification maker-checker/version n
-automatique n'est livrée par cette PR ; les corrections de bulletins publiés
+**Important :** aucune interface de rectification maker-checker/versionnement automatique n'est livrée par cette PR ; les corrections de bulletins publiés
 sont bloquées et nécessitent une procédure distincte validée. Ne jamais
 modifier la base directement pour contourner le blocage.
 
