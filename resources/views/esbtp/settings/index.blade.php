@@ -2199,9 +2199,10 @@
                     <div class="bc-input-row">
                         <div class="bc-icon"><i class="fas fa-calculator" aria-hidden="true"></i></div>
                         <div class="bc-body">
-                            <label class="bc-label" for="bts-mode-explication">Méthode de calcul</label>
+                            <div class="bc-label">Méthode de calcul</div>
                             <x-au-select
                                 name="setting_bulletin_moyenne_mode"
+                                label="Méthode de calcul de la moyenne BTS"
                                 icon="fa-calculator"
                                 :searchable="false"
                                 :placeholder-is-first-option="false"
