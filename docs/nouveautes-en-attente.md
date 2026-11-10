@@ -13,4 +13,4 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
-- 2026-11-10 · #1801 · Paramètres Bulletins BTS : choix de la pondération par matière ou par blocs, coefficients Général/Technique ; téléchargement PDF sans réécriture des résultats.
+- 2026-11-10 · #1801 · Bulletins BTS : choix pondération par matière/blocs et coefficients Général/Technique ; bulletins BTS/LMD publiés désormais archivés et non modifiables, pondération CC/Examen LMD contrôlée à 100 %, téléchargements officiels identiques à l'original.
