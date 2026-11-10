@@ -3,6 +3,11 @@
 namespace Tests\Feature\Bulletin;
 
 use App\Domain\Reglages\ModificationDeReglages;
+use App\Http\Controllers\ESBTPBulletinController;
+use App\Models\ESBTPBulletin;
+use App\Models\User;
+use Tests\Feature\Bts\Concerns\MonteUneClasseBts;
+use Tests\Feature\Bts\Concerns\SeedsConfiguredBulletin;
 use App\Helpers\SettingsHelper;
 use App\Models\Setting;
 use App\Services\BulletinService;
@@ -15,7 +20,7 @@ use Tests\TestCase;
  */
 class CompositionBtsEtLecturePdfTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, MonteUneClasseBts, SeedsConfiguredBulletin;
 
     public function test_composition_par_matiere_ou_par_blocs_pour_les_deux_bulletins_yakro(): void
     {
@@ -82,6 +87,30 @@ class CompositionBtsEtLecturePdfTest extends TestCase
         $this->assertStringContainsString('name="setting_bulletin_moyenne_mode"', $vue);
         $this->assertStringContainsString('name="setting_bulletin_bloc_general_coef"', $vue);
         $this->assertStringContainsString('name="setting_bulletin_bloc_professionnel_coef"', $vue);
+    }
+
+    public function test_le_rendu_pdf_d_un_bulletin_publie_ne_recrit_pas_ses_resultats(): void
+    {
+        $this->monterLaClasse();
+        $this->actingAs(User::findOrFail(1));
+        $eleve = $this->etudiantInscrit();
+        $matiere = $this->matiereConfiguree();
+        $this->noter($eleve, $this->evaluationDe($matiere), 18);
+
+        $bulletin = $this->seedConfiguredBulletin(
+            $eleve->id, $this->classe->id, $this->annee->id, 'semestre1', [$matiere->id]
+        );
+        $bulletin->forceFill([
+            'moyenne_generale' => 9.75,
+            'rang' => 12,
+            'is_published' => true,
+            'note_assiduite' => 0,
+        ])->save();
+
+        $avant = $bulletin->fresh()->only(['moyenne_generale', 'rang', 'is_published', 'updated_at']);
+        $pdf = app(ESBTPBulletinController::class)->buildBulletinPdf($bulletin, false)->output();
+        $this->assertStringStartsWith('%PDF', $pdf);
+        $this->assertSame($avant, $bulletin->fresh()->only(['moyenne_generale', 'rang', 'is_published', 'updated_at']));
     }
 
     public function test_tous_les_chemins_pdf_get_sont_non_persistants(): void
