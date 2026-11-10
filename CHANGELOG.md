@@ -13,6 +13,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ## Novembre 2026
 
 ### Ajouts
+- **Bulletins BTS — mode de composition visible :** l'onglet « Calculs et décisions » expose la moyenne pondérée par matière et la composition par blocs Général/Technique, avec coefficients configurables, sans modifier les réglages des établissements.
 - **Lecture des notes par le CLI :** `GET /api/cli/evaluations/notes` renvoie, par évaluation, les notes saisies (étudiant, matricule, note, absence). Lecture seule, filtres `annee_id`, `classe_id`, `evaluation_id`.
 - **Création d'évaluations par le CLI :** `POST /api/cli/evaluations/creer` crée un lot d'évaluations (examens, devoirs) avec publication optionnelle, en simulation par défaut, motif obligatoire, bornes et périodes de l'écran de création, gardes du modèle appliquées, refus des doublons du même jour, enseignant posé par le planning LMD quand il est unique (`docs/api/CLI_EVALUATIONS_CREATION.md`).
 - **Finances par classe :** nouveau rapport par année, filière, niveau et classe des frais attendus, règlements imputés, montants restant à recouvrer et échéances échues ; accès nominatif par permission, filtres AJAX et exports PDF/Excel aux couleurs de l'établissement.
@@ -21,6 +22,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - Réglages, onglet Général : plage horaire des cours (premier créneau et fin du dernier) modifiable par l'école ; une fin avant le début est refusée. La création d'évaluation propose le premier créneau de l'école au lieu de 8 h. Vue morte `emploi-temps/teacher` retirée.
 
 ### Corrections
+- **PDF BTS — consultation sans écriture :** ouvrir, prévisualiser ou télécharger un bulletin n'enregistre plus de moyenne ni de rang. L'archivage immuable à la publication reste une étape distincte, détaillée dans l'audit du 10 novembre.
 - **Bulletins BTS — statistiques S1/S2 alignées sur le classement :** la plus forte moyenne, la plus faible et la moyenne de classe utilisent désormais les mêmes moyennes de semestre (composition par blocs, saisies manuelles, assiduité, cohorte) que le rang affiché. Un étudiant premier ne doit plus être inférieur à la « plus forte moyenne » de son bulletin (signalement ESBTP Yamoussoukro). Aucune note ni bulletin historique n'est réécrit automatiquement.
 - **Durée d'une évaluation sans durée saisie :** la durée calculée à partir des heures était négative (écart signé de la bibliothèque de dates) à la création et à la modification depuis l'écran. Elle est positive désormais. Les évaluations déjà enregistrées avec une durée négative ne sont pas corrigées automatiquement.
 - **Impression d'un bulletin et des exports impossible avec une barre oblique dans le nom :** un matricule, un code de classe ou une année contenant « / » (« 2025/2026 ») faisait échouer le téléchargement (« The filename and the fallback cannot contain the "/" and "\" characters », signalé sur esbtp-yakro). Les noms de fichier sont nettoyés à un seul endroit : `App\Support\NomDeFichier`, appliqué à tous les PDF par le wrapper DomPDF (`PdfAuNomSur`) et aux exports Excel / fichiers.
