@@ -608,6 +608,9 @@ jobs:
       # de la liste administrative /students. Aucune donnee nominative en sortie.
       - name: Bulletins BTS - CLI diagnostic cohorte canonique
         run: php vendor/bin/phpunit tests/Feature/API/CLI/BulletinClassementDiagnosticTest.php --no-coverage
+      
+      - name: Bulletins BTS - ponderation et PDF sans ecriture
+        run: php vendor/bin/phpunit tests/Feature/Bulletin/CompositionBtsEtLecturePdfTest.php --no-coverage
 
   annonces-mailpulse:
     name: Annonces MailPulse - ciblage et anti-doublons
