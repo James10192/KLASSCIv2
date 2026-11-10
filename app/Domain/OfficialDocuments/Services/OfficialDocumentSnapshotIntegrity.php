@@ -70,7 +70,7 @@ final class OfficialDocumentSnapshotIntegrity
         }
     }
 
-    private function canonicalJson(array $value): string
+    public function canonicalJson(array $value): string
     {
         $normalized = $this->normalize($value);
         return json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
