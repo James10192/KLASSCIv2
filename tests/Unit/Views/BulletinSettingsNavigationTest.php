@@ -10,7 +10,8 @@ class BulletinSettingsNavigationTest extends TestCase
     {
         $view = file_get_contents(__DIR__.'/../../../resources/views/esbtp/settings/index.blade.php');
         $this->assertNotFalse($view);
-        $this->assertSame(12, substr_count($view, 'data-settings-bulletin-group="'));
+        $this->assertSame(13, substr_count($view, 'data-settings-bulletin-group="'));
+        $this->assertStringContainsString('id="bts-moyenne-semestrielle"', $view);
         $this->assertStringContainsString('data-settings-bulletin-view="apparence"', $view);
         $this->assertStringContainsString('data-settings-bulletin-view="pedagogie"', $view);
         $this->assertStringContainsString('data-settings-bulletin-view="administration"', $view);
