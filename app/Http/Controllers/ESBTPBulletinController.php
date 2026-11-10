@@ -472,6 +472,13 @@ class ESBTPBulletinController extends Controller
 
         DB::beginTransaction();
         try {
+            // Verrouire et relire: une publication peut être survenue entre
+            // l'ouverture du formulaire et l'enregistrement.
+            $bulletin = ESBTPBulletin::query()->lockForUpdate()->findOrFail($bulletin->id);
+            if ($this->bulletinConsistencyService->isProtected($bulletin)) {
+                throw new \RuntimeException('Bulletin publié ou signé entretemps : modification annulée.');
+            }
+
             // Mettre à jour les informations du bulletin
             $bulletin->appreciation_generale = $request->appreciation_generale;
             $bulletin->decision_conseil = $request->decision_conseil;
@@ -528,7 +535,13 @@ class ESBTPBulletinController extends Controller
         abort_if($this->bulletinConsistencyService->isProtected($bulletin), 403, 'Bulletin publié ou signé : suppression interdite.');
 
         try {
-            $bulletin->delete();
+            DB::transaction(function () use ($bulletin): void {
+                $locked = ESBTPBulletin::query()->lockForUpdate()->findOrFail($bulletin->id);
+                if ($this->bulletinConsistencyService->isProtected($locked)) {
+                    throw new \RuntimeException('Bulletin publié ou signé entretemps : suppression annulée.');
+                }
+                $locked->delete();
+            });
 
             return redirect()->route('esbtp.bulletins.index')->with('success', 'Bulletin supprimé avec succès.');
         } catch (\Exception $e) {
