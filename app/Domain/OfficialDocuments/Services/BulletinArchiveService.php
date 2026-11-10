@@ -79,6 +79,14 @@ final class BulletinArchiveService
                 $locked->is_published = true;
                 $locked->save();
 
+                // Le portefeuille de crédits fait partie de l'effet métier
+                // de la publication LMD : rollback commun avec le PDF en cas
+                // d'erreur, sans succès documentaire à moitié appliqué.
+                if ($locked instanceof ESBTPLMDBulletin) {
+                    app(\App\Services\LMD\LmdCreditWalletService::class)
+                        ->syncBulletin($locked->fresh());
+                }
+
                 $isBts = $locked instanceof ESBTPBulletin;
                 $type = $isBts ? self::TYPE_BTS : self::TYPE_LMD;
                 $contents = $isBts
