@@ -146,10 +146,17 @@ class CompositionBtsEtLecturePdfTest extends TestCase
             'note_assiduite' => 0,
         ])->save();
 
-        $avant = $bulletin->fresh()->only(['moyenne_generale', 'rang', 'is_published', 'updated_at']);
+        $avant = $bulletin->fresh();
         $pdf = app(ESBTPBulletinController::class)->buildBulletinPdf($bulletin, false)->output();
         $this->assertStringStartsWith('%PDF', $pdf);
-        $this->assertSame($avant, $bulletin->fresh()->only(['moyenne_generale', 'rang', 'is_published', 'updated_at']));
+        $apres = $bulletin->fresh();
+
+        // Un Carbon recharge cree une autre instance, sans modification SQL.
+        // Comparer les scalaires et la valeur brute stockee, pas l'identite objet.
+        $this->assertEqualsWithDelta((float) $avant->moyenne_generale, (float) $apres->moyenne_generale, 0.001);
+        $this->assertSame((int) $avant->rang, (int) $apres->rang);
+        $this->assertSame((bool) $avant->is_published, (bool) $apres->is_published);
+        $this->assertSame($avant->getRawOriginal('updated_at'), $apres->getRawOriginal('updated_at'));
     }
 
     public function test_tous_les_chemins_pdf_get_sont_non_persistants(): void
