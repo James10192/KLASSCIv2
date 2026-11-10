@@ -487,7 +487,11 @@ class ESBTPLMDBulletinController extends Controller
             true
         );
 
-        [$pdf, $filename] = $this->buildBulletinPdf($bulletin);
+        $archives = app(\App\Domain\OfficialDocuments\Services\BulletinArchiveService::class);
+        if ($bulletin->is_published && ($document = $archives->archive($bulletin))) {
+            return $archives->telecharger($document, false);
+        }
+        [$pdf, $filename] = $this->buildBulletinPdf($bulletin, (bool) $bulletin->is_published);
 
         return $pdf->download($filename);
     }
@@ -506,7 +510,11 @@ class ESBTPLMDBulletinController extends Controller
             true
         );
 
-        [$pdf, $filename] = $this->buildBulletinPdf($bulletin);
+        $archives = app(\App\Domain\OfficialDocuments\Services\BulletinArchiveService::class);
+        if ($bulletin->is_published && ($document = $archives->archive($bulletin))) {
+            return $archives->telecharger($document, true);
+        }
+        [$pdf, $filename] = $this->buildBulletinPdf($bulletin, (bool) $bulletin->is_published);
 
         return $pdf->stream($filename);
     }
@@ -514,9 +522,10 @@ class ESBTPLMDBulletinController extends Controller
     /**
      * Construction unifiée du PDF bulletin LMD. Retourne [PDF, filename].
      */
-    private function buildBulletinPdf(ESBTPLMDBulletin $bulletin): array
+    private function buildBulletinPdf(ESBTPLMDBulletin $bulletin, bool $legacyUnarchived = false): array
     {
         $data = $this->service->preparerDonneesBulletin($bulletin);
+        $data['legacyUnarchived'] = $legacyUnarchived;
 
         // Etablissement depuis SettingsHelper (methode centralisee)
         $schoolInfo = SettingsHelper::getSchoolInfo();
@@ -622,14 +631,19 @@ class ESBTPLMDBulletinController extends Controller
             }
         }
 
-        $bulletin->update([
-            'is_published' => ! $bulletin->is_published,
-        ]);
-        $this->creditWallet->syncBulletin($bulletin->fresh());
+        if ($bulletin->is_published) {
+            return redirect()->back()->with('error', 'Bulletin LMD déjà publié : dépublication directe interdite. Utilisez une rectification officielle versionnée.');
+        }
 
-        $status = $bulletin->is_published ? 'publié' : 'dépublié';
+        try {
+            app(\App\Domain\OfficialDocuments\Services\BulletinArchiveService::class)
+                ->publier($bulletin, auth()->user());
+            $this->creditWallet->syncBulletin($bulletin->fresh());
 
-        return redirect()->back()->with('success', "Bulletin {$status} avec succès.");
+            return redirect()->back()->with('success', 'Bulletin LMD publié et archivé avec succès.');
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'Publication non effectuée : '.$e->getMessage());
+        }
     }
 
     /**
@@ -637,6 +651,8 @@ class ESBTPLMDBulletinController extends Controller
      */
     public function destroy(ESBTPLMDBulletin $bulletin)
     {
+        abort_if($bulletin->is_published, 403, 'Bulletin LMD publié : suppression interdite.');
+
         // Supprimer les resultats ECUEs lies
         $bulletin->resultatsECUEs()->delete();
 
