@@ -95,6 +95,11 @@ deux notes peuvent changer en sens opposé sans modifier la moyenne.
 1. **Versionner l'émission** : à chaque publication, conserver le PDF binaire,
    son SHA-256, la configuration et les versions des données/assiduité
    pertinentes ; stockage privé et contrôle d'accès par établissement.
+   **Réutiliser l'infrastructure existante** `App\\Domain\\OfficialDocuments` :
+   `OfficialDocument` (colonne `document_type` libre), `OfficialDocumentStorage`,
+   `OfficialDocumentIntegrityService` et `OfficialDocumentEventRecorder`.
+   Les PV de jury et relevés LMD emploient déjà ce mécanisme : éviter
+   une nouvelle table d'archives concurrente.
 2. Servir les téléchargements « **Officiel** » exclusivement depuis l'archive
    publiée, sans aucun recalcul. Si aucune archive n'existe pour un ancien
    bulletin, afficher explicitement « bulletin historique non archivé »
@@ -120,6 +125,6 @@ Aucune migration de résultats, aucun recalcul automatique, aucun
 déploiement tenant. Revue thermo-nucléaire et tests CI requis avant fusion.
 
 Deuxième phase : architecture d'archives et politiques d'édition ci-dessus,
-PR distincte avec migration additive et backfill **contrôlé** des anciens
+PR distincte en réutilisant `OfficialDocument` (migration seulement si un besoin\nde schéma vérifié l'exige), puis traitement **contrôlé** des anciens
 bulletins ; ne jamais prétendre reconstituer le binaire authentique d'un
 bulletin publié si celui-ci n'a jamais été conservé.
