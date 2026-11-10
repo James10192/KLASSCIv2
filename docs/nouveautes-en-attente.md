@@ -13,3 +13,4 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-11-10 · #1802 · Paramètres des bulletins BTS : mode global par matière ou composition par blocs Général/Technique, poids configurables ; pondération LMD CC/Examen validée à 100 %.

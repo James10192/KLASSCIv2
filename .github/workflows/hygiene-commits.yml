@@ -609,6 +609,15 @@ jobs:
       - name: Bulletins BTS - CLI diagnostic cohorte canonique
         run: php vendor/bin/phpunit tests/Feature/API/CLI/BulletinClassementDiagnosticTest.php --no-coverage
 
+      - name: Bulletins BTS - composition par blocs
+        run: php vendor/bin/phpunit tests/Unit/Bulletins/MoyenneParBlocsTest.php --no-coverage
+
+      - name: LMD - ponderation CC/examen et moyenne des UE
+        run: |
+          php vendor/bin/phpunit tests/Feature/LMD/PonderationCcExamenTest.php --no-coverage
+          php vendor/bin/phpunit tests/Unit/Services/LMD/LmdPonderationConfigurationTest.php --no-coverage
+
+
   annonces-mailpulse:
     name: Annonces MailPulse - ciblage et anti-doublons
     runs-on: ubuntu-latest
