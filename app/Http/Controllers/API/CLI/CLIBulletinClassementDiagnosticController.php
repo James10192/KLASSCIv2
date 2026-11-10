@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPBulletin;
 use App\Models\ESBTPInscription;
 use App\Services\RankingService;
 use Illuminate\Http\JsonResponse;
@@ -22,15 +23,34 @@ final class CLIBulletinClassementDiagnosticController extends BaseApiController
         }
 
         $valides = $request->validate([
-            'classe_id' => ['required', 'integer', 'exists:esbtp_classes,id'],
-            'annee_universitaire_id' => ['required', 'integer', 'exists:esbtp_annee_universitaires,id'],
-            'periode' => ['required', 'in:semestre1,semestre2'],
+            'bulletin_id' => ['sometimes', 'integer', 'exists:esbtp_bulletins,id'],
+            'classe_id' => ['required_without:bulletin_id', 'integer', 'exists:esbtp_classes,id'],
+            'annee_universitaire_id' => ['required_without:bulletin_id', 'integer', 'exists:esbtp_annee_universitaires,id'],
+            'periode' => ['required_without:bulletin_id', 'in:semestre1,semestre2'],
             'etudiant_id' => ['sometimes', 'integer', 'exists:esbtp_etudiants,id'],
         ]);
 
-        $classeId = (int) $valides['classe_id'];
-        $anneeId = (int) $valides['annee_universitaire_id'];
-        $periode = (string) $valides['periode'];
+        // Le numero du bulletin suffit pour l'audit terrain : il determine
+        // sans ambiguite la classe, l'annee, le semestre et l'eleve cible.
+        $bulletin = isset($valides['bulletin_id'])
+            ? ESBTPBulletin::findOrFail((int) $valides['bulletin_id'])
+            : null;
+        if ($bulletin && (isset($valides['classe_id'], $valides['annee_universitaire_id']) || isset($valides['periode']))) {
+            return $this->errorResponse('Use bulletin_id alone or classe_id + annee_universitaire_id + periode.', [], 422);
+        }
+        $classeId = $bulletin ? (int) $bulletin->classe_id : (int) $valides['classe_id'];
+        $anneeId = $bulletin ? (int) $bulletin->annee_universitaire_id : (int) $valides['annee_universitaire_id'];
+        $periode = $bulletin
+            ? match ((string) $bulletin->periode) {
+                '1', 'semestre1' => 'semestre1',
+                '2', 'semestre2' => 'semestre2',
+                default => null,
+            }
+            : (string) $valides['periode'];
+        if ($periode === null) {
+            return $this->errorResponse('Bulletin period is not a supported semester.', [], 422);
+        }
+        $etudiantCibleId = $bulletin ? (int) $bulletin->etudiant_id : ($valides['etudiant_id'] ?? null);
         $annee = ESBTPAnneeUniversitaire::findOrFail($anneeId);
 
         $classement = $ranking->calculerRangsClasse($classeId, $anneeId, $periode);
@@ -59,8 +79,8 @@ final class CLIBulletinClassementDiagnosticController extends BaseApiController
         $premier = $lignes->firstWhere('rang', 1);
 
         $cible = null;
-        if (isset($valides['etudiant_id'])) {
-            $ligneCible = $lignes->firstWhere('etudiant_id', (int) $valides['etudiant_id']);
+        if ($etudiantCibleId !== null) {
+            $ligneCible = $lignes->firstWhere('etudiant_id', (int) $etudiantCibleId);
             $cible = [
                 'dans_cohorte' => $ligneCible !== null,
                 'rang' => $ligneCible['rang'] ?? null,
@@ -73,6 +93,7 @@ final class CLIBulletinClassementDiagnosticController extends BaseApiController
 
         return $this->successResponse([
             'source' => 'RankingService::calculerRangsClasse',
+            'bulletin_id_source' => $bulletin?->id,
             'classe_id' => $classeId,
             'annee_universitaire_id' => $anneeId,
             'periode' => $periode,
