@@ -338,6 +338,11 @@
 </head>
 <body>
 <div class="container">
+    @if($legacyUnarchived ?? false)
+        <div style="padding:8px 10px; border:2px solid #7f1d1d; background:#fff1f2; color:#7f1d1d; text-align:center; font-family:DejaVu Sans,sans-serif; font-size:10px; font-weight:800; margin-bottom:8px;">
+            DOCUMENT HISTORIQUE NON ARCHIVÉ — Reconstitution à partir des résultats courants, pas une copie authentifiée de l'original publié.
+        </div>
+    @endif
 
 @if(($bCfg['show_republic_info'] ?? true) || ($bCfg['show_ministry_info'] ?? true))
 <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 4px; border-collapse: collapse;">
