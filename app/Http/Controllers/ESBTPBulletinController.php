@@ -1940,8 +1940,10 @@ class ESBTPBulletinController extends Controller
                 }
             }
 
-            // Indiquer que c'est un export PDF pour cacher les éléments web
+            // L'export reconstruit depuis les données courantes ne doit jamais
+            // se faire passer pour un bulletin officiel publié et archivé.
             $donnees['isPdfExport'] = true;
+            $donnees['currentPreview'] = true;
 
             // Générer le PDF avec le template unifié
             $pdf = PDF::loadView($this->bulletinService->getBulletinTemplateView(), $donnees);
