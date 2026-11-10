@@ -164,8 +164,8 @@ class CompositionBtsEtLecturePdfTest extends TestCase
         $source = file_get_contents(app_path('Http/Controllers/ESBTPBulletinController.php'));
 
         // Le telechargement du bulletin ne doit plus lancer une regeneration.
-        $this->assertStringContainsString('$pdf = $this->buildBulletinPdf($bulletin, false);', $source);
-        $this->assertStringContainsString('bool $persist = false): \\Barryvdh\\DomPDF\\PDF', $source);
+        $this->assertStringContainsString('$pdf = $this->buildBulletinPdf($bulletin, false, (bool) $bulletin->is_published);', $source);
+        $this->assertStringContainsString('bool $persist = false, bool $legacyUnarchived = false): \\Barryvdh\\DomPDF\\PDF', $source);
 
         // Meme quand il n'existe pas de bulletin officiel, le GET par params
         // doit utiliser la version preview (sans ecriture).
