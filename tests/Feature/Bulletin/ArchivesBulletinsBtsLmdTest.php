@@ -59,6 +59,44 @@ class ArchivesBulletinsBtsLmdTest extends TestCase
         self::assertSame($doc->id, $archives->publier($b->fresh(), auth()->user())->id);
     }
 
+    public function test_un_bts_publie_refuse_une_moyenne_changee_dans_le_modele(): void
+    {
+        $etudiant = $this->etudiantInscrit();
+        $b = $this->seedConfiguredBulletin($etudiant->id, $this->classe->id, $this->annee->id);
+        $b->forceFill(['moyenne_generale' => 10.0, 'is_published' => true])->save();
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $b->fresh()->forceFill(['moyenne_generale' => 17.0])->save();
+    }
+
+    public function test_l_export_groupe_ecrit_exclusivement_les_octets_de_l_archive(): void
+    {
+        $etudiant = $this->etudiantInscrit();
+        $b = $this->seedConfiguredBulletin($etudiant->id, $this->classe->id, $this->annee->id);
+        $b->forceFill(['moyenne_generale' => 14.0])->save();
+        $this->fauxRendererBts();
+        $archives = app(BulletinArchiveService::class);
+        $doc = $archives->publier($b, auth()->user());
+
+        $dossier = sys_get_temp_dir().'/bulletins-test-'.uniqid();
+        mkdir($dossier, 0700);
+        try {
+            $res = app(\App\Services\BulletinBulkPdfExporter::class)->rendreTranche(
+                collect([$b]), fn () => $archives->octets($doc), $dossier
+            );
+            self::assertSame(1, $res['rendus']);
+            self::assertSame([], $res['echecs']);
+            $fichiers = glob($dossier.'/blt_*.pdf');
+            self::assertCount(1, $fichiers);
+            self::assertSame($archives->octets($doc), file_get_contents($fichiers[0]));
+        } finally {
+            foreach (glob($dossier.'/*') ?: [] as $fichier) {
+                unlink($fichier);
+            }
+            rmdir($dossier);
+        }
+    }
+
     public function test_lmd_publication_utilise_la_meme_archive_sans_adopter_les_blocs_bts(): void
     {
         $etudiant = $this->etudiantInscrit();
