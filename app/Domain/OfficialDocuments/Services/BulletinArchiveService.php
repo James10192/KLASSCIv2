@@ -105,6 +105,10 @@ final class BulletinArchiveService
                     throw new RuntimeException('L’empreinte du PDF conservé ne correspond pas au document produit.');
                 }
 
+                // Le renderer BTS travaille en mémoire même en mode non
+                // persistant. Recharger le bulletin avant de graver le snapshot
+                // évite d'archiver des attributs jamais enregistrés en SQL.
+                $locked->refresh();
                 $snapshot = $this->snapshot($locked, $reference);
                 $document = OfficialDocument::query()->create([
                     'document_type' => $type,
