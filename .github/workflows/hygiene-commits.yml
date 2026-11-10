@@ -392,6 +392,12 @@ jobs:
           cp .env.example .env
           php artisan key:generate --force
 
+      # Les statistiques des bulletins doivent provenir du meme classement
+      # que le rang imprime. Exercice sur MariaDB et sur les deux semestres :
+      # la validation syntaxique Laravel seule ne lance pas cette regression.
+      - name: Bulletins BTS - parite statistiques et classement S1 S2
+        run: php vendor/bin/phpunit tests/Feature/Bulletin/StatistiquesClassePariteClassementTest.php --no-coverage
+
       # Régression réelle SQLSTATE 22007 : la colonne semestre est VARCHAR,
       # une note legacy 'semestre2' ne doit jamais être comparée à l'entier 2.
       - name: Notes BTS - semestre legacy sur MariaDB strict
