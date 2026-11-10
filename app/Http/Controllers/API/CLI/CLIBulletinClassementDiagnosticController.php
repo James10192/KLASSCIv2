@@ -35,7 +35,7 @@ final class CLIBulletinClassementDiagnosticController extends BaseApiController
         $bulletin = isset($valides['bulletin_id'])
             ? ESBTPBulletin::findOrFail((int) $valides['bulletin_id'])
             : null;
-        if ($bulletin && (isset($valides['classe_id'], $valides['annee_universitaire_id']) || isset($valides['periode']))) {
+        if ($bulletin && (isset($valides['classe_id']) || isset($valides['annee_universitaire_id']) || isset($valides['periode']) || isset($valides['etudiant_id']))) {
             return $this->errorResponse('Use bulletin_id alone or classe_id + annee_universitaire_id + periode.', [], 422);
         }
         $classeId = $bulletin ? (int) $bulletin->classe_id : (int) $valides['classe_id'];
