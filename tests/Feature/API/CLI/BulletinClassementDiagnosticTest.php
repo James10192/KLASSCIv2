@@ -22,6 +22,19 @@ class BulletinClassementDiagnosticTest extends TestCase
 {
     use RefreshDatabase, MonteUneClasseBts;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // L'instance d'essai n'est pas installee : ces gardes redirigent
+        // en 302 avant les routes API. Conserver Sanctum et le throttle.
+        $this->withoutMiddleware([
+            \App\Http\Middleware\CheckInstalled::class,
+            \App\Http\Middleware\EnsureInstalled::class,
+            \App\Http\Middleware\PaywallMiddleware::class,
+        ]);
+    }
+
     public function test_diagnostic_s2_retrouve_un_eleve_du_classement_absent_de_students(): void
     {
         $this->monterLaClasse();
