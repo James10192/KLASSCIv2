@@ -83,6 +83,8 @@ class ModificationDeReglages
         // La ponderation par blocs n'accepte ni coefficient nul ni exorbitant.
         'bulletin_bloc_general_coef' => [0.1, 10],
         'bulletin_bloc_professionnel_coef' => [0.1, 10],
+        'lmd_cc_weight' => [0, 100],
+        'lmd_exam_weight' => [0, 100],
     ];
 
     /**
@@ -363,6 +365,20 @@ class ModificationDeReglages
         $defauts = array_map(fn (array $d) => $d['value'], InscriptionWorkflowSettings::defaults());
         $apres = fn (string $cle) => array_key_exists($cle, $soumis) ? (string) $soumis[$cle] : (string) Setting::get($cle, $defauts[$cle] ?? '');
 
+        // Le formulaire LMD et les changements CLI/Nanan suivent la meme
+        // regle. Une pondération CC/Examen activee doit totaliser 100 %.
+        // Le cas 0/0 ne doit jamais retomber silencieusement sur le mode non pondéré.
+        if (array_intersect(array_keys($soumis), ['lmd_cc_weight', 'lmd_exam_weight', 'lmd_ponderation_cc_examen']) !== []) {
+            $poidsLmd = [
+                'active' => $apres('lmd_ponderation_cc_examen'),
+                'cc' => $apres('lmd_cc_weight'),
+                'examen' => $apres('lmd_exam_weight'),
+            ];
+            if (($refus = self::refusPonderationLmd($poidsLmd)) !== null) {
+                return $refus;
+            }
+        }
+
         if (array_key_exists('pdf_header_bg_color', $soumis) || array_key_exists('pdf_header_text_color', $soumis)) {
             if (($m = self::refusCouleurs($apres('pdf_header_bg_color'), $apres('pdf_header_text_color'), "l'en-tête des documents PDF")) !== null) {
                 return $m;
@@ -398,6 +414,31 @@ class ModificationDeReglages
         $parcours = array_merge(InscriptionWorkflowSettings::cles(), [RendezVousReglages::ENABLED]);
         if (array_intersect(array_keys($soumis), $parcours) !== []) {
             return InscriptionWorkflowSettings::incoherence($apres);
+        }
+
+        return null;
+    }
+
+    /**
+     * Seule la pondération activée impose une répartition à 100 %.
+     * Dans les écoles qui n'appliquent pas cette règle, les poids déjà
+     * sauvegardés sont sans effet ; on n'invalide pas leurs autres réglages.
+     *
+     * @param array{active: mixed, cc: mixed, examen: mixed} $poids
+     */
+    public static function refusPonderationLmd(array $poids): ?string
+    {
+        if (! filter_var($poids['active'], FILTER_VALIDATE_BOOLEAN)) {
+            return null;
+        }
+
+        foreach (['cc', 'examen'] as $champ) {
+            if (! is_numeric($poids[$champ]) || (float) $poids[$champ] < 0 || (float) $poids[$champ] > 100) {
+                return 'La pondération LMD exige des poids CC et examen compris entre 0 et 100 %.';
+            }
+        }
+        if (abs((float) $poids['cc'] + (float) $poids['examen'] - 100.0) > 0.000001) {
+            return 'La pondération LMD active exige CC + Examen = 100 %.';
         }
 
         return null;
