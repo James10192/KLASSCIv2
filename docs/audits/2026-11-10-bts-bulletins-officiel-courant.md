@@ -51,7 +51,7 @@ validation refuse ces valeurs. Les contrôles sont centralisés dans
 | --- | --- | --- |
 | Courant | `BtsCurrentResultSnapshotService` (notes, moyennes manuelles, configuration et assiduité actuelles) | Recalcul disponible pour un instant donné. **Pas** un document historisé. |
 | Officiel DB | `esbtp_bulletins.moyenne_generale`, `note_assiduite`, rang/mentions et `ESBTPResultatMatiere` | Une partie de l'état enregistré. **Pas** l'ensemble du PDF figé. |
-| Différence | `BulletinConsistencyService::getSnapshot` | Compare les totaux brut, assiduité et effectif ; **pas** l'empreinte de chaque détail de matière ni la version des réglages. |
+| Différence | `BulletinConsistencyService::getSnapshot` | Compare les totaux brut, assiduité et moyenne effective ; **pas** l'empreinte de chaque détail de matière ni la version des réglages. |
 | PDF | `ESBTPBulletinController::buildBulletinPdf` | La projection canonique de `BulletinService` relit encore les données actuelles. Un PDF téléchargé plus tard peut différer même sans modification du bulletin DB. |
 
 **Défaut réel de lecture** : `genererPDF()` appelait le renderer avec
