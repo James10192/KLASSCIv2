@@ -89,6 +89,45 @@ class CompositionBtsEtLecturePdfTest extends TestCase
         $this->assertStringContainsString('name="setting_bulletin_bloc_professionnel_coef"', $vue);
     }
 
+    public function test_un_bulletin_publie_ou_signe_est_protege_des_editions_et_suppressions(): void
+    {
+        $this->monterLaClasse();
+        $etudiant = $this->etudiantInscrit();
+        $bulletin = $this->seedConfiguredBulletin(
+            $etudiant->id, $this->classe->id, $this->annee->id
+        );
+        $controle = app(\App\Services\ESBTP\BulletinConsistencyService::class);
+
+        $this->assertFalse($controle->isProtected($bulletin));
+        foreach (['is_published', 'signature_responsable', 'signature_directeur', 'signature_parent'] as $cle) {
+            $bulletin->forceFill([$cle => true])->save();
+            $this->assertTrue($controle->isProtected($bulletin), "Protection absente pour $cle");
+            $bulletin->forceFill([$cle => false])->save();
+        }
+
+        $bulletin->forceFill(['is_published' => true])->save();
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        app(ESBTPBulletinController::class)->destroy($bulletin);
+    }
+
+    public function test_un_lot_avec_un_bulletin_publie_ne_supprime_aucun_document(): void
+    {
+        $this->monterLaClasse();
+        $etudiant = $this->etudiantInscrit();
+        $bulletin = $this->seedConfiguredBulletin($etudiant->id, $this->classe->id, $this->annee->id);
+        $bulletin->forceFill(['is_published' => true])->save();
+
+        $requete = \Illuminate\Http\Request::create(
+            '/esbtp/bulletins/bulk-delete',
+            'POST',
+            ['ids' => [$bulletin->id]]
+        );
+        $reponse = app(ESBTPBulletinController::class)->bulkDelete($requete);
+        $this->assertSame(422, $reponse->getStatusCode());
+        $this->assertFalse((bool) (json_decode($reponse->getContent(), true)['success'] ?? true));
+        $this->assertTrue(ESBTPBulletin::query()->whereKey($bulletin->id)->exists());
+    }
+
     public function test_le_rendu_pdf_d_un_bulletin_publie_ne_recrit_pas_ses_resultats(): void
     {
         $this->monterLaClasse();
