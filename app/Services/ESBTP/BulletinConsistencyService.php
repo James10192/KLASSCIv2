@@ -138,7 +138,7 @@ class BulletinConsistencyService
         return $this->getSnapshot($etudiantId, $classeId, $anneeUniversitaireId, $normalizedPeriode);
     }
 
-    private function isProtected(ESBTPBulletin $bulletin): bool
+    public function isProtected(ESBTPBulletin $bulletin): bool
     {
         return (bool) $bulletin->is_published
             || (bool) $bulletin->signature_responsable
