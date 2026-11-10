@@ -72,14 +72,20 @@ deux notes peuvent changer en sens opposé sans modifier la moyenne.
 - `BulletinConsistencyService::regenerateOfficialBulletin` utilise
   transaction et verrou `lockForUpdate` et refuse les bulletins publiés
   ou signés : garde-fou **présent**.
-- `ESBTPBulletinController::update` modifie le bulletin et ses lignes de
-  matière sans vérifier explicitement le statut publié/signé : à verrouiller.
+- `ESBTPBulletinController::update`, `edit` et `destroy`
+  refusent désormais les bulletins publiés ou signés, selon la même règle
+  que `BulletinConsistencyService` ; `bulkDelete` verrouille les lignes,
+  puis refuse le lot entier dès qu'un membre est protégé.
+- Ce sont des garde-fous des parcours Web examinés, **pas** une
+  interdiction globale des écritures de tous les services ou jobs :
+  les chemins restants doivent être cartographiés avant toute affirmation
+  d'immutabilité.
 - `bulkPublish` bascule le statut par requête `update` de masse : aucun
   PDF/version n'est capturé lors de la transition.
 - `togglePublication` publie/dépublie le même enregistrement : aucune
-  version immuable n'est conservée.
-- `bulkDelete` et `destroy` doivent vérifier la politique documentaire :
-  supprimer un bulletin publié ne doit pas effacer son historique.
+  version immuable n'est conservée et une dépublication peut encore
+  rendre la modification possible. À remplacer par une rectification
+  officielle versionnée.
 - `buildBulletinPdf` contient encore de la logique calculatoire doublonnée,
   ensuite remplacée par la projection canonique ; elle doit être simplifiée
   sans perdre les parcours de génération groupée.
@@ -107,7 +113,9 @@ deux notes peuvent changer en sens opposé sans modifier la moyenne.
 ## 6. Acceptation / déploiement
 
 Première phase (cette PR) : champs de composition visibles, validations,
-tests de calcul, **GET PDF sans écriture**, diagnostic documenté.
+tests de calcul, **GET PDF sans écriture**, refus d'édition/suppression
+sur les bulletins publiés ou signés dans les parcours Web contrôlés,
+diagnostic documenté.
 Aucune migration de résultats, aucun recalcul automatique, aucun
 déploiement tenant. Revue thermo-nucléaire et tests CI requis avant fusion.
 
