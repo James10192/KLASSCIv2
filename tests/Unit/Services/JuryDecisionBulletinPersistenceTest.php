@@ -93,6 +93,34 @@ final class JuryDecisionBulletinPersistenceTest extends OfficialDocumentDatabase
         $this->assertSame(101, DB::table('esbtp_lmd_jury_decisions')->where('id', 2)->value('bulletin_id'));
     }
 
+    public function test_le_jury_ne_peut_pas_ecraser_un_bulletin_lmd_deja_archive(): void
+    {
+        $jury = $this->seedScopedJury();
+        DB::table('esbtp_official_documents')->insert([
+            'document_type' => \App\Domain\OfficialDocuments\Services\BulletinArchiveService::TYPE_LMD,
+            'source_type' => \App\Models\ESBTPLMDBulletin::class,
+            'source_id' => 100,
+            'series_key' => 'lmd-bulletin:100',
+            'version' => 1,
+            'reference' => 'DOC-BLT-LMD-100-V1',
+            'status' => 'valid',
+            'valid_series_key' => 'lmd-bulletin:100',
+            'disk' => 'local',
+            'path' => 'official-documents/test/100.pdf',
+            'original_name' => '100.pdf',
+            'mime_type' => 'application/pdf',
+            'size_bytes' => 4,
+            'checksum_sha256' => str_repeat('0', 64),
+            'issued_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('archive officielle');
+        (new LmdDecisionProjectionService())->publish($jury, 1);
+    }
+
     public function test_un_nouveau_jury_reprend_la_composition_du_dernier_jury_du_parcours(): void
     {
         $precedent = $this->seedScopedJury();
