@@ -604,6 +604,11 @@ jobs:
       - name: Bulletins BTS - parite statistiques et classement S1 S2
         run: php vendor/bin/phpunit tests/Feature/Bulletin/StatistiquesClassePariteClassementTest.php --no-coverage
 
+      # Repere une personne presente dans le classement par phases, mais absente
+      # de la liste administrative /students. Aucune donnee nominative en sortie.
+      - name: Bulletins BTS - CLI diagnostic cohorte canonique
+        run: php vendor/bin/phpunit tests/Feature/API/CLI/BulletinClassementDiagnosticTest.php --no-coverage
+
   annonces-mailpulse:
     name: Annonces MailPulse - ciblage et anti-doublons
     runs-on: ubuntu-latest
