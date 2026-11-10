@@ -2185,6 +2185,77 @@
                 </div>
             </div>
 
+            {{-- Composition de la moyenne BTS : le mode et les deux coefficients
+                 existent deja en base mais etaient invisibles dans les reglages. --}}
+            <div class="settings-section" data-settings-bulletin-group="pedagogie" id="bts-moyenne-semestrielle">
+                <div class="section-header">
+                    <div class="section-icon ponderation"><i class="fas fa-balance-scale" aria-hidden="true"></i></div>
+                    <div>
+                        <h3 class="section-title">Composition de la moyenne semestrielle BTS</h3>
+                        <p class="section-description">Choisissez la règle académique utilisée pour les résultats, les classements et les bulletins BTS.</p>
+                    </div>
+                </div>
+                <div class="bc-grid bc-grid-2">
+                    <div class="bc-input-row">
+                        <div class="bc-icon"><i class="fas fa-calculator" aria-hidden="true"></i></div>
+                        <div class="bc-body">
+                            <label class="bc-label" for="bts-mode-explication">Méthode de calcul</label>
+                            <x-au-select
+                                name="setting_bulletin_moyenne_mode"
+                                icon="fa-calculator"
+                                :searchable="false"
+                                :placeholder-is-first-option="false"
+                                :value="old('setting_bulletin_moyenne_mode', \App\Helpers\SettingsHelper::get('bulletin_moyenne_mode', 'ponderee'))"
+                                :options="[
+                                    'ponderee' => 'Pondération par matière (défaut)',
+                                    'blocs' => 'Pondération par blocs Général / Technique',
+                                ]"
+                            />
+                            <p class="bc-desc" id="bts-mode-explication">
+                                Par matière : chaque coefficient de matière pèse dans la moyenne finale (exemple 5 en général et 27 en technique).
+                                Par blocs : chaque bloc a sa moyenne interne, puis les deux coefficients ci-dessous s'appliquent.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="bc-input-row">
+                        <div class="bc-icon"><i class="fas fa-info-circle" aria-hidden="true"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Impact sur les résultats officiels</div>
+                            <p class="bc-desc">Un changement de méthode peut modifier les moyennes, les rangs et les décisions. Les bulletins déjà publiés ne doivent jamais être recalculés silencieusement. Vérifiez les effets sur un environnement de recette avant d'enregistrer un nouveau mode.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bc-grid bc-grid-2" style="margin-top:14px;">
+                    <div class="bc-input-row">
+                        <div class="bc-icon"><i class="fas fa-book-open" aria-hidden="true"></i></div>
+                        <div class="bc-body">
+                            <label class="bc-label" for="bts-poids-general">Poids du bloc enseignement général</label>
+                            <input id="bts-poids-general" type="number" class="form-control form-control-modern"
+                                   name="setting_bulletin_bloc_general_coef"
+                                   value="{{ old('setting_bulletin_bloc_general_coef', \App\Helpers\SettingsHelper::get('bulletin_bloc_general_coef', '1')) }}"
+                                   min="0.1" max="10" step="0.1" inputmode="decimal">
+                            <div class="bc-desc">Utilisé uniquement en mode « par blocs ». Valeur habituelle : 1.</div>
+                        </div>
+                    </div>
+                    <div class="bc-input-row">
+                        <div class="bc-icon"><i class="fas fa-tools" aria-hidden="true"></i></div>
+                        <div class="bc-body">
+                            <label class="bc-label" for="bts-poids-technique">Poids du bloc enseignement technique</label>
+                            <input id="bts-poids-technique" type="number" class="form-control form-control-modern"
+                                   name="setting_bulletin_bloc_professionnel_coef"
+                                   value="{{ old('setting_bulletin_bloc_professionnel_coef', \App\Helpers\SettingsHelper::get('bulletin_bloc_professionnel_coef', '1')) }}"
+                                   min="0.1" max="10" step="0.1" inputmode="decimal">
+                            <div class="bc-desc">Utilisé uniquement en mode « par blocs ». Avec 1 et 1, les deux blocs pèsent autant.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bc-hint" style="margin-top:14px;">
+                    <i class="fas fa-info-circle" aria-hidden="true"></i>
+                    Pour une classe avec 5 coefficients en général et 27 en technique, le mode « par matière » donne respectivement 5/32 et 27/32 du total.
+                    Le mode « par blocs » à 1:1 donne 50 % / 50 %, quelle que soit la masse des coefficients des matières.
+                </div>
+            </div>
+
             <!-- Section 4: Tronc Commun / Specialisation -->
             <div class="settings-section" data-settings-bulletin-group="pedagogie">
                 <div class="section-header">
