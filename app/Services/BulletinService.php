@@ -1880,79 +1880,46 @@ class BulletinService
     }
 
     /**
-     * Calcule les statistiques de la classe
+     * Statistiques de classe calculees sur la MEME cohorte et les MEMES
+     * moyennes que le classement affiche dans les resultats et sur le PDF.
+     *
+     * Avant ce correctif, le chemin des statistiques reprenait les moyennes
+     * manuelles en ignorant les notes des autres matieres. Il utilisait aussi
+     * une ponderation globale meme lorsque l'ecole avait choisi une moyenne
+     * par blocs General/Technique. Un eleve classe 1er pouvait ainsi avoir
+     * une moyenne inferieure a la "plus forte moyenne" imprimee.
+     *
+     * RankingService utilise deja les snapshots de la cohorte, la priorite
+     * des moyennes manuelles, la composition configuree et le drapeau
+     * d'assiduite : on ne recalcule plus de moyenne parallele ici.
      */
-    private function calculerStatistiquesClasse($classeId, $anneeUniversitaireId, $periode = 'semestre1', bool $useCache = false)
+    private function calculerStatistiquesClasse($classeId, $anneeUniversitaireId, $periode = 'semestre1', bool $useCache = false): array
     {
-        // Memoize (uniquement si $useCache) : ces stats parcourent TOUS les étudiants de la
-        // classe et sont identiques pour chaque bulletin. Sur l'export groupé (persist=false)
-        // les esbtp_resultats ne mutent pas → cache sûr, l'export passe de O(N²) à O(N).
-        // En génération, $useCache=false pour préserver le calcul par étudiant (cf. call site).
-        $statsKey = $classeId.':'.$anneeUniversitaireId.':'.$periode;
+        $periode = $this->normalizePeriode((string) $periode);
+        // Les settings peuvent changer au cours d'une requete de maintenance :
+        // ne pas recycler des stats calculees avec un autre mode d'assiduite.
+        $statsKey = (int) $classeId.':'.(int) $anneeUniversitaireId.':'.$periode.':'.(int) $this->isAttendanceNoteEnabled();
         if ($useCache && isset($this->classStatsCache[$statsKey])) {
             return $this->classStatsCache[$statsKey];
         }
 
-        // La cohorte vient du compteur de phases, pas de la classe courante.
-        // Un etudiant passe en specialite au semestre 2 garde une seule
-        // inscription, deplacee vers sa nouvelle classe. Interroger
-        // inscriptions.classe_id revenait donc a chercher les eleves du
-        // semestre 1 dans une classe qu ils ont quittee : la classe paraissait
-        // vide et les statistiques tombaient a zero. Le rang, lui, utilisait
-        // deja ce compteur : les deux portent desormais sur la meme population.
-        $etudiantIds = $this->classCohortCounter->etudiantIdsPourPeriode(
+        // Une seule lecture par cohorte, avec prechargement des notes et
+        // moyennes par semestre. Evite le N+1 de l'ancien parcours et partage
+        // exactement le critere de tri du rang (brut ou avec assiduite).
+        $classement = app(RankingService::class)->calculerRangsClasse(
             (int) $classeId,
             (int) $anneeUniversitaireId,
-            (string) $periode
+            $periode
         );
 
-        $etudiants = $etudiantIds === []
-            ? collect()
-            : ESBTPEtudiant::whereIn('id', $etudiantIds)->get();
+        $moyennes = $classement['rows']
+            ->pluck($classement['sort_key'])
+            // 0/20 est une vraie moyenne, contrairement a null (aucune note).
+            ->filter(static fn ($moyenne): bool => $moyenne !== null)
+            ->map(static fn ($moyenne): float => (float) $moyenne)
+            ->all();
 
-        if ($etudiants->isEmpty()) {
-            return $this->cacheClassStats($statsKey, [
-                'meilleure_moyenne' => 0,
-                'plus_faible_moyenne' => 0,
-                'moyenne_classe' => 0,
-            ], $useCache);
-        }
-
-        $moyennes = [];
-        $afficherNoteAssiduite = SettingsHelper::drapeau('bulletin_show_attendance_note', true);
-        $anneeUniv = $afficherNoteAssiduite ? \App\Models\ESBTPAnneeUniversitaire::find($anneeUniversitaireId) : null;
-
-        foreach ($etudiants as $etudiant) {
-            try {
-                // Calculer la moyenne globale de cet étudiant
-                $moyenneEtudiant = $this->calculerMoyenneGlobaleEtudiant($etudiant->id, $classeId, $anneeUniversitaireId, $periode);
-
-                // Ajouter la note d'assiduité seulement si l'affichage est activé et si la moyenne est valide
-                if ($afficherNoteAssiduite && $moyenneEtudiant > 0) {
-                    $absencesEtudiant = $this->absenceService->calculerDetailAbsences(
-                        $etudiant->id,
-                        $classeId,
-                        $anneeUniv->date_debut ?? null,
-                        $anneeUniv->date_fin ?? null,
-                        $anneeUniversitaireId,
-                        $periode
-                    );
-                    $noteAssiduite = $this->calculerNoteAssiduite($absencesEtudiant['justifiees'], $absencesEtudiant['non_justifiees']);
-                    $moyenneEtudiant += $noteAssiduite;
-                }
-
-                if ($moyenneEtudiant <= 0) {
-                    continue;
-                }
-
-                $moyennes[] = $moyenneEtudiant;
-
-            } catch (\Exception $e) {
-                continue;
-            }
-        }
-
-        if (empty($moyennes)) {
+        if ($moyennes === []) {
             return $this->cacheClassStats($statsKey, [
                 'meilleure_moyenne' => 0,
                 'plus_faible_moyenne' => 0,
@@ -1968,8 +1935,8 @@ class BulletinService
     }
 
     /**
-     * Écrit les stats de classe dans le cache request-scoped uniquement si autorisé
-     * (export/preview), puis les renvoie. En génération, aucun cache n'est écrit ni lu.
+     * Mise en cache des statistiques pour les apercus et exports groupés
+     * uniquement. La generation officielle ne reutilise jamais ce cache.
      */
     private function cacheClassStats(string $statsKey, array $stats, bool $useCache): array
     {
@@ -1978,193 +1945,6 @@ class BulletinService
         }
 
         return $stats;
-    }
-
-    /**
-     * Calculer la moyenne globale d'un étudiant (utilisé pour les statistiques)
-     */
-    private function calculerMoyenneGlobaleEtudiant($etudiantId, $classeId, $anneeUniversitaireId, $periode = 'semestre1')
-    {
-        $classe = ESBTPClasse::find($classeId);
-        if (! $classe) {
-            throw new \RuntimeException('Classe introuvable pour le calcul de la moyenne.');
-        }
-
-        $periodeOptions = [$periode];
-        if ($periode === 'semestre1') {
-            $periodeOptions[] = '1';
-        } elseif ($periode === 'semestre2') {
-            $periodeOptions[] = '2';
-        } elseif ($periode === '1') {
-            $periodeOptions[] = 'semestre1';
-        } elseif ($periode === '2') {
-            $periodeOptions[] = 'semestre2';
-        }
-
-        // Logique simplifiée pour éviter la récursion
-        $resultatsParMatiere = [];
-
-        // Récupérer les moyennes manuelles seulement
-        $resultats = ESBTPResultat::where('etudiant_id', $etudiantId)
-            ->where('classe_id', $classeId)
-            ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->whereIn('periode', array_unique($periodeOptions))
-            ->with('matiere')
-            ->get();
-
-        foreach ($resultats as $resultat) {
-            // MEME FILTRE QUE LE BULLETIN, et c'est le point : ces moyennes
-            // alimentent `moyenne_classe`, `meilleure_moyenne` et
-            // `plus_faible_moyenne`, qui s'impriment sur la MEME feuille que la
-            // moyenne de l'eleve. Filtrer l'une sans l'autre faisait cohabiter,
-            // sur un A4, une moyenne juste et des statistiques fausses — un
-            // eleve pouvait depasser la « plus forte moyenne » de sa classe.
-            if ($resultat->matiere
-                && ! CoherenceSystemeAcademique::matiereRetenue($resultat->matiere, $classe, 'stats classe/moyenne manuelle')) {
-                continue;
-            }
-
-            if ($resultat->matiere) {
-                try {
-                    $coefficient = $this->getCoefficientForCombination(
-                        $resultat->matiere_id,
-                        $classe->id,
-                        $anneeUniversitaireId,
-                        $this->normalizePeriode((string) ($resultat->periode ?: $periode)),
-                        (int) $etudiantId
-                    );
-                } catch (\RuntimeException $e) {
-                    $coefficient = 1;
-                }
-
-                $resultatsParMatiere[] = (object) [
-                    'moyenne' => $resultat->moyenne,
-                    'coefficient' => $coefficient,
-                ];
-            }
-        }
-
-        // LE REPLI SE DECIDE APRES LE FILTRE, ET NON AVANT.
-        //
-        // Ce test portait sur `$resultats->isEmpty()`, donc sur la requete
-        // BRUTE, et il etait place au-dessus de la boucle. Le filtre de
-        // coherence ajoute dans cette boucle a rendu atteignable un cas
-        // ordinaire qui ne l'etait pas : un eleve dont les seules moyennes
-        // manuelles de la periode portent sur une ECUE. Toutes ses lignes
-        // etaient ecartees, `$resultatsParMatiere` restait vide, et la methode
-        // rendait **0** — sans lire ses notes, qui sont pourtant la.
-        //
-        // Or `calculerStatistiquesClasse()` ecarte les moyennes <= 0 : l'eleve
-        // DISPARAISSAIT des statistiques. Une saisie en masse posee par erreur
-        // sur une ECUE — un seul envoi de `bulkUpdateMoyennes()` suffit — vidait
-        // ainsi les trois statistiques de toute une classe, imprimees a zero sur
-        // chaque bulletin, pendant que le journal ne parlait que de « matiere
-        // ecartee ». C'est la moitie muette d'un rattrapage, le piege #12.
-        //
-        // Decider apres le filtre supprime la branche `return 0` : ou bien il
-        // reste des moyennes retenues, ou bien on lit les notes — elles-memes
-        // filtrees par `calculerMoyenneDepuisNotes()`.
-        //
-        // UN SECOND CAS CHANGE AU PASSAGE, et il vaut mieux le dire : une ligne
-        // dont la `matiere_id` est pendante (FK cassee) rendait 0, elle mene
-        // maintenant au meme repli. C'est meilleur — l'eleve garde ses notes —
-        // mais ce n'est pas le defaut que ce correctif visait.
-        if (empty($resultatsParMatiere)) {
-            return $this->calculerMoyenneDepuisNotes(
-                $etudiantId,
-                $classe,
-                $anneeUniversitaireId,
-                $periodeOptions,
-                $this->normalizePeriode((string) $periode)
-            );
-        }
-
-        return $this->calculerMoyennePonderee(collect($resultatsParMatiere));
-    }
-
-    private function calculerMoyenneDepuisNotes(int $etudiantId, ESBTPClasse $classe, int $anneeUniversitaireId, array $periodeOptions, string $periode = 'semestre1'): float
-    {
-        $notes = ESBTPNote::where('etudiant_id', $etudiantId)
-            ->with(['evaluation', 'evaluation.matiere'])
-            ->byClasse($classe->id)
-            ->byAnneeUniversitaire($anneeUniversitaireId)
-            ->where(function ($query) use ($periodeOptions) {
-                $query->whereIn('semestre', $periodeOptions)
-                    ->orWhereHas('evaluation', function ($subQuery) use ($periodeOptions) {
-                        $subQuery->whereIn('periode', $periodeOptions);
-                    });
-            })
-            ->get();
-
-        if ($notes->isEmpty()) {
-            return 0;
-        }
-
-        $notesByMatiere = [];
-
-        foreach ($notes as $note) {
-            if (! $note->evaluation || ! $note->evaluation->matiere) {
-                continue;
-            }
-
-            // Voir le commentaire jumeau dans `calculerMoyenneGlobaleEtudiant()`.
-            if (! CoherenceSystemeAcademique::matiereRetenue($note->evaluation->matiere, $classe, 'stats classe/note')) {
-                continue;
-            }
-
-            $matiereId = $note->matiere_id ?: $note->evaluation->matiere->id;
-            if (! $matiereId) {
-                continue;
-            }
-
-            if (! isset($notesByMatiere[$matiereId])) {
-                $notesByMatiere[$matiereId] = [
-                    'total_points' => 0,
-                    'total_coefficients' => 0,
-                ];
-            }
-
-            if ($note->is_absent) {
-                $noteValue = 0;
-            } else {
-                $noteValue = is_numeric($note->note) ? floatval($note->note) : (is_numeric($note->valeur) ? floatval($note->valeur) : 0);
-            }
-
-            $bareme = $note->evaluation->bareme > 0 ? floatval($note->evaluation->bareme) : 20;
-            $normalized = $bareme > 0 ? ($noteValue / $bareme) * 20 : 0;
-            $evalCoeff = $note->evaluation->coefficient ? floatval($note->evaluation->coefficient) : 1;
-
-            $notesByMatiere[$matiereId]['total_points'] += $normalized * $evalCoeff;
-            $notesByMatiere[$matiereId]['total_coefficients'] += $evalCoeff;
-        }
-
-        $totalPoints = 0;
-        $totalCoefficients = 0;
-
-        foreach ($notesByMatiere as $matiereId => $matiereData) {
-            if ($matiereData['total_coefficients'] <= 0) {
-                continue;
-            }
-
-            $moyenneMatiere = $matiereData['total_points'] / $matiereData['total_coefficients'];
-
-            try {
-                $coefficient = $this->getCoefficientForCombination(
-                    $matiereId,
-                    $classe->id,
-                    $anneeUniversitaireId,
-                    $this->normalizePeriode($periode),
-                    $etudiantId
-                );
-            } catch (\RuntimeException $e) {
-                $coefficient = 1;
-            }
-
-            $totalPoints += $moyenneMatiere * $coefficient;
-            $totalCoefficients += $coefficient;
-        }
-
-        return $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : 0;
     }
 
     /**
