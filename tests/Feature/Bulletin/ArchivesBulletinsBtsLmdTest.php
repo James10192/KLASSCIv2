@@ -122,6 +122,35 @@ class ArchivesBulletinsBtsLmdTest extends TestCase
         self::assertSame(hash('sha256', $archives->octets($doc)), $doc->checksum_sha256);
     }
 
+    public function test_un_bulletin_lmd_publie_ne_peut_pas_etre_depublie(): void
+    {
+        $etudiant = $this->etudiantInscrit();
+        $this->classe->forceFill(['systeme_academique' => 'LMD'])->save();
+        $bulletin = ESBTPLMDBulletin::create([
+            'etudiant_id' => $etudiant->id,
+            'classe_id' => $this->classe->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'semestre' => 1,
+            'moyenne_generale' => 12.75,
+            'credits_totaux' => 30,
+        ]);
+        $this->fauxRendererLmd();
+        app(BulletinArchiveService::class)->publier($bulletin, auth()->user());
+
+        $this->expectException(\\Illuminate\\Validation\\ValidationException::class);
+        $bulletin->fresh()->forceFill(['is_published' => false])->save();
+    }
+
+    public function test_le_service_du_jury_emet_une_archive_plutot_que_de_publier_en_sql(): void
+    {
+        // Contrat minimal : l'ancien SQL update(is_published = true) esquivait
+        // le pipeline d'archivage, meme quand la decision jury etait valide.
+        $source = file_get_contents(app_path('Services/LMD/LmdDecisionProjectionService.php'));
+        $this->assertStringContainsString('app(BulletinArchiveService::class)->publier(', $source);
+        $this->assertStringNotContainsString("'is_published' => true,", $source);
+        $this->assertStringContainsString('->lockForUpdate()', $source);
+    }
+
     public function test_un_bulletin_historique_publie_sans_archive_ne_devient_pas_faussement_original(): void
     {
         $etudiant = $this->etudiantInscrit();
