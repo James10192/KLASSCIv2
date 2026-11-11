@@ -18,7 +18,10 @@ final class LmdDecisionProjectionService
     {
         return DB::transaction(function () use ($jury, $actorId): int {
             $decisions = $jury->decisions()->lockForUpdate()->get();
-            $projected = 0;
+            // Deux phases dans UNE transaction : appliquer toutes les décisions
+            // avant de publier la première ligne. Sinon le verrou de cohorte
+            // LMD bloque la deuxième décision dès que la première est publiée.
+            $staged = [];
 
             foreach ($decisions as $decision) {
                 if ($decision->bulletin_id === null) {
@@ -62,16 +65,18 @@ final class LmdDecisionProjectionService
                     'updated_by' => $actorId,
                 ])->save();
 
-                // La transaction englobe décision, publication, crédits LMD et
-                // archive vérifiée. Un échec de rendu annule le tout.
-                app(BulletinArchiveService::class)->publier(
-                    $bulletin,
-                    User::query()->findOrFail((int) $actorId)
-                );
-                $projected++;
+                $staged[] = $bulletin;
             }
 
-            return $projected;
+            // Les décisions sont toutes stabilisées : le verrou de cohorte
+            // n'interdit plus la publication une par une. Les archives sont
+            // émises à partir de leurs valeurs finales.
+            $acteur = User::query()->findOrFail((int) $actorId);
+            foreach ($staged as $bulletin) {
+                app(BulletinArchiveService::class)->publier($bulletin, $acteur);
+            }
+
+            return count($staged);
         }, 3);
     }
 }
