@@ -589,14 +589,28 @@ class ExecuteurTachesBulletins
         return (int) ($cumul['created'] ?? 0) + (int) ($cumul['regenerated'] ?? 0) > 0;
     }
 
-    protected function rendreUnBulletin(ESBTPBulletin $bulletin): PDF
+    protected function rendreUnBulletin(ESBTPBulletin $bulletin): PDF|string
     {
-        return app(ESBTPBulletinController::class)->buildBulletinPdf($bulletin, false);
+        $archives = app(\App\Domain\OfficialDocuments\Services\BulletinArchiveService::class);
+        if ($bulletin->is_published && ($document = $archives->archive($bulletin))) {
+            return $archives->octets($document);
+        }
+
+        return app(ESBTPBulletinController::class)->buildBulletinPdf(
+            $bulletin, false, (bool) $bulletin->is_published
+        );
     }
 
-    protected function rendreUnBulletinLmd(ESBTPLMDBulletin $bulletin): PDF
+    protected function rendreUnBulletinLmd(ESBTPLMDBulletin $bulletin): PDF|string
     {
-        return app(ESBTPLMDBulletinController::class)->rendrePdfPourExport($bulletin);
+        $archives = app(\App\Domain\OfficialDocuments\Services\BulletinArchiveService::class);
+        if ($bulletin->is_published && ($document = $archives->archive($bulletin))) {
+            return $archives->octets($document);
+        }
+
+        return app(ESBTPLMDBulletinController::class)->rendrePdfPourExport(
+            $bulletin, (bool) $bulletin->is_published
+        );
     }
 
     /** @param array<string, mixed> $entete */

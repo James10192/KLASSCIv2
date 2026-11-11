@@ -886,8 +886,45 @@ function bulIndex() {
         clearSelection() { this.selected = []; },
 
         async bulkPublish() {
-            if (!confirm(`Publier ${this.selected.length} bulletin(s) ?`)) return;
-            await this.callBulk('{{ route('esbtp.bulletins.bulk-publish') }}', 'PATCH');
+            const ids = [...this.selected];
+            if (ids.length === 0 || !confirm(`Publier et archiver ${ids.length} bulletin(s) ? Chaque document sera figé et ne pourra plus être modifié directement.`)) return;
+
+            // Une archive exige un vrai rendu PDF par étudiant. L'hébergement
+            // ne supporte pas 50 rendus dans une requête de 30 s : traiter par
+            // tranches de 6, sans rechargement et sans perdre les erreurs.
+            this.busy = true;
+            let publies = 0;
+            const erreurs = [];
+            try {
+                for (let i = 0; i < ids.length; i += 6) {
+                    const lot = ids.slice(i, i + 6);
+                    try {
+                        const res = await fetch('{{ route('esbtp.bulletins.bulk-publish') }}', {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            body: JSON.stringify({ ids: lot }),
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        publies += Number(data.count || 0);
+                        if (!res.ok) {
+                            erreurs.push(...(data.errors || [data.message || `Erreur HTTP ${res.status}`]));
+                        }
+                    } catch (err) {
+                        erreurs.push(err.message || `Echec du lot ${Math.floor(i / 6) + 1}`);
+                    }
+                }
+                const message = `${publies} bulletin(s) publiés et archivés sur ${ids.length} sélectionnés` +
+                    (erreurs.length ? ` — ${erreurs.length} erreur(s). ${erreurs[0]}` : '.');
+                this.pushToast({ type: erreurs.length ? 'error' : 'success', message });
+                await this.rafraichirLignes(ids);
+            } finally {
+                this.busy = false;
+            }
         },
         async bulkRegenerate() {
             if (!confirm(`Régénérer ${this.selected.length} bulletin(s) ? Les moyennes seront recalculées.`)) return;

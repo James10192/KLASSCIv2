@@ -93,7 +93,7 @@ class ESBTPLMDBulletin extends Model
 
                 if ($publieDansCohorte) {
                     throw ValidationException::withMessages([
-                        'bulletin' => 'La cohorte contient déjà un bulletin LMD publié. Dépubliez les bulletins de cette classe/année/semestre avant toute nouvelle génération afin de préserver les rangs et statistiques du snapshot.',
+                        'bulletin' => 'La cohorte contient déjà un bulletin LMD publié. Une rectification versionnée est nécessaire avant toute nouvelle génération afin de préserver les rangs et statistiques du snapshot.',
                     ]);
                 }
             }
@@ -104,10 +104,12 @@ class ESBTPLMDBulletin extends Model
                 return;
             }
 
-            $dirty = array_diff(array_keys($bulletin->getDirty()), ['is_published', 'updated_at']);
+            // Ne pas permettre de repasser un original publié en brouillon :
+            // une dépublication masquerait l'historique sans version corrective.
+            $dirty = array_diff(array_keys($bulletin->getDirty()), ['updated_at']);
             if ($dirty !== []) {
                 throw ValidationException::withMessages([
-                    'bulletin' => 'Ce bulletin LMD est publié et donc figé. Dépubliez-le avant toute régénération ou correction académique.',
+                    'bulletin' => 'Ce bulletin LMD est publié et figé. Une correction nécessite une émission officielle versionnée.',
                 ]);
             }
         });
@@ -115,7 +117,7 @@ class ESBTPLMDBulletin extends Model
         static::deleting(function (ESBTPLMDBulletin $bulletin): void {
             if ($bulletin->is_published) {
                 throw ValidationException::withMessages([
-                    'bulletin' => 'Un bulletin LMD publié ne peut pas être supprimé. Dépubliez-le d’abord.',
+                    'bulletin' => 'Un bulletin LMD publié ne peut pas être supprimé. Une rectification officielle versionnée est nécessaire.',
                 ]);
             }
         });

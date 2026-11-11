@@ -200,11 +200,18 @@ class BulletinBulkPdfExporter
             $rang = $depart + $position;
 
             try {
-                $pdf = $renderer($bulletin);
+                // Les nouveaux bulletins officiels sont des octets archivés,
+                // pas des instances DomPDF à régénérer. Les brouillons et
+                // historiques non archivés passent encore par le renderer.
+                $document = $renderer($bulletin);
+                $octets = is_string($document) ? $document : $document->output();
+                if (! str_starts_with($octets, '%PDF')) {
+                    throw new \RuntimeException('Le bulletin ne contient pas un PDF exploitable.');
+                }
                 $chemin = sprintf('%s/blt_%06d_%s.pdf', $dossier, $rang, uniqid('', true));
-                file_put_contents($chemin, $pdf->output());
+                file_put_contents($chemin, $octets);
                 $rendus++;
-                unset($pdf);
+                unset($document, $octets);
             } catch (\Throwable $e) {
                 $echecs[] = ['id' => (int) $bulletin->id, 'message' => $e->getMessage()];
                 Log::error('BulletinBulkPdfExporter: rendu échoué bulletin #'.$bulletin->id.' — '.$e->getMessage());
