@@ -137,7 +137,7 @@ class ArchivesBulletinsBtsLmdTest extends TestCase
         $this->fauxRendererLmd();
         app(BulletinArchiveService::class)->publier($bulletin, auth()->user());
 
-        $this->expectException(\\Illuminate\\Validation\\ValidationException::class);
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
         $bulletin->fresh()->forceFill(['is_published' => false])->save();
     }
 
