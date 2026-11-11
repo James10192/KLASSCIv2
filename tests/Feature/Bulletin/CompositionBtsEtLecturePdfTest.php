@@ -100,9 +100,11 @@ class CompositionBtsEtLecturePdfTest extends TestCase
 
         $this->assertFalse($controle->isProtected($bulletin));
         foreach (['is_published', 'signature_responsable', 'signature_directeur', 'signature_parent'] as $cle) {
-            $bulletin->forceFill([$cle => true])->save();
-            $this->assertTrue($controle->isProtected($bulletin), "Protection absente pour $cle");
-            $bulletin->forceFill([$cle => false])->save();
+            // Tester la politique sans tenter de dépublier un document figé :
+            // le modèle interdit justement cette mutation.
+            $cas = $bulletin->replicate();
+            $cas->forceFill([$cle => true]);
+            $this->assertTrue($controle->isProtected($cas), "Protection absente pour $cle");
         }
 
         $bulletin->forceFill(['is_published' => true])->save();
