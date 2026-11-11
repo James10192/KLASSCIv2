@@ -62,6 +62,35 @@ class ESBTPBulletin extends Model implements Auditable
         static::addGlobalScope('not_archived', function (Builder $builder) {
             $builder->whereNull($builder->getModel()->getTable() . '.archived_at');
         });
+
+        // Une publication fige les résultats BTS. Seules les signatures
+        // apposées ultérieurement sont encore admises sur ce document ;
+        // la rectification académique doit devenir une nouvelle version.
+        static::updating(function (self $bulletin): void {
+            if (! (bool) $bulletin->getOriginal('is_published')) {
+                return;
+            }
+
+            $autorises = [
+                'updated_at',
+                'signature_responsable', 'signature_directeur', 'signature_parent',
+                'date_signature_responsable', 'date_signature_directeur', 'date_signature_parent',
+            ];
+            $modifies = array_diff(array_keys($bulletin->getDirty()), $autorises);
+            if ($modifies !== []) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'bulletin' => 'Ce bulletin BTS publié est figé. La correction requiert une émission officielle versionnée.',
+                ]);
+            }
+        });
+
+        static::deleting(function (self $bulletin): void {
+            if ($bulletin->is_published) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'bulletin' => 'Un bulletin BTS publié ne peut pas être supprimé.',
+                ]);
+            }
+        });
     }
 
     /**

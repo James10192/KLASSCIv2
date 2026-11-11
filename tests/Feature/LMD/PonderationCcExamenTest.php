@@ -74,6 +74,25 @@ class PonderationCcExamenTest extends TestCase
         ));
     }
 
+    public function test_la_moyenne_semestrielle_lmd_pondere_les_ue_par_credits_et_non_par_blocs_bts(): void
+    {
+        $service = $this->service([
+            // Ces poids BTS doivent rester sans effet sur le calcul LMD.
+            'bulletin_moyenne_mode' => 'blocs',
+            'bulletin_bloc_general_coef' => 1,
+            'bulletin_bloc_professionnel_coef' => 9,
+        ]);
+        $resultats = [
+            (object) ['moyenne' => 10, 'credit' => 6],
+            (object) ['moyenne' => 20, 'credit' => 4],
+        ];
+        // (10 x 6 + 20 x 4) / 10 = 14,00.
+        $this->assertSame(14.0, $service->calculerMoyenneGenerale($resultats));
+
+        $resultats[] = (object) ['moyenne' => null, 'credit' => 2];
+        $this->assertSame(14.0, $service->calculerMoyenneGenerale($resultats));
+    }
+
     /** Le PV et le relevé gravent la règle seulement quand elle a produit leurs moyennes. */
     public function test_les_documents_officiels_ne_gravent_la_ponderation_que_si_elle_s_applique(): void
     {

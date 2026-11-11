@@ -455,6 +455,16 @@
 </head>
 <body @if($isPdfExport ?? false)class="pdf-export"@endif>
     <div class="container">
+    @if($legacyUnarchived ?? false)
+        <div style="padding:8px 10px; border:2px solid #7f1d1d; background:#fff1f2; color:#7f1d1d; text-align:center; font-family:DejaVu Sans,sans-serif; font-size:10px; font-weight:800; margin-bottom:8px;">
+            DOCUMENT HISTORIQUE NON ARCHIVÉ — Reconstitution à partir des résultats courants, pas une copie authentifiée de l'original publié.
+        </div>
+    @endif
+    @if($currentPreview ?? false)
+        <div style="padding:6px 10px; border:1px solid #64748b; background:#f1f5f9; color:#334155; text-align:center; font-family:DejaVu Sans,sans-serif; font-size:9px; font-weight:700; margin-bottom:7px;">
+            APERÇU DES RÉSULTATS COURANTS — Document non publié, ne remplace pas un bulletin officiel archivé.
+        </div>
+    @endif
         @if(($showInscriptionWorkflowAlert ?? false) && !($isPdfExport ?? false))
             @include('esbtp.partials.inscription-workflow-alert', [
                 'inscriptionWorkflowAlert' => $inscriptionWorkflowAlert ?? null,

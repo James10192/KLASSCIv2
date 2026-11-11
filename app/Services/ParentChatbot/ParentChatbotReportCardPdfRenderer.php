@@ -17,8 +17,13 @@ class ParentChatbotReportCardPdfRenderer
     /** @return string Raw PDF bytes. */
     public function render(ESBTPBulletin $bulletin): string
     {
+        $archives = app(\App\Domain\OfficialDocuments\Services\BulletinArchiveService::class);
+        if ($bulletin->is_published && ($document = $archives->archive($bulletin))) {
+            return $archives->octets($document);
+        }
+
         return app(ESBTPBulletinController::class)
-            ->buildBulletinPdf($bulletin, false)
+            ->buildBulletinPdf($bulletin, false, (bool) $bulletin->is_published)
             ->output();
     }
 }
