@@ -16,7 +16,9 @@ final class LmdDecisionProjectionService
 {
     public function publish(ESBTPLMDJury $jury, ?int $actorId): int
     {
-        return DB::transaction(function () use ($jury, $actorId): int {
+        $cheminsCrees = [];
+        try {
+            return DB::transaction(function () use ($jury, $actorId, &$cheminsCrees): int {
             $decisions = $jury->decisions()->lockForUpdate()->get();
             // Deux phases dans UNE transaction : appliquer toutes les décisions
             // avant de publier la première ligne. Sinon le verrou de cohorte
@@ -73,10 +75,20 @@ final class LmdDecisionProjectionService
             // émises à partir de leurs valeurs finales.
             $acteur = User::query()->findOrFail((int) $actorId);
             foreach ($staged as $bulletin) {
-                app(BulletinArchiveService::class)->publier($bulletin, $acteur);
+                $archive = app(BulletinArchiveService::class)->publier($bulletin, $acteur);
+                $cheminsCrees[] = $archive->path;
             }
 
             return count($staged);
-        }, 3);
+            });
+        } catch (\\Throwable $e) {
+            // Le rollback SQL d'un jury ne supprime pas les fichiers déposés
+            // lors des publications précédentes. Nettoyer ces originaux
+            // provisoires pour ne jamais laisser d'archives orphelines.
+            foreach (array_unique($cheminsCrees) as $chemin) {
+                app(\\App\\Domain\\OfficialDocuments\\Services\\OfficialDocumentStorage::class)->delete($chemin);
+            }
+            throw $e;
+        }
     }
 }
