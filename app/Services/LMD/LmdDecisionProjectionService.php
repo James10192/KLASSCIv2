@@ -8,6 +8,7 @@ use App\Domain\OfficialDocuments\Models\OfficialDocument;
 use App\Domain\OfficialDocuments\Services\BulletinArchiveService;
 use App\Models\ESBTPLMDBulletin;
 use App\Models\ESBTPLMDJury;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -38,21 +39,35 @@ final class LmdDecisionProjectionService
                     );
                 }
 
-                $updated = ESBTPLMDBulletin::query()
+                // Une publication de jury est aussi une émission du bulletin.
+                // Une mise à jour SQL directe publiait le parent sans conserver
+                // les octets du PDF : le téléchargement ultérieur pouvait
+                // afficher des notes ou réglages qui n'étaient pas ceux du jury.
+                $bulletin = ESBTPLMDBulletin::query()
                     ->forJury($jury)
                     ->whereKey($decision->bulletin_id)
                     ->where('etudiant_id', $decision->etudiant_id)
-                    ->update([
-                        'decision_deliberation' => $decision->decision,
-                        'is_published' => true,
-                        'updated_by' => $actorId,
-                        'updated_at' => now(),
-                    ]);
+                    ->lockForUpdate()
+                    ->first();
 
-                if ($updated !== 1) {
+                if (! $bulletin) {
                     throw new RuntimeException("Le bulletin de l'étudiant {$decision->etudiant_id} est introuvable ou incohérent.");
                 }
+                if ($bulletin->is_published) {
+                    throw new RuntimeException("Le bulletin de l'étudiant {$decision->etudiant_id} est déjà publié : aucune projection sans rectification versionnée.");
+                }
 
+                $bulletin->forceFill([
+                    'decision_deliberation' => $decision->decision,
+                    'updated_by' => $actorId,
+                ])->save();
+
+                // La transaction englobe décision, publication, crédits LMD et
+                // archive vérifiée. Un échec de rendu annule le tout.
+                app(BulletinArchiveService::class)->publier(
+                    $bulletin,
+                    User::query()->findOrFail((int) $actorId)
+                );
                 $projected++;
             }
 
