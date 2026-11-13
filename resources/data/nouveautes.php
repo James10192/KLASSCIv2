@@ -23,6 +23,17 @@ return [
     'titre' => 'Novembre 2026',
     'entrees' => [
         [
+            'titre' => 'Bulletins LMD : ce qui manque, dit clairement',
+            'icone' => 'fa-clipboard-check',
+            'texte' => 'Avant de générer les bulletins LMD d’une classe, la fenêtre de contrôle regroupe les problèmes par cause, avec le nombre d’étudiants concernés et le geste à faire. Les bulletins prêts se génèrent sans attendre ceux qui ne le sont pas. Par défaut, le bulletin se calcule dès que les notes sont saisies ; une école qui veut exiger des fiches de notes validées l’active dans Paramètres, onglet LMD. La génération d’une classe se suit avec une barre de progression : vous pouvez fermer la page, une notification arrive à la fin.',
+            'permissions' => ['lmd.bulletins.generate'],
+            'captures' => [
+                'apres' => 'images/nouveautes/2026-11/bulletins-lmd-controle-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'Une cause, le nombre d’étudiants concernés, et le bouton pour lancer les bulletins prêts.',
+            ],
+        ],
+        [
             'titre' => 'Modifier une évaluation retrouve sa matière',
             'icone' => 'fa-pen-to-square',
             'texte' => 'En modifiant une évaluation, la liste des matières est celle de sa classe : la maquette en BTS, les éléments constitutifs (ECUE) en LMD. La matière de l’évaluation est déjà choisie, même si elle sort de la maquette. Changer de classe recharge sa liste, et un échec de chargement est signalé au lieu de proposer les matières d’une autre classe.',
