@@ -3637,6 +3637,19 @@
                                     </div>
                                 </label>
                             </div>
+                            <div class="col-md-6">
+                                <label class="ls-toggle" for="lmd_bulletins_exiger_fiches_validees">
+                                    <div class="ls-toggle-text">
+                                        <div class="ls-toggle-label">Exiger des fiches de notes validées avant les bulletins</div>
+                                        <div class="ls-toggle-hint">Désactivé : le bulletin se calcule dès que les notes sont saisies, et l’écran signale seulement les fiches non validées. Activé : chaque fiche du semestre doit être validée dans le Pilotage académique.</div>
+                                    </div>
+                                    <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
+                                        <input class="form-check-input" type="checkbox" id="lmd_bulletins_exiger_fiches_validees"
+                                               name="lmd_bulletins_exiger_fiches_validees" value="1"
+                                               {{ old('lmd_bulletins_exiger_fiches_validees', $lmdVal('lmd_bulletins_exiger_fiches_validees', '0')) == '1' ? 'checked' : '' }}>
+                                    </div>
+                                </label>
+                            </div>
                         </div>
                     </div>
 

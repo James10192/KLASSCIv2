@@ -568,6 +568,9 @@ class ESBTPSettingsController extends Controller
                 // elles ne repassaient jamais à 0 tant qu'elles n'étaient pas ici.
                 \App\Services\LMD\LmdAcademicRuleProfile::REGLAGE_COMPENSATION_INTER_UE,
                 \App\Services\LMD\LmdAcademicRuleProfile::REGLAGE_COMPENSATION_INTRA_UE,
+                // Fiches validées avant les bulletins LMD : décochée, seule
+                // cette liste la remet à 0.
+                \App\Domain\AcademicPilotage\Services\LmdBulletinPreparationService::REGLAGE_EXIGER_FICHES,
             ], InscriptionWorkflowSettings::booleens(), array_keys($troncCommunDefaults));
 
             // Reglages a cle pointee qui ne sont PAS des cases a cocher. La

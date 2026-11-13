@@ -25,6 +25,7 @@ class LancementTachesBulletins
         array $etudiantIds,
         bool $recalculer,
         ?string $raisonIncomplete,
+        string $domaine = 'bts',
     ): BulletinTache {
         $existante = $this->enCours(BulletinTache::TYPE_GENERATION, $classe->id, $anneeId, $periode);
         if ($existante !== null) {
@@ -44,6 +45,7 @@ class LancementTachesBulletins
                 'classe_nom' => $classe->name,
                 'recalculer' => $recalculer,
                 'incomplete_reason' => $raisonIncomplete,
+                'domaine' => $domaine,
             ],
             'elements' => array_values(array_map('intval', $etudiantIds)),
             'total' => count($etudiantIds),

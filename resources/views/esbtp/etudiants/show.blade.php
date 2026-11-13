@@ -6723,6 +6723,13 @@
     backdrop-filter: blur(2px);
 }
 #insc-bulletin-dialog form { padding: clamp(16px, 3vw, 25px); }
+/* Le calcul prend quelques secondes, davantage sur un réseau lent : il se voit. */
+.ibd-etat { display: flex; align-items: center; gap: 10px; margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: #eff6ff; color: #1e3a8a; font-size: .85rem; font-weight: 600; }
+.ibd-etat[hidden] { display: none; }
+.ibd-spin { width: 16px; height: 16px; flex-shrink: 0; border: 2px solid rgba(4,83,203,.25); border-top-color: #0453cb; border-radius: 50%; animation: ibdTourne .7s linear infinite; }
+.ibd-btn-spin { display: inline-block; width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px; border: 2px solid rgba(255,255,255,.45); border-top-color: #fff; border-radius: 50%; animation: ibdTourne .7s linear infinite; }
+@@keyframes ibdTourne { to { transform: rotate(360deg); } }
+#insc-bulletin-dialog details summary { cursor: pointer; font-size: .8rem; font-weight: 700; color: #475569; min-height: 32px; display: flex; align-items: center; }
 </style>
 <dialog id="insc-bulletin-dialog" aria-labelledby="insc-bulletin-title">
     <form method="dialog" style="background:#fff;">
@@ -6734,11 +6741,16 @@
             </div>
         </div>
         <p style="font-size:.86rem;color:#475569;line-height:1.5;">Les moyennes seront recalculées à partir des données académiques officielles. Les bulletins publiés ou signés restent protégés.</p>
-        <label for="insc-bulletin-reason" style="display:block;font-size:.79rem;font-weight:700;color:#334155;">Motif si vous êtes habilité à générer un dossier incomplet (facultatif)</label>
-        <textarea id="insc-bulletin-reason" rows="2" maxlength="1000" style="width:100%;border:1px solid #cbd5e1;border-radius:9px;padding:9px;margin-top:5px;"></textarea>
+        {{-- Rarement utile : replié pour ne pas faire croire qu'il faut le remplir. --}}
+        <details>
+            <summary>Dossier incomplet ? Générer un bulletin provisoire</summary>
+            <label for="insc-bulletin-reason" style="display:block;font-size:.79rem;font-weight:600;color:#475569;margin-top:4px;">Motif (réservé aux personnes habilitées)</label>
+            <textarea id="insc-bulletin-reason" rows="2" maxlength="1000" placeholder="Ex. : conseil de classe imminent" style="width:100%;border:1px solid #cbd5e1;border-radius:9px;padding:9px;margin-top:5px;"></textarea>
+        </details>
+        <div class="ibd-etat" id="insc-bulletin-etat" role="status" aria-live="polite" hidden><span class="ibd-spin" aria-hidden="true"></span><span id="insc-bulletin-etat-texte">Calcul des moyennes…</span></div>
         <p id="insc-bulletin-feedback" role="alert" aria-live="polite" style="font-size:.82rem;color:#b91c1c;min-height:1.3rem;margin:10px 0;"></p>
         <div style="display:flex;justify-content:flex-end;gap:9px;">
-            <button type="submit" class="btn btn-outline-secondary">Annuler</button>
+            <button type="submit" id="insc-bulletin-cancel" class="btn btn-outline-secondary">Annuler</button>
             <button type="button" id="insc-bulletin-confirm" class="btn btn-primary" style="background:#0453cb;border-color:#0453cb;">Confirmer</button>
         </div>
     </form>
@@ -6787,6 +6799,20 @@
         document.body.appendChild(notice);
         window.setTimeout(() => notice.remove(), 12000);
     }
+
+    // Pendant le calcul, la fenêtre ne se ferme pas par erreur (Échap, Annuler).
+    const etat = document.getElementById('insc-bulletin-etat');
+    const etatTexte = document.getElementById('insc-bulletin-etat-texte');
+    const cancel = document.getElementById('insc-bulletin-cancel');
+    let enCours = false;
+    function setEtat(texte) {
+        enCours = !!texte;
+        if (etat) etat.hidden = !texte;
+        if (texte && etatTexte) etatTexte.textContent = texte;
+        if (cancel) cancel.disabled = enCours;
+        dialog.setAttribute('aria-busy', enCours ? 'true' : 'false');
+    }
+    dialog.addEventListener('cancel', (event) => { if (enCours) event.preventDefault(); });
 
     function finishAjaxSuccess(message) {
         if (dialog.open) dialog.close();
@@ -6891,7 +6917,8 @@
         if (!selected || completed || confirm.disabled) return;
         const target = selected;
         confirm.disabled = true;
-        confirm.textContent = 'Traitement…';
+        confirm.innerHTML = '<span class="ibd-btn-spin" aria-hidden="true"></span>Génération…';
+        setEtat('Calcul des moyennes, des rangs et des mentions…');
         const formData = new FormData();
         formData.append('periode', target.dataset.bulletinPeriode);
         formData.append('incomplete_reason', document.getElementById('insc-bulletin-reason').value);
@@ -6912,6 +6939,7 @@
             selected = null;
             lastBulletinUrl = result.bulletin_url || null;
             let refreshed = false;
+            setEtat('Bulletin calculé. Mise à jour de la fiche…');
             try {
                 await refreshAcademicBilan();
                 refreshed = true;
@@ -6938,6 +6966,7 @@
             feedback.style.color = '#b91c1c';
             feedback.textContent = error.message || 'Impossible de générer le bulletin.';
         } finally {
+            setEtat(null);
             confirm.disabled = completed;
             confirm.textContent = completed ? 'Terminé' : 'Confirmer';
         }

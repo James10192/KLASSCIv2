@@ -186,9 +186,13 @@ class ESBTPBulletinTacheController extends Controller
     {
         abort_unless($tache->concerne((int) $request->user()->id), 404);
         if ($tache->parametre('domaine', 'bts') === BulletinTache::DOMAINE_LMD) {
+            // Générer et exporter ne demandent pas le même droit.
+            $droit = $tache->type === BulletinTache::TYPE_GENERATION
+                ? 'lmd.bulletins.generate'
+                : 'lmd.bulletins.export.bulk';
             abort_unless($request->user()->can('module.lmd.access')
                 && $request->user()->can('lmd.bulletins.view')
-                && $request->user()->can('lmd.bulletins.export.bulk'), 403);
+                && $request->user()->can($droit), 403);
         }
     }
 }
