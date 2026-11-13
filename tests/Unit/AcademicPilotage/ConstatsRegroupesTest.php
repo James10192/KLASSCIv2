@@ -16,7 +16,7 @@ class ConstatsRegroupesTest extends TestCase
 
         $this->assertCount(1, $groupes);
         $this->assertSame(3, $groupes[0]['count']);
-        $this->assertSame(['A', 'B', 'C'], $groupes[0]['etudiants']);
+        $this->assertSame(['A', 'B', 'C'], array_column($groupes[0]['etudiants'], 'nom'));
         $this->assertSame('/pilotage', $groupes[0]['action_url']);
     }
 

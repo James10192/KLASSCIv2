@@ -14,8 +14,8 @@ namespace App\Domain\AcademicPilotage\Support;
 final class ConstatsRegroupes
 {
     /**
-     * @param  array<int, array{student_name: string, issues?: array, warnings?: array}>  $lignes
-     * @return array<int, array{code: string, severity: string, message: string, action_url: ?string, action_label: ?string, count: int, etudiants: array<int, string>}>
+     * @param  array<int, array{student_name: string, student_url?: ?string, issues?: array, warnings?: array}>  $lignes
+     * @return array<int, array{code: string, severity: string, message: string, action_url: ?string, action_label: ?string, count: int, etudiants: array<int, array{nom: string, url: ?string}>}>
      */
     public static function depuis(array $lignes): array
     {
@@ -38,7 +38,11 @@ final class ConstatsRegroupes
                     'etudiants' => [],
                 ];
                 $groupes[$cle]['count']++;
-                $groupes[$cle]['etudiants'][] = (string) $ligne['student_name'];
+                // Le nom et, si possible, le lien vers la fiche : on clique, on y est.
+                $groupes[$cle]['etudiants'][] = [
+                    'nom' => (string) $ligne['student_name'],
+                    'url' => $ligne['student_url'] ?? null,
+                ];
             }
         }
 

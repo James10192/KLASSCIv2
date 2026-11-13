@@ -180,11 +180,18 @@ class LMDBulletinService
 
     public function studentIdsForGenerationCohort(int $classeId, int $anneeUniversitaireId): Collection
     {
+        // Requête brute : les suppressions douces ne sont pas appliquées d'office.
+        // Sans ces deux conditions, un étudiant mis à la corbeille restait dans
+        // la cohorte et bloquait la génération (« Étudiant #2870 », esbtp-abidjan).
         return DB::table('esbtp_inscriptions')
             ->where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
             ->where('status', 'active')
             ->where('workflow_step', 'etudiant_cree')
+            ->whereNull('esbtp_inscriptions.deleted_at')
+            ->whereExists(fn ($q) => $q->selectRaw('1')->from('esbtp_etudiants')
+                ->whereColumn('esbtp_etudiants.id', 'esbtp_inscriptions.etudiant_id')
+                ->whereNull('esbtp_etudiants.deleted_at'))
             ->orderBy('etudiant_id')
             ->pluck('etudiant_id')
             ->map(fn ($id): int => (int) $id);

@@ -319,7 +319,7 @@ class ESBTPLMDBulletinController extends Controller
                 (int) $validated['classe_id'],
                 (int) $validated['annee_universitaire_id']
             )) {
-                $student = ESBTPEtudiant::select('id', 'matricule', 'nom', 'prenoms')->find($etudiantId);
+                $student = ESBTPEtudiant::withTrashed()->select('id', 'matricule', 'nom', 'prenoms', 'deleted_at')->find($etudiantId);
 
                 return response()->json([
                     'ok' => false,
@@ -347,7 +347,9 @@ class ESBTPLMDBulletinController extends Controller
         }
 
         $hasOverride = $request->user()?->can('bulletins.generate_incomplete') ?? false;
-        $students = ESBTPEtudiant::select('id', 'matricule', 'nom', 'prenoms')
+        // withTrashed : un étudiant à la corbeille doit garder son nom à l'écran,
+        // pas devenir « Étudiant #2870 », que personne ne sait retrouver.
+        $students = ESBTPEtudiant::withTrashed()->select('id', 'matricule', 'nom', 'prenoms', 'deleted_at')
             ->whereIn('id', $studentIds)
             ->get()
             ->keyBy('id');
@@ -372,6 +374,7 @@ class ESBTPLMDBulletinController extends Controller
                     $avertis[] = [
                         'student_id' => (int) $studentId,
                         'student_name' => $this->studentDisplayName($student, (int) $studentId),
+                        'student_url' => $this->lienEtudiant($student, $request),
                         'warnings' => $inspection->warnings,
                     ];
                 }
@@ -381,6 +384,7 @@ class ESBTPLMDBulletinController extends Controller
             $blocking[] = [
                 'student_id' => (int) $studentId,
                 'student_name' => $this->studentDisplayName($student, (int) $studentId),
+                'student_url' => $this->lienEtudiant($student, $request),
                 'student_matricule' => $student?->matricule,
                 'message' => 'Dossier académique incomplet pour cet étudiant.',
                 'requires_incomplete_reason' => $hasOverride,
@@ -483,15 +487,32 @@ class ESBTPLMDBulletinController extends Controller
             ->contains($studentId);
     }
 
+    /**
+     * Ce qu'une personne reconnaît : le nom et le matricule. Jamais un numéro
+     * interne seul ; un étudiant à la corbeille le dit.
+     */
     private function studentDisplayName(?ESBTPEtudiant $student, int $fallbackId): string
     {
         if (! $student) {
-            return "Étudiant #{$fallbackId}";
+            return "Étudiant introuvable (fiche n° {$fallbackId} effacée)";
         }
 
-        $name = trim((string) $student->nom_complet);
+        $name = trim((string) $student->nom_complet) ?: 'Étudiant sans nom';
+        if ($student->matricule) {
+            $name .= ' · '.$student->matricule;
+        }
 
-        return $name !== '' ? $name : "Étudiant #{$fallbackId}";
+        return $student->trashed() ? $name.' (dans la corbeille)' : $name;
+    }
+
+    /** La fiche de l'étudiant, si elle existe encore et que la personne peut l'ouvrir. */
+    private function lienEtudiant(?ESBTPEtudiant $student, Request $request): ?string
+    {
+        if (! $student || $student->trashed() || ! $request->user()?->can('students.view')) {
+            return null;
+        }
+
+        return route('esbtp.etudiants.show', $student->id);
     }
 
     public function show(ESBTPLMDBulletin $bulletin)
