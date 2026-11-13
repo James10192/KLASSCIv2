@@ -271,6 +271,14 @@ class EcheancierComputationService
         $asOf = $asOf ?: now();
         $dueLines = $schedule['due_lines'] ?? [];
 
+        // Un versement « reliquat » éteint une dette d'une année antérieure
+        // (montant_regle du reliquat) : l'imputer aussi aux frais de l'année le
+        // compterait deux fois. Filtré ici, une seule fois, pour tous les
+        // appelants (relances, snapshots, analytics) — cf. scopeHorsReliquat.
+        $validatedPayments = $validatedPayments
+            ->reject(fn ($p) => ($p->type_paiement ?? null) === 'reliquat')
+            ->values();
+
         $allocatedLines = $this->allocation->allocate($dueLines, $validatedPayments);
 
         $totalDue = round(collect($allocatedLines)->sum(fn ($line) => (float) ($line['amount'] ?? 0)), 2);

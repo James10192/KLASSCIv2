@@ -383,18 +383,13 @@ class RelanceCalculationService
             $inscriptionSubscriptions
         );
 
-        // Un versement « reliquat » éteint la dette d'une année antérieure : il
-        // est déjà déduit de reliquatAnterieur() (montant_regle). L'imputer aussi
-        // aux frais de l'année le compterait deux fois (ESBTPPaiement::scopeHorsReliquat).
         $validatedPayments = ($inscription->relationLoaded('paiements')
             ? $inscription->paiements->where('status', 'validé')
             : ESBTPPaiement::query()
                 ->where('inscription_id', $inscription->id)
                 ->where('status', 'validé')
                 ->whereNull('deleted_at')
-                ->get())
-            ->reject(fn ($p) => ($p->type_paiement ?? null) === 'reliquat')
-            ->values();
+                ->get());
 
         $state = $this->echeancierComputation->computeOverdueForSchedule(
             $schedule,
