@@ -13,4 +13,3 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
-- 2026-11-13 · bulletins LMD · contrôle avant génération regroupé par cause, génération de classe avec barre de progression, chargement visible sur la fiche étudiant
