@@ -51,12 +51,24 @@
         <span class="amount-unit">FCFA</span>
     </td>
 
-    {{-- Solde restant (basé sur paiements validés) --}}
+    {{-- À relancer : échu à ce jour + reliquat, paiements validés déduits.
+         Le reste de l'année et le reliquat sont détaillés dessous pour que le
+         comptable retrouve le montant qu'il connaît. --}}
     <td class="amount-cell amount-red">
         <div>
             {{ number_format($row->soldeRestant, 0, ',', ' ') }}
             <span class="amount-unit">FCFA</span>
         </div>
+        @if(($row->reliquatAnterieur ?? 0) > 0)
+        <div class="amount-detail" title="Dette reportée des années précédentes, comprise dans le montant à relancer">
+            dont {{ number_format($row->reliquatAnterieur, 0, ',', ' ') }} de reliquat
+        </div>
+        @endif
+        @if(($row->resteTotal ?? 0) > $row->soldeRestant)
+        <div class="amount-detail" title="Tout ce que l'étudiant doit encore, y compris les tranches pas encore échues">
+            Reste à payer : {{ number_format($row->resteTotal, 0, ',', ' ') }}
+        </div>
+        @endif
         @if(($row->totalPayeEnAttente ?? 0) > 0)
         <div class="pending-badge" title="Paiement enregistré mais en attente de validation par le secrétariat">
             <i class="fas fa-clock"></i>

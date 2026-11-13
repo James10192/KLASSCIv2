@@ -534,6 +534,9 @@
 .amount-unit { font-size: .65em; font-weight: 400; opacity: .45; margin-left: .15em; }
 .amount-red  { color: var(--rl-primary); }
 
+/* Détail sous le montant : reliquat, reste à payer sur l'année */
+.amount-detail { font-size: .68rem; font-weight: 500; color: var(--rl-muted, #64748b); margin-top: .15rem; }
+
 /* Pending badge */
 .pending-badge {
     display: inline-flex;

@@ -904,6 +904,9 @@
                 <div class="kpi-icon"><i class="fas fa-hourglass-half"></i></div>
                 <div class="kpi-value">{{ number_format($soldeRestant, 0, ',', ' ') }} <span>FCFA</span></div>
                 <div class="kpi-label">Reste à percevoir</div>
+                @if(($reliquatAnterieur ?? 0) > 0)
+                    <div class="kpi-label" style="margin-top:.2rem;">dont {{ number_format($reliquatAnterieur, 0, ',', ' ') }} de reliquat des années précédentes</div>
+                @endif
             </div>
         </div>
 
