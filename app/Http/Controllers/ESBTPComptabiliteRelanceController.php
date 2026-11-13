@@ -58,7 +58,10 @@ class ESBTPComptabiliteRelanceController extends Controller
         $calcService = app(RelanceCalculationService::class)->preloadForSingle($inscription);
 
         $totalDu         = $calcService->calculerTotalDu($inscription);
-        $totalPaye       = \App\Models\ESBTPPaiement::netStudentPaidFrom($inscription->paiements);
+        // Hors versements « reliquat » : ils sont déjà déduits du reliquat ci-dessous.
+        $totalPaye       = \App\Models\ESBTPPaiement::netStudentPaidFrom(
+            $inscription->paiements->reject(fn ($p) => ($p->type_paiement ?? null) === 'reliquat')
+        );
         // Le reliquat des années précédentes fait partie de ce que l'étudiant doit.
         $reliquatAnterieur = $calcService->reliquatAnterieur($inscription);
         $soldeRestant    = max(0, $totalDu - $totalPaye) + $reliquatAnterieur;

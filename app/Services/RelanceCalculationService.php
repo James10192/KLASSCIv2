@@ -89,7 +89,10 @@ class RelanceCalculationService
     public function reliquatAnterieur(ESBTPInscription $inscription): float
     {
         if ($this->reliquats === null || ! array_key_exists((int) $inscription->id, $this->reliquats)) {
-            $this->chargerReliquats(array_merge(array_keys($this->reliquats ?? []), [(int) $inscription->id]));
+            // Seulement l'inscription manquante : le reste est déjà connu.
+            $connus = $this->reliquats ?? [];
+            $this->chargerReliquats([(int) $inscription->id]);
+            $this->reliquats += $connus;
         }
 
         return max(0.0, (float) ($this->reliquats[(int) $inscription->id] ?? 0));
@@ -380,13 +383,18 @@ class RelanceCalculationService
             $inscriptionSubscriptions
         );
 
-        $validatedPayments = $inscription->relationLoaded('paiements')
+        // Un versement « reliquat » éteint la dette d'une année antérieure : il
+        // est déjà déduit de reliquatAnterieur() (montant_regle). L'imputer aussi
+        // aux frais de l'année le compterait deux fois (ESBTPPaiement::scopeHorsReliquat).
+        $validatedPayments = ($inscription->relationLoaded('paiements')
             ? $inscription->paiements->where('status', 'validé')
             : ESBTPPaiement::query()
                 ->where('inscription_id', $inscription->id)
                 ->where('status', 'validé')
                 ->whereNull('deleted_at')
-                ->get();
+                ->get())
+            ->reject(fn ($p) => ($p->type_paiement ?? null) === 'reliquat')
+            ->values();
 
         $state = $this->echeancierComputation->computeOverdueForSchedule(
             $schedule,

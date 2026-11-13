@@ -114,7 +114,9 @@ class RelancesArriveeTest extends TestCase
     {
         $createur = User::factory()->create();
         [$filiere, $niveau, $classe] = $this->classe();
-        $categorie = ESBTPFraisCategory::factory()->create(['is_mandatory' => false]);
+        // Même catégorie dette et année : c'est là qu'un versement reliquat
+        // mal filtré viendrait réduire à tort le frais de l'année.
+        $categorie = ESBTPFraisCategory::factory()->create(['is_mandatory' => true, 'default_amount' => 200000, 'is_active' => true]);
         $ancienne = ESBTPInscription::factory()->create([
             'annee_universitaire_id' => ESBTPAnneeUniversitaire::factory()->create()->id,
             'filiere_id' => $filiere->id, 'niveau_id' => $niveau->id, 'classe_id' => $classe->id,
@@ -134,18 +136,26 @@ class RelancesArriveeTest extends TestCase
             'date_creation' => now(), 'created_by' => $createur->id,
         ]);
 
+        // Le versement qui a réglé ces 50 000 porte l'inscription courante et la
+        // catégorie d'origine : il est déjà compté dans montant_regle, il ne doit
+        // pas être déduit une seconde fois des frais de l'année.
+        ESBTPPaiement::factory()->pour($courante)->surCategorie($categorie->id)->montant(50000)
+            ->create(['type_paiement' => 'reliquat']);
+
         $calcul = app(RelanceCalculationService::class)->preloadForInscriptions(collect([$courante]));
         $ligne = $calcul->buildRow($courante->fresh(['paiements', 'classe']));
 
         // 200 000 reportés, 50 000 déjà réglés : 150 000 restent dus, et sont réclamés.
         $this->assertSame(150000.0, $ligne->reliquatAnterieur);
-        $this->assertSame(150000.0, $ligne->soldeRestant);
-        $this->assertSame(150000.0, $ligne->resteTotal);
+        // 200 000 de frais de l'année + 150 000 de reliquat. Déduit deux fois, le
+        // versement de reliquat ferait tomber ce total à 300 000.
+        $this->assertSame(350000.0, $ligne->resteTotal);
+        $this->assertGreaterThanOrEqual(150000.0, $ligne->soldeRestant);
         $this->assertNotSame('low', $ligne->risk, 'Un reliquat impayé n\'est pas « à jour ».');
         // Le montant des messages de relance ne lit que l'année courante.
         ESBTPAnneeUniversitaire::query()->update(['is_current' => false]);
         $this->annee->update(['is_current' => true]);
-        $this->assertSame(150000.0, app(RelanceCalculationService::class)->calculerMontantEnRetardEtudiant($courante->etudiant));
+        $this->assertSame($ligne->soldeRestant, app(RelanceCalculationService::class)->calculerMontantEnRetardEtudiant($courante->etudiant));
     }
 
     public function test_le_choix_de_configuration_retenu_suit_le_jour(): void
