@@ -283,7 +283,21 @@ if (!window.lmdPreflightModalLoaded) {
                 sum.textContent = 'Voir les étudiants concernés';
                 const liste = document.createElement('ul');
                 liste.className = 'lmd-preflight-names';
-                g.etudiants.forEach((nom) => { const li = document.createElement('li'); li.textContent = nom; liste.appendChild(li); });
+                g.etudiants.forEach((e) => {
+                    const li = document.createElement('li');
+                    const nom = typeof e === 'string' ? e : e.nom;
+                    if (e && e.url) {
+                        // Un clic ouvre la fiche, sans quitter le contrôle en cours.
+                        const a = document.createElement('a');
+                        a.href = e.url; a.target = '_blank'; a.rel = 'noopener';
+                        a.textContent = nom;
+                        a.style.cssText = 'color:#0453cb;font-weight:600;text-decoration:none;';
+                        li.appendChild(a);
+                    } else {
+                        li.textContent = nom;
+                    }
+                    liste.appendChild(li);
+                });
                 details.append(sum, liste);
                 carte.appendChild(details);
             }

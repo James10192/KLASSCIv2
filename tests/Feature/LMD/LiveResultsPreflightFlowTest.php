@@ -69,6 +69,16 @@ class LiveResultsPreflightFlowTest extends TestCase
         $this->assertSame([100, 101], $ids);
     }
 
+    public function test_un_etudiant_ou_une_inscription_a_la_corbeille_sort_de_la_cohorte(): void
+    {
+        DB::table('esbtp_etudiants')->where('id', 101)->update(['deleted_at' => now()]);
+        $this->assertSame([100], app(LMDBulletinService::class)->studentIdsForGenerationCohort(40, 10)->all());
+
+        DB::table('esbtp_etudiants')->where('id', 101)->update(['deleted_at' => null]);
+        DB::table('esbtp_inscriptions')->where('id', 201)->update(['deleted_at' => now()]);
+        $this->assertSame([100], app(LMDBulletinService::class)->studentIdsForGenerationCohort(40, 10)->all());
+    }
+
     public function test_lmd_preflight_returns_actionable_blocking_json(): void
     {
         // L'école exige des fiches validées : l'ancien blocage s'applique.
@@ -91,7 +101,7 @@ class LiveResultsPreflightFlowTest extends TestCase
             'blocked_count' => 2,
         ]);
         $response->assertJsonPath('blocking_errors.0.issues.0.code', 'missing_grade_entries');
-        $response->assertJsonPath('blocking_errors.0.student_name', 'Kouassi Awa');
+        $response->assertJsonPath('blocking_errors.0.student_name', 'Kouassi Awa · LMD100');
         $response->assertJsonPath('blocking_errors.0.student_matricule', 'LMD100');
         $this->assertStringContainsString('Aucun des 2 bulletins', $response->json('message'));
         $this->assertStringContainsString(
@@ -126,12 +136,12 @@ class LiveResultsPreflightFlowTest extends TestCase
             'warning_count' => 1,
             'exige_fiches_validees' => false,
         ]);
-        $response->assertJsonPath('blocking_errors.0.student_name', 'Yao Marc');
+        $response->assertJsonPath('blocking_errors.0.student_name', 'Yao Marc · LMD101');
         $response->assertJsonPath('blocking_errors.0.issues.0.code', 'no_grade_data');
 
         $groupes = collect($response->json('groupes'))->keyBy('code');
         $this->assertSame('blocking', $groupes['no_grade_data']['severity']);
-        $this->assertSame(['Yao Marc'], $groupes['no_grade_data']['etudiants']);
+        $this->assertSame(['Yao Marc · LMD101'], array_column($groupes['no_grade_data']['etudiants'], 'nom'));
         $this->assertSame('warning', $groupes['missing_grade_entries']['severity']);
         // Le blocage passe avant l'avertissement.
         $this->assertSame('no_grade_data', $response->json('groupes.0.code'));
