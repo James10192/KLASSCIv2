@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Domain\AcademicPilotage\Exceptions\AcademicPilotageException;
 use App\Domain\AcademicPilotage\Services\BulletinGenerationReadinessService;
+use App\Domain\AcademicPilotage\Services\LmdBulletinPreparationService;
+use App\Domain\AcademicPilotage\Support\ConstatsRegroupes;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -350,6 +352,7 @@ class ESBTPLMDBulletinController extends Controller
             ->get()
             ->keyBy('id');
         $blocking = [];
+        $avertis = [];
         $ready = 0;
 
         foreach ($studentIds as $studentId) {
@@ -361,12 +364,19 @@ class ESBTPLMDBulletinController extends Controller
                 'semestre'.$semestre
             );
 
+            $student = $students->get((int) $studentId);
+
             if ($inspection->ready) {
                 $ready++;
+                if ($inspection->warnings !== []) {
+                    $avertis[] = [
+                        'student_id' => (int) $studentId,
+                        'student_name' => $this->studentDisplayName($student, (int) $studentId),
+                        'warnings' => $inspection->warnings,
+                    ];
+                }
                 continue;
             }
-
-            $student = $students->get((int) $studentId);
 
             $blocking[] = [
                 'student_id' => (int) $studentId,
@@ -393,7 +403,11 @@ class ESBTPLMDBulletinController extends Controller
             'ready_count' => $ready,
             'blocked_count' => count($blocking),
             'blocking_errors' => $blocking,
-            'message' => $this->preflightMessage($total, $ready, $blocking, $hasOverride),
+            'warning_count' => count($avertis),
+            // Une cause, une action : l'écran n'énumère plus 26 fois la même phrase.
+            'groupes' => ConstatsRegroupes::depuis(array_merge($blocking, $avertis)),
+            'exige_fiches_validees' => LmdBulletinPreparationService::exigeFichesValidees(),
+            'message' => $this->preflightMessage($total, $ready, $blocking, $hasOverride, count($avertis)),
         ]);
     }
 
@@ -432,21 +446,34 @@ class ESBTPLMDBulletinController extends Controller
             ->with('error', $message ?: $exception->getMessage());
     }
 
-    private function preflightMessage(int $total, int $ready, array $blocking, bool $hasOverride): string
+    private function preflightMessage(int $total, int $ready, array $blocking, bool $hasOverride, int $avertis = 0): string
     {
         if ($total === 0) {
             return 'Aucun étudiant actif trouvé pour cette classe et cette année universitaire.';
         }
 
         if ($blocking === []) {
-            return "{$ready}/{$total} dossier(s) prêt(s). La génération peut démarrer.";
+            $base = $ready > 1 ? "Les {$ready} bulletins sont prêts à être générés." : 'Le bulletin est prêt à être généré.';
+
+            return $avertis > 0
+                ? $base.' Les fiches de notes ne sont pas encore validées : les bulletins seront calculés sur les notes saisies.'
+                : $base;
         }
 
-        if ($hasOverride) {
-            return count($blocking)." dossier(s) incomplet(s) ou non vérifié(s). Vérifiez les fiches dans le Pilotage académique (lien sous chaque étudiant). Si vous assumez un bulletin provisoire, renseignez un motif explicite pour continuer.";
+        $bloques = count($blocking);
+        $phrase = $bloques === $total
+            ? ($total > 1 ? "Aucun des {$total} bulletins ne peut encore être généré." : 'Ce bulletin ne peut pas encore être généré.')
+            : "{$bloques} étudiant(s) sur {$total} ne peuvent pas encore recevoir de bulletin.";
+
+        if ($ready > 0) {
+            $phrase .= $ready > 1
+                ? " Les {$ready} autres sont prêts : vous pouvez les générer dès maintenant."
+                : ' Le seul autre bulletin est prêt : vous pouvez le générer dès maintenant.';
         }
 
-        return count($blocking)." dossier(s) incomplet(s) ou non vérifié(s). Ouvrez les fiches de notes dans le Pilotage académique (lien sous chaque étudiant) pour les synchroniser, les compléter et les valider avant génération.";
+        return $hasOverride
+            ? $phrase.' Pour les dossiers incomplets, corrigez la cause ci-dessous ou générez un bulletin provisoire en indiquant pourquoi.'
+            : $phrase.' Pour les autres, corrigez la cause ci-dessous puis relancez.';
     }
 
     private function isStudentInGenerationCohort(int $studentId, int $classId, int $academicYearId): bool

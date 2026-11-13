@@ -324,9 +324,11 @@ class ExecuteurTachesBulletins
     /** @param array<int, int> $ids */
     private function genererUneTranche(BulletinTache $tache, array $ids): void
     {
-        $classe = $this->classeBts($tache);
-
-        $resultat = $this->genererLaTranche($classe, $tache, $ids);
+        // Le calcul LMD vit à part (rule lmd-bts-bulletin-separation) : le
+        // moteur ne fait qu'aiguiller, le bilan a le même format.
+        $resultat = $this->estLmd($tache)
+            ? $this->genererLaTrancheLmd($tache, $ids)
+            : $this->genererLaTranche($this->classeBts($tache), $tache, $ids);
 
         $cumul = $tache->resultat ?? [];
         $cumul['created'] = ($cumul['created'] ?? 0) + $resultat->created;
@@ -573,8 +575,25 @@ class ExecuteurTachesBulletins
         );
     }
 
+    /** @param array<int, int> $ids */
+    protected function genererLaTrancheLmd(BulletinTache $tache, array $ids): BulkBulletinGenerationResult
+    {
+        return app(GenerationLmdParTranche::class)->generer($tache, $ids);
+    }
+
+    private function estLmd(BulletinTache $tache): bool
+    {
+        return $tache->parametre('domaine', 'bts') === BulletinTache::DOMAINE_LMD;
+    }
+
     protected function reclasserLaClasse(BulletinTache $tache): void
     {
+        if ($this->estLmd($tache)) {
+            app(GenerationLmdParTranche::class)->reclasser($tache);
+
+            return;
+        }
+
         $this->generation->reclasserLaClasse(
             (int) $tache->classe_id,
             (int) $tache->annee_universitaire_id,

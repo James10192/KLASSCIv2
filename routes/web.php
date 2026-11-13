@@ -3512,6 +3512,12 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
         ->middleware('permission:lmd.bulletins.generate')->name('bulletins.generer');
     Route::post('bulletins/generer-classe', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'genererClasse'])
         ->middleware('permission:lmd.bulletins.generate')->name('bulletins.generer-classe');
+    // Génération d'une classe en arrière-plan (suivie par le toast des travaux).
+    Route::post('bulletins/generer-classe/tache', [\App\Http\Controllers\ESBTPLMDBulletinTacheController::class, 'lancer'])
+        ->middleware(['permission:lmd.bulletins.generate', 'throttle:30,1'])->name('bulletins.generer-classe.tache');
+    Route::post('bulletins/preparer-fiches', [\App\Http\Controllers\ESBTPLMDBulletinTacheController::class, 'preparerFiches'])
+        ->middleware(['permission:lmd.bulletins.generate', 'permission:academic_health.recalculate', 'throttle:10,1'])
+        ->name('bulletins.preparer-fiches');
     Route::post('bulletins/export-pdf/lancer', [\App\Http\Controllers\ESBTPLMDBulletinExportController::class, 'lancer'])
         ->middleware(['permission:lmd.bulletins.view', 'permission:lmd.bulletins.export.bulk', 'throttle:10,1'])
         ->name('bulletins.export.lancer');

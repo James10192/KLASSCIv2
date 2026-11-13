@@ -125,6 +125,16 @@ class SuiviTachesBulletins
             return null;
         }
 
+        if ($tache->parametre('domaine', 'bts') === BulletinTache::DOMAINE_LMD) {
+            $perimetre = array_filter([
+                'classe_id' => $tache->classe_id,
+                'annee_universitaire_id' => $tache->annee_universitaire_id,
+                'semestre' => $tache->periode,
+            ]);
+
+            return route($tache->statut === BulletinTache::TERMINEE ? 'esbtp.lmd.bulletins.index' : 'esbtp.lmd.bulletins.select', $perimetre, false);
+        }
+
         return $tache->statut === BulletinTache::TERMINEE
             ? route('esbtp.bulletins.index', array_filter([
                 'classe_id' => $tache->classe_id,

@@ -71,6 +71,9 @@ class LiveResultsPreflightFlowTest extends TestCase
 
     public function test_lmd_preflight_returns_actionable_blocking_json(): void
     {
+        // L'école exige des fiches validées : l'ancien blocage s'applique.
+        $this->poserReglageFiches('1');
+
         $response = $this->postJson(route('esbtp.lmd.bulletins.preflight'), [
             'mode' => 'classe',
             'classe_id' => 40,
@@ -90,15 +93,57 @@ class LiveResultsPreflightFlowTest extends TestCase
         $response->assertJsonPath('blocking_errors.0.issues.0.code', 'missing_grade_entries');
         $response->assertJsonPath('blocking_errors.0.student_name', 'Kouassi Awa');
         $response->assertJsonPath('blocking_errors.0.student_matricule', 'LMD100');
-        $this->assertStringContainsString('Pilotage académique', $response->json('message'));
+        $this->assertStringContainsString('Aucun des 2 bulletins', $response->json('message'));
         $this->assertStringContainsString(
-            'Des notes attendues manquent ou sont encore en brouillon',
+            '1 note(s) validée(s) sur 2 attendue(s)',
             $response->json('blocking_errors.0.issues.0.message')
         );
+        // Une cause = un groupe, pas une ligne par étudiant.
+        $response->assertJsonPath('groupes.0.code', 'missing_grade_entries');
+        $response->assertJsonPath('groupes.0.count', 2);
+        $response->assertJsonPath('exige_fiches_validees', true);
         $this->assertStringContainsString(
             'pilotage-academique',
             (string) $response->json('blocking_errors.0.issues.0.action_url')
         );
+    }
+
+    public function test_by_default_unvalidated_sheets_only_warn_and_missing_notes_still_block(): void
+    {
+        $response = $this->postJson(route('esbtp.lmd.bulletins.preflight'), [
+            'mode' => 'classe',
+            'classe_id' => 40,
+            'annee_universitaire_id' => 10,
+            'semestre' => 1,
+        ]);
+
+        $response->assertOk();
+        // 100 a une note : prêt, avec un avertissement sur les fiches.
+        // 101 n'en a aucune : rien à calculer, toujours bloqué.
+        $response->assertJson([
+            'ready_count' => 1,
+            'blocked_count' => 1,
+            'warning_count' => 1,
+            'exige_fiches_validees' => false,
+        ]);
+        $response->assertJsonPath('blocking_errors.0.student_name', 'Yao Marc');
+        $response->assertJsonPath('blocking_errors.0.issues.0.code', 'no_grade_data');
+
+        $groupes = collect($response->json('groupes'))->keyBy('code');
+        $this->assertSame('blocking', $groupes['no_grade_data']['severity']);
+        $this->assertSame(['Yao Marc'], $groupes['no_grade_data']['etudiants']);
+        $this->assertSame('warning', $groupes['missing_grade_entries']['severity']);
+        // Le blocage passe avant l'avertissement.
+        $this->assertSame('no_grade_data', $response->json('groupes.0.code'));
+    }
+
+    private function poserReglageFiches(string $valeur): void
+    {
+        DB::table('settings')->updateOrInsert(
+            ['key' => \App\Domain\AcademicPilotage\Services\LmdBulletinPreparationService::REGLAGE_EXIGER_FICHES],
+            ['value' => $valeur, 'type' => 'boolean', 'group' => 'lmd', 'is_active' => true],
+        );
+        \Illuminate\Support\Facades\Cache::flush();
     }
 
     private function useMysqlSandboxDatabase(): void

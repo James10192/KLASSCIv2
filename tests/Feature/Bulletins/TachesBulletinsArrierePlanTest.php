@@ -49,6 +49,9 @@ class TachesBulletinsArrierePlanTest extends TestCase
     /** @var array<int, array<int, int>> */
     public array $tranchesGenerees = [];
 
+    /** @var array<int, array<int, int>> Tranches confiées au calcul LMD. */
+    public array $tranchesLmd = [];
+
     public ?BulkBulletinGenerationResult $resultatImpose = null;
 
     public bool $renduEchoue = false;
@@ -176,6 +179,13 @@ class TachesBulletinsArrierePlanTest extends TestCase
                 $this->test->tranchesGenerees[] = $ids;
 
                 return $this->test->resultatImpose ?? new BulkBulletinGenerationResult(created: count($ids));
+            }
+
+            protected function genererLaTrancheLmd(BulletinTache $tache, array $ids): BulkBulletinGenerationResult
+            {
+                $this->test->tranchesLmd[] = $ids;
+
+                return new BulkBulletinGenerationResult(created: count($ids));
             }
 
             protected function reclasserLaClasse(BulletinTache $tache): void
@@ -437,6 +447,22 @@ class TachesBulletinsArrierePlanTest extends TestCase
         $this->assertStringContainsString('LMD', (string) $tache->message);
         $this->assertSame([], $this->tranchesGenerees);
         $this->assertSame('error', DB::table('custom_notifications')->value('type'));
+    }
+
+    public function test_une_generation_lmd_passe_par_le_calcul_lmd_et_reclasse_une_fois(): void
+    {
+        $tache = app(LancementTachesBulletins::class)->generation(
+            User::findOrFail(1), ESBTPClasse::findOrFail(2), 1, '1', range(101, 108), false, null, 'lmd',
+        );
+        app(ExecuteurTachesBulletins::class)->avancer($tache, 50);
+        $tache->refresh();
+
+        $this->assertSame(BulletinTache::TERMINEE, $tache->statut);
+        $this->assertSame([], $this->tranchesGenerees, 'le calcul BTS ne doit jamais servir une classe LMD');
+        $this->assertSame([range(101, 106), [107, 108]], $this->tranchesLmd);
+        $this->assertSame([$tache->id], $this->reclassements);
+        $this->assertStringContainsString('LMD', $tache->libelle());
+        $this->assertStringContainsString('/esbtp/lmd/bulletins', (string) SuiviTachesBulletins::lienResultat($tache));
     }
 
     public function test_un_blocage_de_configuration_arrete_la_tache_des_la_premiere_tranche(): void
