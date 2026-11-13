@@ -19,6 +19,11 @@ class RelanceCalculationService
     private ?Collection $configurations = null;
     private array $echeancierStates = [];
 
+    /** @var array<int, float>|null reliquat antérieur par inscription */
+    private ?array $reliquats = null;
+
+    private ?bool $tableReliquats = null;
+
     public function __construct(
         private readonly EcheancierComputationService $echeancierComputation,
         private readonly EcheancierSnapshotService $snapshotService,
@@ -46,8 +51,51 @@ class RelanceCalculationService
             ->groupBy(fn($c) => $c->frais_category_id . '_' . $c->filiere_id . '_' . $c->niveau_id);
 
         $this->echeancierStates = [];
+        $this->chargerReliquats($inscriptionIds);
 
         return $this;
+    }
+
+    /**
+     * Les dettes reportées des années précédentes (ESBTPReliquatDetail), par
+     * inscription de destination. Le comptable les compte dans ce que l'étudiant
+     * doit ; la relance les ignorait, d'où des montants « faux » à ses yeux.
+     *
+     * @param  array<int, int>  $inscriptionIds
+     */
+    private function chargerReliquats(array $inscriptionIds): void
+    {
+        // Une instance (ou un test) sans le module des reliquats n'en a aucun.
+        $this->tableReliquats ??= \Illuminate\Support\Facades\Schema::hasTable((new \App\Models\ESBTPReliquatDetail)->getTable());
+        if (! $this->tableReliquats) {
+            $this->reliquats = array_fill_keys($inscriptionIds, 0.0);
+
+            return;
+        }
+
+        // Les montants trouvés d'abord : avec « + », la clé de gauche l'emporte.
+        $this->reliquats = \App\Models\ESBTPReliquatDetail::query()
+            ->whereIn('inscription_destination_id', $inscriptionIds)
+            ->actifs()
+            // solde_restant est un accesseur (montant_reliquat - montant_regle),
+            // pas une colonne : on lit les deux colonnes.
+            ->get(['inscription_destination_id', 'montant_reliquat', 'montant_regle'])
+            ->groupBy('inscription_destination_id')
+            ->map(fn ($lignes) => round((float) $lignes->sum(fn ($l) => max(0, $l->solde_restant)), 2))
+            ->all() + array_fill_keys($inscriptionIds, 0.0);
+    }
+
+    /** Reliquat des années précédentes encore dû par une inscription. */
+    public function reliquatAnterieur(ESBTPInscription $inscription): float
+    {
+        if ($this->reliquats === null || ! array_key_exists((int) $inscription->id, $this->reliquats)) {
+            // Seulement l'inscription manquante : le reste est déjà connu.
+            $connus = $this->reliquats ?? [];
+            $this->chargerReliquats([(int) $inscription->id]);
+            $this->reliquats += $connus;
+        }
+
+        return max(0.0, (float) ($this->reliquats[(int) $inscription->id] ?? 0));
     }
 
     /**
@@ -148,14 +196,19 @@ class RelanceCalculationService
 
         $expectedDueToDate = (float) ($state['expected_due_to_date'] ?? 0);
         $paidDueToDate = (float) ($state['paid_due_to_date'] ?? 0);
-        $riskInfo = $this->getRiskLevel($expectedDueToDate, $paidDueToDate);
+        $reliquat = $this->reliquatAnterieur($inscription);
+        // Un reliquat impayé est un retard, même quand l'année en cours est à jour.
+        $riskInfo = $this->getRiskLevel($expectedDueToDate + $reliquat, $paidDueToDate);
 
         return (object) [
             'inscription'       => $inscription,
+            // Le reliquat est échu par nature : il s'ajoute à ce qu'on réclame.
+            'reliquatAnterieur' => $reliquat,
+            'resteTotal'        => round($remainingTotal + $reliquat, 2),
             'totalDu'           => $totalDu,
             'totalPaye'         => $totalPaye,
             'totalPayeEnAttente'=> $totalPayeEnAttente,
-            'soldeRestant'      => $overdueAmount,
+            'soldeRestant'      => round($overdueAmount + $reliquat, 2),
             'remainingTotal'     => $remainingTotal,
             'pourcentage'       => $pourcentage,
             'expectedDueToDate' => $expectedDueToDate,
@@ -246,7 +299,8 @@ class RelanceCalculationService
 
         return (float) $inscriptions->sum(function (ESBTPInscription $inscription) {
             $state = $this->getFinancialState($inscription);
-            return (float) ($state['overdue_amount'] ?? 0);
+            // Même montant que la ligne de la liste : échu de l'année + reliquat.
+            return (float) ($state['overdue_amount'] ?? 0) + $this->reliquatAnterieur($inscription);
         });
     }
 
@@ -329,13 +383,13 @@ class RelanceCalculationService
             $inscriptionSubscriptions
         );
 
-        $validatedPayments = $inscription->relationLoaded('paiements')
+        $validatedPayments = ($inscription->relationLoaded('paiements')
             ? $inscription->paiements->where('status', 'validé')
             : ESBTPPaiement::query()
                 ->where('inscription_id', $inscription->id)
                 ->where('status', 'validé')
                 ->whereNull('deleted_at')
-                ->get();
+                ->get());
 
         $state = $this->echeancierComputation->computeOverdueForSchedule(
             $schedule,

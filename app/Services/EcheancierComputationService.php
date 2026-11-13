@@ -121,6 +121,12 @@ class EcheancierComputationService
             'id' => $inscription->id,
             'filiereId' => $inscription->filiere_id,
             'niveauId' => $inscription->niveau_id,
+            // Une classe LMD se tarife par parcours, pas par filiere : sans ce
+            // champ, l'etudiant LMD sans souscription retombait sur le montant
+            // par defaut de la categorie (rule rien-en-dur).
+            'parcoursId' => ($inscription->classe?->systeme_academique ?? null) === 'LMD'
+                ? ($inscription->classe?->parcours_id ?: null)
+                : null,
             'statutBrut' => $statutBrut,
             'statut' => $statutBrut ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
             'aujourdhui' => now()->toDateString(),
@@ -160,7 +166,7 @@ class EcheancierComputationService
      */
     private function itemObligatoire(\stdClass $eleve, object $category, $subscription, Collection $configurations, int $itemCounter): array
     {
-        $fiche = $this->ficheDeConfiguration($configurations, $category->id, $eleve->filiereId, $eleve->niveauId, $eleve->aujourdhui);
+        $fiche = $this->ficheDeConfiguration($configurations, $category->id, $eleve->filiereId, $eleve->niveauId, $eleve->aujourdhui, $eleve->parcoursId ?? null);
         $configuration = $fiche?->modele;
 
         if ($subscription) {
@@ -264,6 +270,14 @@ class EcheancierComputationService
     {
         $asOf = $asOf ?: now();
         $dueLines = $schedule['due_lines'] ?? [];
+
+        // Un versement « reliquat » éteint une dette d'une année antérieure
+        // (montant_regle du reliquat) : l'imputer aussi aux frais de l'année le
+        // compterait deux fois. Filtré ici, une seule fois, pour tous les
+        // appelants (relances, snapshots, analytics) — cf. scopeHorsReliquat.
+        $validatedPayments = $validatedPayments
+            ->reject(fn ($p) => ($p->type_paiement ?? null) === 'reliquat')
+            ->values();
 
         $allocatedLines = $this->allocation->allocate($dueLines, $validatedPayments);
 
@@ -396,12 +410,15 @@ class EcheancierComputationService
      * La configuration retenue pour (categorie, filiere, niveau) ce jour-la,
      * et ce qu'on en lit : choisie et lue une fois par lot.
      */
-    private function ficheDeConfiguration(Collection $configurations, int $categoryId, $filiereId, $niveauId, string $aujourdhui): ?\stdClass
+    private function ficheDeConfiguration(Collection $configurations, int $categoryId, $filiereId, $niveauId, string $aujourdhui, ?int $parcoursId = null): ?\stdClass
     {
         $memoire = $this->memoirePour($configurations);
-        $cle = $categoryId . '_' . $filiereId . '_' . $niveauId . '|' . $aujourdhui;
+        $cle = $categoryId . '_' . $filiereId . '_' . $niveauId . '_P' . ($parcoursId ?? 0) . '|' . $aujourdhui;
         if (! array_key_exists($cle, $memoire->configurations)) {
-            $configuration = $this->resolveConfiguration($configurations, $categoryId, $filiereId, $niveauId);
+            // LMD d'abord (parcours + niveau), puis l'ancienne cle filiere + niveau :
+            // une ecole qui n'a configure ses frais LMD que par filiere garde son tarif.
+            $configuration = ($parcoursId ? $this->resolveConfigurationLmd($configurations, $categoryId, $parcoursId, (int) $niveauId) : null)
+                ?? $this->resolveConfiguration($configurations, $categoryId, (int) $filiereId, (int) $niveauId);
             $memoire->configurations[$cle] = $configuration
                 ? (object) ['modele' => $configuration, 'id' => $configuration->id, 'delai' => $configuration->payment_deadline_days, 'montants' => []]
                 : null;
@@ -443,6 +460,16 @@ class EcheancierComputationService
     {
         return $this->echeancesAvecGrace[$dueDate . '|' . $graceDays]
             ??= Carbon::parse($dueDate)->addDays($graceDays)->startOfDay();
+    }
+
+    private function resolveConfigurationLmd(Collection $configurations, int $categoryId, int $parcoursId, int $niveauId): ?ESBTPFraisConfiguration
+    {
+        $matches = $configurations->flatten()->filter(fn ($c) => $c instanceof ESBTPFraisConfiguration
+            && (int) $c->frais_category_id === $categoryId
+            && (int) $c->parcours_id === $parcoursId
+            && (int) $c->niveau_id === $niveauId);
+
+        return $matches->isEmpty() ? null : $this->pickValidConfiguration($matches);
     }
 
     private function resolveConfiguration(Collection $configurations, int $categoryId, int $filiereId, int $niveauId): ?ESBTPFraisConfiguration

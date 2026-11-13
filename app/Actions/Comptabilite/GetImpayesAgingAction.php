@@ -86,7 +86,9 @@ class GetImpayesAgingAction
             }
 
             $state = $this->relanceCalc->getFinancialState($inscription);
-            $soldeRestant = (float) ($state['overdue_amount'] ?? 0);
+            // Même montant que la ligne de la liste des relances : échu + reliquat.
+            $soldeRestant = (float) ($state['overdue_amount'] ?? 0)
+                + $this->relanceCalc->reliquatAnterieur($inscription);
 
             if ($soldeRestant <= 0) {
                 continue;

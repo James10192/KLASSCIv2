@@ -58,8 +58,13 @@ class ESBTPComptabiliteRelanceController extends Controller
         $calcService = app(RelanceCalculationService::class)->preloadForSingle($inscription);
 
         $totalDu         = $calcService->calculerTotalDu($inscription);
-        $totalPaye       = \App\Models\ESBTPPaiement::netStudentPaidFrom($inscription->paiements);
-        $soldeRestant    = max(0, $totalDu - $totalPaye);
+        // Hors versements « reliquat » : ils sont déjà déduits du reliquat ci-dessous.
+        $totalPaye       = \App\Models\ESBTPPaiement::netStudentPaidFrom(
+            $inscription->paiements->reject(fn ($p) => ($p->type_paiement ?? null) === 'reliquat')
+        );
+        // Le reliquat des années précédentes fait partie de ce que l'étudiant doit.
+        $reliquatAnterieur = $calcService->reliquatAnterieur($inscription);
+        $soldeRestant    = max(0, $totalDu - $totalPaye) + $reliquatAnterieur;
         $pourcentagePaye = $totalDu > 0 ? min(100, round($totalPaye / $totalDu * 100)) : 0;
         $fraisImpayés    = $calcService->calculerFraisDetail($inscription);
 
@@ -96,7 +101,7 @@ class ESBTPComptabiliteRelanceController extends Controller
 
         return view('esbtp.comptabilite.relances.etudiant', compact(
             'inscription', 'etudiant',
-            'totalDu', 'totalPaye', 'soldeRestant', 'pourcentagePaye',
+            'totalDu', 'totalPaye', 'soldeRestant', 'pourcentagePaye', 'reliquatAnterieur',
             'fraisImpayés', 'historique',
             'riskLevel', 'riskLabel', 'riskColor',
             'autresInscriptions', 'relancesEnregistrees', 'joursRetard'

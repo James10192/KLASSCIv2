@@ -14,8 +14,8 @@
                     <th>Classe</th>
                     <th>Filière</th>
                     <th>Progression</th>
-                    <th>Total dû</th>
-                    <th>Solde restant</th>
+                    <th title="Frais de l'année en cours">Total de l'année</th>
+                    <th title="Ce qui aurait dû être payé à ce jour (tranches échues et reliquats des années précédentes), moins les paiements validés">À relancer</th>
                     <th>Situation</th>
                     <th>Actions</th>
                 </tr>
