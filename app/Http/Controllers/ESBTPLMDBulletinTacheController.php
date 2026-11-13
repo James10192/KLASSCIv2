@@ -104,6 +104,10 @@ class ESBTPLMDBulletinTacheController extends Controller
             'semestre' => 'required|integer|min:1|max:10',
         ]);
 
+        // Écran LMD : on ne prépare jamais les fiches d'une classe BTS d'ici.
+        $classe = ESBTPClasse::findOrFail($validated['classe_id']);
+        abort_unless(($classe->systeme_academique ?? '') === 'LMD', 422, 'Cette classe est BTS.');
+
         $creees = 0;
         $echecs = 0;
         // Les évaluations portent le semestre sous plusieurs écritures (« 1 »,
