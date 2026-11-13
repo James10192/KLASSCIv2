@@ -13,4 +13,3 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
-- 2026-11-13 · relances · montant à relancer avec reliquats et reste à payer détaillés, tarif LMD par parcours

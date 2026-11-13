@@ -23,6 +23,17 @@ return [
     'titre' => 'Novembre 2026',
     'entrees' => [
         [
+            'titre' => 'Relances : le bon montant, reliquats compris',
+            'icone' => 'fa-bell',
+            'texte' => 'La colonne « À relancer » réclame ce qui devait être payé à ce jour, plus les reliquats des années précédentes encore dus, détaillés sous le montant. Le reste à payer de l’année s’affiche dessous quand il est plus élevé. Le même montant se retrouve dans les messages de relance, le tableau de bord, les exports et la fiche de l’étudiant. En LMD, le tarif suit désormais le parcours de la classe.',
+            'permissions' => ['comptabilite.relances.send', 'comptabilite.dashboard.view'],
+            'captures' => [
+                'apres' => 'images/nouveautes/2026-11/relances-montants-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'La liste des relances, montant à relancer et total de l’année côte à côte.',
+            ],
+        ],
+        [
             'titre' => 'Bulletins LMD : ce qui manque, dit clairement',
             'icone' => 'fa-clipboard-check',
             'texte' => 'Avant de générer les bulletins LMD d’une classe, la fenêtre de contrôle regroupe les problèmes par cause, avec le nombre d’étudiants concernés et le geste à faire. Les bulletins prêts se génèrent sans attendre ceux qui ne le sont pas. Par défaut, le bulletin se calcule dès que les notes sont saisies ; une école qui veut exiger des fiches de notes validées l’active dans Paramètres, onglet LMD. La génération d’une classe se suit avec une barre de progression : vous pouvez fermer la page, une notification arrive à la fin.',
