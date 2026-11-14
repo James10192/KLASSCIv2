@@ -5990,16 +5990,16 @@
         },
         {
             "name": "spatie/browsershot",
-            "version": "5.4.1",
+            "version": "5.4.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/spatie/browsershot.git",
-                "reference": "ac49e212c5ef4b9725589dd95bff7a5f0f92a0b3"
+                "reference": "6e5f1d0a09663532f11c7c4b2695d6378d1f1d1c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/spatie/browsershot/zipball/ac49e212c5ef4b9725589dd95bff7a5f0f92a0b3",
-                "reference": "ac49e212c5ef4b9725589dd95bff7a5f0f92a0b3",
+                "url": "https://api.github.com/repos/spatie/browsershot/zipball/6e5f1d0a09663532f11c7c4b2695d6378d1f1d1c",
+                "reference": "6e5f1d0a09663532f11c7c4b2695d6378d1f1d1c",
                 "shasum": ""
             },
             "require": {
@@ -6046,7 +6046,7 @@
                 "webpage"
             ],
             "support": {
-                "source": "https://github.com/spatie/browsershot/tree/5.4.1"
+                "source": "https://github.com/spatie/browsershot/tree/5.4.2"
             },
             "funding": [
                 {
@@ -6054,7 +6054,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-10-19T07:49:39+00:00"
+            "time": "2026-10-26T11:44:40+00:00"
         },
         {
             "name": "spatie/laravel-permission",
@@ -8295,16 +8295,16 @@
         },
         {
             "name": "symfony/process",
-            "version": "v7.4.21",
+            "version": "v7.4.22",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/process.git",
-                "reference": "e5247f4a5e0797d232ad8e8e6803aeb341843c83"
+                "reference": "a5a6912edbbfc4c98cd080bc4bbe37c8e7eeb20a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/process/zipball/e5247f4a5e0797d232ad8e8e6803aeb341843c83",
-                "reference": "e5247f4a5e0797d232ad8e8e6803aeb341843c83",
+                "url": "https://api.github.com/repos/symfony/process/zipball/a5a6912edbbfc4c98cd080bc4bbe37c8e7eeb20a",
+                "reference": "a5a6912edbbfc4c98cd080bc4bbe37c8e7eeb20a",
                 "shasum": ""
             },
             "require": {
@@ -8336,7 +8336,7 @@
             "description": "Executes commands in sub-processes",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/process/tree/v7.4.21"
+                "source": "https://github.com/symfony/process/tree/v7.4.22"
             },
             "funding": [
                 {
@@ -8356,7 +8356,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-10-08T16:56:12+00:00"
+            "time": "2026-10-25T14:40:16+00:00"
         },
         {
             "name": "symfony/routing",
