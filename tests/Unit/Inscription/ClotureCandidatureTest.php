@@ -74,6 +74,13 @@ class ClotureCandidatureTest extends TestCase
                 return '';
             }
 
+            // Exige par le contrat depuis Laravel 11 : sans elle, la classe
+            // anonyme ne se charge pas et toute la suite s'arrete en fatale.
+            public function getAuthPasswordName()
+            {
+                return 'password';
+            }
+
             public function getRememberToken()
             {
                 return null;
