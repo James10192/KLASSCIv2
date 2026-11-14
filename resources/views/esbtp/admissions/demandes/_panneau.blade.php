@@ -69,9 +69,16 @@
             </strong>
         </div>
         @if($_nouvelle)
-            <div class="dmi-info"><span>Parent ou tuteur</span><strong>{{ $m->tuteur_nom ?: '—' }}@if($m->tuteur_lien) · {{ $m->tuteur_lien }}@endif</strong></div>
+            <div class="dmi-info"><span>Parent ou tuteur</span><strong>{{ $m->tuteurNomComplet() ?: '—' }}@if($m->tuteur_lien) · {{ $m->tuteur_lien }}@endif</strong></div>
         @else
             <div class="dmi-info"><span>E-mail</span><strong>{{ $_etudiant?->email_personnel ?: ($_etudiant?->email ?: '—') }}</strong></div>
+            {{-- Adresse donnée sur le portail, différente du dossier : la convocation y part, le dossier reste tel quel tant que la scolarité ne l'a pas reportée. --}}
+            @php
+                $_emailPortail = trim((string) $m->getAttribute('email_contact'));
+            @endphp
+            @if($_emailPortail !== '' && mb_strtolower($_emailPortail) !== mb_strtolower((string) ($_etudiant?->email_personnel ?: $_etudiant?->email)))
+                <div class="dmi-info"><span>E-mail donné sur le portail</span><strong>{{ $_emailPortail }}@if($m->email_verifie_at ?? null)<span class="dmi-ok"> · vérifié</span>@endif</strong></div>
+            @endif
         @endif
         @if($_nouvelle && ($m->email || $m->tuteur_telephone))
             <div class="dmi-info dmi-info--large"><span>Autres contacts</span><strong>{{ collect([$m->email, $m->tuteur_telephone ? 'tuteur '.(\App\Domain\Notifications\PhoneFormatter::toReadable($m->tuteur_telephone) ?: $m->tuteur_telephone) : null])->filter()->join(' · ') }}</strong></div>

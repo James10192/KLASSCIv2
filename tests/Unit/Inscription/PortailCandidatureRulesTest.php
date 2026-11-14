@@ -281,6 +281,8 @@ class PortailCandidatureRulesTest extends TestCase
         ]));
 
         $this->assertArrayHasKey('tuteur_nom', $echecs);
+        $this->assertArrayHasKey('tuteur_prenoms', $this->echecs($this->candidature(['tuteur_prenoms' => str_repeat('a', 151)])));
+        $this->assertSame([], $this->echecs($this->candidature(['tuteur_prenoms' => 'Jean Marc'])));
     }
 
     /**

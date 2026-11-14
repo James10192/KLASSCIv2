@@ -29,16 +29,22 @@ class ContactDeVerification
     {
         [$email, $telephone] = match (true) {
             $demande instanceof ESBTPCandidature => [$demande->email, $demande->telephone],
-            $demande instanceof ESBTPReinscriptionDemande => [$demande->etudiant?->email_personnel ?: $demande->etudiant?->email, $demande->etudiant?->telephone],
+            $demande instanceof ESBTPReinscriptionDemande => [$demande->emailRdv(), $demande->etudiant?->telephone],
             default => [null, null],
         };
+
+        $numero = PhoneNormalizer::estMobileNational($telephone) ? PhoneNormalizer::toE164($telephone) : null;
+
+        // La famille a demandé WhatsApp (« ChangementCanalVerification ») : on
+        // le lui donne quand le dossier a un mobile, même avec un e-mail joignable.
+        if ($numero !== null && $demande->getAttribute('canal_prefere') === CanalVerification::Telephone->value) {
+            return ['canal' => CanalVerification::Telephone, 'destination' => $numero];
+        }
 
         $email = trim((string) $email);
         if ($email !== '' && $this->emails->analyser($email)->joignable()) {
             return ['canal' => CanalVerification::Email, 'destination' => $email];
         }
-
-        $numero = PhoneNormalizer::estMobileNational($telephone) ? PhoneNormalizer::toE164($telephone) : null;
 
         return $numero === null ? null : ['canal' => CanalVerification::Telephone, 'destination' => $numero];
     }

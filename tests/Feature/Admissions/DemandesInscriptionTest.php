@@ -252,6 +252,17 @@ class DemandesInscriptionTest extends TestCase
         $this->assertSame([$precedente->id, $this->annee->id, $suivante->id], array_column($prep['annees'], 'id'));
     }
 
+    public function test_la_preparation_reprend_nom_et_prenoms_du_tuteur_declares_a_part(): void
+    {
+        $c = $this->candidature(['tuteur_nom' => 'KOFFI', 'tuteur_prenoms' => 'Jean Marc', 'tuteur_telephone' => '0708091011']);
+
+        $prep = $this->actingAs($this->agent)->getJson(route('esbtp.demandes.preparer-inscription', $c))->assertOk()->json();
+
+        $this->assertSame('KOFFI', $prep['tuteur']['nom']);
+        $this->assertSame('Jean Marc', $prep['tuteur']['prenoms']);
+        $this->assertSame('KOFFI Jean Marc', $prep['tuteur']['declare']);
+    }
+
     public function test_la_recherche_de_parents_tolere_l_ordre_les_accents_et_le_format_du_telephone(): void
     {
         $parent = ESBTPParent::create(['nom' => 'KOUAMÉ', 'prenoms' => 'Jean-Marc', 'telephone' => '+2250102030405']);

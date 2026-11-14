@@ -43,6 +43,16 @@ class PortailReinscriptionService
     /** Sentinelle : borne de fenetre presente mais impossible a interpreter. */
     private const BORNE_ILLISIBLE = 'illisible';
 
+    /**
+     * L'effacement de normaliserMatricule(), cote base : espaces et
+     * separateurs visibles. Les espaces insecables et tabulations ne viennent
+     * que d'un collage par la famille, et normaliserMatricule() les retire de
+     * la saisie ; un matricule enregistre par la scolarite n'en contient pas.
+     * Pas de litteral converti (`CONVERT ... USING`) : sa collation par defaut
+     * heurte celle de la colonne (« Illegal mix of collations »).
+     */
+    public const MATRICULE_NORMALISE_SQL = "UPPER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(matricule, ' ', ''), '-', ''), '.', ''), '/', ''), '_', ''))";
+
     public function __construct(private readonly TenantScolariteSettings $reglages) {}
 
     /**
@@ -104,7 +114,8 @@ class PortailReinscriptionService
      */
     public function identifier(string $matricule, string $dateNaissance): ?ESBTPEtudiant
     {
-        $etudiant = ESBTPEtudiant::where('matricule', trim($matricule))->first();
+        $etudiant = ESBTPEtudiant::where('matricule', trim($matricule))->first()
+            ?? $this->parMatriculeNormalise($matricule, $dateNaissance);
 
         if ($etudiant === null || $etudiant->date_naissance === null) {
             return null;
@@ -117,6 +128,47 @@ class PortailReinscriptionService
         return hash_equals($etudiant->date_naissance->toDateString(), $dateNaissance)
             ? $etudiant
             : null;
+    }
+
+    /**
+     * Le matricule tel qu'on le compare : sans espaces ni separateurs, en majuscules.
+     *
+     * Les etudiants tapent « 2024 0413 », « 2024-0413 », « esbtp/24/13 » pour
+     * « ESBTP2413 » ou l'inverse, et un collage depuis WhatsApp ajoute des
+     * espaces insecables. Rien de cela ne distingue deux dossiers dans une
+     * ecole : on l'efface des deux cotes de la comparaison.
+     */
+    public static function normaliserMatricule(mixed $matricule): string
+    {
+        $brut = is_string($matricule) ? $matricule : '';
+
+        return mb_strtoupper((string) preg_replace('/[\s\x{00A0}\x{202F}\-.\/_]+/u', '', $brut), 'UTF-8');
+    }
+
+    /**
+     * Le dossier dont le matricule NORMALISE correspond, et seulement s'il est unique.
+     *
+     * Ce n'est pas une recherche : aucune liste ne sort d'ici. On ne retient
+     * que les dossiers nes ce jour-la ; zero ou plusieurs, c'est « introuvable »
+     * — deviner entre deux homonymes de matricule ouvrirait le dossier d'un
+     * autre. Le repli ne court qu'apres l'echec de la correspondance exacte,
+     * qui reste le chemin indexe de presque toutes les demandes.
+     */
+    private function parMatriculeNormalise(string $matricule, string $dateNaissance): ?ESBTPEtudiant
+    {
+        $normalise = self::normaliserMatricule($matricule);
+
+        if ($normalise === '') {
+            return null;
+        }
+
+        $candidats = ESBTPEtudiant::query()
+            ->whereRaw(self::MATRICULE_NORMALISE_SQL.' = ?', [$normalise])
+            ->whereDate('date_naissance', $dateNaissance)
+            ->limit(2)
+            ->get();
+
+        return $candidats->count() === 1 ? $candidats->first() : null;
     }
 
     /**
@@ -283,9 +335,9 @@ class PortailReinscriptionService
 
     public static function cleDebitMatricule(mixed $matricule): string
     {
-        $normalise = mb_strtolower(trim(is_string($matricule) ? $matricule : ''));
-
-        return 'rp-mat:'.hash('sha256', $normalise);
+        // Forme normalisee : « AB 12 » et « ab-12 » sont le meme dossier, donc
+        // le meme seau. Sinon, varier les separateurs multiplierait les essais.
+        return 'rp-mat:'.hash('sha256', mb_strtolower(self::normaliserMatricule($matricule), 'UTF-8'));
     }
 
     /**

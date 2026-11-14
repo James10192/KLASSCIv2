@@ -17,6 +17,10 @@ Route::prefix('portail/email')
             ->name('api.portail.email.verifier');
         Route::post('/renvoyer', [\App\Http\Controllers\API\Public\VerificationContactPortalController::class, 'renvoyer'])
             ->name('api.portail.email.renvoyer');
+        // Reinscription : recevoir le code par e-mail quand WhatsApp ne passe
+        // pas, ou a une autre adresse. Debit propre par demande (trois par heure).
+        Route::post('/changer-canal', [\App\Http\Controllers\API\Public\VerificationContactPortalController::class, 'changerCanal'])
+            ->name('api.portail.email.changer-canal');
     });
 
 /*
