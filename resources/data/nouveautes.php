@@ -23,6 +23,18 @@ return [
     'titre' => 'Novembre 2026',
     'entrees' => [
         [
+            'titre' => 'Portail en ligne : convocation sous code, code par e-mail',
+            'icone' => 'fa-shield-halved',
+            'texte' => 'Quand la vérification des contacts est activée, une famille ne voit plus sa convocation et ne change plus son créneau sur klassci.com avec la seule date de naissance : un code part d’abord à l’e-mail ou au WhatsApp du dossier. À la réinscription, l’étudiant choisit où recevoir son code et peut donner une autre adresse e-mail quand WhatsApp ne passe pas ; cette adresse s’affiche sur la demande (« E-mail donné sur le portail ») et reçoit la convocation, sans modifier le dossier : reportez-la vous-même si elle est bonne. Un matricule tapé avec des espaces ou des tirets retrouve aussi le bon dossier.',
+            'permissions' => ['reinscriptions.demandes.view', 'reinscriptions.demandes.process', 'inscriptions.candidatures.process'],
+        ],
+        [
+            'titre' => 'Tuteur : nom et prénoms déjà séparés',
+            'icone' => 'fa-user-group',
+            'texte' => 'Le formulaire de candidature en ligne demande désormais le nom et les prénoms du parent ou tuteur à part. À l’inscription, « Reprendre ce tuteur » remplit les deux champs : plus besoin de redécouper le nom. Les candidatures déjà reçues gardent tout dans le nom.',
+            'permissions' => ['inscriptions.candidatures.process', 'inscriptions.create'],
+        ],
+        [
             'titre' => 'Relances : le bon montant, reliquats compris',
             'icone' => 'fa-bell',
             'texte' => 'La colonne « À relancer » réclame ce qui devait être payé à ce jour, plus les reliquats des années précédentes encore dus, détaillés sous le montant. Le reste à payer de l’année s’affiche dessous quand il est plus élevé. Le même montant se retrouve dans les messages de relance, le tableau de bord, les exports et la fiche de l’étudiant. En LMD, le tarif suit désormais le parcours de la classe.',
