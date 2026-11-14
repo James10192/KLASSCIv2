@@ -82,7 +82,9 @@ class VerificationWhatsappInverseTest extends TestCase
 
         $approuvee = true;
         $this->statut(['canal' => 'telephone', 'demande_id' => $verification->demandeId])
-            ->assertOk()->assertExactJson(['verifie' => true, 'type' => 'candidature']);
+            ->assertOk()->assertJson(['verifie' => true, 'type' => 'candidature'])
+            // Le contact prouve ouvre aussi la convocation de ce dossier, sans second code.
+            ->assertJsonStructure(['jeton_acces']);
         $this->assertNotNull($candidature->fresh()->telephone_verifie_at);
 
         // Deja verifiee : repond sans rappeler MailPulse.

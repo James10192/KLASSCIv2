@@ -78,7 +78,9 @@ qu'au code qui l'a vérifiée (ou à son lien).
 Corps : `{"canal":"email"|"telephone","jeton":"…"}` ou `{"canal","demande_id","code":"123456"}`.
 `canal` absent = `email` ; toute autre valeur est refusée.
 
-- `200 {"verifie":true,"type":"candidature"|"reinscription"}`
+- `200 {"verifie":true,"type":"candidature"|"reinscription","jeton_acces":"…"}` — `jeton_acces` ouvre la
+  convocation de ce dossier sans second code (voir PUBLIC_RENDEZ_VOUS.md, « Accès vérifié »).
+- `200 {"verifie":true,"type":"rendez_vous","reference","jeton_acces"}` pour un code d'accès à une convocation.
 - `422 {"verifie":false,"motif":"code_invalide"|"expire"|"trop_de_tentatives"}`
   (demande inconnue = `code_invalide` ; vérification WhatsApp inconnue de MailPulse = `expire`)
 - `503 {"verifie":false,"motif":"indisponible"}` : MailPulse n'a pas pu contrôler un code WhatsApp.
@@ -89,6 +91,21 @@ Corps : `{"canal","demande_id"}`. `202 {"envoye":true}` (y compris pour une dema
 inconnue), `429 {"envoye":false,"retry_after":<s>}` au-delà d'un renvoi par minute
 ou cinq par heure et par demande (ou quand MailPulse limite : son `retry_after` est
 rendu tel quel), `422` si `canal` n'est ni `email` ni `telephone`.
+
+## `POST /api/portail/email/changer-canal`
+
+Réinscription seulement. Corps : `{"demande_id","canal":"email"|"telephone","email"?}`.
+« Je ne reçois rien sur WhatsApp » : la vérification en cours repart sur le canal demandé, à
+l'adresse du dossier ou à `email` (rangée sur la demande, `email_contact`, jamais sur
+l'étudiant). Même `demande_id`.
+
+- `200 {"envoye":true,"statut":"verification_email_requise","demande_id","email_masque"}`
+- `422 {"envoye":false,"motif":"email_invalide"|"canal_indisponible"|"code_invalide"}`
+- `429 {"envoye":false,"motif":"trop_de_tentatives","retry_after"}` : trois changements par heure et par demande.
+- `503 {"envoye":false,"motif":"indisponible"}`
+
+Le dépôt (`public/reinscription/submit`) accepte aussi `email` et `canal` facultatifs, et la
+consultation (`lookup`) rend `verification` (réglage actif) et `contacts` masqués.
 
 ## WhatsApp
 
@@ -154,3 +171,4 @@ de vérification pour un envoi échoué.
 - 2026-09-23 : une demande visible n'est jamais masquée ; masquage après envoi seulement ; expiration à 48 h ; plafond cumulé de 15 tentatives.
 - 2026-09-24 : **changement de comportement** : vérification derrière le réglage `inscriptions.portail.verification_contact` (désactivé par défaut) ; plus aucun masquage (ni portée globale, ni expiration à 48 h, ni `verification_expiree`) : la demande reste visible, marquée, filtrable.
 - 2026-10-01 : vérification WhatsApp inversée (réglage `verification_whatsapp_inverse`), champ `lien_whatsapp`, route `statut`.
+- 2026-11-14 : `changer-canal` ; `email`/`canal` au dépôt de réinscription ; `jeton_acces` dans la réponse de vérification ; codes d'accès aux convocations reconnus par `verifier`/`renvoyer`.

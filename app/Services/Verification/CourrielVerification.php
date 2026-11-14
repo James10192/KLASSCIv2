@@ -41,6 +41,33 @@ class CourrielVerification
         ]);
     }
 
+    /**
+     * Le code qui ouvre la convocation d'un dossier (`AccesRendezVous`).
+     *
+     * Un code seul, sans lien : il se saisit sur la page deja ouverte, et un
+     * lien qui ouvrirait la convocation depuis la boite de reception vaudrait
+     * moins qu'un code saisi la ou on l'a demande.
+     */
+    public function expedierCodeAcces(string $email, string $code, int $minutes): MailPulseResult
+    {
+        $donnees = ['minutes' => $minutes] + $this->donnees($code, '');
+        $donnees['sujet'] = 'Votre code pour voir votre convocation · '.$donnees['schoolName'];
+        $texte = $donnees['sujet']."\n\nVotre code : ".$code."\n\nIl expire dans ".$minutes.' minutes.'
+            ."\nSi vous n'êtes pas à l'origine de cette demande, ignorez ce message.";
+
+        return $this->mailpulse->sendEmailMessage([
+            'channel' => 'email',
+            'recipient' => ['type' => 'email', 'value' => $email],
+            'content' => ['type' => 'text', 'text' => $texte],
+            'metadata' => [
+                'source' => 'klassci',
+                'workflow_event' => 'acces_rendez_vous',
+                'subject' => $donnees['sujet'],
+                'email_html' => View::make('esbtp.emails.acces-rendez-vous', $donnees)->render(),
+            ],
+        ]);
+    }
+
     public static function lien(string $jeton): string
     {
         $ecole = strtolower(trim((string) config('app.tenant_code', '')));

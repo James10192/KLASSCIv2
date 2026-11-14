@@ -63,7 +63,9 @@ class VerificationContactTest extends TestCase
 
         $this->verifier(['demande_id' => $verification->demandeId, 'code' => $this->codeEnvoye()])
             ->assertOk()
-            ->assertExactJson(['verifie' => true, 'type' => 'candidature']);
+            ->assertJson(['verifie' => true, 'type' => 'candidature'])
+            // Le contact prouve ouvre aussi la convocation de ce dossier, sans second code.
+            ->assertJsonStructure(['jeton_acces']);
 
         $this->assertSame(1, ESBTPCandidature::query()->count());
         $this->assertNotNull($candidature->fresh()->email_verifie_at);
@@ -139,7 +141,9 @@ class VerificationContactTest extends TestCase
         $this->verifier(['demande_id' => $verification->demandeId, 'code' => '123456'])->assertStatus(422);
 
         $this->verifier(['canal' => 'telephone', 'demande_id' => $verification->demandeId, 'code' => '123456'])
-            ->assertOk()->assertExactJson(['verifie' => true, 'type' => 'candidature']);
+            ->assertOk()->assertJson(['verifie' => true, 'type' => 'candidature'])
+            // Le contact prouve ouvre aussi la convocation de ce dossier, sans second code.
+            ->assertJsonStructure(['jeton_acces']);
         $this->assertNotNull($candidature->fresh()->telephone_verifie_at);
     }
 

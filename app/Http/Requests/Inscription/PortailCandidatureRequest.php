@@ -177,6 +177,10 @@ class PortailCandidatureRequest extends FormRequest
             // 100, comme `parents[*][nom]` cote ecole : le bouton « Reprendre
             // ce tuteur » y recopie cette valeur telle quelle.
             'tuteur_nom' => ['nullable', 'string', 'max:100'],
+            // Les prenoms a part : l'ecole cree le parent avec un nom ET des
+            // prenoms, et un champ unique laissait les prenoms a ressaisir.
+            // 150, comme `parents[*][prenoms]` cote ecole.
+            'tuteur_prenoms' => ['nullable', 'string', 'max:150'],
             'tuteur_telephone' => ['nullable', 'string', 'max:30'],
             // Liste fermee, la meme que le formulaire de l'ecole : le champ
             // etait libre, et sa valeur atterrit dans un menu deroulant a quatre

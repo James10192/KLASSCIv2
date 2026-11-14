@@ -6,10 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Reinscription\PortailRequest;
 use App\Http\Requests\Reinscription\PortailSubmitRequest;
 use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPReinscriptionDemande;
+use App\Services\Emails\AnalyseurEmail;
 use App\Services\Inscription\PortailCandidaturePublication;
 use App\Services\Reinscription\PortailReinscriptionService;
 use App\Services\Reinscription\SituationReinscription;
 use App\Services\Verification\DemarrageVerification;
+use App\Services\Verification\MasqueContact;
+use App\Support\ColonnesDeployees;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -26,9 +30,11 @@ use Illuminate\Support\Facades\RateLimiter;
  *    date ne correspond pas » et « il existe mais n'a rien a reinscrire »
  *    rendent exactement la meme reponse. Distinguer ces cas donnerait un
  *    oracle pour enumerer les matricules.
- * 2. Aucune donnee financiere, aucune identite complete, aucun motif de refus
- *    detaille. Le facteur d'identification est faible, donc il ne doit rien
- *    proteger de sensible.
+ * 2. Aucune donnee financiere, aucun motif de refus detaille. Le facteur
+ *    d'identification est faible, donc il ne doit rien proteger de sensible.
+ *    Le nom complet sort depuis novembre 2026 : sans lui, deux etudiants au
+ *    meme prenom ne savaient pas s'ils tenaient leur dossier. Contacts
+ *    seulement masques.
  */
 class ReinscriptionPortalController extends Controller
 {
@@ -50,9 +56,17 @@ class ReinscriptionPortalController extends Controller
 
         return response()->json([
             'trouve' => true,
-            // Prenom seul : de quoi confirmer « c'est bien moi » sans exposer
-            // une identite complete a qui aurait devine le couple.
+            // `prenom` reste pour les sites pas encore a jour. Le nom complet
+            // sert a se reconnaitre entre homonymes de prenom ; il ne sort
+            // qu'apres un matricule ET une date de naissance exacts, comme
+            // la convocation elle-meme.
             'prenom' => $this->prenomAbrege($situation->etudiant),
+            'nom' => trim((string) $situation->etudiant->nom),
+            'prenoms' => trim((string) $situation->etudiant->prenoms),
+            // Ou partira le code de confirmation, masque : la famille sait
+            // d'avance si c'est la bonne adresse, et peut en donner une autre.
+            'contacts' => $this->contactsMasques($situation->etudiant),
+            'verification' => app(DemarrageVerification::class)->active(),
             'classe_actuelle' => $situation->classeActuelle(),
             'annee_cible' => $situation->anneeCibleLibelle(),
             'eligible' => $situation->eligible(),
@@ -80,6 +94,10 @@ class ReinscriptionPortalController extends Controller
         }
 
         RateLimiter::clear(PortailReinscriptionService::cleDebitMatricule($donnees['matricule']));
+
+        if (($refus = $this->retenirContact($demande, $donnees)) !== null) {
+            return $refus;
+        }
 
         // Une reinscription se finalise SUR PLACE, elle aussi.
         //
@@ -142,6 +160,50 @@ class ReinscriptionPortalController extends Controller
             'trouve' => false,
             'message' => 'Aucun dossier ne correspond. Vérifiez votre matricule et votre date de naissance, ou rapprochez-vous de votre établissement.',
         ]);
+    }
+
+    /**
+     * L'adresse et le canal choisis par la famille, ranges sur la DEMANDE
+     * avant que le code ne parte. Jamais sur le dossier : voir
+     * ChangementCanalVerification.
+     *
+     * @param  array<string, mixed>  $donnees
+     */
+    private function retenirContact(ESBTPReinscriptionDemande $demande, array $donnees): ?JsonResponse
+    {
+        $email = trim((string) ($donnees['email'] ?? ''));
+        if ($email !== '' && ! app(AnalyseurEmail::class)->analyser($email)->joignable()) {
+            return response()->json([
+                'message' => 'Cette adresse e-mail ne peut pas recevoir de message.',
+                'errors' => ['email' => ['Cette adresse e-mail ne peut pas recevoir de message.']],
+            ], 422);
+        }
+
+        $champs = [];
+        if ($email !== '' && ColonnesDeployees::existe('esbtp_reinscription_demandes', 'email_contact')) {
+            $champs['email_contact'] = mb_strtolower($email);
+        }
+        if (! empty($donnees['canal']) && ColonnesDeployees::existe('esbtp_reinscription_demandes', 'canal_prefere')) {
+            $champs['canal_prefere'] = (string) $donnees['canal'];
+        }
+        if ($champs !== []) {
+            $demande->forceFill($champs)->save();
+        }
+
+        return null;
+    }
+
+    /** @return array{email_masque: ?string, telephone_masque: ?string} */
+    private function contactsMasques(ESBTPEtudiant $etudiant): array
+    {
+        $email = trim((string) ($etudiant->email_personnel ?: $etudiant->email));
+        $joignable = $email !== '' && app(AnalyseurEmail::class)->analyser($email)->joignable();
+        $mobile = \App\Domain\Notifications\PhoneNormalizer::estMobileNational($etudiant->telephone);
+
+        return [
+            'email_masque' => $joignable ? MasqueContact::email($email) : null,
+            'telephone_masque' => $mobile ? MasqueContact::telephone(\App\Domain\Notifications\PhoneNormalizer::toE164($etudiant->telephone)) : null,
+        ];
     }
 
     private function prenomAbrege(ESBTPEtudiant $etudiant): string

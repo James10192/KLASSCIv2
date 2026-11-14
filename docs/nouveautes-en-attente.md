@@ -13,3 +13,5 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+
+- 2026-11-14 · PR à ouvrir · Portail klassci.com : convocation ouverte par un code, code de réinscription par e-mail ou à une nouvelle adresse (visible dans le panneau de la demande), prénoms du tuteur à part, matricule retrouvé malgré espaces et tirets

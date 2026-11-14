@@ -11,6 +11,7 @@ use App\Models\ESBTPReinscriptionDemande;
 use App\Models\ESBTPRdvCreneau;
 use App\Models\ESBTPRdvReservation;
 use App\Services\Portail\ReferencePublique;
+use App\Services\Reinscription\PortailReinscriptionService;
 use App\Support\IdentitePersonne;
 use App\Support\SeauDeDebit;
 use Carbon\Carbon;
@@ -316,11 +317,19 @@ class ReservateurRdv
             return $candidature->assurerReferencePublique();
         }
 
+        // Le matricule se compare sans ses espaces ni separateurs, comme a
+        // l'identification de la reinscription : « 2024 0413 » retrouve
+        // « 2024-0413 ». La date de naissance reste exigee a cote.
+        $matriculeNormalise = PortailReinscriptionService::normaliserMatricule($identifiant);
+
         $demande = ESBTPReinscriptionDemande::query()
-            ->whereHas('etudiant', function ($q) use ($identifiant, $telephones, $naissance) {
-                $q->where(function ($inner) use ($identifiant, $telephones) {
+            ->whereHas('etudiant', function ($q) use ($identifiant, $telephones, $naissance, $matriculeNormalise) {
+                $q->where(function ($inner) use ($identifiant, $telephones, $matriculeNormalise) {
                     $inner->where('matricule', $identifiant)
                         ->orWhereIn('telephone', $telephones);
+                    if ($matriculeNormalise !== '') {
+                        $inner->orWhereRaw(PortailReinscriptionService::MATRICULE_NORMALISE_SQL.' = ?', [$matriculeNormalise]);
+                    }
                 })->whereDate('date_naissance', $naissance);
             })
             ->latest('id')

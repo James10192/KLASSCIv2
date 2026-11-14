@@ -7,9 +7,11 @@ use App\Http\Requests\RendezVous\PortailRdvCreneauRequest;
 use App\Http\Requests\RendezVous\PortailRdvRequest;
 use App\Http\Requests\RendezVous\PortailRdvRetrouverRequest;
 use App\Models\ESBTPRdvReservation;
+use App\Services\RendezVous\AccesRendezVous;
 use App\Services\RendezVous\CatalogueCreneaux;
 use App\Services\RendezVous\ConvocationRdvPdf;
 use App\Services\RendezVous\FileConvocationsRdv;
+use App\Services\RendezVous\JetonAccesRdv;
 use App\Services\Portail\ReferencePublique;
 use App\Services\RendezVous\RendezVousReglages;
 use App\Services\RendezVous\ReservateurRdv;
@@ -25,6 +27,7 @@ class RendezVousPortalController extends Controller
         private readonly FileConvocationsRdv $convocations,
         private readonly ConvocationRdvPdf $pdf,
         private readonly RendezVousReglages $reglages,
+        private readonly AccesRendezVous $acces,
     ) {
     }
 
@@ -37,6 +40,9 @@ class RendezVousPortalController extends Controller
     {
         $donnees = $request->validated();
         if (($refus = $this->seauPlein($donnees['reference'])) !== null) {
+            return $refus;
+        }
+        if (($refus = $this->accesRefuse($donnees)) !== null) {
             return $refus;
         }
 
@@ -67,6 +73,20 @@ class RendezVousPortalController extends Controller
 
         RateLimiter::clear(ReservateurRdv::seauParReference($donnees['reference'])->cle);
 
+        // Dossier identifie, mais l'acces se prouve : un code part vers son
+        // contact, et rien de la convocation ne sort avant.
+        if (! $this->accesOuvert($donnees)) {
+            if (! empty($donnees['sans_code'])) {
+                return response()->json(['trouve' => true, 'statut' => 'verification_requise']);
+            }
+
+            $porteur = $this->reservateur->porteurConcordant($donnees['reference'], $donnees['date_naissance']);
+
+            return $porteur === null
+                ? $this->introuvable($donnees['reference'])
+                : response()->json($this->acces->demarrer($porteur, $donnees['reference']));
+        }
+
         $reservation = $lecture['reservation'];
 
         return response()->json([
@@ -85,6 +105,10 @@ class RendezVousPortalController extends Controller
     {
         $donnees = $request->validated();
         if (($refus = $this->seauPlein($donnees['reference'])) !== null) {
+            return $refus;
+        }
+
+        if (($refus = $this->accesRefuse($donnees)) !== null) {
             return $refus;
         }
 
@@ -113,6 +137,9 @@ class RendezVousPortalController extends Controller
         if (($refus = $this->seauPlein($donnees['reference'])) !== null) {
             return $refus;
         }
+        if (($refus = $this->accesRefuse($donnees)) !== null) {
+            return $refus;
+        }
 
         $resultat = $this->reservateur->deplacer(
             $donnees['reference'],
@@ -127,6 +154,9 @@ class RendezVousPortalController extends Controller
     {
         $donnees = $request->validated();
         if (($refus = $this->seauPlein($donnees['reference'])) !== null) {
+            return $refus;
+        }
+        if (($refus = $this->accesRefuse($donnees)) !== null) {
             return $refus;
         }
         $resultat = $this->reservateur->annuler($donnees['reference'], $donnees['date_naissance']);
@@ -155,6 +185,27 @@ class RendezVousPortalController extends Controller
             'trouve' => true,
             'reference' => $this->references->formater($reference),
         ]);
+    }
+
+    /**
+     * L'acces a ce dossier est-il prouve ? Toujours, quand l'ecole n'a pas
+     * active la verification du contact : le portail garde alors son
+     * fonctionnement d'avant.
+     *
+     * @param  array<string, mixed>  $donnees
+     */
+    private function accesOuvert(array $donnees): bool
+    {
+        return ! $this->acces->exige()
+            || JetonAccesRdv::valide($donnees['jeton_acces'] ?? null, $this->references->normaliser((string) $donnees['reference']));
+    }
+
+    /** @param  array<string, mixed>  $donnees */
+    private function accesRefuse(array $donnees): ?JsonResponse
+    {
+        return $this->accesOuvert($donnees)
+            ? null
+            : response()->json(['ok' => false, 'code' => 'verification_requise'], 403);
     }
 
     /**

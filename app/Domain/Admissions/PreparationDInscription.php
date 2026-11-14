@@ -62,16 +62,16 @@ class PreparationDInscription
                 'commune' => (string) $c->commune,
             ],
             'tuteur' => [
-                'declare' => trim((string) $c->tuteur_nom),
+                'declare' => $c->tuteurNomComplet(),
                 'nom' => trim((string) $c->tuteur_nom),
-                'prenoms' => '',
+                'prenoms' => trim((string) $c->tuteur_prenoms),
                 'telephone' => PhoneFormatter::toReadable($c->tuteur_telephone) ?: (string) $c->tuteur_telephone,
                 'relation' => ESBTPCandidature::relationTuteurNormalisee($c->tuteur_lien),
                 'profession' => (string) $c->tuteur_profession,
             ],
             // Le parent revient souvent pour un deuxieme enfant, parfois saisi
             // deux fois : on montre ceux qui lui ressemblent avant d'en creer un.
-            'parents_proches' => $this->parents->proches($c->tuteur_nom, $c->tuteur_telephone),
+            'parents_proches' => $this->parents->proches($c->tuteurNomComplet(), $c->tuteur_telephone),
             'annees' => $this->annees($c->annee_universitaire_id),
             'url_classes' => route('esbtp.demandes.classes-annee', $c),
             'doublons' => $this->doublons($c),

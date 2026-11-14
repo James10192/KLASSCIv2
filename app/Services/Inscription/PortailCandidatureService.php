@@ -98,6 +98,7 @@ class PortailCandidatureService
             'annee_bac' => $champs['annee_bac'] ?? null,
             'affectation_status' => $champs['affectation_status'] ?? null,
             'tuteur_nom' => $champs['tuteur_nom'] ?? null,
+            'tuteur_prenoms' => $champs['tuteur_prenoms'] ?? null,
             'tuteur_telephone' => $champs['tuteur_telephone'] ?? null,
             'tuteur_lien' => $champs['tuteur_lien'] ?? null,
             'tuteur_profession' => $champs['tuteur_profession'] ?? null,

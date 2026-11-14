@@ -120,6 +120,18 @@ class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
     }
 
     /**
+     * « NOM Prénoms » du tuteur, tel qu'un agent le lit.
+     *
+     * Le portail demande nom et prénoms à part depuis novembre 2026 ; une
+     * candidature plus ancienne n'a que `tuteur_nom`, qui contient souvent les
+     * deux. Avant la migration, la colonne n'existe pas et l'attribut vaut null.
+     */
+    public function tuteurNomComplet(): string
+    {
+        return trim(trim((string) $this->tuteur_nom).' '.trim((string) $this->getAttribute('tuteur_prenoms')));
+    }
+
+    /**
      * Le lien declare, ramene aux quatre options du formulaire d'inscription.
      *
      * Cote portail, « Lien avec vous » est un champ LIBRE : on y lit « père »,
@@ -213,7 +225,7 @@ class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
         // du lycee.
         'est_transfert', 'etablissement_sup_origine', 'formation_origine',
         'niveau_atteint_origine', 'redouble_niveau_origine', 'annee_derniere_inscription', 'motif_transfert',
-        'tuteur_nom', 'tuteur_telephone', 'tuteur_lien', 'tuteur_profession',
+        'tuteur_nom', 'tuteur_prenoms', 'tuteur_telephone', 'tuteur_lien', 'tuteur_profession',
         'message', 'statut', 'consentement_at', 'ip_hash',
         'motif_rejet', 'traite_par', 'traite_at',
         'etudiant_id', 'inscription_id',
