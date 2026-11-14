@@ -29,7 +29,7 @@
         "setasign/fpdf": "^1.8",
         "setasign/fpdi": "^2.6",
         "spatie/browsershot": "^5.0",
-        "spatie/laravel-permission": "^6.0"
+        "spatie/laravel-permission": "^8.4"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",
