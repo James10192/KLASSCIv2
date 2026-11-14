@@ -56,7 +56,7 @@
                              et il obtient les quatre champs d'un coup, à ajuster. --}}
                         @if($candidatureSource->tuteur_nom || $candidatureSource->tuteur_telephone)
                             <br>Tuteur déclaré :
-                            {{ $candidatureSource->tuteur_nom ?: '—' }}@if($candidatureSource->tuteur_lien) ({{ $candidatureSource->tuteur_lien }})@endif
+                            {{ $candidatureSource->tuteurNomComplet() ?: '—' }}@if($candidatureSource->tuteur_lien) ({{ $candidatureSource->tuteur_lien }})@endif
                             @if($candidatureSource->tuteur_telephone)
                                 &middot; {{ \App\Domain\Notifications\PhoneFormatter::toReadable($candidatureSource->tuteur_telephone) ?: $candidatureSource->tuteur_telephone }}
                             @endif
@@ -72,6 +72,7 @@
 
                                 $_tuteurRepris = [
                                     'nom' => (string) $candidatureSource->tuteur_nom,
+                                    'prenoms' => (string) $candidatureSource->tuteur_prenoms,
                                     'telephone' => mb_strlen($_telTuteur) <= 20 ? $_telTuteur : '',
                                     'relation' => \App\Models\ESBTPCandidature::relationTuteurNormalisee($candidatureSource->tuteur_lien),
                                     'profession' => (string) $candidatureSource->tuteur_profession,
@@ -1005,9 +1006,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // prénoms, téléphone et relation obligatoires dès qu'un seul d'entre eux
     // porte une valeur. Un pré-remplissage partiel — le téléphone sans le
     // nom — rendait donc le nom obligatoire sans le remplir, sous une section
-    // annoncée « optionnelle ». Ici les quatre partent ensemble, et l'agent
-    // finit de répartir nom et prénoms, que la candidature collecte en un seul
-    // champ.
+    // annoncée « optionnelle ». Ici tout part ensemble. Les candidatures
+    // récentes déclarent nom et prénoms à part ; pour les anciennes, qui
+    // n'avaient qu'un champ, l'agent finit de répartir.
     const boutonTuteur = document.getElementById('reprendreTuteur');
 
     if (boutonTuteur) {
@@ -1047,6 +1048,7 @@ document.addEventListener('DOMContentLoaded', function() {
             };
 
             poser('nom', tuteur.nom);
+            poser('prenoms', tuteur.prenoms);
             poser('telephone', tuteur.telephone);
             poser('relation', tuteur.relation);
             poser('profession', tuteur.profession);

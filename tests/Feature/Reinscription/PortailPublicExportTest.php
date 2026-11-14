@@ -124,9 +124,16 @@ class PortailPublicExportTest extends TestCase
             );
         }
 
-        // Ni identite complete : le prenom seul suffit a confirmer « c'est moi ».
-        $this->assertStringNotContainsString('KOUASSI', json_encode($corps));
-        $this->assertStringNotContainsString('Grace', json_encode($corps));
+        // Le nom complet sort depuis novembre 2026 (deux camarades au meme
+        // prenom ne savaient pas s'ils tenaient leur dossier) ; les contacts,
+        // eux, ne sortent que masques.
+        $reponse->assertJson(['nom' => 'KOUASSI', 'prenoms' => 'Ama Grace']);
+        $etudiant = \App\Models\ESBTPEtudiant::query()->where('matricule', 'DEMO-0001')->sole();
+        foreach ([$etudiant->email, $etudiant->email_personnel, $etudiant->telephone] as $contact) {
+            if (trim((string) $contact) !== '') {
+                $this->assertStringNotContainsString((string) $contact, json_encode($corps, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            }
+        }
     }
 
     public function test_matricule_inconnu_et_date_fausse_rendent_la_meme_reponse(): void

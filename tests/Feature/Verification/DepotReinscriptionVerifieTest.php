@@ -90,7 +90,9 @@ class DepotReinscriptionVerifieTest extends TestCase
         $this->assertSame(1, ESBTPReinscriptionDemande::query()->count());
 
         $this->appeler('api/portail/email/verifier', ['canal' => 'email', 'demande_id' => $demandeId, 'code' => $this->dernierCode()])
-            ->assertOk()->assertExactJson(['verifie' => true, 'type' => 'reinscription']);
+            ->assertOk()->assertJson(['verifie' => true, 'type' => 'reinscription'])
+            // Le contact prouve ouvre aussi la convocation de ce dossier, sans second code.
+            ->assertJsonStructure(['jeton_acces']);
 
         $this->assertSame(1, ESBTPReinscriptionDemande::query()->count());
         $this->appeler('api/public/reinscription/lookup', $identite)->assertJson(['demande_existante' => true]);

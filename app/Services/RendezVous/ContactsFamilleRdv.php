@@ -25,7 +25,8 @@ class ContactsFamilleRdv
     {
         return [
             'candidature:'.implode(',', ['id', 'statut', 'reference_publique', 'tuteur_nom', 'tuteur_telephone', 'tuteur_lien',
-                ...ColonnesDeployees::si('esbtp_candidatures', 'verification_contact')]),
+                ...ColonnesDeployees::si('esbtp_candidatures', 'verification_contact'),
+                ...ColonnesDeployees::si('esbtp_candidatures', 'tuteur_prenoms')]),
             'demande:'.implode(',', ['id', 'statut', 'etudiant_id', 'reference_publique',
                 ...ColonnesDeployees::si('esbtp_reinscription_demandes', 'verification_contact')]),
             'demande.etudiant:id,nom,prenoms,matricule',
@@ -41,7 +42,7 @@ class ContactsFamilleRdv
             $lien = trim((string) $candidature->tuteur_lien);
 
             return [
-                'nom' => trim((string) $candidature->tuteur_nom).($lien !== '' ? ' ('.$lien.')' : ''),
+                'nom' => $candidature->tuteurNomComplet().($lien !== '' ? ' ('.$lien.')' : ''),
                 'telephone' => (string) $candidature->tuteur_telephone,
             ];
         }

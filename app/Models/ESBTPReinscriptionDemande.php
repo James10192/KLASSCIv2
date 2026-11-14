@@ -199,8 +199,12 @@ class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRen
 
     public function emailRdv(): ?string
     {
-        // Meme ordre que ContactDeVerification : l'adresse personnelle d'abord.
-        return $this->etudiant?->email_personnel ?: $this->etudiant?->email;
+        // L'adresse donnee sur le portail (ChangementCanalVerification)
+        // d'abord : c'est celle que la famille lit, et celle qu'elle confirme
+        // par code. Puis, comme ContactDeVerification, l'adresse personnelle.
+        $donnee = trim((string) $this->getAttribute('email_contact'));
+
+        return $donnee !== '' ? $donnee : ($this->etudiant?->email_personnel ?: $this->etudiant?->email);
     }
 
     public function typeDemandePublique(): string
