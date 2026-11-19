@@ -11,10 +11,8 @@
         <i :class="readiness.ok ? 'fas fa-circle-check juy-prep__ok' : 'fas fa-list-check'"></i>
         <div>
             <h2 id="juy-prep-titre" class="juy-prep__titre" x-text="readiness.ok ? 'Prêt pour le procès-verbal' : 'Avant le procès-verbal'"></h2>
-            <p class="juy-prep__sous" x-show="!readiness.ok">
-                <span x-text="(readiness.etapes || []).filter(e => e.ok).length"></span>
-                étape(s) sur <span x-text="(readiness.etapes || []).length"></span> terminée(s). « Générer PV » s’active quand tout est vert.
-            </p>
+            <p class="juy-prep__sous" x-show="!readiness.ok"
+               x-text="(() => { const e = readiness.etapes || []; const n = e.filter(x => x.ok).length; return (n <= 1 ? n + ' étape terminée' : n + ' étapes terminées') + ' sur ' + e.length + '. « Générer PV » s’active quand tout est vert.'; })()"></p>
         </div>
     </header>
 
@@ -37,6 +35,14 @@
                         @click="tab = etape.onglet; $nextTick(() => document.querySelector('.juy-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))">
                     Corriger <i class="fas fa-arrow-right"></i>
                 </button>
+                @can('academic_pilotage.view')
+                {{-- L'étape « notes » se règle hors de l'écran du jury : dans les fiches de notes. --}}
+                <a href="{{ route('esbtp.pilotage-academique.fiches') }}" target="_blank" rel="noopener"
+                   class="juy-prep__aller h-11" style="display:inline-flex;align-items:center;gap:.35rem;text-decoration:none;"
+                   x-show="!etape.ok && etape.cle === 'notes'">
+                    Ouvrir les fiches de notes <i class="fas fa-arrow-up-right-from-square"></i>
+                </a>
+                @endcan
             </li>
         </template>
     </ol>

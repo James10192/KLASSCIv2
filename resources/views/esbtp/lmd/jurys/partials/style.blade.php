@@ -63,7 +63,6 @@
 .juy-actions-bar > .pv-numero{margin-left:auto;font-family:'Courier New',monospace;font-size:.85rem;color:#0453cb;font-weight:700;background:rgba(4,83,203,.08);padding:.35rem .65rem;border-radius:7px;}
 .juy-readiness{display:flex;align-items:flex-start;gap:.65rem;padding:.8rem 1rem;border-radius:12px;margin-bottom:1.25rem;font-size:.82rem;border:1px solid;}
 .juy-readiness--ok{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.25);color:#047857;}
-.juy-readiness--ko{background:#fff7ed;border-color:#fed7aa;color:#9a3412;}
 /* Préparation du PV : une étape = une ligne, un bouton vers l'onglet qui la règle. */
 .juy-prep{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:1rem 1.25rem;margin-bottom:1.25rem;}
 .juy-prep__tete{display:flex;align-items:flex-start;gap:.65rem;color:#0453cb;}
