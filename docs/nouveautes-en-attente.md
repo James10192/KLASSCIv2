@@ -14,5 +14,5 @@ Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
 
-- 2026-11-19 · #à venir · Jury LMD : boutons « PV détaillé du semestre » (PDF et Excel), au format des PV tenus sous Excel par les universités
+- 2026-11-19 · #1816 · Jury LMD : boutons « PV détaillé du semestre » (PDF et Excel), au format des PV tenus sous Excel par les universités
 
