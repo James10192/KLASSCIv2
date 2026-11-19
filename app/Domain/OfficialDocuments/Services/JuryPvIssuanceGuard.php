@@ -21,46 +21,74 @@ class JuryPvIssuanceGuard
     {
         $jury = ESBTPLMDJury::query()->lockForUpdate()->findOrFail($juryId);
         $this->assertJuryStatus($jury, $rectification);
-        $this->lockScopeLabels($jury);
-
-        $members = $jury->membres()->orderBy('id')->lockForUpdate()->get();
-        $decisions = $jury->decisions()->orderBy('etudiant_id')->lockForUpdate()->get();
-        $bulletins = ESBTPLMDBulletin::query()->forJury($jury)->orderBy('etudiant_id')->lockForUpdate()->get();
-        $sheets = $this->gradeSheetQuery($jury)->orderBy('id')->lockForUpdate()->get();
-        $this->lockIdentities($members, $decisions);
-
-        $reasons = array_merge(
-            $this->quorumReasons($members),
-            $this->signatureReasons($members),
-            $this->cohortReasons($bulletins, $decisions),
-            $this->concordanceReasons($bulletins, $decisions),
-            $this->gradeSheetReasons($sheets),
-        );
+        $state = $this->charger($jury);
+        $reasons = array_merge(...array_values($this->raisonsParEtapeDeLEtat($state)));
 
         if ($reasons !== []) {
             throw new JuryPvNotIssuableException($reasons);
         }
 
-        $jury->setRelation('membres', $members->load('user'));
-        $jury->setRelation('decisions', $decisions->load('etudiant'));
+        $jury->setRelation('membres', $state['members']->load('user'));
+        $jury->setRelation('decisions', $state['decisions']->load('etudiant'));
 
-        return compact('jury', 'members', 'decisions', 'bulletins', 'sheets');
+        return $state;
+    }
+
+    /**
+     * Ce qui manque avant l'émission, rangé par étape de préparation.
+     *
+     * Les mêmes contrôles que l'émission, aux mêmes verrous : l'écran ne peut
+     * pas annoncer « prêt » un jury que l'émission refuserait. La seule
+     * différence est l'état du jury, rendu comme un motif de l'étape
+     * « décisions » au lieu d'interrompre le contrôle : un jury en préparation
+     * doit voir aussi tout ce qui lui manque ailleurs.
+     *
+     * @return array{notes: list<string>, composition: list<string>, decisions: list<string>, signatures: list<string>}
+     */
+    public function raisonsParEtape(ESBTPLMDJury $jury): array
+    {
+        return DB::transaction(function () use ($jury): array {
+            $locked = ESBTPLMDJury::query()->lockForUpdate()->findOrFail($jury->id);
+            $groupes = $this->raisonsParEtapeDeLEtat($this->charger($locked));
+            $statut = $this->raisonDeStatut($locked, false);
+            if ($statut !== null) {
+                array_unshift($groupes['decisions'], $statut === self::STATUT_PREPARATION
+                    ? 'La délibération n’est pas ouverte : lancez « Appliquer décisions auto ».'
+                    : $statut);
+            }
+
+            return $groupes;
+        });
     }
 
     public function readiness(ESBTPLMDJury $jury): array
     {
         try {
-            $state = DB::transaction(fn (): array => $this->assertIssuable($jury->id));
-
-            return ['ok' => true, 'grade_sheets_count' => $state['sheets']->count(), 'reasons' => []];
-        } catch (JuryPvNotIssuableException $exception) {
-            return ['ok' => false, 'grade_sheets_count' => 0, 'reasons' => $exception->reasons];
+            $groupes = $this->raisonsParEtape($jury);
         } catch (\LogicException $exception) {
-            return ['ok' => false, 'grade_sheets_count' => 0, 'reasons' => [$exception->getMessage()]];
+            return ['ok' => false, 'grade_sheets_count' => 0, 'reasons' => [$exception->getMessage()], 'etapes' => []];
+        }
+        $reasons = array_merge(...array_values($groupes));
+
+        return [
+            'ok' => $reasons === [],
+            'grade_sheets_count' => $reasons === [] ? $this->gradeSheetQuery($jury)->count() : 0,
+            'reasons' => $reasons,
+            'etapes' => app(PreparationDuJury::class)->etapes($groupes),
+        ];
+    }
+
+    private const STATUT_PREPARATION = 'La première émission du PV exige un jury en cours.';
+
+    private function assertJuryStatus(ESBTPLMDJury $jury, bool $rectification): void
+    {
+        $raison = $this->raisonDeStatut($jury, $rectification);
+        if ($raison !== null) {
+            throw new \LogicException($raison);
         }
     }
 
-    private function assertJuryStatus(ESBTPLMDJury $jury, bool $rectification): void
+    private function raisonDeStatut(ESBTPLMDJury $jury, bool $rectification): ?string
     {
         $hasPriorDocument = OfficialDocument::query()
             ->where('document_type', OfficialDocument::TYPE_LMD_JURY_PV)
@@ -69,12 +97,55 @@ class JuryPvIssuanceGuard
             ->exists();
 
         if (! $hasPriorDocument && $jury->status !== 'en_cours') {
-            throw new \LogicException('La première émission du PV exige un jury en cours.');
+            return self::STATUT_PREPARATION;
         }
 
         if ($hasPriorDocument && in_array($jury->status, ['publie', 'archive'], true) && ! $rectification) {
-            throw new \LogicException('Une rectification atomique est requise pour ce jury publié ou archivé.');
+            return 'Une rectification atomique est requise pour ce jury publié ou archivé.';
         }
+
+        return null;
+    }
+
+    /** @return array{jury: ESBTPLMDJury, members: Collection, decisions: Collection, bulletins: Collection, sheets: Collection} */
+    private function charger(ESBTPLMDJury $jury): array
+    {
+        $this->lockScopeLabels($jury);
+        $members = $jury->membres()->orderBy('id')->lockForUpdate()->get();
+        $decisions = $jury->decisions()->orderBy('etudiant_id')->lockForUpdate()->get();
+        $bulletins = ESBTPLMDBulletin::query()->forJury($jury)->orderBy('etudiant_id')->lockForUpdate()->get();
+        $sheets = $this->gradeSheetQuery($jury)->orderBy('id')->lockForUpdate()->get();
+        $this->lockIdentities($members, $decisions);
+
+        return compact('jury', 'members', 'decisions', 'bulletins', 'sheets');
+    }
+
+    private function raisonsParEtapeDeLEtat(array $state): array
+    {
+        return [
+            'notes' => array_merge($this->classeReasons($state['jury']), $this->gradeSheetReasons($state['sheets'])),
+            'composition' => $this->quorumReasons($state['members']),
+            'decisions' => array_merge(
+                $this->cohortReasons($state['bulletins'], $state['decisions']),
+                $this->concordanceReasons($state['bulletins'], $state['decisions']),
+            ),
+            'signatures' => $this->signatureReasons($state['members']),
+        ];
+    }
+
+    /**
+     * Un jury rattaché à une classe BTS n'aura jamais d'étudiant : ses
+     * bulletins et ses feuilles de notes ne sont pas LMD. Le dire nommément
+     * évite de chercher pourquoi « la cohorte est vide ».
+     */
+    private function classeReasons(ESBTPLMDJury $jury): array
+    {
+        $classe = $jury->getRelation('classe');
+        $systeme = $classe->systeme_academique ?? null;
+
+        return $systeme !== null && $systeme !== 'LMD'
+            ? [sprintf('La classe « %s » n’est pas une classe LMD : rattachez le jury à une classe de Licence ou de Master.', $classe->name ?? '')]
+            : [];
     }
 
     private function gradeSheetQuery(ESBTPLMDJury $jury)

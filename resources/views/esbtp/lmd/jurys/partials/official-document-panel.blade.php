@@ -7,7 +7,7 @@
                 <tbody>
                     <tr><td style="padding:.55rem;color:#64748b;">Numéro du PV</td><td style="padding:.55rem;font-weight:700;" x-text="officialDocument.pv_numero || juryPvPathExists && '{{ $jury->pv_numero }}' || 'Non défini'"></td></tr>
                     <tr><td style="padding:.55rem;color:#64748b;">Référence</td><td style="padding:.55rem;font-family:'Courier New',monospace;color:#0453cb;font-weight:700;" x-text="officialDocument.reference"></td></tr>
-                    <tr><td style="padding:.55rem;color:#64748b;">Version et statut</td><td style="padding:.55rem;font-weight:700;">v<span x-text="officialDocument.version"></span> · <span x-text="officialDocument.status"></span></td></tr>
+                    <tr><td style="padding:.55rem;color:#64748b;">Version et statut</td><td style="padding:.55rem;font-weight:700;">v<span x-text="officialDocument.version"></span> · <span x-text="({valid:'Valide', revoked:'Révoquée', superseded:'Remplacée', legacy:'Ancien format'})[officialDocument.status] ?? officialDocument.status"></span></td></tr>
                     <tr><td style="padding:.55rem;color:#64748b;">Empreinte SHA-256</td><td style="padding:.55rem;"><code x-text="officialDocument.checksum_sha256 ? officialDocument.checksum_sha256.substring(0, 20) + '...' : 'Non disponible'"></code></td></tr>
                     <tr><td style="padding:.55rem;color:#64748b;">Émis le</td><td style="padding:.55rem;font-weight:700;" x-text="officialDocument.issued_at ? new Date(officialDocument.issued_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Non défini'"></td></tr>
                 </tbody>

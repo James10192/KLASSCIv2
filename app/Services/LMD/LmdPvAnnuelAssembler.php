@@ -62,7 +62,11 @@ class LmdPvAnnuelAssembler
                 'credits_s2' => $s2?->credits_capitalises,
                 'moy_annuelle' => $moyAnnuelle,
                 'credits_annuels' => (int) $s1?->credits_capitalises + (int) $s2?->credits_capitalises,
-                'decision' => $decisions[$etudiantId] ?? $s2?->decision_deliberation ?? $s1?->decision_deliberation,
+                // Le PV est un document officiel : il imprime « Admis sous
+                // condition », jamais le code « admis_sous_condition ».
+                'decision' => ESBTPLMDJuryDecision::libelleDecision(
+                    $decisions[$etudiantId] ?? $s2?->decision_deliberation ?? $s1?->decision_deliberation
+                ),
                 'ues' => $this->mapUes($byEtudiant),
                 'ues_non_validees' => $this->uesNonValidees($byEtudiant),
             ];

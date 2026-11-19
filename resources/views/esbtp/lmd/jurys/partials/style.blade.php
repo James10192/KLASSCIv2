@@ -63,11 +63,29 @@
 .juy-actions-bar > .pv-numero{margin-left:auto;font-family:'Courier New',monospace;font-size:.85rem;color:#0453cb;font-weight:700;background:rgba(4,83,203,.08);padding:.35rem .65rem;border-radius:7px;}
 .juy-readiness{display:flex;align-items:flex-start;gap:.65rem;padding:.8rem 1rem;border-radius:12px;margin-bottom:1.25rem;font-size:.82rem;border:1px solid;}
 .juy-readiness--ok{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.25);color:#047857;}
-.juy-readiness--ko{background:#fff7ed;border-color:#fed7aa;color:#9a3412;}
+/* Préparation du PV : une étape = une ligne, un bouton vers l'onglet qui la règle. */
+.juy-prep{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:1rem 1.25rem;margin-bottom:1.25rem;}
+.juy-prep__tete{display:flex;align-items:flex-start;gap:.65rem;color:#0453cb;}
+.juy-prep__tete > i{margin-top:.2rem;}
+.juy-prep__ok{color:#10b981;}
+.juy-prep__titre{margin:0;font-size:.95rem;font-weight:700;color:#1e293b;}
+.juy-prep__sous{margin:.15rem 0 0;font-size:.78rem;color:#64748b;}
+.juy-prep__liste{list-style:none;margin:.85rem 0 0;padding:0;display:grid;gap:.5rem;}
+.juy-prep__etape{display:flex;align-items:flex-start;gap:.75rem;padding:.65rem .75rem;border:1px solid #e2e8f0;border-radius:10px;}
+.juy-prep__etape--ko{border-color:#fed7aa;background:#fffbf5;}
+.juy-prep__num{width:28px;height:28px;flex-shrink:0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;background:rgba(4,83,203,.08);color:#0453cb;}
+.juy-prep__etape--ok .juy-prep__num{background:rgba(16,185,129,.12);color:#047857;}
+.juy-prep__corps{flex:1;min-width:0;display:flex;flex-direction:column;gap:.15rem;font-size:.82rem;color:#1e293b;}
+.juy-prep__aide{color:#64748b;font-size:.78rem;}
+.juy-prep__raison{color:#9a3412;font-size:.78rem;}
+.juy-prep__aller{align-self:center;border:1px solid #c7d4e5;background:#fff;color:#0453cb;border-radius:8px;padding:0 .85rem;font-size:.78rem;font-weight:600;white-space:nowrap;cursor:pointer;transition:background .15s;}
+.juy-prep__aller:hover{background:rgba(4,83,203,.06);}
 /* Téléphone : la page débordait à 532 px sur un écran de 390. Tableaux
    défilables dans leur carte, formulaire d'ajout empilé, en-tête resserré. */
 @@media (max-width: 768px){
   .juy-hero{padding:1.25rem 1.1rem 1rem;border-radius:14px;}
+  .juy-prep__etape{flex-wrap:wrap;}
+  .juy-prep__aller{margin-left:calc(28px + .75rem);}
   .juy-hero h1{font-size:1.2rem;}
   .juy-kpi{min-width:calc(50% - .4rem);padding:.7rem .75rem;}
   .juy-card{padding:1rem .85rem;}
