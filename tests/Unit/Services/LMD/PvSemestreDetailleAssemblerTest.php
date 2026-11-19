@@ -52,6 +52,17 @@ class PvSemestreDetailleAssemblerTest extends OfficialDocumentDatabaseTestCase
         self::assertEquals(10.0, $yao['ues'][1]['notes'][0]);
     }
 
+    public function test_un_bulletin_sans_detail_d_ue_mais_avec_moyenne_compte_present(): void
+    {
+        // Constaté sur presentation : moyenne et décision, aucun résultat d'UE.
+        $jury = $this->seedIssuableJury();
+
+        $stats = collect(app(PvSemestreDetailleAssembler::class)->forJury($jury->fresh())['statistiques'])->keyBy('libelle');
+
+        self::assertSame(2, $stats['Présents']['nombre']);
+        self::assertSame(0, $stats['Absents']['nombre']);
+    }
+
     public function test_les_statistiques_comptent_inscrits_presents_et_decisions(): void
     {
         $jury = $this->seedIssuableJury();
