@@ -48,6 +48,8 @@ class PvSemestreDetailleAssemblerTest extends OfficialDocumentDatabaseTestCase
         // UE non validée : pas d'année d'obtention.
         self::assertNull($yao['ues'][0]['annee']);
         self::assertSame(24, $yao['credits']);
+        // Rattrapage à 12, session normale à 10 : le PV imprime 10, comme le bulletin.
+        self::assertEquals(10.0, $yao['ues'][1]['notes'][0]);
     }
 
     public function test_les_statistiques_comptent_inscrits_presents_et_decisions(): void
@@ -119,10 +121,10 @@ class PvSemestreDetailleAssemblerTest extends OfficialDocumentDatabaseTestCase
         }
         $ecues = [
             [1, 3, 10, 14, null], [2, 1, 10, 11, null], [2, 2, 10, 13, null],
-            [3, 3, 11, 7, null], [4, 1, 11, 10, 10], [4, 2, 11, 11, null],
+            [3, 3, 11, 7, null], [4, 1, 11, 10, 12], [4, 2, 11, 11, null],
         ];
         foreach ($ecues as $i => [$ue, $matiere, $e, $note, $ratt]) {
-            DB::table('esbtp_lmd_resultats_ecues')->insert(['id' => $i + 1, 'bulletin_id' => $e === 10 ? 100 : 101, 'resultat_ue_id' => $ue, 'matiere_id' => $matiere, 'etudiant_id' => $e, 'moyenne' => $note, 'note_finale' => $note, 'note_rattrapage' => $ratt, 'created_at' => $now, 'updated_at' => $now]);
+            DB::table('esbtp_lmd_resultats_ecues')->insert(['id' => $i + 1, 'bulletin_id' => $e === 10 ? 100 : 101, 'resultat_ue_id' => $ue, 'matiere_id' => $matiere, 'etudiant_id' => $e, 'moyenne' => $note, 'note_finale' => $ratt ?? $note, 'note_rattrapage' => $ratt, 'created_at' => $now, 'updated_at' => $now]);
         }
     }
 }

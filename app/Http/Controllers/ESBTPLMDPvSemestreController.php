@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Exports\LmdPvSemestreDetailleExport;
+use App\Domain\Exports\Reports\PvSemestreDetailleReport;
 use App\Models\ESBTPLMDJury;
+use App\Services\ExportRenderer;
 use App\Services\LMD\PvSemestreDetailleAssembler;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
-use Maatwebsite\Excel\Facades\Excel;
 
 /**
  * Export du PV de délibération détaillé d'un semestre (tableur et PDF).
@@ -17,43 +16,33 @@ use Maatwebsite\Excel\Facades\Excel;
  */
 class ESBTPLMDPvSemestreController extends Controller
 {
-    use Concerns\RespondsWithInlinePdf;
-
-    public function __construct(private PvSemestreDetailleAssembler $assembler) {}
+    public function __construct(
+        private PvSemestreDetailleAssembler $assembler,
+        private ExportRenderer $renderer,
+    ) {}
 
     public function excel(ESBTPLMDJury $jury)
     {
-        $payload = $this->payload($jury);
-
-        return Excel::download(new LmdPvSemestreDetailleExport($payload), \App\Support\NomDeFichier::sur($this->basename($jury).'.xlsx'));
+        return $this->renderer->excelDownload($this->report($jury));
     }
 
     public function pdf(Request $request, ESBTPLMDJury $jury)
     {
-        $payload = $this->payload($jury);
-        $pdf = Pdf::loadView('esbtp.lmd.jurys.pdf.pv-semestre-detaille', compact('payload'))
-            ->setPaper('a3', 'landscape')
-            ->setOptions([
-                'dpi' => 120,
-                'defaultFont' => 'sans-serif',
-                'isRemoteEnabled' => false,
-                'isHtml5ParserEnabled' => true,
-                'isPhpEnabled' => false,
-            ]);
+        $report = $this->report($jury);
+        abort_if($report->depasseLeVolumePdf(), 422, sprintf(
+            'Ce PV compte plus de %d étudiants : téléchargez-le en Excel.', PvSemestreDetailleReport::PDF_MAX_ROWS,
+        ));
 
-        return $this->respondWithPdf($pdf, $this->basename($jury).'.pdf', $request);
+        return $request->boolean('inline')
+            ? $this->renderer->pdfPreview($report)
+            : $this->renderer->pdfDownload($report);
     }
 
-    private function payload(ESBTPLMDJury $jury): array
+    private function report(ESBTPLMDJury $jury): PvSemestreDetailleReport
     {
         $jury->assertConsultablePar(auth()->user());
         abort_if(! $jury->semestre, 422, 'Ce jury ne porte pas de semestre : le PV détaillé se tire semestre par semestre.');
 
-        return $this->assembler->forJury($jury);
-    }
-
-    private function basename(ESBTPLMDJury $jury): string
-    {
-        return 'pv-deliberation-s'.$jury->semestre.'-'.($jury->pv_numero ?? $jury->id);
+        return new PvSemestreDetailleReport($this->assembler->forJury($jury), $jury->id);
     }
 }

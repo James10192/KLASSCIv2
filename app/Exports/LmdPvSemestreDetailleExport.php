@@ -2,7 +2,8 @@
 
 namespace App\Exports;
 
-use Maatwebsite\Excel\Concerns\FromArray;
+use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
@@ -17,7 +18,7 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
  * année d'obtention, session), puis le résultat semestriel. Les UE et les
  * statistiques sont rappelées sous le tableau.
  */
-class LmdPvSemestreDetailleExport implements FromArray, WithTitle, WithEvents
+class LmdPvSemestreDetailleExport implements FromCollection, WithTitle, WithEvents
 {
     private const IDENTITE = ['N°', 'IP', 'NOM', 'PRÉNOMS', 'DATE DE NAISSANCE', 'LIEU DE NAISSANCE', 'SEXE', 'NATIONALITÉ'];
     private const RESULTAT = ['Moy. sem.', 'Crédits', 'Décision', "Année d'obtention", 'Session'];
@@ -28,6 +29,11 @@ class LmdPvSemestreDetailleExport implements FromArray, WithTitle, WithEvents
     public function title(): string
     {
         return 'Semestre '.($this->payload['semestre'] ?? '');
+    }
+
+    public function collection(): Collection
+    {
+        return collect($this->array());
     }
 
     public function array(): array

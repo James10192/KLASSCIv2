@@ -113,7 +113,10 @@ class PvSemestreDetailleAssembler
             $notes = [];
             foreach ($colonne['ecues'] as $ecue) {
                 $resultat = $parEcue->get($ecue['id']);
-                $note = $resultat?->note_finale ?? $resultat?->moyenne;
+                // La note que les bulletins LMD impriment (`moyenne`, session
+                // normale), jamais `note_finale` : le PV et le bulletin d'un
+                // étudiant passé au rattrapage ne doivent pas se contredire.
+                $note = $resultat?->moyenne;
                 $notes[] = $note;
                 $aDesNotes = $aDesNotes || $note !== null;
             }
@@ -177,7 +180,13 @@ class PvSemestreDetailleAssembler
         return $lignes;
     }
 
-    /** L'année civile qui clôt l'année universitaire : « 2025-2026 » donne 2026. */
+    /**
+     * L'année civile qui clôt l'année universitaire : « 2025-2026 » donne 2026.
+     *
+     * Limite connue : une UE capitalisée une année précédente (redoublant)
+     * reçoit l'année du jury, pas celle où elle a été acquise. Le portefeuille
+     * de crédits sait la vraie année ; le brancher ici est la suite à faire.
+     */
     private function anneeDObtention(ESBTPLMDJury $jury): ?string
     {
         $libelle = (string) ($jury->anneeUniversitaire?->name ?? $jury->anneeUniversitaire?->libelle ?? '');
