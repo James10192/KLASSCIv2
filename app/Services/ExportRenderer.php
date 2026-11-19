@@ -45,9 +45,8 @@ class ExportRenderer
         // téléchargements PDF répondaient alors 500, l'aperçu non : lui ne
         // passe pas par le cache. La clé change avec le format, pour qu'aucune
         // ancienne entrée binaire ne soit relue comme du base64.
-        $cacheKey = 'exports:pdf:b64:' . $report->cacheKey();
         $binary = $this->cacheEnabled()
-            ? base64_decode(Cache::remember($cacheKey, self::CACHE_TTL_SECONDS, fn () => base64_encode($this->pdfBinaire($report))), true)
+            ? $this->pdfDepuisLeCache($report)
             : $this->pdfBinaire($report);
 
         return new Response($binary, 200, [
@@ -105,6 +104,36 @@ class ExportRenderer
         } else {
             $pendingMail->queue($mailable);
         }
+    }
+
+    /**
+     * Le cache accélère, il ne doit jamais faire échouer ni vider un
+     * téléchargement : une entrée illisible est oubliée et le PDF recalculé, une
+     * panne du magasin est journalisée et le PDF servi sans cache.
+     */
+    private function pdfDepuisLeCache(ExportableReport $report): string
+    {
+        $cacheKey = 'exports:pdf:b64:' . $report->cacheKey();
+        try {
+            $binary = base64_decode((string) Cache::remember(
+                $cacheKey,
+                self::CACHE_TTL_SECONDS,
+                fn () => base64_encode($this->pdfBinaire($report)),
+            ), true);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('exports.pdf.cache_indisponible', ['key' => $cacheKey, 'erreur' => $e->getMessage()]);
+
+            return $this->pdfBinaire($report);
+        }
+
+        if ($binary === false || $binary === '') {
+            \Illuminate\Support\Facades\Log::warning('exports.pdf.cache_illisible', ['key' => $cacheKey]);
+            Cache::forget($cacheKey);
+
+            return $this->pdfBinaire($report);
+        }
+
+        return $binary;
     }
 
     /** Le rendu DomPDF, mesuré : c'est lui qui coûte, pas la réponse qui l'emporte. */

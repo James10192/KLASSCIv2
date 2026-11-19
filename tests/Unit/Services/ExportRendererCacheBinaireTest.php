@@ -51,6 +51,24 @@ class ExportRendererCacheBinaireTest extends TestCase
         self::assertSame($premier, $second, 'Le second appel doit relire le cache sans altérer le fichier.');
     }
 
+    public function test_une_entree_illisible_ne_donne_jamais_un_pdf_vide(): void
+    {
+        Cache::put('exports:pdf:b64:'.$this->rapport()->cacheKey(), '%%% pas du base64 %%%', 300);
+
+        $pdf = app(ExportRenderer::class)->pdfDownload($this->rapport())->getContent();
+
+        self::assertStringStartsWith('%PDF', $pdf);
+    }
+
+    public function test_une_panne_du_cache_ne_fait_pas_tomber_le_telechargement(): void
+    {
+        Cache::shouldReceive('remember')->andThrow(new \RuntimeException('table cache absente'));
+
+        $pdf = app(ExportRenderer::class)->pdfDownload($this->rapport())->getContent();
+
+        self::assertStringStartsWith('%PDF', $pdf);
+    }
+
     private function rapport(): ExportableReport
     {
         return new class extends ExportableReport {
