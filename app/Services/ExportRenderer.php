@@ -39,9 +39,15 @@ class ExportRenderer
      */
     public function pdfDownload(ExportableReport $report): Response
     {
-        $cacheKey = 'exports:pdf:' . $report->cacheKey();
+        // Le PDF part en cache encodé en base64 : le pilote `database` range la
+        // valeur dans une colonne texte, que MySQL strict refuse de remplir avec
+        // des octets binaires (« Incorrect string value »). Tous les
+        // téléchargements PDF répondaient alors 500, l'aperçu non : lui ne
+        // passe pas par le cache. La clé change avec le format, pour qu'aucune
+        // ancienne entrée binaire ne soit relue comme du base64.
+        $cacheKey = 'exports:pdf:b64:' . $report->cacheKey();
         $binary = $this->cacheEnabled()
-            ? Cache::remember($cacheKey, self::CACHE_TTL_SECONDS, fn () => $this->pdfBinaire($report))
+            ? base64_decode(Cache::remember($cacheKey, self::CACHE_TTL_SECONDS, fn () => base64_encode($this->pdfBinaire($report))), true)
             : $this->pdfBinaire($report);
 
         return new Response($binary, 200, [
@@ -67,7 +73,7 @@ class ExportRenderer
      */
     public function forgetCache(ExportableReport $report): void
     {
-        Cache::forget('exports:pdf:' . $report->cacheKey());
+        Cache::forget('exports:pdf:b64:' . $report->cacheKey());
     }
 
     /**
