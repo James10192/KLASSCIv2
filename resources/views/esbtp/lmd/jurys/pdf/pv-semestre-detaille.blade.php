@@ -84,7 +84,7 @@
                     <tr><td>{{ $stat['libelle'] }}</td><td style="text-align:center;">{{ $stat['nombre'] }}</td><td style="text-align:center;">{{ number_format($stat['pourcentage'], 1, ',', ' ') }}</td></tr>
                 @endforeach
             </table>
-            <div class="pv-note">Présent : au moins une note au semestre.</div>
+            <div class="pv-note">Présent : une note saisie ou une moyenne de semestre calculée.</div>
             <div class="pv-lieu">{{ mb_strtoupper(($lieu !== '' ? $lieu.', ' : '').'le '.($payload['date_jury'] ?? '…'), 'UTF-8') }}</div>
         </td>
     </tr></table>

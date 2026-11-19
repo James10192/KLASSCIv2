@@ -149,7 +149,11 @@ class PvSemestreDetailleAssembler
             'credits_totaux' => (int) $bulletin->credits_totaux,
             'decision_code' => $code,
             'decision' => ESBTPLMDJuryDecision::libelleDecision($code),
-            'present' => $aDesNotes,
+            // Présent : une note d'élément saisie, ou une moyenne de semestre
+            // calculée. Les notes seules ne suffisent pas : un bulletin peut
+            // porter sa moyenne sans le détail des UE, et l'étudiant délibéré
+            // apparaissait alors « absent » à côté de sa propre décision.
+            'present' => $aDesNotes || $bulletin->moyenne_generale !== null,
             'annee' => $annee,
             'session' => $rattrapage ? self::SESSION_RATTRAPAGE : self::SESSION_NORMALE,
         ];
