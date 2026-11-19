@@ -34,6 +34,14 @@
     @endif
 
     @can('lmd.pv.export')
+    @if($jury->semestre)
+    <a href="{{ route('esbtp.lmd.jurys.pv-semestre.pdf', $jury) }}?inline=1" target="_blank" rel="noopener" class="juy-btn juy-btn--secondary h-11">
+        <i class="fas fa-table"></i> PV détaillé du semestre (PDF)
+    </a>
+    <a href="{{ route('esbtp.lmd.jurys.pv-semestre.excel', $jury) }}" class="juy-btn juy-btn--secondary h-11">
+        <i class="fas fa-file-excel"></i> PV détaillé du semestre (Excel)
+    </a>
+    @endif
     <a href="{{ route('esbtp.lmd.jurys.pv-annuel.pdf', $jury) }}?inline=1" target="_blank" rel="noopener" class="juy-btn juy-btn--secondary h-11">
         <i class="fas fa-eye"></i> Aperçu PDF du PV annuel
     </a>

@@ -3640,6 +3640,12 @@ Route::prefix('esbtp/lmd/jurys')->name('esbtp.lmd.jurys.')
         Route::get('/{jury}/pv-annuel/pdf', [\App\Http\Controllers\ESBTPLMDPvExportController::class, 'pdf'])
             ->middleware(['permission:lmd.pv.export', 'throttle:60,1'])
             ->name('pv-annuel.pdf');
+        Route::get('/{jury}/pv-semestre/excel', [\App\Http\Controllers\ESBTPLMDPvSemestreController::class, 'excel'])
+            ->middleware(['permission:lmd.pv.export', 'throttle:10,1'])
+            ->name('pv-semestre.excel');
+        Route::get('/{jury}/pv-semestre/pdf', [\App\Http\Controllers\ESBTPLMDPvSemestreController::class, 'pdf'])
+            ->middleware(['permission:lmd.pv.export', 'throttle:60,1'])
+            ->name('pv-semestre.pdf');
         Route::post('/{jury}/pv/reconcilier', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'reconcileLegacyPv'])
             ->middleware(['permission:lmd.jury.documents.reconcile', 'throttle:5,1'])
             ->name('pv-reconcile');
