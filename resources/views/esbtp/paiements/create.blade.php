@@ -671,7 +671,7 @@
     if ($selectedStudentId) {
         $selectedStudent = $etudiant ?? \App\Models\ESBTPEtudiant::with('user')->find($selectedStudentId);
         if ($selectedStudent) {
-            $studentOptions[(string) $selectedStudent->id] = ($selectedStudent->matricule ?? 'N/A') . ' - ' . ($selectedStudent->user->name ?? $selectedStudent->nom_complet ?? 'N/A');
+            $studentOptions[(string) $selectedStudent->id] = ($selectedStudent->matricule ?? 'N/A') . ' - ' . ($selectedStudent->nom_complet ?: $selectedStudent->user->name ?? 'N/A');
         }
     }
 
@@ -759,9 +759,9 @@
 
                     @if($etudiant)
                         <div class="pc-picked">
-                            <span class="pc-avatar pc-avatar--lg">{{ mb_strtoupper(mb_substr($etudiant->user->name ?? $etudiant->nom_complet ?? 'NN', 0, 2, 'UTF-8'), 'UTF-8') }}</span>
+                            <span class="pc-avatar pc-avatar--lg">{{ mb_strtoupper(mb_substr($etudiant->nom_complet ?: $etudiant->user->name ?? 'NN', 0, 2, 'UTF-8'), 'UTF-8') }}</span>
                             <div class="pc-picked-txt">
-                                <b>{{ $etudiant->user->name ?? $etudiant->nom_complet ?? 'N/A' }}</b>
+                                <b>{{ $etudiant->nom_complet ?: $etudiant->user->name ?? 'N/A' }}</b>
                                 <span>{{ $etudiant->matricule }}@if($etudiant->user?->email) · {{ $etudiant->user->email }}@endif</span>
                             </div>
                             <input type="hidden" name="etudiant_id" value="{{ $etudiant->id }}">

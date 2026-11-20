@@ -39,7 +39,7 @@
         $mabPreselect['inscription'] = [
             'id' => $inscription->id,
             'etudiant_id' => $inscription->etudiant_id,
-            'nom' => $mabEtu?->user?->name ?? trim(($mabEtu->prenoms ?? '').' '.($mabEtu->nom ?? '')),
+            'nom' => trim(($mabEtu->nom ?? '').' '.($mabEtu->prenoms ?? '')) ?: ($mabEtu?->user?->name ?? ''),
             'matricule' => $mabEtu->matricule ?? '',
             'classe' => $inscription->classe->name ?? ($inscription->filiere->name ?? '—'),
             'niveau' => $inscription->niveauEtude->name ?? '',
@@ -47,7 +47,7 @@
     } elseif (! empty($etudiant)) {
         $mabPreselect['etudiant'] = [
             'id' => $etudiant->id,
-            'nom' => $etudiant->user?->name ?? trim(($etudiant->prenoms ?? '').' '.($etudiant->nom ?? '')),
+            'nom' => trim(($etudiant->nom ?? '').' '.($etudiant->prenoms ?? '')) ?: ($etudiant->user?->name ?? ''),
             'matricule' => $etudiant->matricule ?? '',
         ];
     }

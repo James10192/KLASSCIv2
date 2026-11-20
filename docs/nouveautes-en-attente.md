@@ -18,3 +18,4 @@ Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 - Relevés de notes détaillés pour le jury (LMD depuis le jury, BTS depuis les résultats) : entrée Nouveautés + captures à faire après déploiement.
 - Fiche de notes Excel par classe, BTS et LMD (télécharger, remplir, réimporter) : entrée Nouveautés + captures à faire après déploiement.
+- Encaissement et reçu : nom avant prénoms, recherche triée par ordre alphabétique : entrée Nouveautés + captures à faire après déploiement.
