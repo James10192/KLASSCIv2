@@ -38,7 +38,7 @@ class PvSemestreDetailleAssembler
 
         $decisions = ESBTPLMDJuryDecision::query()->where('jury_id', $jury->id)->pluck('decision', 'etudiant_id');
         $annee = $this->anneeCivile($jury->anneeUniversitaire);
-        $acquises = $this->anneesDAcquisitionAnterieures($jury, $bulletins);
+        $acquises = $this->anneesDAcquisitionAnterieures($jury, $bulletins, $annee);
         $ues = $this->colonnes($bulletins);
 
         $rows = [];
@@ -196,7 +196,7 @@ class PvSemestreDetailleAssembler
      *
      * @return array<string, string> « etudiant:ue » => année civile
      */
-    private function anneesDAcquisitionAnterieures(ESBTPLMDJury $jury, Collection $bulletins): array
+    private function anneesDAcquisitionAnterieures(ESBTPLMDJury $jury, Collection $bulletins, ?string $anneeDuJury): array
     {
         $ueIds = $bulletins->flatMap(fn ($b) => $b->resultatsUEs->pluck('unite_enseignement_id'))->unique()->values();
         if ($ueIds->isEmpty()) {
@@ -207,7 +207,9 @@ class PvSemestreDetailleAssembler
             ->whereIn('etudiant_id', $bulletins->pluck('etudiant_id')->unique())
             ->whereIn('unite_enseignement_id', $ueIds)
             ->whereIn('statut', [ESBTPLMDResultatUE::STATUT_AQ, ESBTPLMDResultatUE::STATUT_APC])
-            ->whereHas('bulletin', fn ($q) => $q->where('annee_universitaire_id', '!=', $jury->annee_universitaire_id))
+            // Un bulletin publié seulement : un brouillon n'est pas une acquisition.
+            ->whereHas('bulletin', fn ($q) => $q->where('is_published', true)
+                ->where('annee_universitaire_id', '!=', $jury->annee_universitaire_id))
             ->with('bulletin.anneeUniversitaire')
             ->get();
 
@@ -215,7 +217,11 @@ class PvSemestreDetailleAssembler
         foreach ($anterieures as $resultat) {
             $annee = $this->anneeCivile($resultat->bulletin?->anneeUniversitaire);
             $cle = $resultat->etudiant_id.':'.$resultat->unite_enseignement_id;
-            if ($annee !== null && (! isset($annees[$cle]) || $annee < $annees[$cle])) {
+            // Antérieure au jury seulement : une UE acquise APRÈS la session (PV
+            // régénéré plus tard) n'est pas une UE capitalisée. Quatre chiffres
+            // des deux côtés : l'ordre des chaînes est l'ordre des années.
+            $anterieure = $annee !== null && ($anneeDuJury === null || $annee < $anneeDuJury);
+            if ($anterieure && (! isset($annees[$cle]) || $annee < $annees[$cle])) {
                 $annees[$cle] = $annee;
             }
         }
