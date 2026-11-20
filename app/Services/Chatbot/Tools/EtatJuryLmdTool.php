@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Route;
 class EtatJuryLmdTool extends ChatbotTool
 {
     private const MAX_JURYS = 8;
+    private const MOTIFS_PAR_ETAPE = 3;
 
     public function name(): string
     {
@@ -56,41 +57,79 @@ class EtatJuryLmdTool extends ChatbotTool
             return ['display_type' => 'text', 'message' => "Aucun jury de délibération ne correspond, ou aucun ne vous est accessible."];
         }
 
-        $guard = app(JuryPvIssuanceGuard::class);
-        $preparation = app(PreparationDuJury::class);
+        // Un jury visé reçoit tout son détail ; une liste ne garde que les
+        // verdicts. Le résumé rendu au modèle est plafonné : les motifs de huit
+        // jurys le débordaient, et la coupe tombait au milieu des verdicts.
+        $detaille = $jurys->count() === 1;
         $cartes = [];
         $diagnostic = [];
         foreach ($jurys as $jury) {
-            $termine = in_array($jury->status, ['publie', 'archive'], true);
-            $etapes = $termine ? [] : $preparation->etapes($guard->raisonsParEtape($jury));
-            $manquantes = array_values(array_filter($etapes, fn ($e) => ! $e['ok']));
-            $pret = ! $termine && $manquantes === [];
-
+            $etat = $this->etat($jury);
             $cartes[] = [
                 'nom' => $jury->libelle,
                 'classe' => trim(($jury->classe?->name ?? '').' · S'.$jury->semestre, ' ·'),
                 'detail' => $jury->pv_numero ? 'PV '.$jury->pv_numero : 'PV non émis',
-                'statut' => $termine ? $jury->libelleStatut() : ($pret ? 'Prêt pour le PV' : count($manquantes).' étape(s) à terminer'),
+                'statut' => $etat['statut'],
                 'lien' => Route::has('esbtp.lmd.jurys.show') ? route('esbtp.lmd.jurys.show', $jury, false) : null,
                 'lien_label' => 'Ouvrir le jury',
                 'lien_icon' => 'fas fa-gavel',
             ];
-            $diagnostic[] = [
+            $ligne = [
                 'jury_id' => (int) $jury->id,
+                'pret_pour_le_pv' => $etat['pret'],
+                'statut' => $etat['statut'],
+                'etapes_manquantes' => $detaille
+                    ? $etat['manquantes']
+                    : array_column($etat['manquantes'], 'etape'),
                 'libelle' => $jury->libelle,
-                'statut' => $jury->status,
                 'classe' => $jury->classe?->name,
                 'semestre' => $jury->semestre,
                 'pv_numero' => $jury->pv_numero,
-                'pret_pour_le_pv' => $pret,
-                // Les étapes manquantes d'abord, en entier : ce sont elles que le modèle doit dire.
-                'etapes_manquantes' => array_map(fn ($e) => ['etape' => $e['titre'], 'motifs' => $e['raisons'], 'ou_corriger' => $e['onglet'] ?? 'fiches de notes'], $manquantes),
-                'membres_sans_signature' => $termine ? [] : $this->sansSignature($jury),
-                'liens' => $this->liens($jury, $user),
             ];
+            if ($detaille) {
+                $ligne['membres_sans_signature'] = $etat['termine'] ? [] : $this->sansSignature($jury);
+                $ligne['liens'] = $this->liens($jury, $user);
+            }
+            $diagnostic[] = $ligne;
+        }
+        if (! $detaille) {
+            $diagnostic[] = ['note' => 'Pour les motifs d’un jury, rappelle etat_jury_lmd avec son jury_id.'];
         }
 
         return ['display_type' => 'cards', 'results' => $cartes, 'diagnostic' => ['jurys' => $diagnostic]];
+    }
+
+    /**
+     * Le verdict d'un jury, par le contrôle de l'écran. Un jury que le contrôle
+     * ne sait pas lire est signalé tel quel, sans faire tomber la liste.
+     */
+    private function etat(ESBTPLMDJury $jury): array
+    {
+        if (in_array($jury->status, ['publie', 'archive'], true)) {
+            return ['termine' => true, 'pret' => false, 'statut' => $jury->libelleStatut(), 'manquantes' => []];
+        }
+        try {
+            $etapes = app(PreparationDuJury::class)->etapes(app(JuryPvIssuanceGuard::class)->raisonsParEtape($jury));
+        } catch (\LogicException|\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return ['termine' => false, 'pret' => false, 'statut' => 'Lecture impossible : '.$e->getMessage(), 'manquantes' => []];
+        }
+        $manquantes = [];
+        foreach ($etapes as $e) {
+            if (! $e['ok']) {
+                $manquantes[] = [
+                    'etape' => $e['titre'],
+                    'motifs' => array_slice($e['raisons'], 0, self::MOTIFS_PAR_ETAPE),
+                    'ou_corriger' => $e['onglet'] !== null ? 'onglet '.$e['onglet'].' de l’écran du jury' : 'fiches de notes du pilotage académique',
+                ];
+            }
+        }
+
+        return [
+            'termine' => false,
+            'pret' => $manquantes === [],
+            'statut' => $manquantes === [] ? 'Prêt pour le PV' : count($manquantes).' étape(s) à terminer',
+            'manquantes' => $manquantes,
+        ];
     }
 
     /** Les jurys visés, dans le périmètre de l'écran : tous pour qui préside ou délibère, les siens pour un membre. */
@@ -103,6 +142,11 @@ class EtatJuryLmdTool extends ChatbotTool
         }
         if (! empty($args['jury_id'])) {
             return $query->whereKey((int) $args['jury_id'])->get();
+        }
+        // Comme la liste de l'écran : l'année en cours, sauf jury nommé.
+        $courante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->value('id');
+        if ($courante) {
+            $query->where('annee_universitaire_id', $courante);
         }
         if (! empty($args['classe'])) {
             $this->applyClasseSearch($query, (string) $args['classe']);

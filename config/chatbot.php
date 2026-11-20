@@ -87,6 +87,9 @@ return [
         'etat_jury_lmd' => [
             'enabled' => true,
             'all_permissions' => ['module.lmd.access', 'lmd.jury.view'],
+            // La garde du groupe de routes de l'écran : sans l'une de ces
+            // identités, la page du jury répond 403, et Nanan aussi.
+            'any_permissions' => ['admin.access', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk'],
             'libelle' => 'Lecture du jury de délibération…',
             'suggestion' => 'Qu’est-ce qui manque avant le PV de ce jury ?',
         ],

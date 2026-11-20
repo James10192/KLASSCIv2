@@ -6,6 +6,8 @@ use App\Models\User;
 use App\Services\Chatbot\Tools\EtatJuryLmdTool;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
+use App\Domain\Assistant\Outils\ResumeOutil;
 use Tests\Unit\Domain\OfficialDocuments\OfficialDocumentDatabaseTestCase;
 
 /**
@@ -23,7 +25,9 @@ class EtatJuryLmdToolTest extends OfficialDocumentDatabaseTestCase
         parent::setUp();
         \Illuminate\Support\Facades\Schema::create('esbtp_filieres', function ($t) { $t->id(); $t->string('name'); $t->timestamps(); $t->softDeletes(); });
         \Illuminate\Support\Facades\Schema::create('esbtp_niveau_etudes', function ($t) { $t->id(); $t->string('name'); $t->timestamps(); $t->softDeletes(); });
-        foreach (['module.lmd.access', 'lmd.jury.view', 'lmd.jury.preside', 'lmd.jury.deliberate', 'lmd.jury.publish', 'identity.direct_studies', 'lmd.pv.export'] as $droit) {
+        Schema::table('esbtp_annee_universitaires', fn ($t) => $t->boolean('is_current')->default(false));
+        DB::table('esbtp_annee_universitaires')->where('id', 1)->update(['is_current' => true]);
+        foreach (['module.lmd.access', 'lmd.jury.view', 'lmd.jury.preside', 'lmd.jury.deliberate', 'lmd.jury.publish', 'identity.direct_studies', 'lmd.pv.export', 'admin.access', 'identity.registrar', 'identity.registrar_clerk'] as $droit) {
             Gate::define($droit, fn (User $u) => in_array((int) $u->id, $this->droits[$droit] ?? [], true));
         }
     }
@@ -61,7 +65,7 @@ class EtatJuryLmdToolTest extends OfficialDocumentDatabaseTestCase
         $now = now();
         DB::table('esbtp_lmd_jurys')->insert(['id' => 2, 'annee_universitaire_id' => 1, 'classe_id' => 1, 'parcours_id' => 1, 'semestre' => 2, 'libelle' => 'Jury S2 confidentiel', 'status' => 'en_cours', 'created_at' => $now, 'updated_at' => $now]);
         // L'utilisateur 2 est assesseur du jury 1 seulement, et ne fait que consulter.
-        $this->accorder(2, ['module.lmd.access', 'lmd.jury.view']);
+        $this->accorder(2, ['module.lmd.access', 'lmd.jury.view', 'identity.registrar_clerk']);
 
         $vus = array_column($this->lire(2, [])['diagnostic']['jurys'], 'jury_id');
 
@@ -77,8 +81,32 @@ class EtatJuryLmdToolTest extends OfficialDocumentDatabaseTestCase
 
         self::assertFalse($outil->isAvailableFor(User::findOrFail(2)), 'Sans le module LMD, pas d’outil.');
 
-        $this->accorder(2, ['module.lmd.access', 'lmd.jury.view']);
+        $this->accorder(2, ['module.lmd.access']);
+        self::assertFalse($outil->isAvailableFor(User::findOrFail(2)), 'Sans identité de scolarité, l’écran répond 403 : Nanan aussi.');
+
+        $this->accorder(2, ['identity.registrar']);
         self::assertTrue($outil->isAvailableFor(User::findOrFail(2)));
+    }
+
+    public function test_une_liste_de_huit_jurys_garde_tous_ses_verdicts_dans_la_limite(): void
+    {
+        $this->seedIssuableJury();
+        $now = now();
+        for ($id = 2; $id <= 9; $id++) {
+            DB::table('esbtp_lmd_jurys')->insert(['id' => $id, 'annee_universitaire_id' => 1, 'classe_id' => 1, 'parcours_id' => 1, 'semestre' => 1, 'libelle' => 'Délibération '.$id.' '.str_repeat('Licence professionnelle en Productions Végétales, ', 4), 'status' => 'preparation', 'created_at' => $now, 'updated_at' => $now]);
+        }
+        $this->accorder(1, ['module.lmd.access', 'lmd.jury.view', 'lmd.jury.preside', 'admin.access']);
+
+        $resultat = $this->lire(1, []);
+        $pourModele = ResumeOutil::pourModele('etat_jury_lmd', $resultat, true);
+        $decode = json_decode($pourModele, true);
+
+        self::assertNotNull($decode, 'Le résumé rendu au modèle doit rester un JSON valide.');
+        $verdicts = array_filter($decode['diagnostic']['jurys'] ?? [], fn ($j) => isset($j['jury_id']));
+        self::assertCount(8, $verdicts);
+        foreach ($verdicts as $jury) {
+            self::assertArrayHasKey('pret_pour_le_pv', $jury);
+        }
     }
 
     private function accorder(int $userId, array $droits): void
