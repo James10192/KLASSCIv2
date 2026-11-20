@@ -429,6 +429,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     // Lecture seule des notes saisies par évaluation (annee_id, classe_id, evaluation_id).
     Route::get('/evaluations/notes', [App\Http\Controllers\API\CLI\CLILectureNotesController::class, 'notes'])
         ->name('evaluations.notes.lecture');
+    // Evaluations d'une classe pour une annee, avec statut et publication.
+    Route::get('/evaluations/classe', [App\Http\Controllers\API\CLI\CLIEvaluationPublicationController::class, 'lister'])
+        ->name('evaluations.classe');
     Route::get('/evaluations/coverage', [App\Http\Controllers\API\CLI\CLIEvaluationCoverageController::class, 'index'])
         ->name('evaluations.coverage');
     // Rapport d'usage : l'etablissement travaille-t-il vraiment dans KLASSCI ? (lecture seule)
@@ -752,6 +755,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
             ->name('resultats.moyennes');
         // Corriger des notes EXISTANTES d'un eleve, puis recalculer ses moyennes
         // (synchrone). Simulation par defaut, motif obligatoire.
+        // Terminer et publier les evaluations d'une classe (simulation par defaut).
+        Route::post('/evaluations/publier', [App\Http\Controllers\API\CLI\CLIEvaluationPublicationController::class, 'publier'])
+            ->name('evaluations.publier');
         Route::post('/notes/corriger', [App\Http\Controllers\API\CLI\CLIMoyennesController::class, 'corrigerNotes'])
             ->name('notes.corriger');
         // Suppression ciblee et reversible de notes : simulation par defaut,
