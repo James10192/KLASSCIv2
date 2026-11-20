@@ -19,7 +19,8 @@ class NotesClasseurExport implements WithMultipleSheets
         $titres = [];
 
         return $this->matieres->map(function ($matiere) use (&$titres) {
-            $base = mb_substr(preg_replace('/[\\\/\?\*\[\]:]/', ' ', (string) ($matiere->code ?: $matiere->name)), 0, 28);
+            // Excel refuse ces caractères dans un nom de feuille.
+            $base = mb_substr(str_replace(['\\', '/', '?', '*', '[', ']', ':', "'"], ' ', (string) ($matiere->code ?: $matiere->name)), 0, 28);
             $titre = $base;
             for ($i = 2; isset($titres[mb_strtolower($titre)]); $i++) {
                 $titre = mb_substr($base, 0, 26).' '.$i;
