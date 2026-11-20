@@ -30,6 +30,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 - **PV détaillé du semestre, année d'obtention :** une UE acquise une année précédente (redoublant qui garde ses UE capitalisées) porte désormais l'année où elle a été obtenue, lue dans le bulletin de cette année-là, au lieu de l'année du jury.
+- PV détaillé du semestre, version Excel : le premier étudiant ne prend plus le style bleu de l’en-tête (les lignes vides étaient sautées et tout remontait d’un cran), et « ANNÉE UNIVERSITAIRE » n’est plus tronquée.
 - **PV détaillé du semestre, effectifs :** un étudiant délibéré dont le bulletin porte sa moyenne sans le détail de ses UE était compté « absent ». Il est désormais présent dès qu'une note est saisie ou que sa moyenne de semestre est calculée.
 - **Téléchargement des PDF mis en cache :** sur les instances dont le cache est en base de données, chaque téléchargement PDF passant par le moteur d'export commun (rapport des effectifs, analytique, rendez-vous, enseignants, PV détaillé du semestre) répondait par une erreur serveur, alors que l'aperçu fonctionnait. Le fichier est désormais mis en cache sous une forme texte que toutes les bases acceptent.
 - **Le procès-verbal annuel LMD imprime les décisions en toutes lettres** : « Admis sous condition » au lieu du code « admis_sous_condition », dans le PDF comme dans l'export Excel. Le registre du PV affiche aussi son statut en français (« Valide », « Remplacée », « Révoquée ») au lieu de « valid ».
