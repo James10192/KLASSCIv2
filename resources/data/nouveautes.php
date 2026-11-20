@@ -23,6 +23,39 @@ return [
     'titre' => 'Novembre 2026',
     'entrees' => [
         [
+            'titre' => 'Relevés de notes détaillés pour le jury',
+            'icone' => 'fa-list-ol',
+            'texte' => 'Depuis l’écran du jury (LMD) ou la page des résultats (BTS, classe et semestre choisis), « Relevés de notes détaillés » sort un PDF avec une page par étudiant : chaque note de chaque évaluation, la moyenne de l’élément et de l’UE (ou de la matière) telle que le bulletin la calcule, puis le résultat du semestre. Un document de travail à imprimer pour la délibération.',
+            'permissions' => ['lmd.pv.export', 'bulletins.view'],
+            'captures' => [
+                'apres' => 'images/nouveautes/2026-11/releve-detaille-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'Les notes de chaque évaluation, à côté de la moyenne du bulletin.',
+            ],
+        ],
+        [
+            'titre' => 'Fiche de notes Excel à remplir puis réimporter',
+            'icone' => 'fa-file-excel',
+            'texte' => 'Sur la fiche d’une classe ou l’écran du jury, « Fiche de notes Excel » télécharge un classeur pour le semestre choisi : une feuille par matière (par élément en LMD), les notes déjà saisies reprises, et seules les notes de 0 à 20 ou « ABS » acceptées. Une matière sans évaluation reçoit une colonne « Examen », créée au réimport. Au réimport, KLASSCI montre d’abord ce qui va changer, puis enregistre tout ou rien. Pensez à régénérer les bulletins ensuite.',
+            'permissions' => ['notes.edit'],
+            'captures' => [
+                'apres' => 'images/nouveautes/2026-11/fiche-notes-excel-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'Télécharger la fiche, puis la réimporter avec un aperçu avant d’enregistrer.',
+            ],
+        ],
+        [
+            'titre' => 'Encaissement : le nom avant les prénoms',
+            'icone' => 'fa-arrow-down-a-z',
+            'texte' => 'À l’encaissement, la recherche affiche le nom de l’étudiant puis ses prénoms, et classe les résultats par ordre alphabétique (nom, puis prénoms). Le reçu imprime aussi le nom en premier.',
+            'permissions' => ['paiements.create', 'paiements.view', 'paiements.view_own'],
+            'captures' => [
+                'apres' => 'images/nouveautes/2026-11/encaissement-nom-prenoms-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'Les étudiants rangés par nom, puis par prénoms.',
+            ],
+        ],
+        [
             'titre' => 'Jurys LMD : le PV se prépare étape par étape',
             'icone' => 'fa-list-check',
             'texte' => 'L’écran du jury montre quatre étapes avant le procès-verbal : notes validées, jury composé, décisions calculées, signatures recueillies. Pour chacune, il dit ce qui manque, et un bouton mène à l’endroit où le corriger. « Générer PV » s’active quand tout est vert. Un jury rattaché par erreur à une classe BTS le dit nommément.',
