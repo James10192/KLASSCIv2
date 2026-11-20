@@ -506,7 +506,10 @@ class ESBTPPaiementController extends Controller
             });
         }
 
-        $results = $query->orderByDesc('id')
+        // Ordre alphabétique : nom, puis prénoms.
+        $results = $query
+            ->orderBy(ESBTPEtudiant::select('nom')->whereColumn('esbtp_etudiants.id', 'esbtp_inscriptions.etudiant_id'))
+            ->orderBy(ESBTPEtudiant::select('prenoms')->whereColumn('esbtp_etudiants.id', 'esbtp_inscriptions.etudiant_id'))
             ->limit(40)
             ->get()
             ->map(function (ESBTPInscription $inscription) {
@@ -516,8 +519,7 @@ class ESBTPPaiementController extends Controller
                     'id' => $inscription->id,
                     'etudiant_id' => $inscription->etudiant_id,
                     'matricule' => $etudiant->matricule ?? '',
-                    'nom' => $etudiant->user->name
-                        ?? trim(($etudiant->prenoms ?? '').' '.($etudiant->nom ?? '')),
+                    'nom' => trim(($etudiant->nom ?? '').' '.($etudiant->prenoms ?? '')) ?: ($etudiant->user->name ?? ''),
                     'filiere' => $inscription->filiere->name ?? '—',
                     'niveau' => $inscription->niveauEtude->name ?? '—',
                     'classe' => $inscription->classe->name ?? '—',

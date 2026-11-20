@@ -81,7 +81,7 @@
         </td>
         <td>
             <div class="lbl">Nom et Prénoms</div>
-            <div class="val">{{ $paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet ?? 'N/A' }}</div>
+            <div class="val">{{ $paiement->etudiant?->nom_complet ?: $paiement->etudiant?->user?->name ?? 'N/A' }}</div>
         </td>
         <td>
             <div class="lbl">Filière</div>
