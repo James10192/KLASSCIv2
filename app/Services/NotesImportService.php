@@ -168,6 +168,12 @@ class NotesImportService
             }
 
             $etudiant = $matriculeMap[$matricule] ?? null;
+            // Les lignes d'information du bas de la feuille (établissement,
+            // consignes) ne portent aucune note : ce ne sont pas des élèves.
+            $sansNote = collect(array_keys($evalColumns))->every(fn ($c) => $this->parseCellValue($row[$c] ?? null) === null);
+            if (! $etudiant && $sansNote) {
+                continue;
+            }
             if (! $etudiant) {
                 $errors[] = [
                     'row' => $excelRow,
