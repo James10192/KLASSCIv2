@@ -83,6 +83,8 @@ class EtatJuryLmdToolTest extends OfficialDocumentDatabaseTestCase
 
         self::assertTrue($resultat['diagnostic']['aucun_jury']);
         self::assertSame(['Président', 'Assesseur', 'Secrétaire', 'Consultatif'], $resultat['diagnostic']['roles_des_membres']);
+        // Un libellé pour chaque rôle du modèle : un rôle ajouté sans libellé se verrait ici.
+        self::assertSame(\App\Models\ESBTPLMDJuryMembre::ROLES, array_keys(\App\Models\ESBTPLMDJuryMembre::LIBELLES_ROLES));
         self::assertSame(['Notes validées', 'Jury composé', 'Décisions calculées', 'Signatures recueillies'], array_keys($resultat['diagnostic']['etapes_avant_le_pv']));
         self::assertStringContainsString('roles_des_membres', ResumeOutil::pourModele('etat_jury_lmd', $resultat, true));
     }

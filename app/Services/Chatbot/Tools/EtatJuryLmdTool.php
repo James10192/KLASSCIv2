@@ -5,6 +5,7 @@ namespace App\Services\Chatbot\Tools;
 use App\Domain\OfficialDocuments\Services\JuryPvIssuanceGuard;
 use App\Domain\OfficialDocuments\Services\PreparationDuJury;
 use App\Models\ESBTPLMDJury;
+use App\Models\ESBTPLMDJuryMembre;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -63,7 +64,7 @@ class EtatJuryLmdTool extends ChatbotTool
                 'diagnostic' => [
                     'aucun_jury' => true,
                     'etapes_avant_le_pv' => array_column(app(PreparationDuJury::class)->etapes([]), 'aide', 'titre'),
-                    'roles_des_membres' => ['Président', 'Assesseur', 'Secrétaire', 'Consultatif'],
+                    'roles_des_membres' => array_map(fn ($r) => ESBTPLMDJuryMembre::LIBELLES_ROLES[$r] ?? $r, ESBTPLMDJuryMembre::ROLES),
                     'ou_creer' => Route::has('esbtp.lmd.jurys.index') ? route('esbtp.lmd.jurys.index', [], false) : null,
                 ],
             ];
