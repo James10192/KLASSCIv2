@@ -73,6 +73,7 @@ return [
     'POST api/cli/resultats/moyennes' => ['nanan' => 'proposer_saisie_moyennes'],
 
     // --- Volontairement hors de la portée de Nanan ---
+    'POST api/cli/evaluations/publier' => ['hors_nanan' => 'Réparation ou reprise de données décidée par le support, rejouée en commande d\'exploitation.'],
     'POST api/cli/academic-pilotage/backfill' => ['hors_nanan' => 'Réparation ou reprise de données décidée par le support, rejouée en commande d\'exploitation.'],
     'POST api/cli/academic-pilotage/refresh' => ['hors_nanan' => 'Réparation ou reprise de données décidée par le support, rejouée en commande d\'exploitation.'],
     'POST api/cli/acces-temporaires/{grant}/retirer' => ['hors_nanan' => 'Comptes, rôles et accès : jamais confiés à un agent (escalade de privilèges).'],
