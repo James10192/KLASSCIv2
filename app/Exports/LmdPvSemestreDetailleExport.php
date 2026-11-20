@@ -23,6 +23,8 @@ class LmdPvSemestreDetailleExport implements FromCollection, WithTitle, WithEven
     private const IDENTITE = ['N°', 'IP', 'NOM', 'PRÉNOMS', 'DATE DE NAISSANCE', 'LIEU DE NAISSANCE', 'SEXE', 'NATIONALITÉ'];
     private const RESULTAT = ['Moy. sem.', 'Crédits', 'Décision', "Année d'obtention", 'Session'];
     private const ENTETE = 7;
+    /** Une ligne vide doit porter une cellule : la feuille saute `[]`, et tout remonterait d'un cran. */
+    private const LIGNE_VIDE = [''];
 
     public function __construct(private array $payload) {}
 
@@ -41,7 +43,7 @@ class LmdPvSemestreDetailleExport implements FromCollection, WithTitle, WithEven
         $p = $this->payload;
         $rows = [
             [mb_strtoupper((string) ($p['ecole']['name'] ?? 'Établissement'), 'UTF-8')],
-            [],
+            self::LIGNE_VIDE,
             ['', 'ANNÉE UNIVERSITAIRE', $p['annee'] ?? ''],
             ['', 'DÉPARTEMENT', $p['departement'] ?? ''],
             ['', 'PARCOURS', $p['parcours'] ?? ''],
@@ -62,7 +64,7 @@ class LmdPvSemestreDetailleExport implements FromCollection, WithTitle, WithEven
             $rows[] = $line;
         }
 
-        $rows[] = [];
+        $rows[] = self::LIGNE_VIDE;
         $rows[] = ['UNITÉS D’ENSEIGNEMENT', '', '', '', '', '', '', 'CRÉDITS', '', '', 'STATISTIQUES', 'NOMBRE', '%'];
         $max = max(count($p['ues']), count($p['statistiques']));
         for ($i = 0; $i < $max; $i++) {
@@ -71,7 +73,7 @@ class LmdPvSemestreDetailleExport implements FromCollection, WithTitle, WithEven
             $rows[] = [$ue ? 'UE : '.$ue['code'] : '', $ue['name'] ?? '', '', '', '', '', '', $ue['credit'] ?? '', '', '',
                 $stat['libelle'] ?? '', $stat['nombre'] ?? '', $stat ? $stat['pourcentage'] : ''];
         }
-        $rows[] = [];
+        $rows[] = self::LIGNE_VIDE;
         $lieu = trim((string) ($p['ecole']['city'] ?? ''));
         $rows[] = ['', '', '', '', '', '', '', '', '', '', mb_strtoupper(($lieu !== '' ? $lieu.', ' : '').'LE '.($p['date_jury'] ?? '…'), 'UTF-8')];
 
@@ -129,7 +131,7 @@ class LmdPvSemestreDetailleExport implements FromCollection, WithTitle, WithEven
             $sheet->getStyle('A'.(self::ENTETE + 1).':'.$derniere.$finDonnees)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
             $sheet->freezePane('I'.(self::ENTETE + 3));
             foreach (range(1, $col + count(self::RESULTAT) - 1) as $i) {
-                $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($i))->setWidth($i <= 8 ? 14 : 11);
+                $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($i))->setWidth($i === 2 ? 22 : ($i <= 8 ? 14 : 11));
             }
         }];
     }

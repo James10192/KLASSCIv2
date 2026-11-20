@@ -127,6 +127,27 @@ class PvSemestreDetailleAssemblerTest extends OfficialDocumentDatabaseTestCase
         self::assertCount(count($entete), $premiere);
     }
 
+    public function test_le_classeur_garde_l_entete_a_sa_place_et_les_etudiants_sans_style(): void
+    {
+        // Constaté sur presentation : la feuille sautait les lignes vides, tout
+        // remontait d'un cran, et le premier étudiant prenait le style d'en-tête.
+        $jury = $this->seedIssuableJury();
+        $this->seedResultats();
+        $pv = app(PvSemestreDetailleAssembler::class)->forJury($jury->fresh());
+
+        $binaire = \Maatwebsite\Excel\Facades\Excel::raw(new LmdPvSemestreDetailleExport($pv), \Maatwebsite\Excel\Excel::XLSX);
+        $fichier = tempnam(sys_get_temp_dir(), 'pv').'.xlsx';
+        file_put_contents($fichier, $binaire);
+        $feuille = \PhpOffice\PhpSpreadsheet\IOFactory::load($fichier)->getActiveSheet();
+        @unlink($fichier);
+
+        self::assertSame('ANNÉE UNIVERSITAIRE', $feuille->getCell('B3')->getValue());
+        self::assertSame('N°', $feuille->getCell('A9')->getValue());
+        self::assertTrue($feuille->getStyle('A9')->getFont()->getBold());
+        self::assertSame(1, (int) $feuille->getCell('A10')->getValue());
+        self::assertFalse($feuille->getStyle('A10')->getFont()->getBold(), 'Le premier étudiant ne porte pas le style d’en-tête.');
+    }
+
     public function test_le_pdf_se_rend_avec_les_statistiques_et_le_lieu(): void
     {
         $jury = $this->seedIssuableJury();
