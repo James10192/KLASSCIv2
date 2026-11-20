@@ -92,11 +92,12 @@ class EtatJuryLmdTool extends ChatbotTool
             }
             $diagnostic[] = $ligne;
         }
+        $resume = ['jurys' => $diagnostic];
         if (! $detaille) {
-            $diagnostic[] = ['note' => 'Pour les motifs d’un jury, rappelle etat_jury_lmd avec son jury_id.'];
+            $resume['note'] = 'Pour les motifs d’un jury, rappelle etat_jury_lmd avec son jury_id.';
         }
 
-        return ['display_type' => 'cards', 'results' => $cartes, 'diagnostic' => ['jurys' => $diagnostic]];
+        return ['display_type' => 'cards', 'results' => $cartes, 'diagnostic' => $resume];
     }
 
     /**
@@ -110,8 +111,11 @@ class EtatJuryLmdTool extends ChatbotTool
         }
         try {
             $etapes = app(PreparationDuJury::class)->etapes(app(JuryPvIssuanceGuard::class)->raisonsParEtape($jury));
-        } catch (\LogicException|\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (\LogicException $e) {
+            // Les messages du contrôle d'émission sont écrits pour la personne.
             return ['termine' => false, 'pret' => false, 'statut' => 'Lecture impossible : '.$e->getMessage(), 'manquantes' => []];
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return ['termine' => false, 'pret' => false, 'statut' => 'Lecture impossible : ce jury n’existe plus.', 'manquantes' => []];
         }
         $manquantes = [];
         foreach ($etapes as $e) {

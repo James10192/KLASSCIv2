@@ -102,7 +102,7 @@ class EtatJuryLmdToolTest extends OfficialDocumentDatabaseTestCase
         $decode = json_decode($pourModele, true);
 
         self::assertNotNull($decode, 'Le résumé rendu au modèle doit rester un JSON valide.');
-        $verdicts = array_filter($decode['diagnostic']['jurys'] ?? [], fn ($j) => isset($j['jury_id']));
+        $verdicts = $decode['diagnostic']['jurys'] ?? [];
         self::assertCount(8, $verdicts);
         foreach ($verdicts as $jury) {
             self::assertArrayHasKey('pret_pour_le_pv', $jury);
