@@ -326,6 +326,11 @@
                         <span>Inclure inscriptions inactives</span>
                     </label>
                     <span class="rsl-filter-hint">La liste se met à jour dès qu'un filtre change.</span>
+                    @can('bulletins.view')
+                    <button type="button" class="rsl-btn" style="height:44px;" onclick="rslOuvrirReleveDetaille()">
+                        <i class="fas fa-list-ol"></i>Relevés détaillés (PDF)
+                    </button>
+                    @endcan
                 </div>
             </form>
         </div>
@@ -418,6 +423,19 @@
 
     </div>
 </div>
+<script>
+function rslOuvrirReleveDetaille() {
+    var classe = document.getElementById('classe_id').value;
+    var annee = document.getElementById('annee_universitaire_id').value;
+    var s = document.getElementById('semestre').value; var periode = (s === '1' || s === 'semestre1') ? 'semestre1' : ((s === '2' || s === 'semestre2') ? 'semestre2' : '');
+    if (!classe || !annee || (periode !== 'semestre1' && periode !== 'semestre2')) {
+        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'warning', message: 'Choisissez une classe BTS, une année et le semestre 1 ou 2.' } }));
+        return;
+    }
+    var url = @json(url('/esbtp/classes')) + '/' + classe + '/releve-detaille?inline=1&annee_universitaire_id=' + annee + '&periode=' + periode;
+    window.open(url, '_blank', 'noopener');
+}
+</script>
 @endsection
 
 @push('scripts')
