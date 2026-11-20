@@ -53,7 +53,8 @@ class LectureNotesCliTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.nb_notes', 1)
             ->assertJsonPath('data.evaluations.0.notes.0.etudiant_id', $etudiant->id)
-            ->assertJsonPath('data.evaluations.0.notes.0.note', (float) ESBTPNote::where('evaluation_id', $evaluation->id)->value('note'));
+            // JSON écrit 16.0 en « 16 » : une note entière revient entière. On compare la valeur, pas le type.
+            ->assertJsonPath('data.evaluations.0.notes.0.note', fn ($note) => (float) $note === (float) ESBTPNote::where('evaluation_id', $evaluation->id)->value('note'));
 
         $this->assertSame($avant, ESBTPNote::count());
     }
