@@ -54,7 +54,19 @@ class EtatJuryLmdTool extends ChatbotTool
     {
         $jurys = $this->jurys($args, $user);
         if ($jurys->isEmpty()) {
-            return ['display_type' => 'text', 'message' => "Aucun jury de délibération ne correspond, ou aucun ne vous est accessible."];
+            // Sans jury, le modèle complétait de mémoire et inventait (un rôle
+            // de « rapporteur », des notes « saisies » au lieu de validées).
+            // Les étapes et les rôles réels lui sont donc fournis.
+            return [
+                'display_type' => 'text',
+                'message' => 'Aucun jury de délibération ne correspond, ou aucun ne vous est accessible.',
+                'diagnostic' => [
+                    'aucun_jury' => true,
+                    'etapes_avant_le_pv' => array_column(app(PreparationDuJury::class)->etapes([]), 'aide', 'titre'),
+                    'roles_des_membres' => ['Président', 'Assesseur', 'Secrétaire', 'Consultatif'],
+                    'ou_creer' => Route::has('esbtp.lmd.jurys.index') ? route('esbtp.lmd.jurys.index', [], false) : null,
+                ],
+            ];
         }
 
         // Un jury visé reçoit tout son détail ; une liste ne garde que les
