@@ -10,6 +10,7 @@ use App\Services\Chatbot\Tools\EvolutionEncaissementsTool;
 use App\Services\Chatbot\Tools\RepartitionEffectifsTool;
 use App\Services\Chatbot\Tools\ChatbotTool;
 use App\Services\Chatbot\Tools\DiagnostiquerReinscriptionTool;
+use App\Services\Chatbot\Tools\EtatJuryLmdTool;
 use App\Services\Chatbot\Tools\SuiviDesNotesTool;
 use App\Services\Chatbot\Tools\GetDashboardKpisTool;
 use App\Services\Chatbot\Tools\GetFinancialSummaryTool;
@@ -67,6 +68,7 @@ class CatalogueOutils
             new GetFinancialSummaryTool(),
             new SearchDebtorsTool(),
             new DiagnostiquerReinscriptionTool(),
+            new EtatJuryLmdTool(),
             new SuiviDesNotesTool(),
             new ChercherDansPiece(),
             new LireStructureAcademique(),

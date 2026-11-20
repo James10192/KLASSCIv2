@@ -1,0 +1,143 @@
+<?php
+
+namespace App\Services\Chatbot\Tools;
+
+use App\Domain\OfficialDocuments\Services\JuryPvIssuanceGuard;
+use App\Domain\OfficialDocuments\Services\PreparationDuJury;
+use App\Models\ESBTPLMDJury;
+use Illuminate\Support\Facades\Route;
+
+/**
+ * « Où en est le jury de L2 Droit ? », « pourquoi je ne peux pas générer le
+ * PV ? » : la même lecture que l'écran du jury, rendue au modèle.
+ *
+ * Les étapes et leurs motifs viennent de JuryPvIssuanceGuard, l'autorité qui
+ * décide si le PV peut être émis : Nanan ne dit jamais « prêt » quand l'écran
+ * refuserait. La confidentialité est celle de l'écran : un simple membre ne
+ * voit que les jurys dont il fait partie.
+ *
+ * Lecture seule. Signer et publier restent des gestes humains, faits sur
+ * l'écran du jury par la personne concernée.
+ */
+class EtatJuryLmdTool extends ChatbotTool
+{
+    private const MAX_JURYS = 8;
+
+    public function name(): string
+    {
+        return 'etat_jury_lmd';
+    }
+
+    public function description(): string
+    {
+        return "Dit où en est un jury de délibération LMD et ce qui manque avant son procès-verbal (PV) : notes validées, composition et quorum, "
+            . "décisions calculées, signatures, avec les membres qui n'ont pas signé. Donne aussi le numéro du PV s'il est émis et les liens "
+            . "du PV officiel, du PV détaillé du semestre et du PV annuel. À utiliser pour « où en est le jury », « pourquoi le PV est grisé », "
+            . "« qui n'a pas signé », « télécharger le PV ». Passe jury_id si la page le donne ; sinon le nom de la classe et le semestre ; "
+            . "sans rien, liste les derniers jurys.";
+    }
+
+    public function parameters(): array
+    {
+        return [
+            'type' => 'object',
+            'properties' => [
+                'jury_id' => ['type' => 'integer', 'description' => 'Identifiant du jury.'],
+                'classe' => ['type' => 'string', 'description' => 'Nom ou code de la classe, par exemple « L2 Droit Privé ».'],
+                'semestre' => ['type' => 'integer', 'description' => 'Numéro du semestre (1 à 10).'],
+            ],
+        ];
+    }
+
+    public function execute(array $args, $user): array
+    {
+        $jurys = $this->jurys($args, $user);
+        if ($jurys->isEmpty()) {
+            return ['display_type' => 'text', 'message' => "Aucun jury de délibération ne correspond, ou aucun ne vous est accessible."];
+        }
+
+        $guard = app(JuryPvIssuanceGuard::class);
+        $preparation = app(PreparationDuJury::class);
+        $cartes = [];
+        $diagnostic = [];
+        foreach ($jurys as $jury) {
+            $termine = in_array($jury->status, ['publie', 'archive'], true);
+            $etapes = $termine ? [] : $preparation->etapes($guard->raisonsParEtape($jury));
+            $manquantes = array_values(array_filter($etapes, fn ($e) => ! $e['ok']));
+            $pret = ! $termine && $manquantes === [];
+
+            $cartes[] = [
+                'nom' => $jury->libelle,
+                'classe' => trim(($jury->classe?->name ?? '').' · S'.$jury->semestre, ' ·'),
+                'detail' => $jury->pv_numero ? 'PV '.$jury->pv_numero : 'PV non émis',
+                'statut' => $termine ? $jury->libelleStatut() : ($pret ? 'Prêt pour le PV' : count($manquantes).' étape(s) à terminer'),
+                'lien' => Route::has('esbtp.lmd.jurys.show') ? route('esbtp.lmd.jurys.show', $jury, false) : null,
+                'lien_label' => 'Ouvrir le jury',
+                'lien_icon' => 'fas fa-gavel',
+            ];
+            $diagnostic[] = [
+                'jury_id' => (int) $jury->id,
+                'libelle' => $jury->libelle,
+                'statut' => $jury->status,
+                'classe' => $jury->classe?->name,
+                'semestre' => $jury->semestre,
+                'pv_numero' => $jury->pv_numero,
+                'pret_pour_le_pv' => $pret,
+                // Les étapes manquantes d'abord, en entier : ce sont elles que le modèle doit dire.
+                'etapes_manquantes' => array_map(fn ($e) => ['etape' => $e['titre'], 'motifs' => $e['raisons'], 'ou_corriger' => $e['onglet'] ?? 'fiches de notes'], $manquantes),
+                'membres_sans_signature' => $termine ? [] : $this->sansSignature($jury),
+                'liens' => $this->liens($jury, $user),
+            ];
+        }
+
+        return ['display_type' => 'cards', 'results' => $cartes, 'diagnostic' => ['jurys' => $diagnostic]];
+    }
+
+    /** Les jurys visés, dans le périmètre de l'écran : tous pour qui préside ou délibère, les siens pour un membre. */
+    private function jurys(array $args, $user)
+    {
+        $query = ESBTPLMDJury::query()->with(['classe:id,name', 'membres.user:id,name'])->latest('date_jury')->latest('id');
+
+        if (! ESBTPLMDJury::utilisateurVoitTousLesJurys($user)) {
+            $query->whereHas('membres', fn ($m) => $m->where('user_id', $user->getAuthIdentifier()));
+        }
+        if (! empty($args['jury_id'])) {
+            return $query->whereKey((int) $args['jury_id'])->get();
+        }
+        if (! empty($args['classe'])) {
+            $this->applyClasseSearch($query, (string) $args['classe']);
+        }
+        if (! empty($args['semestre'])) {
+            $query->where('semestre', (int) $args['semestre']);
+        }
+
+        return $query->limit(self::MAX_JURYS)->get();
+    }
+
+    private function sansSignature(ESBTPLMDJury $jury): array
+    {
+        return $jury->membres
+            ->filter(fn ($m) => $m->present && ! $m->hasSigned())
+            ->map(fn ($m) => ['nom' => $m->user?->name, 'role' => $m->role])
+            ->values()->all();
+    }
+
+    private function liens(ESBTPLMDJury $jury, $user): array
+    {
+        $liens = [];
+        if ($jury->pv_numero && Route::has('esbtp.lmd.jurys.pv-download')) {
+            $liens['pv_officiel'] = route('esbtp.lmd.jurys.pv-download', $jury, false);
+        }
+        if ($user->can('lmd.pv.export')) {
+            if ($jury->semestre && Route::has('esbtp.lmd.jurys.pv-semestre.pdf')) {
+                $liens['pv_detaille_semestre_pdf'] = route('esbtp.lmd.jurys.pv-semestre.pdf', $jury, false);
+                $liens['pv_detaille_semestre_excel'] = route('esbtp.lmd.jurys.pv-semestre.excel', $jury, false);
+            }
+            if (Route::has('esbtp.lmd.jurys.pv-annuel.pdf')) {
+                $liens['pv_annuel_pdf'] = route('esbtp.lmd.jurys.pv-annuel.pdf', $jury, false);
+            }
+        }
+
+        return $liens;
+    }
+}

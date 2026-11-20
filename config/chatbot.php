@@ -82,6 +82,14 @@ return [
             'libelle' => 'Préparation de la publication des notes…',
             'suggestion' => 'Publie les notes des évaluations terminées de ma classe',
         ],
+        // Mêmes droits que l'écran du jury : le module LMD et la consultation des
+        // délibérations. Le périmètre (tous les jurys ou les siens) suit la page.
+        'etat_jury_lmd' => [
+            'enabled' => true,
+            'all_permissions' => ['module.lmd.access', 'lmd.jury.view'],
+            'libelle' => 'Lecture du jury de délibération…',
+            'suggestion' => 'Qu’est-ce qui manque avant le PV de ce jury ?',
+        ],
         'diagnostiquer_reinscription' => [
             'enabled' => true,
             'any_permissions' => ['inscriptions.view', 'students.view'],
