@@ -2909,7 +2909,7 @@
                              data-rappels='@json($rappelsDuGabarit)'></div>
                     @endif
 
-                    @include('layouts.partials.nouveautes', ['cleVersion' => 'whatsNew.v2026_11_14'])
+                    @include('layouts.partials.nouveautes', ['cleVersion' => 'whatsNew.v2026_11_20'])
                 @endauth
 
             {{-- Alerte expiration mot de passe --}}

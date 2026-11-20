@@ -23,6 +23,34 @@ return [
     'titre' => 'Novembre 2026',
     'entrees' => [
         [
+            'titre' => 'Jurys LMD : le PV se prépare étape par étape',
+            'icone' => 'fa-list-check',
+            'texte' => 'L’écran du jury montre quatre étapes avant le procès-verbal : notes validées, jury composé, décisions calculées, signatures recueillies. Pour chacune, il dit ce qui manque, et un bouton mène à l’endroit où le corriger. « Générer PV » s’active quand tout est vert. Un jury rattaché par erreur à une classe BTS le dit nommément.',
+            'permissions' => ['lmd.jury.view'],
+            'captures' => [
+                'apres' => 'images/nouveautes/2026-11/jury-preparation-pv-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'Ce qui manque à chaque étape, et le bouton pour le corriger.',
+            ],
+        ],
+        [
+            'titre' => 'PV de délibération détaillé du semestre',
+            'icone' => 'fa-table',
+            'texte' => 'Sur l’écran du jury, « PV détaillé du semestre » sort le procès-verbal en PDF ou en Excel : une ligne par étudiant, et pour chaque UE la note de chaque élément, la moyenne, l’année d’obtention et la session (SN ou SR), puis la moyenne du semestre, les crédits et la décision. Sous le tableau : les UE et leurs crédits, les effectifs et la ligne « lieu, le date » pour la signature. Toutes les valeurs sont celles des bulletins.',
+            'permissions' => ['lmd.pv.export'],
+            'captures' => [
+                'apres' => 'images/nouveautes/2026-11/jury-pv-detaille-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'Les deux nouveaux boutons, à côté du PV officiel et du PV annuel.',
+            ],
+        ],
+        [
+            'titre' => 'Demandez à Nanan où en est un jury',
+            'icone' => 'fa-gavel',
+            'texte' => '« Où en est le jury de L2 Droit ? », « Pourquoi Générer PV est grisé ? », « Qui n’a pas signé ? » : Nanan répond avec les mêmes étapes que l’écran du jury, nomme les membres qui n’ont pas signé et donne les liens des PV. Elle ne signe et ne publie jamais à votre place.',
+            'permissions' => ['lmd.jury.view'],
+        ],
+        [
             'titre' => 'Portail en ligne : convocation sous code, code par e-mail',
             'icone' => 'fa-shield-halved',
             'texte' => 'Quand la vérification des contacts est activée, une famille ne voit plus sa convocation et ne change plus son créneau sur klassci.com avec la seule date de naissance : un code part d’abord à l’e-mail ou au WhatsApp du dossier. À la réinscription, l’étudiant choisit où recevoir son code et peut donner une autre adresse e-mail quand WhatsApp ne passe pas ; cette adresse s’affiche sur la demande (« E-mail donné sur le portail ») et reçoit la convocation, sans modifier le dossier : reportez-la vous-même si elle est bonne. Un matricule tapé avec des espaces ou des tirets retrouve aussi le bon dossier.',
