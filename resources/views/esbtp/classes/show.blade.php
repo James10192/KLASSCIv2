@@ -692,6 +692,9 @@
                             </ul>
                         </div>
                     @endif
+                    @can('notes.edit')
+                        <a href="{{ route('esbtp.classes.fiche-notes-excel.index', $classe->id) }}" class="cs-btn--glass" title="Télécharger la fiche de notes Excel, la remplir et la réimporter"><i class="fas fa-file-excel"></i>Fiche de notes Excel</a>
+                    @endcan
                     @if(auth()->user()->can('module.academic_pilotage.access') && auth()->user()->can('academic_pilotage.view'))
                         <a href="{{ route('esbtp.pilotage-academique.index', array_filter(['classe' => $classe->id])) }}" class="cs-btn--glass" title="Notes manquantes, relances et présence de cette classe">
                             <i class="fas fa-chart-line"></i>Pilotage académique

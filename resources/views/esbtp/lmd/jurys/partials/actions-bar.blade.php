@@ -55,6 +55,11 @@
         <i class="fas fa-file-excel"></i> Télécharger le PV annuel (Excel)
     </a>
     @endcan
+    @can('notes.edit')
+    <a href="{{ route('esbtp.classes.fiche-notes-excel.index', $jury->classe_id) }}" class="juy-btn juy-btn--secondary h-11">
+        <i class="fas fa-file-excel"></i> Fiche de notes Excel
+    </a>
+    @endcan
 
     @if($jury->pv_numero)
     <span class="pv-numero"><i class="fas fa-stamp"></i> {{ $jury->pv_numero }}</span>

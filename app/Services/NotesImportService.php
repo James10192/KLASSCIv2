@@ -302,8 +302,23 @@ class NotesImportService
         // Précharger les évaluations pour les méta (classe_id, matiere_id, periode, annee)
         $evalIds = collect($diff['changes'])->pluck('evaluation_id')->unique()->all();
         $evaluations = ESBTPEvaluation::whereIn('id', $evalIds)->get()->keyBy('id');
+        $nouvelle = collect($diff['evaluations'])->firstWhere('nouvelle', true);
 
-        DB::transaction(function () use ($diff, $evaluations, $userId, &$created, &$updated) {
+        DB::transaction(function () use ($diff, &$evaluations, $nouvelle, $classeId, $matiereId, $periode, $anneeUniversitaireId, $userId, &$created, &$updated) {
+            // La fiche vierge prévoyait une colonne pour une matière encore sans
+            // évaluation : elle est créée ici, une seule fois, terminée.
+            if ($nouvelle && collect($diff['changes'])->contains('evaluation_id', 0)) {
+                $annee = $anneeUniversitaireId ?: ESBTPAnneeUniversitaire::where('is_current', 1)->value('id');
+                $evaluations->put(0, ESBTPEvaluation::create([
+                    'titre' => $nouvelle['titre'], 'classe_id' => $classeId, 'matiere_id' => $matiereId,
+                    'annee_universitaire_id' => $annee, 'periode' => $periode, 'type' => ESBTPEvaluation::TYPE_EXAMEN,
+                    'description' => 'Créée par l\'import d\'une fiche de notes Excel.',
+                    'date_evaluation' => now()->format('Y-m-d').' 08:00:00', 'duree_minutes' => 60,
+                    'coefficient' => 1, 'bareme' => 20, 'status' => ESBTPEvaluation::STATUS_COMPLETED,
+                    'is_published' => true, 'notes_published' => false, 'created_by' => $userId,
+                ]));
+            }
+
             foreach ($diff['changes'] as $change) {
                 $eval = $evaluations->get($change['evaluation_id']);
                 if (! $eval) {
@@ -311,14 +326,14 @@ class NotesImportService
                 }
 
                 $note = ESBTPNote::where('etudiant_id', $change['etudiant_id'])
-                    ->where('evaluation_id', $change['evaluation_id'])
+                    ->where('evaluation_id', $eval->id)
                     ->first();
 
                 $isNew = ($note === null);
                 if ($isNew) {
                     $note = new ESBTPNote();
                     $note->etudiant_id = $change['etudiant_id'];
-                    $note->evaluation_id = $change['evaluation_id'];
+                    $note->evaluation_id = $eval->id;
                     $note->classe_id = $eval->classe_id;
                     $note->matiere_id = $eval->matiere_id;
                     $note->semestre = $eval->periode;
@@ -406,6 +421,20 @@ class NotesImportService
             $colIndex = 2; // skip matricule + nom
             foreach ($meta['evaluations'] as $metaEval) {
                 $evalId = (int) ($metaEval['id'] ?? 0);
+                // Colonne « à créer » d'une fiche vierge : une matière sans
+                // évaluation. Rejouer l'import retrouve celle déjà créée.
+                if (! $evalId && ! empty($metaEval['nouvelle'])) {
+                    $titre = (string) ($metaEval['titre'] ?? 'Examen');
+                    $dejaCreee = ESBTPEvaluation::query()->where('classe_id', $classeId)->where('matiere_id', $matiereId)
+                        ->where('periode', $periode)->where('titre', $titre)
+                        ->when($anneeUniversitaireId, fn ($q) => $q->where('annee_universitaire_id', $anneeUniversitaireId))
+                        ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED)->first();
+                    $resolved[$colIndex] = $dejaCreee
+                        ? ['id' => $dejaCreee->id, 'titre' => $dejaCreee->titre, 'bareme' => (float) $dejaCreee->bareme, 'coefficient' => (float) $dejaCreee->coefficient]
+                        : ['id' => 0, 'titre' => $titre, 'bareme' => 20.0, 'coefficient' => 1.0, 'nouvelle' => true];
+                    $colIndex++;
+                    continue;
+                }
                 if ($evalId && $dbEvals->has($evalId)) {
                     $eval = $dbEvals->get($evalId);
                     $resolved[$colIndex] = [

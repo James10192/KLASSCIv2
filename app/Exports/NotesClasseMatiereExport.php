@@ -62,8 +62,12 @@ class NotesClasseMatiereExport implements
     private ?ESBTPMatiere $matiere = null;
     private ?ESBTPAnneeUniversitaire $annee = null;
 
-    public function __construct(int $classeId, int $matiereId, string $periode, ?int $anneeUniversitaireId = null)
+    /** Fiche vierge : une matière sans évaluation reçoit une colonne « Examen », créée à l'import. */
+    private bool $colonneExamenSiVide;
+
+    public function __construct(int $classeId, int $matiereId, string $periode, ?int $anneeUniversitaireId = null, bool $colonneExamenSiVide = false)
     {
+        $this->colonneExamenSiVide = $colonneExamenSiVide;
         $this->classeId = $classeId;
         $this->matiereId = $matiereId;
         $this->periode = $periode;
@@ -96,6 +100,10 @@ class NotesClasseMatiereExport implements
             ->orderBy('id')
             ->get();
 
+        if ($this->evaluations->isEmpty() && $this->colonneExamenSiVide) {
+            $this->evaluations = collect([new ESBTPEvaluation(['titre' => 'Examen', 'bareme' => 20, 'coefficient' => 1])]);
+        }
+
         // Inscriptions actives triées par nom
         $this->inscriptions = ESBTPInscription::query()
             ->with(['etudiant:id,matricule,nom,prenoms'])
@@ -109,7 +117,7 @@ class NotesClasseMatiereExport implements
             ->values();
 
         // Notes indexées
-        $evalIds = $this->evaluations->pluck('id')->all();
+        $evalIds = $this->evaluations->pluck('id')->filter()->all();
         $etuIds = $this->inscriptions->pluck('etudiant_id')->all();
 
         if ($evalIds && $etuIds) {
@@ -151,8 +159,22 @@ class NotesClasseMatiereExport implements
         return $this->matiere?->name;
     }
 
+    private ?string $titreFeuille = null;
+
+    /** Titre de feuille imposé par un classeur (31 caractères au plus, unique). */
+    public function avecTitre(string $titre): self
+    {
+        $this->titreFeuille = $titre;
+
+        return $this;
+    }
+
     public function title(): string
     {
+        if ($this->titreFeuille !== null) {
+            return $this->titreFeuille;
+        }
+
         $matiereSlug = $this->matiere?->name ? Str::limit($this->matiere->name, 25, '') : 'Matiere';
 
         return Str::ascii($matiereSlug . ' - ' . $this->periodeLabel());
@@ -162,6 +184,7 @@ class NotesClasseMatiereExport implements
     {
         $headings = [
             'Matricule',
+
             'Nom & Prénoms',
         ];
 
@@ -264,7 +287,8 @@ class NotesClasseMatiereExport implements
                     'periode' => $this->periode,
                     'annee_universitaire_id' => $this->anneeUniversitaireId,
                     'evaluations' => $this->evaluations->map(fn ($e) => [
-                        'id' => $e->id,
+                        'id' => (int) $e->id,
+                        'nouvelle' => ! $e->id,
                         'titre' => $e->titre,
                         'bareme' => (float) $e->bareme,
                         'coefficient' => (float) $e->coefficient,
@@ -336,6 +360,19 @@ class NotesClasseMatiereExport implements
                             'font' => ['bold' => true, 'color' => ['rgb' => '0453CB']],
                             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EFF6FF']],
                         ]);
+                }
+
+                // Contrôle de saisie : un nombre entre 0 et le barème, ou ABS.
+                foreach ($this->evaluations->values() as $i => $eval) {
+                    $col = $this->columnLetter(3 + $i);
+                    $bareme = $this->formatNumber((float) ($eval->bareme ?: 20));
+                    for ($r = $dataStartRow; $r <= $dataEndRow; $r++) {
+                        $validation = $sheet->getCell("{$col}{$r}")->getDataValidation();
+                        $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_CUSTOM)
+                            ->setFormula1("OR(UPPER({$col}{$r})=\"ABS\",AND(ISNUMBER({$col}{$r}),{$col}{$r}>=0,{$col}{$r}<={$bareme}))")
+                            ->setAllowBlank(true)->setShowErrorMessage(true)
+                            ->setErrorTitle('Note invalide')->setError("Tapez une note entre 0 et {$bareme}, ou ABS.");
+                    }
                 }
 
                 // Freeze pane sur 2 colonnes + header

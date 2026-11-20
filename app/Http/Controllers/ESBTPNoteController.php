@@ -1514,7 +1514,7 @@ class ESBTPNoteController extends Controller
         $validator = \Validator::make($request->all(), [
             'classe' => ['required', 'integer', 'exists:esbtp_classes,id'],
             'matiere' => ['required', 'integer', 'exists:esbtp_matieres,id'],
-            'periode' => ['required', 'in:semestre1,semestre2'],
+            'periode' => ['required', 'regex:/^semestre([1-9]|10)$/'],
             'annee_universitaire_id' => ['nullable', 'integer', 'exists:esbtp_annee_universitaires,id'],
         ]);
 
