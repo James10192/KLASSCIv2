@@ -48,6 +48,14 @@ class ESBTPLMDJuryMembre extends Model implements Auditable
 
     public const ROLES = ['president', 'assesseur', 'secretaire', 'consultatif'];
 
+    /** Libellé affichable de chaque rôle de ROLES. */
+    public const LIBELLES_ROLES = [
+        'president' => 'Président',
+        'assesseur' => 'Assesseur',
+        'secretaire' => 'Secrétaire',
+        'consultatif' => 'Consultatif',
+    ];
+
     public function jury(): BelongsTo
     {
         return $this->belongsTo(ESBTPLMDJury::class, 'jury_id');

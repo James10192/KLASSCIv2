@@ -73,6 +73,22 @@ class EtatJuryLmdToolTest extends OfficialDocumentDatabaseTestCase
         self::assertSame('text', $this->lire(2, ['jury_id' => 2])['display_type']);
     }
 
+    public function test_sans_jury_il_donne_les_vraies_etapes_et_les_vrais_roles(): void
+    {
+        // Constaté sur une école sans jury : le modèle inventait un « rapporteur ».
+        $this->seedIssuableJury();
+        $this->accorder(1, ['module.lmd.access', 'lmd.jury.view', 'lmd.jury.preside']);
+
+        $resultat = $this->lire(1, ['classe' => 'Classe inexistante']);
+
+        self::assertTrue($resultat['diagnostic']['aucun_jury']);
+        self::assertSame(['Président', 'Assesseur', 'Secrétaire', 'Consultatif'], $resultat['diagnostic']['roles_des_membres']);
+        // Un libellé pour chaque rôle du modèle : un rôle ajouté sans libellé se verrait ici.
+        self::assertSame(\App\Models\ESBTPLMDJuryMembre::ROLES, array_keys(\App\Models\ESBTPLMDJuryMembre::LIBELLES_ROLES));
+        self::assertSame(['Notes validées', 'Jury composé', 'Décisions calculées', 'Signatures recueillies'], array_keys($resultat['diagnostic']['etapes_avant_le_pv']));
+        self::assertStringContainsString('roles_des_membres', ResumeOutil::pourModele('etat_jury_lmd', $resultat, true));
+    }
+
     public function test_l_outil_suit_les_droits_de_l_ecran(): void
     {
         $this->seedIssuableJury();
