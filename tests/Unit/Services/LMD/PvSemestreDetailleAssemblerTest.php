@@ -52,6 +52,21 @@ class PvSemestreDetailleAssemblerTest extends OfficialDocumentDatabaseTestCase
         self::assertEquals(10.0, $yao['ues'][1]['notes'][0]);
     }
 
+    public function test_une_ue_acquise_une_annee_precedente_porte_son_annee_d_acquisition(): void
+    {
+        $jury = $this->seedIssuableJury();
+        $this->seedResultats();
+        $now = now();
+        DB::table('esbtp_annee_universitaires')->insert(['id' => 3, 'libelle' => '2024-2025', 'created_at' => $now, 'updated_at' => $now]);
+        DB::table('esbtp_lmd_bulletins')->insert(['id' => 200, 'etudiant_id' => 10, 'classe_id' => 1, 'parcours_id' => 1, 'annee_universitaire_id' => 3, 'semestre' => 1, 'moyenne_generale' => 12, 'credits_capitalises' => 3, 'credits_totaux' => 30, 'is_published' => true, 'created_at' => $now, 'updated_at' => $now]);
+        DB::table('esbtp_lmd_resultats_ues')->insert(['id' => 50, 'bulletin_id' => 200, 'unite_enseignement_id' => 2, 'etudiant_id' => 10, 'moyenne' => 12, 'statut' => 'AQ', 'credit' => 3, 'created_at' => $now, 'updated_at' => $now]);
+
+        $koffi = collect(app(PvSemestreDetailleAssembler::class)->forJury($jury->fresh())['rows'])->firstWhere('matricule', 'LMD001');
+
+        self::assertSame('2025', $koffi['ues'][0]['annee'], 'Chimie acquise en 2024-2025');
+        self::assertSame('2026', $koffi['ues'][1]['annee'], 'Mathématiques acquises cette année');
+    }
+
     public function test_un_bulletin_sans_detail_d_ue_mais_avec_moyenne_compte_present(): void
     {
         // Constaté sur presentation : moyenne et décision, aucun résultat d'UE.

@@ -37,12 +37,13 @@ class PvSemestreDetailleAssembler
             ->values();
 
         $decisions = ESBTPLMDJuryDecision::query()->where('jury_id', $jury->id)->pluck('decision', 'etudiant_id');
-        $annee = $this->anneeDObtention($jury);
+        $annee = $this->anneeCivile($jury->anneeUniversitaire);
+        $acquises = $this->anneesDAcquisitionAnterieures($jury, $bulletins);
         $ues = $this->colonnes($bulletins);
 
         $rows = [];
         foreach ($bulletins as $i => $bulletin) {
-            $rows[] = $this->ligne($i + 1, $bulletin, $ues, $decisions, $annee);
+            $rows[] = $this->ligne($i + 1, $bulletin, $ues, $decisions, $annee, $acquises);
         }
 
         return [
@@ -98,7 +99,7 @@ class PvSemestreDetailleAssembler
         return $ues;
     }
 
-    private function ligne(int $ordre, ESBTPLMDBulletin $bulletin, array $ues, Collection $decisions, ?string $annee): array
+    private function ligne(int $ordre, ESBTPLMDBulletin $bulletin, array $ues, Collection $decisions, ?string $annee, array $acquises): array
     {
         $etudiant = $bulletin->etudiant;
         $parUe = $bulletin->resultatsUEs->keyBy('unite_enseignement_id');
@@ -127,7 +128,7 @@ class PvSemestreDetailleAssembler
                 'notes' => $notes,
                 'moyenne' => $ue?->moyenne,
                 'validee' => (bool) $ue?->isValidee(),
-                'annee' => $ue?->isValidee() ? $annee : null,
+                'annee' => $ue?->isValidee() ? ($acquises[$bulletin->etudiant_id.':'.$colonne['id']] ?? $annee) : null,
                 'session' => $ue ? $session : null,
             ];
         }
@@ -185,15 +186,47 @@ class PvSemestreDetailleAssembler
     }
 
     /**
-     * L'année civile qui clôt l'année universitaire : « 2025-2026 » donne 2026.
+     * L'année où chaque UE a réellement été acquise, quand c'est avant l'année
+     * du jury : un redoublant garde ses UE capitalisées, et le PV doit dire
+     * l'année où il les a obtenues, pas l'année où on le délibère.
      *
-     * Limite connue : une UE capitalisée une année précédente (redoublant)
-     * reçoit l'année du jury, pas celle où elle a été acquise. Le portefeuille
-     * de crédits sait la vraie année ; le brancher ici est la suite à faire.
+     * La source est le bulletin de l'année d'acquisition (UE acquise ou
+     * acquise par compensation). Le portefeuille de crédits ne suffit pas : il
+     * n'enregistre qu'un total par bulletin, pas le détail par UE.
+     *
+     * @return array<string, string> « etudiant:ue » => année civile
      */
-    private function anneeDObtention(ESBTPLMDJury $jury): ?string
+    private function anneesDAcquisitionAnterieures(ESBTPLMDJury $jury, Collection $bulletins): array
     {
-        $libelle = (string) ($jury->anneeUniversitaire?->name ?? $jury->anneeUniversitaire?->libelle ?? '');
+        $ueIds = $bulletins->flatMap(fn ($b) => $b->resultatsUEs->pluck('unite_enseignement_id'))->unique()->values();
+        if ($ueIds->isEmpty()) {
+            return [];
+        }
+
+        $anterieures = ESBTPLMDResultatUE::query()
+            ->whereIn('etudiant_id', $bulletins->pluck('etudiant_id')->unique())
+            ->whereIn('unite_enseignement_id', $ueIds)
+            ->whereIn('statut', [ESBTPLMDResultatUE::STATUT_AQ, ESBTPLMDResultatUE::STATUT_APC])
+            ->whereHas('bulletin', fn ($q) => $q->where('annee_universitaire_id', '!=', $jury->annee_universitaire_id))
+            ->with('bulletin.anneeUniversitaire')
+            ->get();
+
+        $annees = [];
+        foreach ($anterieures as $resultat) {
+            $annee = $this->anneeCivile($resultat->bulletin?->anneeUniversitaire);
+            $cle = $resultat->etudiant_id.':'.$resultat->unite_enseignement_id;
+            if ($annee !== null && (! isset($annees[$cle]) || $annee < $annees[$cle])) {
+                $annees[$cle] = $annee;
+            }
+        }
+
+        return $annees;
+    }
+
+    /** L'année civile qui clôt une année universitaire : « 2025-2026 » donne 2026. */
+    private function anneeCivile($anneeUniversitaire): ?string
+    {
+        $libelle = (string) ($anneeUniversitaire?->name ?? $anneeUniversitaire?->libelle ?? '');
 
         return preg_match_all('/\d{4}/', $libelle, $m) ? end($m[0]) : null;
     }
