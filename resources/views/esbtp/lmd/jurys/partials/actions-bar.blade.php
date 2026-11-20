@@ -1,4 +1,4 @@
-﻿<div class="juy-actions-bar">
+<div class="juy-actions-bar">
     @can('lmd.jury.deliberate')
     @if(!$jury->isLocked())
     <button type="button" class="juy-btn juy-btn--primary h-11" @click="requestAutoDecisions()" :disabled="busy">
@@ -40,6 +40,9 @@
     </a>
     <a href="{{ route('esbtp.lmd.jurys.pv-semestre.excel', $jury) }}" class="juy-btn juy-btn--secondary h-11">
         <i class="fas fa-file-excel"></i> PV détaillé du semestre (Excel)
+    </a>
+    <a href="{{ route('esbtp.lmd.jurys.releve-detaille', $jury) }}?inline=1" target="_blank" rel="noopener" class="juy-btn juy-btn--secondary h-11">
+        <i class="fas fa-list-ol"></i> Relevés de notes détaillés (PDF)
     </a>
     @endif
     <a href="{{ route('esbtp.lmd.jurys.pv-annuel.pdf', $jury) }}?inline=1" target="_blank" rel="noopener" class="juy-btn juy-btn--secondary h-11">

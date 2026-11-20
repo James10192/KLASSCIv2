@@ -3646,6 +3646,9 @@ Route::prefix('esbtp/lmd/jurys')->name('esbtp.lmd.jurys.')
         Route::get('/{jury}/pv-semestre/pdf', [\App\Http\Controllers\ESBTPLMDPvSemestreController::class, 'pdf'])
             ->middleware(['permission:lmd.pv.export', 'throttle:60,1'])
             ->name('pv-semestre.pdf');
+        Route::get('/{jury}/releve-detaille', [\App\Http\Controllers\ReleveDetailleController::class, 'jury'])
+            ->middleware(['permission:lmd.pv.export', 'throttle:30,1'])
+            ->name('releve-detaille');
         Route::post('/{jury}/pv/reconcilier', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'reconcileLegacyPv'])
             ->middleware(['permission:lmd.jury.documents.reconcile', 'throttle:5,1'])
             ->name('pv-reconcile');
@@ -3957,3 +3960,9 @@ require __DIR__.'/exploitation-control-center.php';
 
 // Nanan Connect — gestion des connexions sous session Laravel + CSRF.
 require __DIR__.'/nanan-mcp-accounts.php';
+
+// Relevé de notes détaillé d'une classe BTS (document de travail du jury).
+Route::middleware(['auth', 'paywall', 'permission:bulletins.view'])->group(function () {
+    Route::get('/esbtp/classes/{classe}/releve-detaille', [\App\Http\Controllers\ReleveDetailleController::class, 'classe'])
+        ->whereNumber('classe')->middleware('throttle:30,1')->name('esbtp.classes.releve-detaille');
+});
