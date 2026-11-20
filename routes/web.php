@@ -3966,3 +3966,11 @@ Route::middleware(['auth', 'paywall', 'permission:bulletins.view'])->group(funct
     Route::get('/esbtp/classes/{classe}/releve-detaille', [\App\Http\Controllers\ReleveDetailleController::class, 'classe'])
         ->whereNumber('classe')->middleware('throttle:30,1')->name('esbtp.classes.releve-detaille');
 });
+
+// Fiche de notes Excel d'une classe (BTS et LMD) : télécharger, remplir, réimporter.
+Route::middleware(['auth', 'paywall', 'permission:notes.edit'])->prefix('esbtp/classes/{classe}/fiche-notes-excel')->where(['classe' => '[0-9]+'])->name('esbtp.classes.fiche-notes-excel.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\FicheNotesExcelController::class, 'show'])->name('index');
+    Route::get('/telecharger', [\App\Http\Controllers\FicheNotesExcelController::class, 'telecharger'])->middleware('throttle:10,1')->name('telecharger');
+    Route::post('/simuler', [\App\Http\Controllers\FicheNotesExcelController::class, 'simuler'])->middleware('throttle:20,1')->name('simuler');
+    Route::post('/appliquer', [\App\Http\Controllers\FicheNotesExcelController::class, 'appliquer'])->middleware('throttle:10,1')->name('appliquer');
+});

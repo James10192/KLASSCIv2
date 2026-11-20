@@ -22,7 +22,7 @@ class ImportNotesRequest extends FormRequest
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:5120'],
             'classe_id' => ['required', 'integer', 'exists:esbtp_classes,id'],
             'matiere_id' => ['required', 'integer', 'exists:esbtp_matieres,id'],
-            'periode' => ['required', 'in:semestre1,semestre2'],
+            'periode' => ['required', 'regex:/^semestre([1-9]|10)$/'],
             'annee_universitaire_id' => ['nullable', 'integer', 'exists:esbtp_annee_universitaires,id'],
         ];
     }
@@ -36,7 +36,7 @@ class ImportNotesRequest extends FormRequest
             'classe_id.required' => 'La classe est obligatoire.',
             'matiere_id.required' => 'La matière est obligatoire.',
             'periode.required' => 'La période est obligatoire.',
-            'periode.in' => 'La période doit être semestre1 ou semestre2.',
+            'periode.regex' => 'La période doit être un semestre (semestre1 à semestre10).',
         ];
     }
 }
