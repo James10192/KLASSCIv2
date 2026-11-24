@@ -104,9 +104,18 @@ class NotesImportService
             $anneeUniversitaireId = $current?->id;
         }
 
-        // Header (1ère ligne après meta)
-        $headerRow = $rows[0];
-        $dataRows = array_slice($rows, 1);
+        // L'en-tête est la ligne « Matricule » : un bandeau d'établissement peut
+        // la précéder. Un fichier sans bandeau la porte en première ligne.
+        $indexEntete = 0;
+        foreach (array_slice($rows, 0, 15, true) as $i => $row) {
+            if (Str::lower(trim((string) ($row[0] ?? ''))) === 'matricule') {
+                $indexEntete = $i;
+                break;
+            }
+        }
+        $headerRow = $rows[$indexEntete];
+        $dataRows = array_slice($rows, $indexEntete + 1);
+        $ligneEntete = ($meta ? 1 : 0) + $indexEntete + 1; // ligne Excel réelle
 
         // Mapper les évaluations à partir du meta (priorité) ou du header
         $evalColumns = $this->resolveEvaluations($headerRow, $meta, $classeId, $matiereId, $periode, $anneeUniversitaireId);
@@ -122,8 +131,16 @@ class NotesImportService
 
         // Une colonne porteuse de notes que nulle évaluation ne réclame était
         // jusqu'ici perdue en silence — voir `erreursDesColonnesIgnorees()`.
-        foreach ($this->erreursDesColonnesIgnorees($headerRow, $dataRows, $evalColumns, $meta !== null) as $erreur) {
+        foreach ($this->erreursDesColonnesIgnorees($headerRow, $dataRows, $evalColumns, $ligneEntete) as $erreur) {
             $errors[] = $erreur;
+            $summary['errors']++;
+        }
+
+        // Deux colonnes à créer du même titre deviendraient une seule évaluation.
+        $titresNouveaux = collect($evalColumns)->filter(fn ($e) => ! empty($e['nouvelle']))->groupBy(fn ($e) => Str::lower($e['titre']));
+        foreach ($titresNouveaux->filter(fn ($g) => $g->count() > 1) as $groupe) {
+            $errors[] = ['row' => $ligneEntete, 'col' => '-', 'evaluation' => $groupe->first()['titre'],
+                'reason' => sprintf('Plusieurs colonnes à créer portent le titre « %s » : donnez-leur des titres différents.', $groupe->first()['titre'])];
             $summary['errors']++;
         }
 
@@ -145,7 +162,7 @@ class NotesImportService
         }
 
         // Charger les notes existantes
-        $evalIds = collect($evalColumns)->pluck('id')->all();
+        $evalIds = collect($evalColumns)->pluck('id')->filter(fn ($id) => $id > 0)->all();
         $etuIds = collect($matriculeMap)->pluck('id')->all();
         $existingNotes = [];
         if ($evalIds && $etuIds) {
@@ -158,7 +175,7 @@ class NotesImportService
         }
 
         // Parcourir les lignes
-        $rowOffset = $meta ? 3 : 2; // ligne Excel réelle (meta ligne 1, header ligne 2 si meta)
+        $rowOffset = $ligneEntete + 1; // ligne Excel réelle de la première donnée
         foreach ($dataRows as $rowIdx => $row) {
             $excelRow = $rowOffset + $rowIdx;
 
@@ -308,19 +325,24 @@ class NotesImportService
         // Précharger les évaluations pour les méta (classe_id, matiere_id, periode, annee)
         $evalIds = collect($diff['changes'])->pluck('evaluation_id')->unique()->all();
         $evaluations = ESBTPEvaluation::whereIn('id', $evalIds)->get()->keyBy('id');
-        $nouvelle = collect($diff['evaluations'])->firstWhere('nouvelle', true);
+        $nouvelles = collect($diff['evaluations'])->where('nouvelle', true)->keyBy('id');
 
-        DB::transaction(function () use ($diff, &$evaluations, $nouvelle, $classeId, $matiereId, $periode, $anneeUniversitaireId, $userId, &$created, &$updated) {
-            // La fiche vierge prévoyait une colonne pour une matière encore sans
-            // évaluation : elle est créée ici, une seule fois, terminée.
-            if ($nouvelle && collect($diff['changes'])->contains('evaluation_id', 0)) {
-                $annee = $anneeUniversitaireId ?: ESBTPAnneeUniversitaire::where('is_current', 1)->value('id');
-                $evaluations->put(0, ESBTPEvaluation::create([
+        DB::transaction(function () use ($diff, &$evaluations, $nouvelles, $classeId, $matiereId, $periode, $anneeUniversitaireId, $userId, &$created, &$updated) {
+            // Chaque colonne ajoutée de la fiche qui porte au moins une note
+            // devient une évaluation, créée une seule fois, terminée. Une
+            // colonne restée vide ne crée rien.
+            $annee = $anneeUniversitaireId ?: ESBTPAnneeUniversitaire::where('is_current', 1)->value('id');
+            foreach (collect($diff['changes'])->pluck('evaluation_id')->unique()->filter(fn ($id) => $id < 0) as $cle) {
+                $nouvelle = $nouvelles->get($cle);
+                if (! $nouvelle) {
+                    continue;
+                }
+                $evaluations->put($cle, ESBTPEvaluation::create([
                     'titre' => $nouvelle['titre'], 'classe_id' => $classeId, 'matiere_id' => $matiereId,
                     'annee_universitaire_id' => $annee, 'periode' => $periode, 'type' => ESBTPEvaluation::TYPE_EXAMEN,
                     'description' => 'Créée par l\'import d\'une fiche de notes Excel.',
                     'date_evaluation' => now()->format('Y-m-d').' 08:00:00', 'duree_minutes' => 60,
-                    'coefficient' => 1, 'bareme' => 20, 'status' => ESBTPEvaluation::STATUS_COMPLETED,
+                    'coefficient' => $nouvelle['coefficient'], 'bareme' => $nouvelle['bareme'], 'status' => ESBTPEvaluation::STATUS_COMPLETED,
                     'is_published' => true, 'notes_published' => false, 'created_by' => $userId,
                 ]));
             }
@@ -430,14 +452,17 @@ class NotesImportService
                 // Colonne « à créer » d'une fiche vierge : une matière sans
                 // évaluation. Rejouer l'import retrouve celle déjà créée.
                 if (! $evalId && ! empty($metaEval['nouvelle'])) {
-                    $titre = (string) ($metaEval['titre'] ?? 'Examen');
+                    // L'en-tête a pu être renommé dans Excel : « Devoir 2 (/40 ×2) ».
+                    [$titre, $bareme, $coef] = $this->enteteDeColonne((string) ($headerRow[$colIndex] ?? ''), (string) ($metaEval['titre'] ?? 'Examen'));
                     $dejaCreee = ESBTPEvaluation::query()->where('classe_id', $classeId)->where('matiere_id', $matiereId)
                         ->where('periode', $periode)->where('titre', $titre)
                         ->when($anneeUniversitaireId, fn ($q) => $q->where('annee_universitaire_id', $anneeUniversitaireId))
                         ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED)->first();
                     $resolved[$colIndex] = $dejaCreee
                         ? ['id' => $dejaCreee->id, 'titre' => $dejaCreee->titre, 'bareme' => (float) $dejaCreee->bareme, 'coefficient' => (float) $dejaCreee->coefficient]
-                        : ['id' => 0, 'titre' => $titre, 'bareme' => 20.0, 'coefficient' => 1.0, 'nouvelle' => true];
+                        // Clé négative propre à la colonne : plusieurs colonnes à créer
+                        // ne se confondent pas avant d'avoir leur identifiant.
+                        : ['id' => -$colIndex, 'titre' => $titre, 'bareme' => $bareme, 'coefficient' => $coef, 'nouvelle' => true];
                     $colIndex++;
                     continue;
                 }
@@ -519,7 +544,7 @@ class NotesImportService
      * @param  array<int, array{id: int, titre: string, bareme: float, coefficient: float}>  $evalColumns
      * @return list<array{row: int, col: string, evaluation: string, reason: string}>
      */
-    private function erreursDesColonnesIgnorees(array $headerRow, array $dataRows, array $evalColumns, bool $avecMeta): array
+    private function erreursDesColonnesIgnorees(array $headerRow, array $dataRows, array $evalColumns, int $ligneEntete): array
     {
         $erreurs = [];
         // Borne droite alignée sur la stratégie par titre : la dernière colonne
@@ -548,7 +573,7 @@ class NotesImportService
             $titre = trim((string) ($headerRow[$colIndex] ?? ''));
 
             $erreurs[] = [
-                'row' => $avecMeta ? 2 : 1,
+                'row' => $ligneEntete,
                 'col' => $this->columnLetter($colIndex + 1),
                 'evaluation' => $titre,
                 'reason' => $titre === ''
@@ -561,6 +586,31 @@ class NotesImportService
         }
 
         return $erreurs;
+    }
+
+    /**
+     * Titre, barème et coefficient lus dans l'en-tête d'une colonne à créer,
+     * au format de l'export « Titre (/20 ×1) ». Ce qui manque prend 20 et 1.
+     *
+     * @return array{0: string, 1: float, 2: float}
+     */
+    private function enteteDeColonne(string $entete, string $titreParDefaut): array
+    {
+        $entete = trim($entete);
+        $bareme = 20.0;
+        $coef = 1.0;
+        if (preg_match('/\(([^)]*)\)\s*$/u', $entete, $m)) {
+            if (preg_match('/\/\s*(\d+(?:[.,]\d+)?)/u', $m[1], $b)) {
+                $bareme = (float) str_replace(',', '.', $b[1]);
+            }
+            if (preg_match('/[×x*]\s*(\d+(?:[.,]\d+)?)/u', $m[1], $c)) {
+                $coef = (float) str_replace(',', '.', $c[1]);
+            }
+            $entete = trim(mb_substr($entete, 0, mb_strlen($entete) - mb_strlen($m[0])));
+        }
+        $titre = mb_substr($entete !== '' ? $entete : $titreParDefaut, 0, 150);
+
+        return [$titre, $bareme > 0 && $bareme <= 100 ? $bareme : 20.0, $coef > 0 && $coef <= 20 ? $coef : 1.0];
     }
 
     private function columnLetter(int $index): string

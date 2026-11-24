@@ -16,3 +16,4 @@ Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 
 
+- 2026-11-24 · #? · Fiche de notes Excel : orientation et nombre de colonnes au choix, une évaluation créée par colonne ajoutée remplie, logo et couleurs de l'établissement

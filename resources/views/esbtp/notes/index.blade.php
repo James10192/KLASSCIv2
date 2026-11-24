@@ -348,12 +348,12 @@
                     <summary class="nm-documents-trigger"><i class="fas fa-folder-open" aria-hidden="true"></i> Documents <i class="fas fa-chevron-up nm-documents-caret" aria-hidden="true"></i></summary>
                     <div class="nm-documents-popover">
                         <div class="nm-documents-title">Documents et exports BTS</div>
-                @can('notes.feuille_vierge.export')
-                {{-- Configuration locale du PDF : n'affecte ni les notes ni l'année globale. --}}
-                <section class="nm-blank-config" id="nm-blank-config" aria-label="Options d'impression de la feuille vierge">
-                    <div class="nm-blank-config-header" title="Options de la feuille vierge A4">
+                {{-- Configuration locale du format A4, partagée par la feuille vierge PDF
+                     et l'export Excel : n'affecte ni les notes ni l'année globale. --}}
+                <section class="nm-blank-config" id="nm-blank-config" aria-label="Format A4 des documents">
+                    <div class="nm-blank-config-header" title="Format A4 de la feuille vierge PDF et du fichier Excel">
                         <i class="fas fa-print" aria-hidden="true"></i>
-                        <strong>Feuille vierge A4</strong>
+                        <strong>Format A4 (PDF et Excel)</strong>
                     </div>
                     <div class="nm-blank-config-fields">
                         <div class="nm-blank-config-field">
@@ -372,7 +372,6 @@
                     </div>
                     <p class="nm-blank-config-hint" id="nm-blank-config-hint" role="status" aria-live="polite"></p>
                 </section>
-                @endcan
 
                 @can('notes.feuille_vierge.export')
                 <a href="#" class="btn btn-outline-secondary disabled" id="previewBlankPdfBtn" target="_blank" rel="noopener" aria-disabled="true" tabindex="-1" title="Aperçu PDF vierge dans un nouvel onglet">
@@ -2293,7 +2292,11 @@ $(document).on('click', '#exportExcelBtn:not(:disabled):not(.disabled)', functio
         + '?classe=' + encodeURIComponent(currentClassId)
         + '&matiere=' + encodeURIComponent(currentMatiereId)
         + '&periode=' + encodeURIComponent(periode)
-        + '&annee_universitaire_id=' + encodeURIComponent(nmAcademicYearId);
+        + '&annee_universitaire_id=' + encodeURIComponent(nmAcademicYearId)
+        // Même format que la feuille vierge : les colonnes ajoutées et remplies
+        // deviennent des évaluations au réimport.
+        + '&orientation=' + encodeURIComponent(nmBlankCurrentOptions().orientation)
+        + '&colonnes=' + encodeURIComponent(nmBlankCurrentOptions().colonnes);
     window.open(url, '_blank');
 });
 
