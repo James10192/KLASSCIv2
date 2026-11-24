@@ -23,6 +23,17 @@ return [
     'titre' => 'Novembre 2026',
     'entrees' => [
         [
+            'titre' => 'Fiche de notes Excel : format A4, colonnes en plus, aux couleurs de l’école',
+            'icone' => 'fa-table-columns',
+            'texte' => 'Comme pour la feuille vierge PDF, la fiche de notes Excel se télécharge en A4 portrait ou paysage, avec le nombre de colonnes de notes voulu par matière (4 en portrait, 8 en paysage au plus). Chaque colonne « Évaluation » ajoutée et remplie devient une évaluation au réimport : renommez son en-tête, par exemple « Interrogation (/40 ×2) », et KLASSCI reprend le titre, le barème et le coefficient. Le classeur porte le logo, les coordonnées et les couleurs choisis dans les réglages PDF.',
+            'permissions' => ['notes.edit', 'notes.export_excel'],
+            'captures' => [
+                'apres' => 'images/nouveautes/2026-11/fiche-notes-excel-a4-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'Le classeur s’ouvre au nom et aux couleurs de l’école, avec les colonnes en plus prêtes à remplir.',
+            ],
+        ],
+        [
             'titre' => 'Relevés de notes détaillés pour le jury',
             'icone' => 'fa-list-ol',
             'texte' => 'Depuis l’écran du jury (LMD) ou la page des résultats (BTS, classe et semestre choisis), « Relevés de notes détaillés » sort un PDF avec une page par étudiant : chaque note de chaque évaluation, la moyenne de l’élément et de l’UE (ou de la matière) telle que le bulletin la calcule, puis le résultat du semestre. Un document de travail à imprimer pour la délibération.',
