@@ -98,6 +98,17 @@ class NotesImportService
             ];
         }
 
+        // Un fichier exporté pour une autre classe, matière ou période se
+        // relirait par matricule sur les évaluations de l'écran ouvert : refusé.
+        if ($meta && $this->fichierPourUnAutreContexte($meta, $classeId, $matiereId, $periode)) {
+            return [
+                'summary' => array_merge($summary, ['errors' => 1]),
+                'changes' => [],
+                'errors' => [['row' => 1, 'col' => '-', 'reason' => 'Ce fichier a été exporté pour une autre classe, matière ou période que celle ouverte à l\'écran. Choisissez la bonne matière et le bon semestre, ou réexportez le fichier.']],
+                'evaluations' => [],
+            ];
+        }
+
         // L'année courante si non fournie
         if ($anneeUniversitaireId === null) {
             $current = ESBTPAnneeUniversitaire::where('is_current', 1)->first();
@@ -586,6 +597,13 @@ class NotesImportService
         }
 
         return $erreurs;
+    }
+
+    private function fichierPourUnAutreContexte(array $meta, int $classeId, int $matiereId, string $periode): bool
+    {
+        return (isset($meta['classe_id']) && (int) $meta['classe_id'] !== $classeId)
+            || (isset($meta['matiere_id']) && (int) $meta['matiere_id'] !== $matiereId)
+            || (isset($meta['periode']) && (string) $meta['periode'] !== $periode);
     }
 
     /**

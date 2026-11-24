@@ -16,3 +16,4 @@ Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 
 
+- 2026-11-24 · #? · Import Excel des notes depuis l'écran des notes BTS et LMD (boutons « Notes Excel » et « Importer Excel »)

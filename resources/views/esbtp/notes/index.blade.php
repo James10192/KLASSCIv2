@@ -387,6 +387,12 @@
                     <i class="fas fa-file-excel me-1"></i>Notes Excel
                 </button>
                 @endcan
+                @can('notes.import_excel')
+                <button type="button" class="btn btn-outline-primary disabled" id="openImportModalBtn" disabled
+                        title="Sélectionnez une classe, une matière et un semestre pour importer un fichier rempli">
+                    <i class="fas fa-file-import me-1"></i>Importer Excel
+                </button>
+                @endcan
                     </div>
                 </details>
                 @endcanany
@@ -643,6 +649,7 @@
     </div>
 </div>
 
+@include('esbtp.notes.partials.import-excel')
 @endsection
 
 {{-- ══════════════════════════════════════════════════════
@@ -2241,14 +2248,9 @@ $(document).ajaxError(function(_event, jqxhr) {
 const PR7 = {
     routes: {
         exportExcel: '{{ route("esbtp.notes.export-excel") }}',
-        @can('notes.import_excel')
-        importDryRun: '{{ route("esbtp.notes.import.dry-run") }}',
-        importApply:  '{{ route("esbtp.notes.import.apply") }}',
-        @endcan
         previewImpact: '{{ route("esbtp.notes.preview-impact") }}',
     },
     csrf: '{{ csrf_token() }}',
-    selectedFile: null,
     impactDebounceTimers: {},
     impactCache: {},
 };
@@ -2301,254 +2303,22 @@ $(document).on('click', '#exportExcelBtn:not(:disabled):not(.disabled)', functio
 });
 
 @can('notes.import_excel')
-// ── Ouvrir modal import ──
+// ── Import Excel : fenêtre commune (esbtp.notes.partials.import-excel) ──
 $(document).on('click', '#openImportModalBtn:not(:disabled):not(.disabled)', function() {
     const periode = $('#periodeFilter').val();
-    if (!currentClassId || !currentMatiereId || !(periode === 'semestre1' || periode === 'semestre2')) {
-        return;
-    }
-    pr7ResetImportModal();
-    document.getElementById('nm-import-context').textContent =
-        `${currentClassname || 'Classe'} — ${currentMatiereName || 'Matière'} — ${periode === 'semestre1' ? 'Semestre 1' : 'Semestre 2'}`;
-    const modalEl = document.getElementById('nm-import-preview-modal');
-    if (window.bootstrap && window.bootstrap.Modal) {
-        new window.bootstrap.Modal(modalEl).show();
-    } else {
-        $(modalEl).modal('show');
-    }
+    window.nieOuvrir({
+        classeId: currentClassId,
+        matiereId: currentMatiereId,
+        periode: periode,
+        anneeId: nmAcademicYearId,
+        libelle: `${currentClassname || 'Classe'} — ${currentMatiereName || 'Matière'} — ${periode === 'semestre1' ? 'Semestre 1' : 'Semestre 2'}`,
+    });
 });
-
-function pr7ResetImportModal() {
-    PR7.selectedFile = null;
-    const fileInput = document.getElementById('nm-import-file-input');
-    if (fileInput) fileInput.value = '';
-    document.getElementById('nm-import-dropzone').style.display = '';
-    document.getElementById('nm-import-loading').style.display = 'none';
-    document.getElementById('nm-import-preview').style.display = 'none';
-    document.getElementById('nm-import-errors').style.display = 'none';
-    const confirmBtn = document.getElementById('nm-import-confirm-btn');
-    if (confirmBtn) confirmBtn.disabled = true;
-}
-
-// Drop zone handlers
-$(document).on('click', '#nm-import-dropzone', function() {
-    document.getElementById('nm-import-file-input').click();
-});
-
-$(document).on('dragover', '#nm-import-dropzone', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    $(this).addClass('is-dragover');
-});
-
-$(document).on('dragleave drop', '#nm-import-dropzone', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    $(this).removeClass('is-dragover');
-});
-
-$(document).on('drop', '#nm-import-dropzone', function(e) {
-    const files = e.originalEvent.dataTransfer && e.originalEvent.dataTransfer.files;
-    if (files && files.length > 0) {
-        pr7HandleFile(files[0]);
+window.addEventListener('notes-excel:importe', function() {
+    if (typeof loadEvaluationsAndNotes === 'function' && currentClassId && currentMatiereId) {
+        loadEvaluationsAndNotes();
     }
 });
-
-$(document).on('change', '#nm-import-file-input', function(e) {
-    const file = e.target.files && e.target.files[0];
-    if (file) pr7HandleFile(file);
-});
-
-$(document).on('click', '#nm-import-file-clear', function() {
-    pr7ResetImportModal();
-});
-
-function pr7HandleFile(file) {
-    if (!file) return;
-
-    // Validation basique côté client
-    const validExt = /\.(xlsx|xls|csv)$/i;
-    if (!validExt.test(file.name)) {
-        alert('Format invalide. Utilisez xlsx, xls ou csv.');
-        return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-        alert('Fichier trop volumineux (max 5 Mo).');
-        return;
-    }
-
-    PR7.selectedFile = file;
-    document.getElementById('nm-import-filename').textContent = file.name;
-
-    // Show loading
-    document.getElementById('nm-import-dropzone').style.display = 'none';
-    document.getElementById('nm-import-loading').style.display = '';
-    document.getElementById('nm-import-preview').style.display = 'none';
-
-    // Send dry-run
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('classe_id', currentClassId);
-    formData.append('matiere_id', currentMatiereId);
-    formData.append('periode', $('#periodeFilter').val());
-    formData.append('annee_universitaire_id', nmAcademicYearId);
-
-    fetch(PR7.routes.importDryRun, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRF-TOKEN': PR7.csrf,
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-        },
-        credentials: 'same-origin',
-    })
-        .then(r => r.json().then(data => ({ ok: r.ok, data })))
-        .then(({ ok, data }) => {
-            document.getElementById('nm-import-loading').style.display = 'none';
-            if (!ok || !data.success) {
-                pr7ShowError(data.message || 'Erreur lors de l\'analyse du fichier.');
-                return;
-            }
-            pr7RenderPreview(data);
-        })
-        .catch(err => {
-            console.error(err);
-            document.getElementById('nm-import-loading').style.display = 'none';
-            pr7ShowError('Erreur réseau. Vérifiez votre connexion.');
-        });
-}
-
-function pr7ShowError(message) {
-    document.getElementById('nm-import-dropzone').style.display = '';
-    alert(message);
-}
-
-function pr7RenderPreview(data) {
-    document.getElementById('nm-import-preview').style.display = '';
-
-    const summary = data.summary || {};
-    document.getElementById('nm-import-kpi-create').textContent = summary.will_create || 0;
-    document.getElementById('nm-import-kpi-update').textContent = summary.will_update || 0;
-    document.getElementById('nm-import-kpi-unchanged').textContent = summary.unchanged || 0;
-    document.getElementById('nm-import-kpi-error').textContent = summary.errors || 0;
-
-    // Errors
-    const errors = data.errors || [];
-    const errBox = document.getElementById('nm-import-errors');
-    const errList = document.getElementById('nm-import-errors-list');
-    if (errors.length > 0) {
-        errBox.style.display = '';
-        errList.innerHTML = errors.map(e => `
-            <div class="nm-import-error-item">
-                <span class="err-cell">L${e.row || '?'}${e.col || ''}</span>
-                ${e.matricule ? `<strong>${pr7Escape(e.matricule)}</strong>` : ''}
-                ${e.evaluation ? ` — <em>${pr7Escape(e.evaluation)}</em>` : ''}
-                — ${pr7Escape(e.reason || '')}
-            </div>
-        `).join('');
-    } else {
-        errBox.style.display = 'none';
-    }
-
-    // Changes table
-    const changes = data.changes || [];
-    document.getElementById('nm-import-changes-count').textContent = changes.length;
-    const body = document.getElementById('nm-import-changes-body');
-    if (changes.length === 0) {
-        body.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Aucun changement détecté</td></tr>';
-    } else {
-        body.innerHTML = changes.slice(0, 500).map(c => {
-            const beforeDisp = (c.before === null || c.before === undefined) ? '<em style="color:#94a3b8;">—</em>' : pr7Escape(String(c.before));
-            const afterDisp = (c.after === 'ABS' || c.is_absent)
-                ? '<span class="cell-after-abs">ABS</span>'
-                : `<span class="cell-after">${pr7Escape(String(c.after))}</span>`;
-            return `
-                <tr class="row-${c.action}">
-                    <td>L${c.row || '?'}</td>
-                    <td><strong>${pr7Escape(c.matricule || '')}</strong> — ${pr7Escape(c.etudiant_nom || '')}</td>
-                    <td>${pr7Escape(c.evaluation || '')}</td>
-                    <td><span class="cell-before">${beforeDisp}</span></td>
-                    <td>${afterDisp}</td>
-                    <td><span class="badge-action-${c.action}">${c.action === 'create' ? 'Créer' : 'Mettre à jour'}</span></td>
-                </tr>
-            `;
-        }).join('');
-        if (changes.length > 500) {
-            body.innerHTML += `<tr><td colspan="6" class="text-center text-muted py-2"><em>… ${changes.length - 500} autres changements masqués pour l'affichage. Tous seront appliqués.</em></td></tr>`;
-        }
-    }
-
-    // Confirm button : enabled seulement si pas d'erreurs ET au moins 1 change
-    const confirmBtn = document.getElementById('nm-import-confirm-btn');
-    confirmBtn.disabled = (errors.length > 0) || (changes.length === 0);
-}
-
-// Confirm import → apply
-$(document).on('click', '#nm-import-confirm-btn:not(:disabled)', function() {
-    if (!PR7.selectedFile) return;
-
-    const btn = this;
-    const spinner = document.getElementById('nm-import-confirm-spinner');
-    const icon = document.getElementById('nm-import-confirm-icon');
-    btn.disabled = true;
-    if (spinner) spinner.classList.remove('d-none');
-    if (icon) icon.classList.add('d-none');
-
-    const formData = new FormData();
-    formData.append('file', PR7.selectedFile);
-    formData.append('classe_id', currentClassId);
-    formData.append('matiere_id', currentMatiereId);
-    formData.append('periode', $('#periodeFilter').val());
-    formData.append('annee_universitaire_id', nmAcademicYearId);
-
-    fetch(PR7.routes.importApply, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRF-TOKEN': PR7.csrf,
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-        },
-        credentials: 'same-origin',
-    })
-        .then(r => r.json().then(data => ({ ok: r.ok, data })))
-        .then(({ ok, data }) => {
-            btn.disabled = false;
-            if (spinner) spinner.classList.add('d-none');
-            if (icon) icon.classList.remove('d-none');
-
-            if (!ok || !data.success) {
-                alert(data.message || 'Erreur lors de l\'application de l\'import.');
-                return;
-            }
-
-            // Toast + close + reload notes grid
-            pr7Toast(data.message || 'Import réussi.', 'success');
-            const modalEl = document.getElementById('nm-import-preview-modal');
-            const modal = window.bootstrap ? window.bootstrap.Modal.getInstance(modalEl) : null;
-            if (modal) modal.hide(); else $(modalEl).modal('hide');
-
-            // Recharge la grille
-            if (typeof loadEvaluationsAndNotes === 'function' && currentClassId && currentMatiereId) {
-                loadEvaluationsAndNotes();
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            btn.disabled = false;
-            if (spinner) spinner.classList.add('d-none');
-            if (icon) icon.classList.remove('d-none');
-            alert('Erreur réseau lors de l\'application de l\'import.');
-        });
-});
-
-function pr7Toast(message, type) {
-    // Délègue au stack premium nmShowToast (PR #321) — garantit cohérence visuelle
-    // et anti-stacking. La fonction est hoistée donc disponible quel que soit l'ordre.
-    nmShowToast(type || 'success', message);
-}
-
 @endcan
 
 function pr7Escape(str) {
