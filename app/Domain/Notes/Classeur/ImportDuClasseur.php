@@ -24,7 +24,7 @@ class ImportDuClasseur
         foreach ($this->feuilles($fichier, $classeId) as $nom => $f) {
             $diff = $this->import->dryRun($f['parsed'], $classeId, $f['matiere_id'], $f['periode'], $f['annee_id']);
             $feuilles[] = ['feuille' => $nom, 'summary' => $diff['summary'], 'errors' => $diff['errors'],
-                'changes' => $diff['changes'], 'evaluations_a_creer' => collect($diff['evaluations'])->where('nouvelle', true)->pluck('titre')->values()->all()];
+                'changes' => $diff['changes'], 'evaluations_a_creer' => $this->evaluationsACreer($diff)];
         }
 
         return ['feuilles' => $feuilles, 'total' => [
@@ -32,6 +32,18 @@ class ImportDuClasseur
             'will_update' => array_sum(array_map(fn ($f) => $f['summary']['will_update'], $feuilles)),
             'errors' => array_sum(array_map(fn ($f) => count($f['errors']), $feuilles)),
         ]];
+    }
+
+    /**
+     * Les colonnes ajoutées qui seront réellement créées : celles qui portent
+     * au moins une note. Une colonne vide n'est pas annoncée, elle ne crée rien.
+     */
+    private function evaluationsACreer(array $diff): array
+    {
+        $remplies = collect($diff['changes'])->pluck('evaluation_id')->unique()->all();
+
+        return collect($diff['evaluations'])->where('nouvelle', true)
+            ->filter(fn ($e) => in_array($e['id'], $remplies, true))->pluck('titre')->values()->all();
     }
 
     public function appliquer(UploadedFile $fichier, int $classeId): array
