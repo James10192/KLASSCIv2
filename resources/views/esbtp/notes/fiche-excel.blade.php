@@ -8,6 +8,9 @@
         ? ['semestre'.(2 * $_annee - 1) => 'Semestre '.(2 * $_annee - 1), 'semestre'.(2 * $_annee) => 'Semestre '.(2 * $_annee)]
         : ['semestre1' => 'Semestre 1', 'semestre2' => 'Semestre 2'];
     $_premier = array_key_first($_semestres);
+    $_orientations = ['portrait' => 'A4 portrait (jusqu\'à '.$limites['portrait'].' colonnes)', 'landscape' => 'A4 paysage (jusqu\'à '.$limites['landscape'].' colonnes)'];
+    $_colonnes = [];
+    for ($_i = 1; $_i <= max($limites); $_i++) { $_colonnes[(string) $_i] = $_i === 1 ? '1 colonne' : $_i.' colonnes'; }
     $_urls = [
         'telecharger' => route('esbtp.classes.fiche-notes-excel.telecharger', $classe),
         'simuler' => route('esbtp.classes.fiche-notes-excel.simuler', $classe),
@@ -62,7 +65,7 @@
     <div class="fne-grid">
         <div class="fne-card">
             <h2><span class="fne-step">1</span>Télécharger la fiche</h2>
-            <p class="fne-hint">Les notes déjà saisies sont reprises. Une matière sans évaluation reçoit une colonne « Examen », créée au réimport.</p>
+            <p class="fne-hint">Les notes déjà saisies sont reprises. Chaque matière a au moins le nombre de colonnes choisi : une colonne ajoutée et remplie devient une évaluation au réimport. Le classeur porte le logo et les couleurs de vos réglages PDF.</p>
             <div class="fne-field">
                 <label for="fne-annee">Année universitaire</label>
                 <x-au-select id="fne-annee" :options="$annees" :value="$courante" :placeholder-is-first-option="false" icon="fa-calendar" x-model="annee" />
@@ -70,6 +73,15 @@
             <div class="fne-field">
                 <label for="fne-periode">Semestre</label>
                 <x-au-select id="fne-periode" :options="$_semestres" :value="$_premier" :placeholder-is-first-option="false" icon="fa-clock" x-model="periode" />
+            </div>
+            <div class="fne-field">
+                <label for="fne-orientation">Orientation du papier</label>
+                <x-au-select id="fne-orientation" :options="$_orientations" value="portrait" :placeholder-is-first-option="false" icon="fa-file" x-model="orientation" />
+            </div>
+            <div class="fne-field">
+                <label for="fne-colonnes">Colonnes de notes par matière (minimum)</label>
+                <x-au-select id="fne-colonnes" :options="$_colonnes" value="1" :placeholder-is-first-option="false" icon="fa-table-columns" x-model="colonnes" />
+                <span class="fne-hint" style="margin:0" x-show="Number(colonnes) > limites[orientation]" x-text="'Le format A4 ' + (orientation === 'portrait' ? 'portrait' : 'paysage') + ' tient ' + limites[orientation] + ' colonnes au plus : la fiche en aura ' + limites[orientation] + '.'"></span>
             </div>
             <a class="fne-btn" :href="lienTelechargement()"><i class="fas fa-download"></i>Télécharger la fiche Excel</a>
         </div>
@@ -102,7 +114,7 @@
                                     <td x-text="f.summary.will_update"></td>
                                     <td>
                                         <template x-for="e in f.errors"><div class="fne-err" x-text="'Ligne ' + e.row + ' ' + e.col + ' : ' + e.reason"></div></template>
-                                        <template x-if="f.evaluations_a_creer.length"><div x-text="'Évaluation créée : ' + f.evaluations_a_creer.join(', ')"></div></template>
+                                        <template x-if="f.evaluations_a_creer.length"><div x-text="'(f.evaluations_a_creer.length > 1 ? 'Évaluations créées : ' : 'Évaluation créée : ') + f.evaluations_a_creer.join(', ')"></div></template>
                                     </td>
                                 </tr>
                             </template>
@@ -125,10 +137,15 @@ if (typeof window.ficheNotesExcel !== 'function') {
         return {
             annee: @json((string) $courante),
             periode: @json($_premier),
+            orientation: 'portrait',
+            colonnes: '1',
+            limites: @json($limites),
             resultat: null,
             enCours: false,
             lienTelechargement() {
-                return urls.telecharger + '?annee_universitaire_id=' + encodeURIComponent(this.annee) + '&periode=' + encodeURIComponent(this.periode);
+                return urls.telecharger + '?annee_universitaire_id=' + encodeURIComponent(this.annee) + '&periode=' + encodeURIComponent(this.periode)
+                    + '&orientation=' + encodeURIComponent(this.orientation)
+                    + '&colonnes=' + Math.min(Number(this.colonnes) || 1, this.limites[this.orientation]);
             },
             toast(type, message) {
                 window.dispatchEvent(new CustomEvent('toast', { detail: { type: type, message: message } }));

@@ -1531,7 +1531,13 @@ class ESBTPNoteController extends Controller
 
         $this->assertTeacherDocumentScope($classeId, $anneeId);
 
-        $export = new NotesClasseMatiereExport($classeId, $matiereId, $periode, $anneeId);
+        try {
+            [$orientation, $colonnes] = \App\Domain\Notes\FormatFeuilleViergeA4::depuisRequete($request);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['success' => false, 'message' => collect($e->errors())->flatten()->first()], 422);
+        }
+
+        $export = new NotesClasseMatiereExport($classeId, $matiereId, $periode, $anneeId, false, $colonnes, $orientation);
 
         if ($export->cellsCount() > 5000) {
             return response()->json([

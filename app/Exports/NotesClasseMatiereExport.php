@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Domain\Exports\GabaritExcelEtablissement;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -65,8 +66,16 @@ class NotesClasseMatiereExport implements
     /** Fiche vierge : une matière sans évaluation reçoit une colonne « Examen », créée à l'import. */
     private bool $colonneExamenSiVide;
 
-    public function __construct(int $classeId, int $matiereId, string $periode, ?int $anneeUniversitaireId = null, bool $colonneExamenSiVide = false)
+    /** Nombre minimal de colonnes de notes ; les colonnes ajoutées deviennent des évaluations à l'import. */
+    private int $colonnes;
+
+    /** Orientation d'impression : 'portrait' ou 'landscape' (FormatFeuilleViergeA4). */
+    private string $orientation;
+
+    public function __construct(int $classeId, int $matiereId, string $periode, ?int $anneeUniversitaireId = null, bool $colonneExamenSiVide = false, int $colonnes = 1, string $orientation = 'portrait')
     {
+        $this->colonnes = max(1, $colonnes);
+        $this->orientation = $orientation === 'landscape' ? 'landscape' : 'portrait';
         $this->colonneExamenSiVide = $colonneExamenSiVide;
         $this->classeId = $classeId;
         $this->matiereId = $matiereId;
@@ -100,9 +109,7 @@ class NotesClasseMatiereExport implements
             ->orderBy('id')
             ->get();
 
-        if ($this->evaluations->isEmpty() && $this->colonneExamenSiVide) {
-            $this->evaluations = collect([new ESBTPEvaluation(['titre' => 'Examen', 'bareme' => 20, 'coefficient' => 1])]);
-        }
+        $this->completerColonnes();
 
         // Inscriptions actives triées par nom
         $this->inscriptions = ESBTPInscription::query()
@@ -128,6 +135,27 @@ class NotesClasseMatiereExport implements
             foreach ($notes as $note) {
                 $this->notesIndex[$note->etudiant_id . '_' . $note->evaluation_id] = $note;
             }
+        }
+    }
+
+    /**
+     * Complète jusqu'au nombre de colonnes demandé avec des colonnes vierges,
+     * créées comme évaluations à l'import si elles portent des notes. Une
+     * matière qui a déjà plus d'évaluations les garde toutes.
+     */
+    private function completerColonnes(): void
+    {
+        $cible = $this->evaluations->isEmpty() && ! $this->colonneExamenSiVide && $this->colonnes === 1 ? 0 : $this->colonnes;
+        $pris = $this->evaluations->map(fn ($e) => Str::lower(trim((string) $e->titre)))->all();
+        $rang = $this->evaluations->count();
+        while ($this->evaluations->count() < $cible) {
+            $rang++;
+            $titre = $this->evaluations->isEmpty() ? 'Examen' : 'Évaluation '.$rang;
+            while (in_array(Str::lower($titre), $pris, true)) {
+                $titre = 'Évaluation '.(++$rang);
+            }
+            $pris[] = Str::lower($titre);
+            $this->evaluations->push(new ESBTPEvaluation(['titre' => $titre, 'bareme' => 20, 'coefficient' => 1]));
         }
     }
 
@@ -286,6 +314,7 @@ class NotesClasseMatiereExport implements
                     'matiere_id' => $this->matiereId,
                     'periode' => $this->periode,
                     'annee_universitaire_id' => $this->anneeUniversitaireId,
+                    'orientation' => $this->orientation,
                     'evaluations' => $this->evaluations->map(fn ($e) => [
                         'id' => (int) $e->id,
                         'nouvelle' => ! $e->id,
@@ -297,24 +326,17 @@ class NotesClasseMatiereExport implements
                 ], JSON_UNESCAPED_UNICODE));
                 $sheet->getRowDimension(1)->setVisible(false);
 
-                $headingRow = 2;
                 $highestColumn = $sheet->getHighestDataColumn();
+                // Bandeau de l'établissement entre la ligne cachée et l'en-tête :
+                // l'import retrouve l'en-tête à son libellé « Matricule ».
+                $gabarit = new GabaritExcelEtablissement();
+                $headingRow = $gabarit->poserBandeau($sheet, 2, $highestColumn,
+                    'Fiche de notes — '.($this->matiere?->name ?? 'Matière'),
+                    sprintf('%s · %s · %s', $this->classe?->name ?? 'Classe', $this->periodeLabel(), $this->annee?->name ?? 'Année courante'));
                 $highestRow = $sheet->getHighestRow();
+                $primaire = $gabarit->couleur('primary_color', '#0453cb');
 
-                // Style header (ligne 2)
-                $headerRange = "A{$headingRow}:{$highestColumn}{$headingRow}";
-                $sheet->getStyle($headerRange)->applyFromArray([
-                    'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => 'FFFFFF']],
-                    'alignment' => [
-                        'horizontal' => Alignment::HORIZONTAL_CENTER,
-                        'vertical' => Alignment::VERTICAL_CENTER,
-                        'wrapText' => true,
-                    ],
-                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '0453CB']],
-                    'borders' => [
-                        'allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '0F1F4B']],
-                    ],
-                ]);
+                $gabarit->styleEntete($sheet, "A{$headingRow}:{$highestColumn}{$headingRow}");
                 $sheet->getRowDimension($headingRow)->setRowHeight(36);
 
                 $dataStartRow = $headingRow + 1;
@@ -357,7 +379,7 @@ class NotesClasseMatiereExport implements
                     // Colonne moyenne en gras + couleur
                     $sheet->getStyle("{$lastEvalCol}{$dataStartRow}:{$lastEvalCol}{$dataEndRow}")
                         ->applyFromArray([
-                            'font' => ['bold' => true, 'color' => ['rgb' => '0453CB']],
+                            'font' => ['bold' => true, 'color' => ['rgb' => $primaire]],
                             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EFF6FF']],
                         ]);
                 }
@@ -366,10 +388,13 @@ class NotesClasseMatiereExport implements
                 foreach ($this->evaluations->values() as $i => $eval) {
                     $col = $this->columnLetter(3 + $i);
                     $bareme = $this->formatNumber((float) ($eval->bareme ?: 20));
+                    // Colonne à créer : son barème peut être changé dans l'en-tête,
+                    // le plafond est donc vérifié à l'import, pas dans Excel.
                     for ($r = $dataStartRow; $r <= $dataEndRow; $r++) {
+                        $plafond = $eval->id ? ",{$col}{$r}<={$bareme}" : '';
                         $validation = $sheet->getCell("{$col}{$r}")->getDataValidation();
                         $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_CUSTOM)
-                            ->setFormula1("OR(UPPER({$col}{$r})=\"ABS\",AND(ISNUMBER({$col}{$r}),{$col}{$r}>=0,{$col}{$r}<={$bareme}))")
+                            ->setFormula1("OR(UPPER({$col}{$r})=\"ABS\",AND(ISNUMBER({$col}{$r}),{$col}{$r}>=0{$plafond}))")
                             ->setAllowBlank(true)->setShowErrorMessage(true)
                             ->setErrorTitle('Note invalide')->setError("Tapez une note entre 0 et {$bareme}, ou ABS.");
                     }
@@ -408,14 +433,16 @@ class NotesClasseMatiereExport implements
                 $instructRow = $infoRow + 1;
                 $sheet->mergeCells("A{$instructRow}:{$highestColumn}{$instructRow}");
                 $sheet->setCellValue("A{$instructRow}",
-                    'Saisie offline : tapez la note (0 — barème) ou « ABS » pour absent. Laissez vide pour ne pas modifier. La ligne 1 cachée contient les métadonnées d\'import — ne pas la supprimer.'
+                    'Saisie hors ligne : tapez la note (0 — barème) ou « ABS » pour absent, vide pour ne rien modifier. Une colonne « Évaluation n » remplie devient une évaluation à l\'import : vous pouvez renommer son en-tête, par exemple « Devoir 2 (/20 ×2) ». Ne supprimez pas la ligne 1 cachée.'
                 );
                 $sheet->getStyle("A{$instructRow}")->applyFromArray([
-                    'font' => ['size' => 9, 'color' => ['rgb' => '0453CB']],
+                    'font' => ['size' => 9, 'color' => ['rgb' => $primaire]],
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'wrapText' => true],
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EFF6FF']],
                 ]);
-                $sheet->getRowDimension($instructRow)->setRowHeight(20);
+                $sheet->getRowDimension($instructRow)->setRowHeight(32);
+
+                $gabarit->miseEnPage($sheet, $this->orientation, $headingRow);
             },
         ];
     }

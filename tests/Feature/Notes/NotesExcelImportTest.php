@@ -402,4 +402,72 @@ class NotesExcelImportTest extends TestCase
             'note' => 12.5,
         ]);
     }
+
+    /**
+     * Fiche au gabarit établissement : bandeau de quatre lignes au-dessus de
+     * l'en-tête, une évaluation existante et trois colonnes ajoutées, dont
+     * deux remplies. L'en-tête de l'une a été renommé dans Excel.
+     */
+    private function buildFicheAvecColonnesAjoutees(array $ctx, string $matricule): UploadedFile
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setCellValue('A1', '__KLASSCI_NOTES_EXPORT__');
+        $sheet->setCellValue('B1', json_encode([
+            'classe_id' => $ctx['classe']->id, 'matiere_id' => $ctx['matiere']->id, 'periode' => 'semestre1',
+            'annee_universitaire_id' => $ctx['annee']->id,
+            'evaluations' => [
+                ['id' => $ctx['eval']->id, 'titre' => 'Devoir 1', 'bareme' => 20, 'coefficient' => 1],
+                ['id' => 0, 'nouvelle' => true, 'titre' => 'Évaluation 2', 'bareme' => 20, 'coefficient' => 1],
+                ['id' => 0, 'nouvelle' => true, 'titre' => 'Évaluation 3', 'bareme' => 20, 'coefficient' => 1],
+                ['id' => 0, 'nouvelle' => true, 'titre' => 'Évaluation 4', 'bareme' => 20, 'coefficient' => 1],
+            ],
+        ]));
+        // Bandeau de l'établissement (lignes 2 à 5).
+        $sheet->setCellValue('B2', 'École de test');
+        $sheet->setCellValue('B4', 'FICHE DE NOTES');
+        foreach (['Matricule', 'Nom & Prénoms', 'Devoir 1 (/20 ×1)', 'Interrogation (/40 ×2)', 'Évaluation 3 (/20 ×1)', 'Évaluation 4 (/20 ×1)', 'Moyenne /20'] as $i => $titre) {
+            $sheet->setCellValue([$i + 1, 6], $titre);
+        }
+        $sheet->setCellValueExplicit('A7', $matricule, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $sheet->setCellValue('B7', 'KOFFI Marie');
+        $sheet->setCellValue('C7', 12);
+        $sheet->setCellValue('D7', 32);
+        $sheet->setCellValue('E7', 'ABS');
+        // F7 vide : « Évaluation 4 » ne doit rien créer.
+        $sheet->setCellValue('A9', 'École de test — exporté le …');
+
+        $tmpPath = tempnam(sys_get_temp_dir(), 'notes_imp_').'.xlsx';
+        (new XlsxWriter($spreadsheet))->save($tmpPath);
+
+        return new UploadedFile($tmpPath, 'fiche.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
+    }
+
+    public function test_chaque_colonne_ajoutee_et_remplie_devient_une_evaluation(): void
+    {
+        $this->authUser();
+        $ctx = $this->buildContext();
+        $etudiant = $this->makeInscription($ctx['classe']->id, $ctx['annee']->id, 'STU001');
+        $service = app(NotesImportService::class);
+
+        $parsed = $service->parseFile($this->buildFicheAvecColonnesAjoutees($ctx, 'STU001'));
+        $diff = $service->dryRun($parsed, $ctx['classe']->id, $ctx['matiere']->id, 'semestre1', $ctx['annee']->id);
+        $this->assertSame([], $diff['errors']);
+        $this->assertSame(3, $diff['summary']['will_create']);
+        $this->assertSame(7, $diff['changes'][0]['row'], 'Le numéro de ligne doit être celui du fichier, bandeau compris.');
+
+        $result = $service->apply($parsed, $ctx['classe']->id, $ctx['matiere']->id, 'semestre1', $ctx['annee']->id);
+        $this->assertSame(3, $result['created']);
+
+        $creees = ESBTPEvaluation::where('classe_id', $ctx['classe']->id)->where('id', '!=', $ctx['eval']->id)->get();
+        $this->assertSame(['Interrogation', 'Évaluation 3'], $creees->pluck('titre')->sort()->values()->all());
+        $interro = $creees->firstWhere('titre', 'Interrogation');
+        $this->assertSame(40.0, (float) $interro->bareme);
+        $this->assertSame(2.0, (float) $interro->coefficient);
+        $this->assertDatabaseHas('esbtp_notes', ['etudiant_id' => $etudiant->id, 'evaluation_id' => $interro->id, 'note' => 32]);
+
+        // Rejouer le même fichier ne recrée aucune évaluation.
+        $service->apply($service->parseFile($this->buildFicheAvecColonnesAjoutees($ctx, 'STU001')), $ctx['classe']->id, $ctx['matiere']->id, 'semestre1', $ctx['annee']->id);
+        $this->assertSame(3, ESBTPEvaluation::where('classe_id', $ctx['classe']->id)->count());
+    }
 }

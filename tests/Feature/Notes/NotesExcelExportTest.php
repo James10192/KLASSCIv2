@@ -217,4 +217,28 @@ class NotesExcelExportTest extends TestCase
 
         $this->assertSame(429, $r11->getStatusCode(), 'La 11ème requête devrait être throttle 429.');
     }
+
+    public function test_la_fiche_complete_les_colonnes_et_prend_le_gabarit_en_paysage(): void
+    {
+        $this->authUser();
+        $ctx = $this->buildContext(); // deux évaluations existantes
+        $this->makeStudent($ctx['classe']->id, $ctx['annee']->id);
+
+        $export = new NotesClasseMatiereExport($ctx['classe']->id, $ctx['matiere']->id, 'semestre1', $ctx['annee']->id, false, 4, 'landscape');
+        $this->assertSame(4, $export->evaluationsCount(), 'Deux évaluations existantes + deux colonnes ajoutées.');
+
+        $chemin = tempnam(sys_get_temp_dir(), 'fiche_').'.xlsx';
+        file_put_contents($chemin, Excel::raw($export, \Maatwebsite\Excel\Excel::XLSX));
+        $sheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($chemin)->getActiveSheet();
+
+        $this->assertSame('__KLASSCI_NOTES_EXPORT__', $sheet->getCell('A1')->getValue());
+        $ligne = \App\Domain\Exports\GabaritExcelEtablissement::LIGNES_BANDEAU + 2;
+        $this->assertSame('Matricule', $sheet->getCell('A'.$ligne)->getValue());
+        $this->assertStringStartsWith('Évaluation 3', (string) $sheet->getCell('E'.$ligne)->getValue());
+        $this->assertSame(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE, $sheet->getPageSetup()->getOrientation());
+
+        $meta = json_decode((string) $sheet->getCell('B1')->getValue(), true);
+        $this->assertSame('landscape', $meta['orientation']);
+        $this->assertCount(2, array_filter($meta['evaluations'], fn ($e) => $e['nouvelle']));
+    }
 }

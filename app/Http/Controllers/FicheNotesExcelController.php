@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Notes\Classeur\ImportDuClasseur;
 use App\Domain\Notes\Classeur\MatieresDuClasseur;
+use App\Domain\Notes\FormatFeuilleViergeA4;
 use App\Exports\NotesClasseurExport;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -27,7 +28,9 @@ class FicheNotesExcelController extends Controller
         $annees = ESBTPAnneeUniversitaire::orderByDesc('id')->pluck('name', 'id')->all();
         $courante = ESBTPAnneeUniversitaire::where('is_current', 1)->value('id');
 
-        return view('esbtp.notes.fiche-excel', compact('classe', 'lmd', 'annees', 'courante'));
+        $limites = FormatFeuilleViergeA4::LIMITES;
+
+        return view('esbtp.notes.fiche-excel', compact('classe', 'lmd', 'annees', 'courante', 'limites'));
     }
 
     public function telecharger(Request $request, ESBTPClasse $classe)
@@ -36,12 +39,13 @@ class FicheNotesExcelController extends Controller
             'annee_universitaire_id' => ['required', 'integer', 'exists:esbtp_annee_universitaires,id'],
             'periode' => ['required', 'regex:/^semestre([1-9]|10)$/'],
         ]);
+        [$orientation, $colonnes] = FormatFeuilleViergeA4::depuisRequete($request);
         $matieres = $this->matieres->pour($classe, $v['periode']);
         abort_if($matieres->isEmpty(), 422, 'Aucune matière configurée pour cette classe et ce semestre.');
 
         $nom = 'fiche-notes-'.Str::slug($classe->name).'-'.$v['periode'].'.xlsx';
 
-        return Excel::download(new NotesClasseurExport($classe->id, $matieres, $v['periode'], (int) $v['annee_universitaire_id']), $nom);
+        return Excel::download(new NotesClasseurExport($classe->id, $matieres, $v['periode'], (int) $v['annee_universitaire_id'], $colonnes, $orientation), $nom);
     }
 
     public function simuler(Request $request, ESBTPClasse $classe): JsonResponse

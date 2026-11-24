@@ -12,7 +12,7 @@ use Maatwebsite\Excel\Concerns\WithMultipleSheets;
  */
 class NotesClasseurExport implements WithMultipleSheets
 {
-    public function __construct(private int $classeId, private Collection $matieres, private string $periode, private ?int $anneeId) {}
+    public function __construct(private int $classeId, private Collection $matieres, private string $periode, private ?int $anneeId, private int $colonnes = 1, private string $orientation = 'portrait') {}
 
     public function sheets(): array
     {
@@ -27,7 +27,7 @@ class NotesClasseurExport implements WithMultipleSheets
             }
             $titres[mb_strtolower($titre)] = true;
 
-            return (new NotesClasseMatiereExport($this->classeId, (int) $matiere->id, $this->periode, $this->anneeId, true))->avecTitre($titre);
+            return (new NotesClasseMatiereExport($this->classeId, (int) $matiere->id, $this->periode, $this->anneeId, true, $this->colonnes, $this->orientation))->avecTitre($titre);
         })->values()->all();
     }
 }
