@@ -1115,25 +1115,10 @@ class ESBTPPaiementController extends Controller
         $versementsApres = $fraisEtat['versementsApres'];
         $affectationLabel = $fraisEtat['affectationLabel'];
 
-        $pdf = PDF::loadView('esbtp.paiements.recu', compact(
-            'paiement',
-            'settings',
-            'fraisLignes',
-            'resteAPayer',
-            'totalVerse',
-            'versementsAvant',
-            'versementsApres',
-            'affectationLabel'
-        ))
-            ->setPaper('a4', 'portrait')
-            ->setOptions([
-                'dpi' => 150,
-                'defaultFont' => 'DejaVu Sans',
-                'isRemoteEnabled' => false,
-                'isHtml5ParserEnabled' => true,
-                'isPhpEnabled' => false,
-                'isFontSubsettingEnabled' => true,
-            ]);
+        $pdf = app(\App\Services\Paiements\ReceiptPdf::class)->forPayment(compact(
+            'paiement', 'settings', 'fraisLignes', 'resteAPayer',
+            'totalVerse', 'versementsAvant', 'versementsApres', 'affectationLabel'
+        ));
 
         // Définir le nom du fichier
         $filename = 'Recu_' . $paiement->numero_recu . '.pdf';

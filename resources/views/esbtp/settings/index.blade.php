@@ -3931,6 +3931,9 @@
                             <small class="text-muted">S'applique à la prévisualisation et aux nouveaux PDF générés, sans modifier le nom dans les données financières.</small>
                         </fieldset>
                     </div>
+                    @can('settings.pdf.manage')
+                        @include('esbtp.settings.partials.receipt-print')
+                    @endcan
                     <div class="settings-section" id="compta-saari">
                         <div class="section-header">
                             <div class="section-icon" style="background:linear-gradient(135deg, #10b981, #0ea5e9); color:#fff;">

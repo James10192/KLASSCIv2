@@ -22,6 +22,9 @@ class RecuDeuxExemplairesUnePageTest extends TestCase
 
         Cache::flush();
         $valeurs = \App\Helpers\SettingsHelper::getPdfDefaults();
+        foreach (\App\Support\ReceiptPrintSettings::defaults() as $key => $value) {
+            $valeurs['receipt_print_'.$key] = $value;
+        }
         $valeurs['pdf_signature_director'] = '';
         $valeurs['pdf_signature_secretary'] = '';
         $valeurs['school_logo'] = '';
@@ -70,7 +73,9 @@ class RecuDeuxExemplairesUnePageTest extends TestCase
         $css = file_get_contents(resource_path('views/esbtp/paiements/recu.blade.php'));
 
         $this->assertStringContainsString('page-break-inside: avoid', $css);
-        $this->assertMatchesRegularExpression('/\.sign-title\s*\{.*?margin-bottom:\s*15mm\s*;.*?\}\s*\.sign-line\s*\{/s', $css);
+        $this->assertSame(15, \App\Support\ReceiptPrintSettings::defaults()['signature_space']);
+        $this->assertSame(15, \App\Support\ReceiptPrintSettings::fields()['signature_space']['min']);
+        $this->assertStringContainsString("margin-bottom: {{ \$print['signature_space'] }}mm", $css);
         $this->assertStringNotContainsString('margin-bottom: 14mm', $css);
         $this->assertStringNotContainsString('height: 128mm', $css);
     }
