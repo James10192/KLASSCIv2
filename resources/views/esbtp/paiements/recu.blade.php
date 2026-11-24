@@ -112,7 +112,7 @@
                 <div class="document-watermark"><img src="{{ $settings['logo_base64'] }}" alt=""></div>
             @endif
             @include('esbtp.paiements.partials.recu-exemplaire', [
-                'copyTag' => $copyTag,
+                'copyTag' => ($receiptDemo ?? false) ? $copyTag.' — DÉMONSTRATION NON VALABLE' : $copyTag,
                 'paiement' => $paiement,
                 'settings' => $settings,
                 'primary' => $primary,

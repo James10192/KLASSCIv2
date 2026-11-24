@@ -48,7 +48,9 @@ final class ReceiptPdf
         if ($this->pages($pdf) === 1) {
             return $pdf;
         }
+        // Repli explicite et journalisé, sans écraser les préférences du tenant.
         $pdf = $this->render($data, ReceiptPrintSettings::compact(ReceiptPrintSettings::defaults()));
+        \Illuminate\Support\Facades\Log::notice('Reçu : paramètres compacts par défaut nécessaires pour le format A4.', ['paiement_id' => $data['paiement']->id ?? null]);
         abort_if($this->pages($pdf) !== 1, 422, 'Ce reçu ne tient pas sur un A4 avec deux exemplaires lisibles. Contactez le service technique.');
 
         return $pdf;
@@ -118,6 +120,7 @@ final class ReceiptPdf
 
         return [
             'paiement' => $paiement,
+            'receiptDemo' => true,
             'settings' => $settings,
             'fraisLignes' => $frais,
             'resteAPayer' => 365000,

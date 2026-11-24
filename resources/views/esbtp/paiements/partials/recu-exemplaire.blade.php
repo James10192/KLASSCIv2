@@ -26,9 +26,7 @@
             <!-- Logo Column -->
             <td width="16%" style="background-color: {{ $hdrBg }};  text-align: center; vertical-align: middle; border-right: 0.5pt solid {{ $hdrText }};">
                 @if(isset($settings['show_logo']) && $settings['show_logo'] && isset($settings['logo_base64']))
-                    <img src="{{ $settings['logo_base64'] }}"
-                         
-                         alt="Logo">
+                    <img src="{{ $settings['logo_base64'] }}" alt="Logo">
                 @else
                     <div class="rf-title" style="font-weight: bold; color: {{ $hdrText }};">{{ mb_substr($settings['school_name'] ?? 'KLASSCI', 0, 1) }}</div>
                 @endif

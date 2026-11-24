@@ -3,7 +3,6 @@
 namespace App\Support;
 
 use App\Models\Setting;
-use Illuminate\Support\Facades\Validator;
 
 final class ReceiptPrintSettings
 {
@@ -78,7 +77,7 @@ final class ReceiptPrintSettings
         $values = [];
         foreach (self::fields() as $key => $field) {
             $value = Setting::get(self::PREFIX.$key, $field['default']);
-            $values[$key] = self::validNumber($value, $field) ? (float) $value : $field['default'];
+            $values[$key] = self::validNumber($value, $field) ? (float) $value : (float) $field['default'];
         }
 
         return $values;
