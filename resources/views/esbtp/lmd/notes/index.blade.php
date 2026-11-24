@@ -681,6 +681,17 @@
                             onclick="openEvalCreateModal()">
                         <i class="fas fa-plus"></i> Créer évaluation
                     </button>
+                    {{-- Notes de l'ECUE en Excel : export puis réimport, au semestre choisi. --}}
+                    @can('notes.export_excel')
+                    <button type="button" id="lmdExportExcelBtn" class="ln-modal-add-btn" style="display:none;" title="Télécharger les notes de cet ECUE en Excel (choisissez un semestre)">
+                        <i class="fas fa-file-excel"></i> Notes Excel
+                    </button>
+                    @endcan
+                    @can('notes.import_excel')
+                    <button type="button" id="lmdImportExcelBtn" class="ln-modal-add-btn" style="display:none;" title="Réimporter le fichier Excel rempli (choisissez un semestre)">
+                        <i class="fas fa-file-import"></i> Importer Excel
+                    </button>
+                    @endcan
                     {{-- Outils secondaires accessibles sans réduire la grille. --}}
                     <details class="ln-secondary-panel" id="ln-secondary-panel">
                         <summary class="ln-secondary-trigger" title="Consulter le suivi pédagogique et les régularisations">
@@ -855,6 +866,7 @@
     </div>
 </div>
 
+@include('esbtp.notes.partials.import-excel')
 @endsection
 
 @push('scripts')
@@ -1082,6 +1094,7 @@ document.getElementById('ueSelect').addEventListener('change', function() {
     document.getElementById('notesGridWrap').style.display = 'none';
     document.getElementById('autosaveInfo').style.display = 'none';
     document.getElementById('createEvalBtn').style.display = 'none';
+    lmdExcelBoutons();
     document.getElementById('saveAllNotesBtn').style.display = 'none';
     document.getElementById('validateNotesBtn').style.display = 'none';
     document.getElementById('notesEmpty').style.display = 'block';
@@ -1116,6 +1129,7 @@ document.getElementById('ecueSelect').addEventListener('change', function() {
         notesData = {};
         document.getElementById('notesGridWrap').style.display = 'none';
         document.getElementById('createEvalBtn').style.display = 'none';
+    lmdExcelBoutons();
         document.getElementById('saveAllNotesBtn').style.display = 'none';
         document.getElementById('validateNotesBtn').style.display = 'none';
         document.getElementById('autosaveInfo').style.display = 'none';
@@ -1128,6 +1142,7 @@ document.getElementById('ecueSelect').addEventListener('change', function() {
 
     // Show create eval button
     document.getElementById('createEvalBtn').style.display = canCreateEvaluations ? 'inline-flex' : 'none';
+    lmdExcelBoutons();
 
     loadEvaluationsAndBuildGrid(currentClasseId, matiereId);
 });
@@ -1145,6 +1160,57 @@ document.getElementById('periodeFilter').addEventListener('change', function() {
 });
 
 @include('esbtp.lmd.notes.partials._suivi-script')
+
+// ══ Notes Excel de l'ECUE : export et réimport au semestre ══
+function lmdExcelBoutons() {
+    ['lmdExportExcelBtn', 'lmdImportExcelBtn'].forEach(function (id) {
+        const b = document.getElementById(id);
+        if (b) b.style.display = currentMatiereId ? 'inline-flex' : 'none';
+    });
+}
+
+// Le semestre choisi, ou celui des évaluations de l'ECUE s'il n'y en a qu'un.
+function lmdExcelSemestre() {
+    const choix = document.getElementById('periodeFilter').value;
+    if (choix && choix !== 'all') return 'semestre' + choix;
+    const semestres = [...new Set(Object.values(evaluationsData).map(ev => parseSemestre(ev.periode)))];
+    return semestres.length === 1 ? 'semestre' + semestres[0] : null;
+}
+
+function lmdExcelContexte() {
+    const periode = lmdExcelSemestre();
+    if (!currentClasseId || !currentMatiereId || !periode) {
+        lmdToastExcel('Choisissez un semestre dans « Période » avant d\'exporter ou d\'importer.');
+        return null;
+    }
+    return { classeId: currentClasseId, matiereId: currentMatiereId, periode: periode, anneeId: lmdAcademicYearId,
+        libelle: (document.getElementById('notesModalTitle').textContent || 'Classe')
+            + ' — ' + (currentMatiereName || 'ECUE') + ' — Semestre ' + periode.replace('semestre', '') };
+}
+
+function lmdToastExcel(message) {
+    window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'warning', message: message } }));
+}
+
+document.getElementById('lmdExportExcelBtn')?.addEventListener('click', function () {
+    const ctx = lmdExcelContexte();
+    if (!ctx) return;
+    const url = new URL(@json(route('esbtp.notes.export-excel')), window.location.origin);
+    url.searchParams.set('classe', ctx.classeId);
+    url.searchParams.set('matiere', ctx.matiereId);
+    url.searchParams.set('periode', ctx.periode);
+    if (ctx.anneeId) url.searchParams.set('annee_universitaire_id', ctx.anneeId);
+    window.open(url.toString(), '_blank');
+});
+
+document.getElementById('lmdImportExcelBtn')?.addEventListener('click', function () {
+    const ctx = lmdExcelContexte();
+    if (ctx && window.nieOuvrir) window.nieOuvrir(ctx);
+});
+
+window.addEventListener('notes-excel:importe', function () {
+    if (currentClasseId && currentMatiereId) loadEvaluationsAndBuildGrid(currentClasseId, currentMatiereId);
+});
 
 // ══ Load evaluations for class + matière (same API as BTS) ══
 async function loadEvaluationsAndBuildGrid(classeId, matiereId) {

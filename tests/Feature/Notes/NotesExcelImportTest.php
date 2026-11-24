@@ -470,4 +470,20 @@ class NotesExcelImportTest extends TestCase
         $service->apply($service->parseFile($this->buildFicheAvecColonnesAjoutees($ctx, 'STU001')), $ctx['classe']->id, $ctx['matiere']->id, 'semestre1', $ctx['annee']->id);
         $this->assertSame(3, ESBTPEvaluation::where('classe_id', $ctx['classe']->id)->count());
     }
+
+    public function test_un_fichier_d_une_autre_matiere_est_refuse(): void
+    {
+        $this->authUser();
+        $ctx = $this->buildContext();
+        $this->makeInscription($ctx['classe']->id, $ctx['annee']->id, 'STU001');
+        $autre = ESBTPMatiere::factory()->create();
+        $service = app(NotesImportService::class);
+
+        $parsed = $service->parseFile($this->buildExcelFile($ctx, 'STU001', 15));
+        $diff = $service->dryRun($parsed, $ctx['classe']->id, $autre->id, 'semestre1', $ctx['annee']->id);
+
+        $this->assertCount(1, $diff['errors']);
+        $this->assertStringContainsString('autre classe, matière ou période', $diff['errors'][0]['reason']);
+        $this->assertSame(0, $service->apply($parsed, $ctx['classe']->id, $autre->id, 'semestre1', $ctx['annee']->id)['created']);
+    }
 }
