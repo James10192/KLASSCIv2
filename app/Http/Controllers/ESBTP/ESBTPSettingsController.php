@@ -117,8 +117,25 @@ class ESBTPSettingsController extends Controller
             return $this->refus($request, 'Classe de classement annuel BTS invalide.');
         }
 
+        $receiptOverrides = \App\Support\ReceiptPrintSettings::overrides($request->all());
+        if ($receiptOverrides !== []) {
+            abort_unless($request->user()->can('settings.pdf.manage'), 403);
+            $receiptRenderer = app(\App\Services\Paiements\ReceiptPdf::class);
+            $receiptCurrent = \App\Support\ReceiptPrintSettings::read();
+            $receiptValues = array_replace($receiptCurrent, $receiptOverrides);
+            if ($receiptValues !== $receiptCurrent) {
+                $receiptSample = $receiptRenderer->sample(app(\App\Http\Controllers\ESBTPPaiementController::class)->getReceiptSettings());
+                if ($receiptRenderer->pages($receiptRenderer->render($receiptSample, $receiptValues)) !== 1) {
+                    return $this->refus($request, 'Les réglages du reçu ne tiennent pas sur une page A4. Réduisez les espacements ou certaines polices.');
+                }
+            }
+        }
+
         try {
             DB::beginTransaction();
+            if ($receiptOverrides !== []) {
+                \App\Support\ReceiptPrintSettings::ensureDefaults();
+            }
             $this->ensureAttendanceNoteSettings();
             $this->ensureMentionSettings();
             $this->ensureBtsBulletinPolicySettings();
@@ -2128,8 +2145,53 @@ class ESBTPSettingsController extends Controller
      *
      * Phase 9 — Customisation PDF tenant.
      */
+    /** Save only receipt layout fields, without the global settings form's side effects. */
+    public function saveReceiptPrint(Request $request)
+    {
+        $overrides = \App\Support\ReceiptPrintSettings::overrides($request->all());
+        abort_if($overrides === [], 422, 'Aucun réglage de reçu transmis.');
+        $renderer = app(\App\Services\Paiements\ReceiptPdf::class);
+        $values = array_replace(\App\Support\ReceiptPrintSettings::read(), $overrides);
+        $sample = $renderer->sample(app(\App\Http\Controllers\ESBTPPaiementController::class)->getReceiptSettings());
+        if ($renderer->pages($renderer->render($sample, $values)) !== 1) {
+            return response()->json(['message' => 'Le reçu de démonstration dépasse une page A4. Ajustez les polices ou espacements.'], 422);
+        }
+
+        DB::transaction(function () use ($overrides) {
+            SettingsBackup::create([
+                'backup_name' => 'Auto Backup reçus - '.now()->format('Y-m-d H:i:s'),
+                'description' => 'Sauvegarde avant modification des réglages du reçu',
+                'settings_data' => Setting::all()->toArray(),
+                'backup_type' => 'automatic',
+                'backup_date' => now(),
+                'created_by' => auth()->id(),
+            ]);
+            \App\Support\ReceiptPrintSettings::ensureDefaults();
+            foreach ($overrides as $key => $value) {
+                $setting = Setting::where('key', \App\Support\ReceiptPrintSettings::PREFIX.$key)->firstOrFail();
+                if (! ModificationDeReglages::inchange($setting, $value)) {
+                    $setting->update(['value' => (string) $value, 'updated_by' => auth()->id()]);
+                }
+            }
+        });
+
+        return response()->json(['success' => true, 'message' => 'Réglages du reçu enregistrés.', 'pages' => 1]);
+    }
+
     public function pdfPreview(Request $request)
     {
+        if ($request->boolean('receipt_preview')) {
+            $renderer = app(\App\Services\Paiements\ReceiptPdf::class);
+            $values = array_replace(\App\Support\ReceiptPrintSettings::read(), \App\Support\ReceiptPrintSettings::overrides($request->all()));
+            $sample = $renderer->sample(app(\App\Http\Controllers\ESBTPPaiementController::class)->getReceiptSettings());
+            $pdf = $renderer->render($sample, $values);
+            return response($pdf->output(), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="apercu-recu-demonstration.pdf"',
+                'X-Receipt-Pages' => (string) $renderer->pages($pdf),
+                'Cache-Control' => 'no-store',
+            ]);
+        }
         $overrides = $this->extractPdfOverrides($request);
 
         $pdf = Pdf::loadView('pdf.preview-sample', [

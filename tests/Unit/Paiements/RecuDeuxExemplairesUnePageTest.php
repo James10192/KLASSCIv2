@@ -22,6 +22,9 @@ class RecuDeuxExemplairesUnePageTest extends TestCase
 
         Cache::flush();
         $valeurs = \App\Helpers\SettingsHelper::getPdfDefaults();
+        foreach (\App\Support\ReceiptPrintSettings::defaults() as $key => $value) {
+            $valeurs['receipt_print_'.$key] = $value;
+        }
         $valeurs['pdf_signature_director'] = '';
         $valeurs['pdf_signature_secretary'] = '';
         $valeurs['school_logo'] = '';
@@ -70,9 +73,39 @@ class RecuDeuxExemplairesUnePageTest extends TestCase
         $css = file_get_contents(resource_path('views/esbtp/paiements/recu.blade.php'));
 
         $this->assertStringContainsString('page-break-inside: avoid', $css);
-        $this->assertMatchesRegularExpression('/\.sign-title\s*\{.*?margin-bottom:\s*15mm\s*;.*?\}\s*\.sign-line\s*\{/s', $css);
+        $this->assertSame(15, \App\Support\ReceiptPrintSettings::defaults()['signature_space']);
+        $this->assertSame(15, \App\Support\ReceiptPrintSettings::fields()['signature_space']['min']);
+        $this->assertStringContainsString("margin-bottom: {{ \$print['signature_space'] }}mm", $css);
         $this->assertStringNotContainsString('margin-bottom: 14mm', $css);
         $this->assertStringNotContainsString('height: 128mm', $css);
+    }
+
+    public function test_police_physique_et_reglages_independants(): void
+    {
+        $print = \App\Support\ReceiptPrintSettings::defaults();
+        $print['font_student'] = 14;
+        $print['font_amount'] = 14;
+        $html = view('esbtp.paiements.recu', array_merge($this->donneesRecuChargé(), ['receiptPrint' => $print]))->render();
+        $this->assertStringContainsString('.rf-student { font-size: 14pt; }', $html);
+        $this->assertStringContainsString('.rf-matricule { font-size: 9pt; }', $html);
+        $renderer = app(\App\Services\Paiements\ReceiptPdf::class);
+        $this->assertSame(1, $renderer->pages($renderer->render($this->donneesRecuChargé(), $print)));
+    }
+
+    public function test_reglages_invalides_refuses_avant_rendu(): void
+    {
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        \App\Support\ReceiptPrintSettings::overrides(['setting_receipt_print_signature_space' => 14]);
+    }
+
+    public function test_apercu_fictif_est_identifie_et_tient_sur_a4(): void
+    {
+        $renderer = app(\App\Services\Paiements\ReceiptPdf::class);
+        $data = $renderer->sample($this->donneesRecuChargé()['settings']);
+        $print = \App\Support\ReceiptPrintSettings::defaults();
+        $html = view('esbtp.paiements.recu', array_merge($data, ['receiptPrint' => $print]))->render();
+        $this->assertSame(2, substr_count($html, 'DÉMONSTRATION NON VALABLE'));
+        $this->assertSame(1, $renderer->pages($renderer->render($data, $print)));
     }
 
     /**

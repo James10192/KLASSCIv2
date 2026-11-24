@@ -1893,6 +1893,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::match(['POST', 'PUT'], '/settings/pdf-preview', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'pdfPreview'])
             ->middleware(['permission:settings.pdf.manage', 'throttle:30,1'])
             ->name('esbtp.settings.pdf-preview');
+        Route::post('/settings/receipt-print', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'saveReceiptPrint'])
+            ->middleware(['permission:settings.pdf.manage', 'throttle:15,1'])
+            ->name('esbtp.settings.receipt-print');
 
         // ESBTP Parents Search (pour modal de sÃ©lection dans edit Ã©tudiant)
         Route::get('/parents/search', [ESBTPEtudiantController::class, 'searchParents'])->name('esbtp.parents.search');
