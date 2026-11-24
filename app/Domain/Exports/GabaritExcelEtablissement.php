@@ -69,7 +69,9 @@ final class GabaritExcelEtablissement
                 'font' => $police,
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
             ]);
-            $sheet->getRowDimension($r)->setRowHeight($i === 0 ? 22 : 16);
+            // insertNewRowBefore() recopie la ligne du dessus : sous la ligne de
+            // métadonnées cachée, le bandeau naîtrait caché lui aussi.
+            $sheet->getRowDimension($r)->setVisible(true)->setRowHeight($i === 0 ? 22 : 16);
         }
         // Filet de couleur sous le bandeau.
         $derniere = $debut + self::LIGNES_BANDEAU - 1;

@@ -234,6 +234,10 @@ class NotesExcelExportTest extends TestCase
         $this->assertSame('__KLASSCI_NOTES_EXPORT__', $sheet->getCell('A1')->getValue());
         $ligne = \App\Domain\Exports\GabaritExcelEtablissement::LIGNES_BANDEAU + 2;
         $this->assertSame('Matricule', $sheet->getCell('A'.$ligne)->getValue());
+        $this->assertFalse($sheet->getRowDimension(1)->getVisible(), 'La ligne de métadonnées reste cachée.');
+        for ($r = 2; $r < $ligne; $r++) {
+            $this->assertTrue($sheet->getRowDimension($r)->getVisible(), "La ligne {$r} du bandeau doit être visible.");
+        }
         $this->assertStringStartsWith('Évaluation 3', (string) $sheet->getCell('E'.$ligne)->getValue());
         $this->assertSame(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE, $sheet->getPageSetup()->getOrientation());
 
