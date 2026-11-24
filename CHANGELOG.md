@@ -34,6 +34,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - Réglages, onglet Général : plage horaire des cours (premier créneau et fin du dernier) modifiable par l'école ; une fin avant le début est refusée. La création d'évaluation propose le premier créneau de l'école au lieu de 8 h. Vue morte `emploi-temps/teacher` retirée.
 
 ### Corrections
+- Fiche de notes Excel : l'aperçu du réimport n'annonce plus la création d'une évaluation pour une colonne ajoutée restée vide (`ImportDuClasseur::evaluationsACreer()`). Test d'aller-retour sur le classeur réellement exporté.
 - **PV détaillé du semestre, année d'obtention :** une UE acquise une année précédente (redoublant qui garde ses UE capitalisées) porte désormais l'année où elle a été obtenue, lue dans le bulletin de cette année-là, au lieu de l'année du jury.
 - PV détaillé du semestre, version Excel : le premier étudiant ne prend plus le style bleu de l’en-tête (les lignes vides étaient sautées et tout remontait d’un cran), et « ANNÉE UNIVERSITAIRE » n’est plus tronquée.
 - **PV détaillé du semestre, effectifs :** un étudiant délibéré dont le bulletin porte sa moyenne sans le détail de ses UE était compté « absent ». Il est désormais présent dès qu'une note est saisie ou que sa moyenne de semestre est calculée.
