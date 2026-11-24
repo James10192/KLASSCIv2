@@ -23,7 +23,7 @@ class ImportDuClasseur
         $feuilles = [];
         foreach ($this->feuilles($fichier, $classeId) as $nom => $f) {
             $diff = $this->import->dryRun($f['parsed'], $classeId, $f['matiere_id'], $f['periode'], $f['annee_id']);
-            $feuilles[] = ['feuille' => $nom, 'summary' => $diff['summary'], 'errors' => $diff['errors'],
+            $feuilles[] = ['feuille' => $nom, 'matiere' => \App\Models\ESBTPMatiere::whereKey($f['matiere_id'])->value('name'), 'summary' => $diff['summary'], 'errors' => $diff['errors'],
                 'changes' => $diff['changes'], 'evaluations_a_creer' => $this->evaluationsACreer($diff)];
         }
 

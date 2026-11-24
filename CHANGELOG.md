@@ -13,6 +13,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ## Novembre 2026
 
 ### Ajouts
+- Fiche de notes Excel de la classe : choix d'une seule matière (ou ECUE) au téléchargement ; zone de dépôt et résultat de vérification refaits (bilan, une carte par feuille modifiée avec ses nouvelles évaluations et ses erreurs, feuilles inchangées regroupées).
 - Import Excel des notes depuis l'écran des notes BTS (bouton « Importer Excel » rétabli, il manquait au HTML) et depuis l'écran des notes LMD (boutons « Notes Excel » et « Importer Excel » par ECUE). Fenêtre commune `esbtp.notes.partials.import-excel` : vérification puis enregistrement tout ou rien ; un fichier d'une autre classe, matière ou période est refusé.
 - Fiche de notes Excel : choix de l'orientation A4 et du nombre de colonnes de notes comme pour la feuille vierge PDF (`FormatFeuilleViergeA4`) ; chaque colonne ajoutée et remplie devient une évaluation au réimport, avec titre, barème et coefficient lus dans son en-tête. Gabarit `GabaritExcelEtablissement` : logo, coordonnées et couleurs des réglages PDF, mise en page A4, pagination.
 - **Nom avant les prénoms et tri alphabétique à l'encaissement** : sur l'écran « Encaisser un paiement » (ordinateur et téléphone), la recherche affiche le nom puis les prénoms de l'étudiant et classe les résultats par nom puis prénoms. Le reçu PDF imprime aussi le nom avant les prénoms, sans autre changement.
